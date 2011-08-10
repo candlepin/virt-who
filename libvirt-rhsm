@@ -1,0 +1,4 @@
+#!/bin/sh
+
+#export PYTHONPATH=/usr/share/libvirt-rhsm
+exec /usr/bin/python /usr/share/libvirt-rhsm/libvirt-rhsm.py "$@"

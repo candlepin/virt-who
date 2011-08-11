@@ -119,7 +119,7 @@ class RHSM:
         if not self.cert_uuid:
             try:
                 f = open(self.cert_file, "r")
-            except Exception as e:
+            except Exception, e:
                 logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
                 return ""
             certificate = rhsm_certificate.Certificate(f.read())

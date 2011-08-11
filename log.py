@@ -3,8 +3,7 @@ import logging
 import os
 
 def init_logger():
-    logging.getLogger().setLevel(logging.DEBUG)
-    logging.getLogger().addHandler(_get_handler())
+    logging.getLogger("rhsm-app").addHandler(_get_handler())
 
 def _get_handler():
     path = '/var/log/rhsm/rhsm.log'
@@ -24,6 +23,5 @@ def _get_handler():
         handler = logging.StreamHandler()
 
     handler.setFormatter(logging.Formatter(fmt))
-    handler.setLevel(logging.DEBUG)
 
     return handler

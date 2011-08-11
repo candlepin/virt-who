@@ -1,23 +1,22 @@
-#!/usr/bin/python
-#
-# Agent for reporting virtual guest IDs to subscription-manager
-#
-# Copyright (C) 2011 Radek Novacek <rnovacek@redhat.com>
+"""
+Agent for reporting virtual guest IDs to subscription-manager
 
-# This program is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation; either version 2
-# of the License, or (at your option) any later version.
+Copyright (C) 2011 Radek Novacek <rnovacek@redhat.com>
 
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
 
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
 
 import sys
 import os
@@ -29,62 +28,70 @@ import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
 import logging
+import log
 
-
-# TODO: proper parameter handling
-if "-d" in sys.argv or "--debug" in sys.argv:
-    import log
-    log.init_logger()
-    log = logging.getLogger('rhsm-app.' + __name__)
-else:
-    log = logging.getLogger()
-
-# Log libvirt errors
-def f(ctx, error):
-    log.debug(error)
-libvirt.registerErrorHandler(f, None)
+from optparse import OptionParser
 
 
 class Virt:
+    """ Class for interacting with libvirt. """
+    def __init__(self):
+        self.virt = libvirt.openReadOnly("")
+
     def listDomains(self):
+        """ Get list of all domains. """
         domains = []
-        virt = libvirt.openReadOnly("")
 
         # Active domains
-        for domainID in virt.listDomainsID():
-            domain = virt.lookupByID(domainID)
+        for domainID in self.virt.listDomainsID():
+            domain = self.virt.lookupByID(domainID)
             domains.append(domain)
-            log.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
+            logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
 
         # Non active domains
-        for domainName in virt.listDefinedDomains():
-            domain = virt.lookupByName(domainName)
+        for domainName in self.virt.listDefinedDomains():
+            domain = self.virt.lookupByName(domainName)
             domains.append(domain)
-            log.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
+            logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
 
-        virt.close()
         return domains
+
+    def __del__(self):
+        self.virt.close()
 
 
 class RHSM:
-    cert_uuid = None # Consumer ID obtained from consumer certificate
+    """ Class for interacting subscription-manager. """
+    def __init__(self):
+        self.cert_uuid = None
+
+        self.readConfig()
+
+        # Consumer ID obtained from consumer certificate
+        self.cert_uuid = self.uuid()
 
     def readConfig(self):
-        """ Parse rhsm.conf in order to obtain consumer certificate and key paths. """
+        """ Parse rhsm.conf in order to obtain consumer
+            certificate and key paths. """
         self.config = rhsm_config.initConfig()
         consumerCertDir = self.config.get("rhsm", "consumerCertDir")
         cert = 'cert.pem'
         key = 'key.pem'
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
+        if not os.access(self.cert_file, os.R_OK):
+            logger.error("Unable to read certificate, system is not registered or you are not root")
+            sys.exit(1)
 
     def connect(self):
-        self.readConfig()
-        self.connection = rhsm_connection.UEPConnection(cert_file=self.cert_file, key_file=self.key_file)
+        """ Connect to the subscription-manager. """
+        self.connection = rhsm_connection.UEPConnection(
+                cert_file=self.cert_file, key_file=self.key_file)
         if not self.connection.ping()['result']:
-            log.error("Unable to connect to the server")
+            logger.error("Unable to connect to the server")
 
     def sendVirtGuests(self, domains):
+        """ Update consumer facts with UUIDs of virtual guests. """
         # Get consumer facts from server
         facts = self.getFacts()
 
@@ -97,22 +104,23 @@ class RHSM:
         # Check if facts differ
         if "virt.guests" in facts and facts["virt.guests"] == uuids_string:
             # There are the same, no need to update them
-            log.debug("No need to update facts (%s)" % facts["virt.guests"])
+            logger.debug("No need to update facts (%s)" % facts["virt.guests"])
             return
 
         # Update consumer facts
-        log.debug("Sending updates virt.guests facts: %s" % uuids_string)
+        logger.debug("Sending updates virt.guests facts: %s" % uuids_string)
         facts["virt.guests"] = uuids_string
 
         # Send it to the server
         self.connection.updateConsumerFacts(self.uuid(), facts)
 
     def uuid(self):
+        """ Read consumer certificate and get consumer UUID from it. """
         if not self.cert_uuid:
             try:
                 f = open(self.cert_file, "r")
             except Exception as e:
-                log.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
+                logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
                 return ""
             certificate = rhsm_certificate.Certificate(f.read())
             f.close()
@@ -120,10 +128,26 @@ class RHSM:
         return self.cert_uuid
 
     def getFacts(self):
+        """ Get fact for current consumer. """
         self.consumer = self.connection.conn.request_get('/consumers/%s' % self.uuid())
         return self.consumer['facts']
 
 if __name__ == '__main__':
+    log.init_logger()
+
+    logger = logging.getLogger("rhsm-app." + __name__)
+
+    parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager")
+    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
+
+    (options, args) = parser.parse_args()
+
+    if options.debug:
+        logger.setLevel(logging.DEBUG)
+
+    # Log libvirt errors
+    libvirt.registerErrorHandler(lambda ctx, error: logger.debug(error), None)
+
     virt = Virt()
     rhsm = RHSM()
     rhsm.connect()

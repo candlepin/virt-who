@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import os
 
-import libvirt
+from virt import Virt
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
@@ -32,37 +32,10 @@ import log
 
 from optparse import OptionParser
 
-
-class Virt:
-    """ Class for interacting with libvirt. """
-    def __init__(self):
-        self.virt = libvirt.openReadOnly("")
-
-    def listDomains(self):
-        """ Get list of all domains. """
-        domains = []
-
-        # Active domains
-        for domainID in self.virt.listDomainsID():
-            domain = self.virt.lookupByID(domainID)
-            domains.append(domain)
-            logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
-
-        # Non active domains
-        for domainName in self.virt.listDefinedDomains():
-            domain = self.virt.lookupByName(domainName)
-            domains.append(domain)
-            logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
-
-        return domains
-
-    def __del__(self):
-        self.virt.close()
-
-
 class RHSM:
     """ Class for interacting subscription-manager. """
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.cert_uuid = None
 
         self.readConfig()
@@ -80,7 +53,7 @@ class RHSM:
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
         if not os.access(self.cert_file, os.R_OK):
-            logger.error("Unable to read certificate, system is not registered or you are not root")
+            self.logger.error("Unable to read certificate, system is not registered or you are not root")
             sys.exit(1)
 
     def connect(self):
@@ -88,7 +61,7 @@ class RHSM:
         self.connection = rhsm_connection.UEPConnection(
                 cert_file=self.cert_file, key_file=self.key_file)
         if not self.connection.ping()['result']:
-            logger.error("Unable to connect to the server")
+            self.logger.error("Unable to connect to the server")
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """
@@ -104,11 +77,11 @@ class RHSM:
         # Check if facts differ
         if "virt.guests" in facts and facts["virt.guests"] == uuids_string:
             # There are the same, no need to update them
-            logger.debug("No need to update facts (%s)" % facts["virt.guests"])
+            self.logger.debug("No need to update facts (%s)" % facts["virt.guests"])
             return
 
         # Update consumer facts
-        logger.debug("Sending updates virt.guests facts: %s" % uuids_string)
+        self.logger.debug("Sending updates virt.guests facts: %s" % uuids_string)
         facts["virt.guests"] = uuids_string
 
         # Send it to the server
@@ -120,7 +93,7 @@ class RHSM:
             try:
                 f = open(self.cert_file, "r")
             except Exception, e:
-                logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
+                self.logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
                 return ""
             certificate = rhsm_certificate.Certificate(f.read())
             f.close()
@@ -145,11 +118,8 @@ if __name__ == '__main__':
     if options.debug:
         logger.setLevel(logging.DEBUG)
 
-    # Log libvirt errors
-    libvirt.registerErrorHandler(lambda ctx, error: logger.debug(error), None)
-
-    virt = Virt()
-    rhsm = RHSM()
+    virt = Virt(logger)
+    rhsm = RHSM(logger)
     rhsm.connect()
 
     rhsm.sendVirtGuests(virt.listDomains())

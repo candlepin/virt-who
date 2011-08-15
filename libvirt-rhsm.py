@@ -24,89 +24,12 @@ import time
 
 from virt import Virt
 from event import virEventLoopPureStart
-
-import rhsm.connection as rhsm_connection
-import rhsm.certificate as rhsm_certificate
-import rhsm.config as rhsm_config
+from subscriptionmanager import SubscriptionManager
 
 import logging
 import log
 
 from optparse import OptionParser
-
-class RHSM:
-    """ Class for interacting subscription-manager. """
-    def __init__(self, logger):
-        self.logger = logger
-        self.cert_uuid = None
-
-        self.readConfig()
-
-        # Consumer ID obtained from consumer certificate
-        self.cert_uuid = self.uuid()
-
-    def readConfig(self):
-        """ Parse rhsm.conf in order to obtain consumer
-            certificate and key paths. """
-        self.config = rhsm_config.initConfig()
-        consumerCertDir = self.config.get("rhsm", "consumerCertDir")
-        cert = 'cert.pem'
-        key = 'key.pem'
-        self.cert_file = os.path.join(consumerCertDir, cert)
-        self.key_file = os.path.join(consumerCertDir, key)
-        if not os.access(self.cert_file, os.R_OK):
-            self.logger.error("Unable to read certificate, system is not registered or you are not root")
-            sys.exit(1)
-
-    def connect(self):
-        """ Connect to the subscription-manager. """
-        self.connection = rhsm_connection.UEPConnection(
-                cert_file=self.cert_file, key_file=self.key_file)
-        if not self.connection.ping()['result']:
-            self.logger.error("Unable to connect to the server")
-
-    def sendVirtGuests(self, domains):
-        """ Update consumer facts with UUIDs of virtual guests. """
-        # Get consumer facts from server
-        facts = self.getFacts()
-
-        # Get comma separated list of UUIDs
-        uuids = []
-        for domain in domains:
-            uuids.append(domain.UUIDString())
-        uuids.sort()
-        uuids_string = ",".join(uuids)
-
-        # Check if facts differ
-        if "virt.guests" in facts and facts["virt.guests"] == uuids_string:
-            # There are the same, no need to update them
-            self.logger.debug("No need to update facts (%s)" % facts["virt.guests"])
-            return
-
-        # Update consumer facts
-        self.logger.debug("Sending updates virt.guests facts: %s" % uuids_string)
-        facts["virt.guests"] = uuids_string
-
-        # Send it to the server
-        self.connection.updateConsumerFacts(self.uuid(), facts)
-
-    def uuid(self):
-        """ Read consumer certificate and get consumer UUID from it. """
-        if not self.cert_uuid:
-            try:
-                f = open(self.cert_file, "r")
-            except Exception, e:
-                self.logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
-                return ""
-            certificate = rhsm_certificate.Certificate(f.read())
-            f.close()
-            self.cert_uuid = certificate.subject().get('CN')
-        return self.cert_uuid
-
-    def getFacts(self):
-        """ Get fact for current consumer. """
-        self.consumer = self.connection.conn.request_get('/consumers/%s' % self.uuid())
-        return self.consumer['facts']
 
 
 if __name__ == '__main__':
@@ -127,21 +50,22 @@ if __name__ == '__main__':
     if options.background:
         virEventLoopPureStart()
 
-    rhsm = RHSM(logger)
+    subscriptionManager = SubscriptionManager(logger)
     virt = Virt(logger)
 
-    rhsm.connect()
+    subscriptionManager.connect()
 
     if options.background:
         # Run rhsm.sendVirtGuests when something changes in libvirt
-        virt.domainListChangedCallback(rhsm.sendVirtGuests)
+        virt.domainListChangedCallback(subscriptionManager.sendVirtGuests)
         # Register listener for domain changes
         virt.virt.domainEventRegister(virt.changed, None)
         # Send current virt guests
-        rhsm.sendVirtGuests(virt.listDomains())
+        subscriptionManager.sendVirtGuests(virt.listDomains())
         # libvirt event loop is running in separate thread, wait forever
+        logger.debug("Entering infinite loop")
         while 1:
             time.sleep(1)
     else:
         # Send list of virtual guests and exit
-        rhsm.sendVirtGuests(virt.listDomains())
+        subscriptionManager.sendVirtGuests(virt.listDomains())

@@ -20,8 +20,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
+import time
 
 from virt import Virt
+from event import virEventLoopPureStart
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
@@ -72,6 +74,7 @@ class RHSM:
         uuids = []
         for domain in domains:
             uuids.append(domain.UUIDString())
+        uuids.sort()
         uuids_string = ",".join(uuids)
 
         # Check if facts differ
@@ -105,6 +108,7 @@ class RHSM:
         self.consumer = self.connection.conn.request_get('/consumers/%s' % self.uuid())
         return self.consumer['facts']
 
+
 if __name__ == '__main__':
     log.init_logger()
 
@@ -112,14 +116,32 @@ if __name__ == '__main__':
 
     parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
+    parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
 
     (options, args) = parser.parse_args()
 
     if options.debug:
+        # Enable debugging
         logger.setLevel(logging.DEBUG)
 
-    virt = Virt(logger)
+    if options.background:
+        virEventLoopPureStart()
+
     rhsm = RHSM(logger)
+    virt = Virt(logger)
+
     rhsm.connect()
 
-    rhsm.sendVirtGuests(virt.listDomains())
+    if options.background:
+        # Run rhsm.sendVirtGuests when something changes in libvirt
+        virt.domainListChangedCallback(rhsm.sendVirtGuests)
+        # Register listener for domain changes
+        virt.virt.domainEventRegister(virt.changed, None)
+        # Send current virt guests
+        rhsm.sendVirtGuests(virt.listDomains())
+        # libvirt event loop is running in separate thread, wait forever
+        while 1:
+            time.sleep(1)
+    else:
+        # Send list of virtual guests and exit
+        rhsm.sendVirtGuests(virt.listDomains())

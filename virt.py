@@ -23,6 +23,7 @@ import libvirt
 class Virt:
     """ Class for interacting with libvirt. """
     def __init__(self, logger):
+        self.changedCallback = None
         self.logger = logger
         self.virt = libvirt.openReadOnly("")
         # Log libvirt errors
@@ -48,3 +49,31 @@ class Virt:
 
     def __del__(self):
         self.virt.close()
+
+    def changed(self, conn, dom, event, detail, opaque):
+        print "EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail))
+        if self.changedCallback:
+            self.changedCallback(self.listDomains())
+
+    def domainListChangedCallback(self, callback):
+        self.changedCallback = callback
+
+def eventToString(event):
+    eventStrings = ( "Defined",
+                     "Undefined",
+                     "Started",
+                     "Suspended",
+                     "Resumed",
+                     "Stopped" )
+    return eventStrings[event]
+
+def detailToString(event, detail):
+    eventStrings = (
+        ( "Added", "Updated" ),
+        ( "Removed" ),
+        ( "Booted", "Migrated", "Restored", "Snapshot" ),
+        ( "Paused", "Migrated", "IOError", "Watchdog" ),
+        ( "Unpaused", "Migrated"),
+        ( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot")
+        )
+    return eventStrings[event][detail]

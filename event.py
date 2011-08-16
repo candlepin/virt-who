@@ -1,27 +1,21 @@
-#!/usr/bin/python -u
-#
-#
-#
+"""
+Loop for reading events from libvirt, based on example from libvirt-python.
+
+"""
+
+
 #################################################################################
 # Start off by implementing a general purpose event loop for anyones use
 #################################################################################
 
 import sys
-import getopt
 import os
 import libvirt
 import select
-import errno
 import time
 import threading
 
-do_debug = False
-def debug(msg):
-    global do_debug
-    if do_debug:
-        print msg
 
-#
 # This general purpose event loop will support waiting for file handle
 # I/O and errors events, as well as scheduling repeatable timers with
 # a fixed interval.
@@ -113,7 +107,6 @@ class virEventLoopPure:
         # with the event loop for input events. When we need to force
         # the main thread out of a poll() sleep, we simple write a
         # single byte of data to the other end of the pipe.
-        debug("Self pipe watch %d write %d" %(self.pipetrick[0], self.pipetrick[1]))
         self.poll.register(self.pipetrick[0], select.POLLIN)
 
 
@@ -170,7 +163,6 @@ class virEventLoopPure:
         sleep = -1
         self.runningPoll = True
         next = self.next_timeout()
-        debug("Next timeout due at %d" % next)
         if next > 0:
             now = int(time.time() * 1000)
             if now >= next:
@@ -178,7 +170,6 @@ class virEventLoopPure:
             else:
                 sleep = (next - now) / 1000.0
 
-        debug("Poll with a sleep of %d" % sleep)
         events = self.poll.poll(sleep)
 
         # Dispatch any file handle events that occurred
@@ -193,7 +184,6 @@ class virEventLoopPure:
 
             h = self.get_handle_by_fd(fd)
             if h:
-                debug("Dispatch fd %d handle %d events %d" % (fd, h.get_id(), revents))
                 h.dispatch(self.events_from_poll(revents))
 
         now = int(time.time() * 1000)
@@ -206,7 +196,6 @@ class virEventLoopPure:
             # Deduct 20ms, since schedular timeslice
             # means we could be ever so slightly early
             if now >= (want-20):
-                debug("Dispatch timer %d now %s want %s" % (t.get_id(), str(now), str(want)))
                 t.set_last_fired(now)
                 t.dispatch()
 
@@ -239,8 +228,6 @@ class virEventLoopPure:
         self.poll.register(fd, self.events_to_poll(events))
         self.interrupt()
 
-        debug("Add handle %d fd %d events %d" % (handleID, fd, events))
-
         return handleID
 
     # Registers a new timer with periodic expiry at 'interval' ms,
@@ -256,8 +243,6 @@ class virEventLoopPure:
         self.timers.append(h)
         self.interrupt()
 
-        debug("Add timer %d interval %d" % (timerID, interval))
-
         return timerID
 
     # Change the set of events to be monitored on the file handle
@@ -269,16 +254,12 @@ class virEventLoopPure:
             self.poll.register(h.get_fd(), self.events_to_poll(events))
             self.interrupt()
 
-            debug("Update handle %d fd %d events %d" % (handleID, h.get_fd(), events))
-
     # Change the periodic frequency of the timer
     def update_timer(self, timerID, interval):
         for h in self.timers:
             if h.get_id() == timerID:
                 h.set_interval(interval);
                 self.interrupt()
-
-                debug("Update timer %d interval %d"  % (timerID, interval))
                 break
 
     # Stop monitoring for events on the file handle
@@ -287,7 +268,6 @@ class virEventLoopPure:
         for h in self.handles:
             if h.get_id() == handleID:
                 self.poll.unregister(h.get_fd())
-                debug("Remove handle %d fd %d" % (handleID, h.get_fd()))
             else:
                 handles.append(h)
         self.handles = handles
@@ -299,7 +279,6 @@ class virEventLoopPure:
         for h in self.timers:
             if h.get_id() != timerID:
                 timers.append(h)
-                debug("Remove timer %d" % timerID)
         self.timers = timers
         self.interrupt()
 
@@ -401,107 +380,3 @@ def virEventLoopPureStart():
     eventLoopThread.start()
 
 
-##########################################################################
-# Everything that now follows is a simple demo of domain lifecycle events
-##########################################################################
-def eventToString(event):
-    eventStrings = ( "Defined",
-                     "Undefined",
-                     "Started",
-                     "Suspended",
-                     "Resumed",
-                     "Stopped" );
-    return eventStrings[event];
-
-def detailToString(event, detail):
-    eventStrings = (
-        ( "Added", "Updated" ),
-        ( "Removed" ),
-        ( "Booted", "Migrated", "Restored", "Snapshot" ),
-        ( "Paused", "Migrated", "IOError", "Watchdog" ),
-        ( "Unpaused", "Migrated"),
-        ( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot")
-        )
-    return eventStrings[event][detail]
-
-def myDomainEventCallback1 (conn, dom, event, detail, opaque):
-    print "myDomainEventCallback1 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
-                                                                 eventToString(event),
-                                                                 detailToString(event, detail))
-
-def myDomainEventCallback2 (conn, dom, event, detail, opaque):
-    print "myDomainEventCallback2 EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(),
-                                                                 eventToString(event),
-                                                                 detailToString(event, detail))
-
-def myDomainEventRebootCallback(conn, dom, opaque):
-    print "myDomainEventRebootCallback: Domain %s(%s)" % (dom.name(), dom.ID())
-
-def myDomainEventRTCChangeCallback(conn, dom, utcoffset, opaque):
-    print "myDomainEventRTCChangeCallback: Domain %s(%s) %d" % (dom.name(), dom.ID(), utcoffset)
-
-def myDomainEventWatchdogCallback(conn, dom, action, opaque):
-    print "myDomainEventWatchdogCallback: Domain %s(%s) %d" % (dom.name(), dom.ID(), action)
-
-def myDomainEventIOErrorCallback(conn, dom, srcpath, devalias, action, opaque):
-    print "myDomainEventIOErrorCallback: Domain %s(%s) %s %s %d" % (dom.name(), dom.ID(), srcpath, devalias, action)
-
-def myDomainEventGraphicsCallback(conn, dom, phase, localAddr, remoteAddr, authScheme, subject, opaque):
-    print "myDomainEventGraphicsCallback: Domain %s(%s) %d %s" % (dom.name(), dom.ID(), phase, authScheme)
-
-def usage():
-        print "usage: "+os.path.basename(sys.argv[0])+" [uri]"
-        print "   uri will default to qemu:///system"
-
-def main():
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "h", ["help"] )
-    except getopt.GetoptError, err:
-        # print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage()
-        sys.exit(2)
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            usage()
-            sys.exit()
-
-    if len(sys.argv) > 1:
-        uri = sys.argv[1]
-    else:
-        uri = "qemu:///system"
-
-    print "Using uri:" + uri
-
-    # Run a background thread with the event loop
-    virEventLoopPureStart()
-
-    vc = libvirt.open(uri)
-
-    # Close connection on exit (to test cleanup paths)
-    old_exitfunc = getattr(sys, 'exitfunc', None)
-    def exit():
-        print "Closing " + str(vc)
-        vc.close()
-        if (old_exitfunc): old_exitfunc()
-    sys.exitfunc = exit
-
-    #Add 2 callbacks to prove this works with more than just one
-    vc.domainEventRegister(myDomainEventCallback1,None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_LIFECYCLE, myDomainEventCallback2, None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_REBOOT, myDomainEventRebootCallback, None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_RTC_CHANGE, myDomainEventRTCChangeCallback, None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_IO_ERROR, myDomainEventIOErrorCallback, None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_WATCHDOG, myDomainEventWatchdogCallback, None)
-    vc.domainEventRegisterAny(None, libvirt.VIR_DOMAIN_EVENT_ID_GRAPHICS, myDomainEventGraphicsCallback, None)
-
-    # The rest of your app would go here normally, but for sake
-    # of demo we'll just go to sleep. The other option is to
-    # run the event loop in your main thread if your app is
-    # totally event based.
-    while 1:
-        time.sleep(1)
-
-
-if __name__ == "__main__":
-    main()

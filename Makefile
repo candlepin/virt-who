@@ -1,5 +1,5 @@
 
-name = libvirt-rhsm
+name = virt-who
 version = 0.1
 
 .PHONY: pack check install srpm rpm
@@ -10,9 +10,9 @@ check:
 	pyflakes *.py
 
 install:
-	install -d $(DESTDIR)/usr/share/libvirt-rhsm/ $(DESTDIR)/usr/bin
-	install -pm 0644 *.py $(DESTDIR)/usr/share/libvirt-rhsm/
-	install libvirt-rhsm $(DESTDIR)/usr/bin/
+	install -d $(DESTDIR)/usr/share/$(name)/ $(DESTDIR)/usr/bin
+	install -pm 0644 *.py $(DESTDIR)/usr/share/$(name)/
+	install virt-who $(DESTDIR)/usr/bin/
 
 srpm: pack
 	rpmbuild --define "_sourcedir `pwd`" --define "_specdir `pwd`" --define "_srcrpmdir `pwd`" -bs $(name).spec

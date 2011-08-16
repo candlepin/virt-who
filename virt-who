@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ -f ./virt-who.py ];
+then
+    # Run it from local directory when available
+    exec /usr/bin/python ./virt-who.py "$@"
+else
+    # Run it from /usr/share/virt-who
+    exec /usr/bin/python /usr/share/virt-who/virt-who.py "$@"
+fi

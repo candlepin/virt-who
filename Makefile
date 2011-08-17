@@ -20,3 +20,5 @@ srpm: pack
 rpm: pack
 	rpmbuild --define "_sourcedir `pwd`" --define "_specdir `pwd`" --define "_srcrpmdir `pwd`" --define "_rpmdir `pwd`" -bb $(name).spec
 
+rpmlint: srpm rpm
+	rpmlint $(name).spec $(shell rpmspec -q $(name).spec | sed 's/.noarch//').src.rpm noarch/$(shell rpmspec -q $(name).spec).rpm

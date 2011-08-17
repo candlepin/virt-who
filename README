@@ -1,0 +1,34 @@
+virt-who is agent for reporting virtual guest IDs to subscription-manager.
+
+It uses libvirt-python to obtain UUIDs of all virtual guests present
+in the system (both running and stopped). It then connects to
+subscription-manager server (candlepin) and set the list of UUIDs to facts
+about host system.
+
+
+Installation
+------------
+To just install it use:
+
+# make DESTDIR=/usr install
+
+You can also create rpm package with:
+
+$ make rpm
+
+and then install the package
+
+
+Configuration
+-------------
+
+It uses rhsm configuration (usually in /etc/rhsm/rhsm.conf). The system needs
+to be registered in subscription-manager server before running the agent.
+
+Usage
+-----
+
+This agent has two modes of running. First [default] is to obtain UUIDs, send
+them to the server and exit. Second mode is running in infinite loop and
+monitor guests UUIDs changes. When some change happens it will be immediately
+send.

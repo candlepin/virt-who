@@ -1,0 +1,7 @@
+*.pyc
+*~
+*.rpm
+*.tar.gz
+noarch/
+.*
+

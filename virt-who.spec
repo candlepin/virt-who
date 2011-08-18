@@ -2,11 +2,12 @@ Name:           virt-who
 Version:        0.1
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
-Group:          System Environment/Base
 
+Group:          System Environment/Base
 License:        GPLv2+
 URL:            https://fedorahosted.org/virt-who/
 Source0:        https://fedorahosted.org/releases/v/i/virt-who/%{name}-%{version}.tar.gz
+BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildArch:      noarch
 BuildRequires:  python2-devel

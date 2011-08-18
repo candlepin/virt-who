@@ -22,3 +22,6 @@ rpm: pack
 
 rpmlint: srpm rpm
 	rpmlint $(name).spec $(shell rpmspec -q $(name).spec | sed 's/.noarch//').src.rpm noarch/$(shell rpmspec -q $(name).spec).rpm
+
+upload: pack
+	scp $(name)-$(version).tar.gz fedorahosted.org:$(name)

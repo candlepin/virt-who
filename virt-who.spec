@@ -6,7 +6,7 @@ Group:          System Environment/Base
 
 License:        GPLv2+
 URL:            https://fedorahosted.org/virt-who/
-Source0:        https://fedorahosted.org/virt-who/%{name}-%{version}.tar.gz
+Source0:        https://fedorahosted.org/releases/v/i/virt-who/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
 BuildRequires:  python2-devel

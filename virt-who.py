@@ -46,8 +46,10 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args()
 
     if options.debug:
-        # Enable debugging
+        # Enable debugging output to be writen in /var/log
         logger.setLevel(logging.DEBUG)
+        # Print debugging output to stderr too
+        logger.addHandler(logging.StreamHandler())
 
     if options.background:
         virEventLoopPureStart()

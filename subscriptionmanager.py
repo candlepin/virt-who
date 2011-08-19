@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
+import sys
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate

@@ -31,6 +31,8 @@ import log
 
 from optparse import OptionParser
 
+from ConfigParser import NoOptionError
+
 
 if __name__ == '__main__':
     log.init_logger()
@@ -50,7 +52,12 @@ if __name__ == '__main__':
     if options.background:
         virEventLoopPureStart()
 
-    subscriptionManager = SubscriptionManager(logger)
+    try:
+        subscriptionManager = SubscriptionManager(logger)
+    except NoOptionError, e:
+        logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
+        sys.exit(2)
+
     virt = Virt(logger)
 
     subscriptionManager.connect()

@@ -1,6 +1,6 @@
 Name:           virt-who
 Version:        0.1
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
@@ -44,5 +44,8 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Fri Aug 19 2011 Radek Novacek <rnovacek@redhat.com> - 0.1-2
+- Add BuildRoot tag (the package will be in RHEL5)
+
 * Wed Aug 10 2011 Radek Novacek <rnovacek@redhat.com> - 0.1-1
 - initial import

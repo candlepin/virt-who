@@ -2,7 +2,8 @@
 name = virt-who
 version = 0.1
 
-.PHONY: pack check install srpm rpm
+.PHONY: pack check install srpm rpm rpmlint upload
+
 pack:
 	git archive --format=tar --prefix=$(name)-$(version)/ master | gzip > $(name)-$(version).tar.gz
 

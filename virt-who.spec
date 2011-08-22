@@ -1,6 +1,6 @@
 Name:           virt-who
-Version:        0.1
-Release:        2%{?dist}
+Version:        0.2
+Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
@@ -12,6 +12,7 @@ BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
+Requires:       libvirt
 Requires:       python-rhsm
 
 %description
@@ -44,6 +45,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Mon Aug 22 2011 Radek Novacek <rnovacek@redhat.com> - 0.2-1
+- Update to upstream version 0.2
+- Add Requires: libvirt
+
 * Fri Aug 19 2011 Radek Novacek <rnovacek@redhat.com> - 0.1-2
 - Add BuildRoot tag (the package will be in RHEL5)
 

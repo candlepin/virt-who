@@ -4,8 +4,10 @@ version = 0.1
 
 .PHONY: pack check install srpm rpm rpmlint upload
 
-pack:
+$(name)-$(version).tar.gz:
 	git archive --format=tar --prefix=$(name)-$(version)/ master | gzip > $(name)-$(version).tar.gz
+
+pack: $(name)-$(version).tar.gz
 
 check:
 	pyflakes *.py

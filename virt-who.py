@@ -22,7 +22,7 @@ import sys
 import os
 import time
 
-from virt import Virt
+from virt import Virt, VirtError
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager
 
@@ -60,7 +60,11 @@ if __name__ == '__main__':
         logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
         sys.exit(2)
 
-    virt = Virt(logger)
+    try:
+        virt = Virt(logger)
+    except VirtError, e:
+        print e
+        sys.exit(3)
 
     subscriptionManager.connect()
 

@@ -20,12 +20,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import libvirt
 
+class VirtError(Exception):
+    pass
+
 class Virt:
     """ Class for interacting with libvirt. """
     def __init__(self, logger):
         self.changedCallback = None
         self.logger = logger
-        self.virt = libvirt.openReadOnly("")
+        try:
+            self.virt = libvirt.openReadOnly("")
+        except libvirt.libvirtError, e:
+            raise VirtError(str(e))
         # Log libvirt errors
         libvirt.registerErrorHandler(lambda ctx, error: self.logger.debug(error), None)
 

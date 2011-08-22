@@ -28,12 +28,13 @@ class Virt:
     def __init__(self, logger):
         self.changedCallback = None
         self.logger = logger
+        self.virt = None
+        # Log libvirt errors
+        libvirt.registerErrorHandler(lambda ctx, error: self.logger.debug(error), None)
         try:
             self.virt = libvirt.openReadOnly("")
         except libvirt.libvirtError, e:
             raise VirtError(str(e))
-        # Log libvirt errors
-        libvirt.registerErrorHandler(lambda ctx, error: self.logger.debug(error), None)
 
     def listDomains(self):
         """ Get list of all domains. """
@@ -54,7 +55,8 @@ class Virt:
         return domains
 
     def __del__(self):
-        self.virt.close()
+        if self.virt:
+            self.virt.close()
 
     def changed(self, conn, dom, event, detail, opaque):
         print "EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail))

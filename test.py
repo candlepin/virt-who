@@ -33,7 +33,7 @@ class VirtTest(unittest.TestCase):
         self.virt = Virt(logger)
 
     def test_connection(self):
-        self.assertGreater(self.virt.virt.getVersion(), 0)
+        self.assertTrue(self.virt.virt.getVersion() > 0)
 
     def test_listDomains(self):
         uuids = []
@@ -46,7 +46,7 @@ class VirtTest(unittest.TestCase):
                 continue
             domId = line.split()[1]
             uuid = subprocess.Popen(["virsh", "-r", "domuuid", domId], stdout=subprocess.PIPE).communicate()[0].strip()
-            self.assertIn(uuid, uuids, "virsh returns more domains then virt-who (%s)" % uuid)
+            self.assertTrue(uuid in uuids, "virsh returns more domains then virt-who (%s)" % uuid)
             uuids.remove(uuid)
         self.assertEqual(len(uuids), 0, "virsh returns less domains then virt-who (%s)" % ",".join(uuids))
 

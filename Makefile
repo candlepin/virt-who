@@ -16,6 +16,8 @@ install:
 	install -d $(DESTDIR)/usr/share/$(name)/ $(DESTDIR)/usr/bin
 	install -pm 0644 *.py $(DESTDIR)/usr/share/$(name)/
 	install virt-who $(DESTDIR)/usr/bin/
+	install virt-who-initscript $(DESTDIR)/etc/rc.d/init.d/virt-who
+	install virt-who.conf $(DESTDIR)/etc/sysconfig/virt-who
 
 srpm: pack
 	rpmbuild --define "_sourcedir $(PWD)" --define "_specdir $(PWD)" --define "_srcrpmdir $(PWD)" -bs $(name).spec

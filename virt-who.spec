@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.2
+Version:        0.3
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -14,6 +14,10 @@ BuildRequires:  python2-devel
 Requires:       libvirt-python
 Requires:       libvirt
 Requires:       python-rhsm
+Requires(post): chkconfig
+Requires(preun): chkconfig
+# This is for /sbin/service
+Requires(preun): initscripts
 
 %description
 Agent that collects information about virtual guests present in the system and
@@ -37,14 +41,34 @@ make DESTDIR=$RPM_BUILD_ROOT install
 %clean
 rm -rf $RPM_BUILD_ROOT
 
+%post
+# This adds the proper /etc/rc*.d links for the script
+/sbin/chkconfig --add virt-who
+
+%preun
+if [ $1 -eq 0 ] ; then
+    /sbin/service virt-who stop >/dev/null 2>&1
+    /sbin/chkconfig --del virt-who
+fi
+
+%postun
+if [ "$1" -ge "1" ] ; then
+    /sbin/service virt-who condrestart >/dev/null 2>&1 || :
+fi
+
 
 %files
 %doc README LICENSE
 %{_bindir}/virt-who
 %{_datadir}/virt-who/
+%{_sysconfdir}/rc.d/init.d/virt-who
+%config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 
 
 %changelog
+* Thu Sep 01 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-1
+- Add initscript and configuration file
+
 * Mon Aug 22 2011 Radek Novacek <rnovacek@redhat.com> - 0.2-1
 - Update to upstream version 0.2
 - Add Requires: libvirt

@@ -45,6 +45,14 @@ if __name__ == '__main__':
 
     (options, args) = parser.parse_args()
 
+    # Handle enviromental variables
+    env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.background = True
+    env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.debug = True
+
     if options.debug:
         # Enable debugging output to be writen in /var/log
         logger.setLevel(logging.DEBUG)

@@ -30,7 +30,7 @@ pidfile="/var/run/$prog.pid"
 export VIRTWHO_BACKGROUND
 export VIRTWHO_DEBUG
 
-lockfile=/var/lock/subsys/$prog
+lockfile=/var/lock/subsys/virt-who
 
 start() {
     [ -x $exec ] || exit 5

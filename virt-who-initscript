@@ -26,6 +26,9 @@ config="/etc/sysconfig/virt-who"
 
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
+export VIRTWHO_BACKGROUND
+export VIRTWHO_DEBUG
+
 lockfile=/var/lock/subsys/$prog
 
 start() {

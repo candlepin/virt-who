@@ -60,6 +60,16 @@ if __name__ == '__main__':
         logger.addHandler(logging.StreamHandler())
 
     if options.background:
+        try:
+            pid = os.fork()
+        except OSError:
+            logger.error("Unable to fork, continuing in foreground")
+            pid = 0
+
+        if pid > 0:
+            # Parent process
+            sys.exit(0)
+
         virEventLoopPureStart()
 
     try:

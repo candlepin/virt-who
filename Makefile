@@ -1,6 +1,6 @@
 
 name = virt-who
-version = 0.2
+version = 0.3
 
 .PHONY: pack check install srpm rpm rpmlint upload
 
@@ -13,7 +13,7 @@ check:
 	pyflakes *.py
 
 install:
-	install -d $(DESTDIR)/usr/share/$(name)/ $(DESTDIR)/usr/bin
+	install -d $(DESTDIR)/usr/share/$(name)/ $(DESTDIR)/usr/bin $(DESTDIR)/etc/rc.d/init.d $(DESTDIR)/etc/sysconfig
 	install -pm 0644 *.py $(DESTDIR)/usr/share/$(name)/
 	install virt-who $(DESTDIR)/usr/bin/
 	install virt-who-initscript $(DESTDIR)/etc/rc.d/init.d/virt-who

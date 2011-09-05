@@ -23,6 +23,7 @@
 exec="/usr/bin/virt-who"
 prog="virt-who"
 config="/etc/sysconfig/virt-who"
+pidfile="/var/run/$prog.pid"
 
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
@@ -35,8 +36,7 @@ start() {
     [ -x $exec ] || exit 5
     [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    # if not running, start it up here, usually something like "daemon $exec"
-    daemon $exec
+    daemon --pidfile $pidfile $exec
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
@@ -45,8 +45,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    # stop it here, often "killproc $prog"
-    killproc $prog
+    killproc -p $pidfile $prog
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile
@@ -67,8 +66,7 @@ force_reload() {
 }
 
 rh_status() {
-    # run checks to determine if the service is running or use generic status
-    status $prog
+    status -p $pidfile $prog
 }
 
 rh_status_q() {

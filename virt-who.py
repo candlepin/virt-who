@@ -70,6 +70,14 @@ if __name__ == '__main__':
             # Parent process
             sys.exit(0)
 
+        # Write pid to pidfile
+        try:
+            f = open("/var/run/virt-who.pid", "w")
+            f.write("%d" % os.getpid())
+            f.close()
+        except Exception, e:
+            logger.error("Unable to create pid file: %s", str(e))
+
         virEventLoopPureStart()
 
     try:

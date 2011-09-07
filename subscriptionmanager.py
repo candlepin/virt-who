@@ -53,8 +53,12 @@ class SubscriptionManager:
         """ Connect to the subscription-manager. """
         self.connection = rhsm_connection.UEPConnection(
                 cert_file=self.cert_file, key_file=self.key_file)
-        if not self.connection.ping()['result']:
-            self.logger.error("Unable to connect to the server")
+        try:
+            if not self.connection.ping()['result']:
+                self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable.")
+        except Exception, e:
+            self.logger.warn("Unable to obtain status from server, UEPConnection is likely not usable:")
+            self.logger.exception(e)
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """

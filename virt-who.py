@@ -23,6 +23,7 @@ import os
 import time
 
 from virt import Virt, VirtError
+from vdsm import VDSM
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager
 
@@ -43,6 +44,8 @@ if __name__ == '__main__':
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
+    parser.add_option("--libvirt", action="store_false", dest="useVDSM", default=False, help="Use libvirt to list virtual guests [default]")
+    parser.add_option("--vdsm", action="store_true", dest="useVDSM", default=False, help="Use vdsm to list virtual guests")
 
     (options, args) = parser.parse_args()
 
@@ -69,6 +72,10 @@ if __name__ == '__main__':
     except ValueError:
         logger.warning("Interval is not number, ignoring")
 
+    env = os.getenv("VIRTWHO_VDSM", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.useVDSM = True
+
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
         options.interval = 0
@@ -76,6 +83,10 @@ if __name__ == '__main__':
     if options.background and options.interval > 0:
         logger.warning("Interval and background options can't be used together, using interval only")
         options.background = False
+
+    if options.background and options.useVDSM:
+        logger.error("Unable to start in background in VDSM mode, use interval instead")
+        sys.exit(4)
 
     if options.background:
         try:
@@ -104,11 +115,18 @@ if __name__ == '__main__':
         logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
         sys.exit(2)
 
-    try:
-        virt = Virt(logger)
-    except VirtError, e:
-        print e
-        sys.exit(3)
+    if options.useVDSM:
+        try:
+            virt = VDSM(logger)
+        except Exception, e:
+            logger.exception(e)
+            sys.exit(3)
+    else:
+        try:
+            virt = Virt(logger)
+        except VirtError, e:
+            logger.exception(e)
+            sys.exit(3)
 
     subscriptionManager.connect()
     if options.background:

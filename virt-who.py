@@ -42,22 +42,39 @@ if __name__ == '__main__':
     parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
+    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
 
     (options, args) = parser.parse_args()
 
     # Handle enviromental variables
-    env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.background = True
+
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
         options.debug = True
-
     if options.debug:
         # Enable debugging output to be writen in /var/log
         logger.setLevel(logging.DEBUG)
         # Print debugging output to stderr too
         logger.addHandler(logging.StreamHandler())
+
+    env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.background = True
+
+    env = os.getenv("VIRTWHO_INTERVAL", "0").strip().lower()
+    try:
+        if int(env) > 0 and options.interval == 0:
+            options.interval = int(env)
+    except ValueError:
+        logger.warning("Interval is not number, ignoring")
+
+    if options.interval < 0:
+        logger.warning("Interval is not positive number, ignoring")
+        options.interval = 0
+
+    if options.background and options.interval > 0:
+        logger.warning("Interval and background options can't be used together, using interval only")
+        options.background = False
 
     if options.background:
         try:
@@ -93,7 +110,6 @@ if __name__ == '__main__':
         sys.exit(3)
 
     subscriptionManager.connect()
-
     if options.background:
         # Run rhsm.sendVirtGuests when something changes in libvirt
         virt.domainListChangedCallback(subscriptionManager.sendVirtGuests)
@@ -105,6 +121,12 @@ if __name__ == '__main__':
         logger.debug("Entering infinite loop")
         while 1:
             time.sleep(1)
+    elif options.interval > 0:
+        logger.debug("Starting infinite loop with %d seconds interval" % options.interval)
+        while 1:
+            # Run in infinite loop and send list of UUIDs every N seconds
+            subscriptionManager.sendVirtGuests(virt.listDomains())
+            time.sleep(options.interval)
     else:
         # Send list of virtual guests and exit
         subscriptionManager.sendVirtGuests(virt.listDomains())

@@ -62,28 +62,17 @@ class SubscriptionManager:
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """
-        # Get consumer facts from server
-        facts = self.getFacts()
 
         # Get comma separated list of UUIDs
         uuids = []
         for domain in domains:
             uuids.append(domain.UUIDString())
         uuids.sort()
-        uuids_string = ",".join(uuids)
 
-        # Check if facts differ
-        if "virt.guests" in facts and facts["virt.guests"] == uuids_string:
-            # There are the same, no need to update them
-            self.logger.debug("No need to update facts (%s)" % facts["virt.guests"])
-            return
+        self.logger.debug("Sending update to updateConsumer: %s" % uuids)
 
-        # Update consumer facts
-        self.logger.debug("Sending updates virt.guests facts: %s" % uuids_string)
-        facts["virt.guests"] = uuids_string
-
-        # Send it to the server
-        self.connection.updateConsumerFacts(self.uuid(), facts)
+        # Send list of guest uuids to the server
+        self.connection.updateConsumer(self.uuid(), guest_uuids=uuids)
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

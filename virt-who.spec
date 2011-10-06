@@ -1,6 +1,6 @@
 Name:           virt-who
 Version:        0.3
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
@@ -13,7 +13,7 @@ BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
 Requires:       libvirt
-Requires:       python-rhsm
+Requires:       python-rhsm >= 0.96.13
 Requires(post): chkconfig
 Requires(preun): chkconfig
 # This is for /sbin/service
@@ -66,6 +66,9 @@ fi
 
 
 %changelog
+* Thu Oct 06 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-2
+- Requires python-rhsm >= 0.96.13 (contains fix for char limit in uuid list)
+
 * Thu Sep 01 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-1
 - Add initscript and configuration file
 

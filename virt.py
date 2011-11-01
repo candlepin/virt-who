@@ -30,7 +30,7 @@ class Virt:
         self.logger = logger
         self.virt = None
         # Log libvirt errors
-        libvirt.registerErrorHandler(lambda ctx, error: self.logger.debug(error), None)
+        libvirt.registerErrorHandler(lambda ctx, error: None, None) #self.logger.exception(error), None)
         try:
             self.virt = libvirt.openReadOnly("")
         except libvirt.libvirtError, e:
@@ -40,18 +40,20 @@ class Virt:
         """ Get list of all domains. """
         domains = []
 
-        # Active domains
-        for domainID in self.virt.listDomainsID():
-            domain = self.virt.lookupByID(domainID)
-            domains.append(domain)
-            self.logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
+        try:
+            # Active domains
+            for domainID in self.virt.listDomainsID():
+                domain = self.virt.lookupByID(domainID)
+                domains.append(domain)
+                self.logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
 
-        # Non active domains
-        for domainName in self.virt.listDefinedDomains():
-            domain = self.virt.lookupByName(domainName)
-            domains.append(domain)
-            self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
-
+            # Non active domains
+            for domainName in self.virt.listDefinedDomains():
+                domain = self.virt.lookupByName(domainName)
+                domains.append(domain)
+                self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
+        except libvirt.libvirtError, e:
+            raise VirtError(str(e))
         return domains
 
     def __del__(self):
@@ -65,6 +67,13 @@ class Virt:
 
     def domainListChangedCallback(self, callback):
         self.changedCallback = callback
+
+    def ping(self):
+        try:
+            self.virt.getVersion()
+            return True
+        except Exception:
+            return False
 
 def eventToString(event):
     eventStrings = ( "Defined",

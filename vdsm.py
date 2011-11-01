@@ -104,6 +104,9 @@ class VDSM:
                 domains.append(Domain(vm['vmId']))
         return domains
 
+    def ping(self):
+        # Not implemented yet
+        return True
 
 if __name__ == '__main__':
     import logging

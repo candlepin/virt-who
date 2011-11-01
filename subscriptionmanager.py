@@ -25,6 +25,9 @@ import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
+class SubscriptionManagerError(Exception):
+    pass
+
 class SubscriptionManager:
     """ Class for interacting subscription-manager. """
     def __init__(self, logger):
@@ -72,7 +75,10 @@ class SubscriptionManager:
         self.logger.debug("Sending update to updateConsumer: %s" % uuids)
 
         # Send list of guest uuids to the server
-        self.connection.updateConsumer(self.uuid(), guest_uuids=uuids)
+        try:
+            self.connection.updateConsumer(self.uuid(), guest_uuids=uuids)
+        except Exception, e:
+            raise SubscriptionManagerError(str(e))
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

@@ -25,7 +25,7 @@ import time
 from virt import Virt, VirtError
 from vdsm import VDSM
 from event import virEventLoopPureStart
-from subscriptionmanager import SubscriptionManager
+from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
 
 import logging
 import log
@@ -34,6 +34,142 @@ from optparse import OptionParser
 
 from ConfigParser import NoOptionError
 
+# Default interval to retry after unsuccessful run
+RetryInterval = 60 # One minute
+# Default interval for sending list of UUIDs
+DefaultInterval = 3600 # Once per hour
+
+class VirtWho(object):
+    def __init__(self, logger, options):
+        """
+        VirtWho class provides bridge between virtualization supervisor and
+        Subscription Manager.
+
+        logger - logger instance
+        options - options for virt-who, parsed from command line arguments
+        """
+        self.logger = logger
+        self.options = options
+
+        self.virt = None
+        self.subscriptionManager = None
+
+    def initVirt(self):
+        """
+        Connect to the virtualization supervisor (libvirt or VDSM)
+        """
+        if self.options.useVDSM:
+            self.virt = VDSM(self.logger)
+        else:
+            self.virt = Virt(self.logger)
+            # We can listen for libvirt events
+            self.tryRegisterEventCallback()
+
+    def initSM(self):
+        """
+        Connect to the subscription manager (candlepin).
+        """
+        try:
+            self.subscriptionManager = SubscriptionManager(self.logger)
+            self.subscriptionManager.connect()
+            self.tryRegisterEventCallback()
+        except NoOptionError, e:
+            logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
+            # Unability to parse configuration file is fatal error, so we'll quit
+            sys.exit(4)
+        except Exception, e:
+            raise e
+
+    def tryRegisterEventCallback(self):
+        """
+        This method register the handler which listen to guest changes
+
+        If virt-who is running in background mode with libvirt backend, it can
+        monitor virt guests changes and send updates as soon as the change happens,
+
+        """
+        if self.options.background and not self.options.useVDSM:
+            if self.virt is not None and self.subscriptionManager is not None:
+                # Send list of virt guests when something changes in libvirt
+                self.virt.domainListChangedCallback(self.subscriptionManager.sendVirtGuests)
+                # Register listener for domain changes
+                self.virt.virt.domainEventRegister(self.virt.changed, None)
+
+    def checkConnections(self):
+        """
+        Check if connection to subscription manager and virtualization supervisor
+        is established and reconnect if needed.
+        """
+        if self.subscriptionManager is None:
+            self.initSM()
+        if self.virt is None:
+            self.initVirt()
+
+    def send(self):
+        """
+        Send list of uuids to subscription manager
+
+        return - True if sending is successful, False otherwise
+        """
+        # Try to send it twice
+        return self._send(True)
+
+    def _send(self, retry):
+        """
+        Send list of uuids to subscription manager. This method will call itself
+        once if sending fails.
+
+        retry - Should be True on first run, False on second.
+        return - True if sending is successful, False otherwise
+        """
+        try:
+            self.checkConnections()
+            self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
+            return True
+        except VirtError, e:
+            # Communication with virtualization supervisor failed
+            logger.exception(e)
+            self.virt = None
+            # Retry once
+            if retry:
+                logger.error("Error in communication with virt backend, trying to recover")
+                return self._send(False)
+            else:
+                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                return False
+        except SubscriptionManagerError, e:
+            # Communication with subscription manager failed
+            logger.exception(e)
+            self.subscriptionManager = None
+            # Retry once
+            if retry:
+                logger.error("Error in communication with candlepin, trying to recover")
+                return self._send(False)
+            else:
+                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                return False
+        except Exception, e:
+            # Some other error happens
+            logger.exception(e)
+            self.virt = None
+            self.subscriptionManager = None
+            # Retry once
+            if retry:
+                logger.error("Unexcepted error occurs, trying to recover")
+                return self._send(False)
+            else:
+                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                return False
+
+    def ping(self):
+        """
+        Test if connection to virtualization manager is alive.
+
+        return - True if connection is alive, False otherwise
+        """
+        if self.virt is None:
+            return False
+        return self.virt.ping()
 
 if __name__ == '__main__':
     log.init_logger()
@@ -80,9 +216,10 @@ if __name__ == '__main__':
         logger.warning("Interval is not positive number, ignoring")
         options.interval = 0
 
-    if options.background and options.interval > 0:
-        logger.warning("Interval and background options can't be used together, using interval only")
-        options.background = False
+    if options.background and options.interval == 0:
+        # Interval is still used in background mode, because events can get lost
+        # (e.g. libvirtd restart)
+        options.interval = DefaultInterval
 
     if options.background and options.useVDSM:
         logger.error("Unable to start in background in VDSM mode, use interval instead")
@@ -105,47 +242,37 @@ if __name__ == '__main__':
             f.write("%d" % os.getpid())
             f.close()
         except Exception, e:
-            logger.error("Unable to create pid file: %s", str(e))
+            logger.error("Unable to create pid file: %s" % str(e))
 
-        virEventLoopPureStart()
+        if not options.useVDSM:
+            virEventLoopPureStart()
 
-    try:
-        subscriptionManager = SubscriptionManager(logger)
-    except NoOptionError, e:
-        logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
-        sys.exit(2)
+    virtWho = VirtWho(logger, options)
 
-    if options.useVDSM:
-        try:
-            virt = VDSM(logger)
-        except Exception, e:
-            logger.exception(e)
-            sys.exit(3)
-    else:
-        try:
-            virt = Virt(logger)
-        except VirtError, e:
-            logger.exception(e)
-            sys.exit(3)
+    if options.interval > 0:
+        if options.background:
+            logger.debug("Starting infinite loop with %d seconds interval and event handling" % options.interval)
+        else:
+            logger.debug("Starting infinite loop with %d seconds interval" % options.interval)
 
-    subscriptionManager.connect()
-    if options.background:
-        # Run rhsm.sendVirtGuests when something changes in libvirt
-        virt.domainListChangedCallback(subscriptionManager.sendVirtGuests)
-        # Register listener for domain changes
-        virt.virt.domainEventRegister(virt.changed, None)
-        # Send current virt guests
-        subscriptionManager.sendVirtGuests(virt.listDomains())
-        # libvirt event loop is running in separate thread, wait forever
-        logger.debug("Entering infinite loop")
         while 1:
-            time.sleep(1)
-    elif options.interval > 0:
-        logger.debug("Starting infinite loop with %d seconds interval" % options.interval)
-        while 1:
-            # Run in infinite loop and send list of UUIDs every N seconds
-            subscriptionManager.sendVirtGuests(virt.listDomains())
-            time.sleep(options.interval)
+            # Run in infinite loop and send list of UUIDs every 'options.interval' seconds
+
+            if virtWho.send():
+                # Check if connection is established each 'RetryInterval' seconds
+                slept = 0
+                while slept < options.interval:
+                    # Sleep 'RetryInterval' or the rest of options.interval
+                    t = min(RetryInterval, options.interval - RetryInterval)
+                    time.sleep(t)
+                    slept += t
+                    # Check the connection
+                    if not virtWho.ping():
+                        # End the cycle
+                        break
+            else:
+                # If last send fails, new try will be sooner
+                time.sleep(RetryInterval)
     else:
         # Send list of virtual guests and exit
-        subscriptionManager.sendVirtGuests(virt.listDomains())
+        virtWho.send()

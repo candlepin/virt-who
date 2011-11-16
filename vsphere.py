@@ -2,9 +2,9 @@
 import sys
 import suds
 
-#import logging
-#logging.basicConfig(level=logging.INFO)
-#logging.getLogger('suds.client').setLevel(logging.DEBUG)
+import logging
+logging.basicConfig(level=logging.INFO)
+logging.getLogger('suds.client').setLevel(logging.DEBUG)
 
 def get_search_filter_spec(client, begin_entity, property_spec):
     """ Build a PropertyFilterSpec capable of full inventory traversal.
@@ -147,7 +147,7 @@ class VSphere:
                         hostObjs.append(host)
 
         # Get list of host uuids, names and virtual machines
-        object_contents = self.RetrieveProperties('HostSystem', ['name', 'vm', 'hardware'], hostObjs)
+        object_contents = self.RetrieveProperties('HostSystem', ['name', 'vm', 'hardware', 'config'], hostObjs)
         vmObjs = []
         for host in object_contents:
             for propSet in host.propSet:
@@ -161,6 +161,18 @@ class VSphere:
                         v = VM(vm)
                         self.vms[vm.value] = v
                         self.hosts[host.obj.value].vms.append(v)
+                elif propSet.name == 'config':
+                    self.hosts[host.obj.value].osType = propSet.val.product.osType
+                    self.hosts[host.obj.value].product = propSet.val.product.fullName
+                    if hasattr(propSet.val.network, 'pnic'):
+                        for nic in propSet.val.network.pnic:
+                            self.hosts[host.obj.value].nics[nic.mac] = Nic(nic.device, nic.mac, nic.spec.ip.ipAddress)
+                    if hasattr(propSet.val.network, 'consoleVnic'):
+                        for nic in propSet.val.network.consoleVnic:
+                            self.hosts[host.obj.value].nics[nic.spec.mac].ip = nic.spec.ip.ipAddress
+                    if hasattr(propSet.val.network, 'vnic'):
+                        for nic in propSet.val.network.vnic:
+                            self.hosts[host.obj.value].nics[nic.spec.mac].ip = nic.spec.ip.ipAddress
 
         # Get list of virtual machine uuids
         object_contents = self.RetrieveProperties('VirtualMachine', ['name', 'config'], vmObjs)
@@ -209,7 +221,9 @@ class VSphere:
         for cluster in self.clusters.values():
             print "ComputeResource: %s" % cluster.name
             for host in cluster.hosts:
-                print "\tHostSystem: %s (%s)" % (host.name, host.uuid)
+                print "\tHostSystem: %s (%s) <%s, %s>" % (host.name, host.uuid, host.osType, host.product)
+                for mac, nic in host.nics.items():
+                    print "\t\tNIC: %s (MAC: %s, IP: %s)" % (nic.device, mac, nic.ip)
                 for vm in host.vms:
                     print "\t\tVirtualMachine: %s (%s)" % (vm.name, vm.uuid)
 
@@ -230,7 +244,10 @@ class Host:
         self.value = obj.value
         self.name = name
         self.uuid = None
+        self.osType = None
+        self.product = None
 
+        self.nics = {}
         self.vms = []
 
 class VM:
@@ -240,6 +257,12 @@ class VM:
         self._type = obj._type
         self.name = name
         self.uuid = None
+
+class Nic:
+    def __init__(self, device, mac, ip):
+        self.device = device
+        self.mac = mac
+        self.ip = ip
 
 if __name__ == '__main__':
     # TODO: read from config

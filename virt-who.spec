@@ -1,6 +1,6 @@
 Name:           virt-who
-Version:        0.3
-Release:        2%{?dist}
+Version:        0.4
+Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
@@ -66,6 +66,9 @@ fi
 
 
 %changelog
+* Wed Nov 30 2011 Radek Novacek <rnovacek@redhat.com> 0.4-1
+- Version 0.4
+
 * Thu Oct 06 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-2
 - Requires python-rhsm >= 0.96.13 (contains fix for char limit in uuid list)
 

@@ -63,7 +63,14 @@ class Virt:
     def changed(self, conn, dom, event, detail, opaque):
         print "EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail))
         if self.changedCallback:
-            self.changedCallback(self.listDomains())
+            l = self.listDomains()
+            # Workaround: when removing machine from xen it is still in list of
+            # domains, so we'll remove it manually
+            if event == libvirt.VIR_DOMAIN_EVENT_UNDEFINED:
+                uuid = dom.UUIDString()
+                # Copy the list of domains without deleted domain
+                l = [d for d in l if d.UUIDString() != uuid]
+            self.changedCallback(l)
 
     def domainListChangedCallback(self, callback):
         self.changedCallback = callback

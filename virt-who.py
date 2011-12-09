@@ -126,6 +126,9 @@ class VirtWho(object):
             self.checkConnections()
             self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
             return True
+        except SystemExit,e:
+            # In python2.4 SystemExit is inherited from Exception, so must be catched extra
+            raise e
         except VirtError, e:
             # Communication with virtualization supervisor failed
             logger.exception(e)

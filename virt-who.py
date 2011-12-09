@@ -197,8 +197,8 @@ if __name__ == '__main__':
         # Enable debugging output to be writen in /var/log
         logger.setLevel(logging.DEBUG)
 
-    # Print debugging output to stderr too
-    logger.addHandler(logging.StreamHandler())
+        # Print debugging output to stderr too
+        logger.addHandler(logging.StreamHandler())
 
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     if env in ["1", "true"]:

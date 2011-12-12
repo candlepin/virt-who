@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.4
+Version:        0.5
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -13,7 +13,10 @@ BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
 Requires:       libvirt
-Requires:       python-rhsm >= 0.96.13
+# python-rhsm 0.98.6 has required call for vSphere support
+Requires:       python-rhsm >= 0.98.6
+# python-suds is required for vSphere support
+Requires:       python-suds
 Requires(post): chkconfig
 Requires(preun): chkconfig
 # This is for /sbin/service
@@ -66,6 +69,10 @@ fi
 
 
 %changelog
+* Fri Dec 09 2011 Radek Novacek <rnovacek@redhat.com> 0.5-1
+- VSphere support
+- Req: python-suds
+
 * Wed Nov 30 2011 Radek Novacek <rnovacek@redhat.com> 0.4-1
 - Version 0.4
 

@@ -25,10 +25,10 @@ prog="virt-who"
 config="/etc/sysconfig/virt-who"
 pidfile="/var/run/$prog.pid"
 
+# Export all variables in /etc/sysconfig/virt-who
+set -a
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
-
-export VIRTWHO_BACKGROUND
-export VIRTWHO_DEBUG
+set +a
 
 lockfile=/var/lock/subsys/virt-who
 

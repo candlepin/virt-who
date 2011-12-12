@@ -2,10 +2,6 @@
 import sys
 import suds
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logging.getLogger('suds.client').setLevel(logging.DEBUG)
-
 def get_search_filter_spec(client, begin_entity, property_spec):
     """ Build a PropertyFilterSpec capable of full inventory traversal.
 
@@ -90,7 +86,8 @@ def get_search_filter_spec(client, begin_entity, property_spec):
 
 
 class VSphere:
-    def __init__(self, url, username, password):
+    def __init__(self, logger, url, username, password):
+        self.logger = logger
         self.url = url
 
         # Connect to the vCenter server
@@ -117,6 +114,11 @@ class VSphere:
         Scan method does full inventory traversal on the vCenter machine. It finds
         all ComputeResources, Hosts and VirtualMachines.
         """
+
+        # Clear results from last run
+        self.clusters = {}
+        self.hosts = {}
+        self.vms = {}
 
         # Find all ComputeResources in whole vsphere tree
         ts = self.client.factory.create('ns0:PropertySpec')
@@ -183,6 +185,8 @@ class VSphere:
                 elif propSet.name == 'config':
                     self.vms[obj.obj.value].uuid = propSet.val.uuid
 
+    def ping(self):
+        return True
 
     def RetrieveProperties(self, propSetType, propSetPathSet, objects):
         """
@@ -213,6 +217,24 @@ class VSphere:
 
         # Query the VSphere server
         return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
+
+    def getHostGuestMapping(self):
+        """
+        Returns dictionary with host to guest mapping, e.g.:
+
+        { 'host_id_1': ['guest1', 'guest2'],
+          'host_id_2': ['guest3', 'guest4'],
+        }
+        """
+        self.scan()
+        mapping = {}
+        for cluster in self.clusters.values():
+            for host in cluster.hosts:
+                l = []
+                for vm in host.vms:
+                    l.append(vm.uuid)
+                mapping[host.uuid] = l
+        return mapping
 
     def printLayout(self):
         """
@@ -270,6 +292,8 @@ if __name__ == '__main__':
         print "Usage: %s url username password"
         sys.exit(0)
 
-    vsphere = VSphere(sys.argv[1], sys.argv[2], sys.argv[3])
+    import logging
+    logger = logging.Logger("")
+    vsphere = VSphere(logger, sys.argv[1], sys.argv[2], sys.argv[3])
     vsphere.scan()
     vsphere.printLayout()

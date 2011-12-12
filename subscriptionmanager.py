@@ -80,6 +80,17 @@ class SubscriptionManager:
         except Exception, e:
             raise SubscriptionManagerError(str(e))
 
+    def hypervisorCheckIn(self, owner, env, mapping):
+        """ Send hosts to guests mapping to subscription manager. """
+
+        self.logger.debug("Sending updates in hosts-to-guests mapping: %s" % mapping)
+
+        # Send the mapping
+        try:
+            return self.connection.hypervisorCheckIn(owner, env, mapping)
+        except Exception, e:
+            raise SubscriptionManagerError(str(e))
+
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """
         if not self.cert_uuid:

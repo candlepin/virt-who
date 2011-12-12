@@ -24,13 +24,14 @@ import time
 
 from virt import Virt, VirtError
 from vdsm import VDSM
+from vsphere import VSphere
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
 
 import logging
 import log
 
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 
 from ConfigParser import NoOptionError
 
@@ -58,12 +59,15 @@ class VirtWho(object):
         """
         Connect to the virtualization supervisor (libvirt or VDSM)
         """
-        if self.options.useVDSM:
+        if self.options.virtType == "vdsm":
             self.virt = VDSM(self.logger)
-        else:
+        elif self.options.virtType == "libvirt":
             self.virt = Virt(self.logger)
             # We can listen for libvirt events
             self.tryRegisterEventCallback()
+        else:
+            # ESX
+            self.virt = VSphere(self.logger, self.options.esx_server, self.options.esx_username, self.options.esx_password)
 
     def initSM(self):
         """
@@ -88,7 +92,7 @@ class VirtWho(object):
         monitor virt guests changes and send updates as soon as the change happens,
 
         """
-        if self.options.background and not self.options.useVDSM:
+        if self.options.background and self.options.virtType == "libvirt":
             if self.virt is not None and self.subscriptionManager is not None:
                 # Send list of virt guests when something changes in libvirt
                 self.virt.domainListChangedCallback(self.subscriptionManager.sendVirtGuests)
@@ -124,7 +128,19 @@ class VirtWho(object):
         """
         try:
             self.checkConnections()
-            self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
+            if self.options.virtType == "esx":
+                result = self.subscriptionManager.hypervisorCheckIn(self.options.esx_owner, self.options.esx_env, self.virt.getHostGuestMapping())
+                # Show the result of hypervisorCheckIn
+                for fail in result['failedUpdate']:
+                    logger.error("Error during update list of guests: %s", str(fail))
+                for updated in result['updated']:
+                    guests = [x['guestId'] for x in updated['guestIds']]
+                    logger.debug("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+                for created in result['created']:
+                    guests = [x['guestId'] for x in created['guestIds']]
+                    logger.debug("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+            else:
+                self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
             return True
         except SystemExit,e:
             # In python2.4 SystemExit is inherited from Exception, so must be catched extra
@@ -183,8 +199,18 @@ if __name__ == '__main__':
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
-    parser.add_option("--libvirt", action="store_false", dest="useVDSM", default=False, help="Use libvirt to list virtual guests [default]")
-    parser.add_option("--vdsm", action="store_true", dest="useVDSM", default=False, help="Use vdsm to list virtual guests")
+    parser.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
+    parser.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
+    parser.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
+
+    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
+    esxGroup.add_option("--esx-owner", action="store", dest="esx_owner", default="", help="Organization who has purchased subscriptions of the products")
+    esxGroup.add_option("--esx-env", action="store", dest="esx_env", default="", help="Environment where the vCenter server belongs to")
+    esxGroup.add_option("--esx-server", action="store", dest="esx_server", default="", help="URL of the vCenter server to connect to")
+    esxGroup.add_option("--esx-username", action="store", dest="esx_username", default="", help="Username for connecting to vCenter")
+    esxGroup.add_option("--esx-password", action="store", dest="esx_password", default="", help="Password for connecting to vCenter")
+    parser.add_option_group(esxGroup)
+
 
     (options, args) = parser.parse_args()
 
@@ -213,7 +239,30 @@ if __name__ == '__main__':
 
     env = os.getenv("VIRTWHO_VDSM", "0").strip().lower()
     if env in ["1", "true"]:
-        options.useVDSM = True
+        options.virtType = "vdsm"
+
+    env = os.getenv("VIRTWHO_ESX", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.virtType = "esx"
+
+    def checkEnv(variable, option, name):
+        """
+        If `option` is empty, check enviromental `variable` and return its value.
+        Exit if it's still empty
+        """
+        if len(option) == 0:
+            option = os.getenv(variable, "").strip()
+        if len(option) == 0:
+            logger.error("Required parameter '%s' for vCenter is not set, exitting" % name)
+            sys.exit(1)
+        return option
+
+    if options.virtType == "esx":
+        options.esx_owner = checkEnv("VIRTWHO_ESX_OWNER", options.esx_owner, "owner")
+        options.esx_env = checkEnv("VIRTWHO_ESX_ENV", options.esx_env, "env")
+        options.esx_server = checkEnv("VIRTWHO_ESX_SERVER", options.esx_server, "server")
+        options.esx_username = checkEnv("VIRTWHO_ESX_USERNAME", options.esx_username, "username")
+        options.esx_password = checkEnv("VIRTWHO_ESX_PASSWORD", options.esx_password, "password")
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
@@ -224,9 +273,8 @@ if __name__ == '__main__':
         # (e.g. libvirtd restart)
         options.interval = DefaultInterval
 
-    if options.background and options.useVDSM:
-        logger.error("Unable to start in background in VDSM mode, use interval instead")
-        sys.exit(4)
+    if options.background and options.virtType != "libvirt":
+        logger.warning("Listening for events is not available in VDSM or ESX mode")
 
     if options.background:
         try:
@@ -247,10 +295,12 @@ if __name__ == '__main__':
         except Exception, e:
             logger.error("Unable to create pid file: %s" % str(e))
 
-        if not options.useVDSM:
+        if options.virtType == "libvirt":
             virEventLoopPureStart()
 
     virtWho = VirtWho(logger, options)
+
+    logger.debug("Virt-who is running in %s mode" % options.virtType)
 
     if options.interval > 0:
         if options.background:
@@ -266,7 +316,7 @@ if __name__ == '__main__':
                 slept = 0
                 while slept < options.interval:
                     # Sleep 'RetryInterval' or the rest of options.interval
-                    t = min(RetryInterval, options.interval - RetryInterval)
+                    t = min(RetryInterval, options.interval - slept)
                     time.sleep(t)
                     slept += t
                     # Check the connection

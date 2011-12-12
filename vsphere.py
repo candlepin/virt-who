@@ -129,60 +129,44 @@ class VSphere:
                 specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
 
         # Get properties of each cluster
-        clusterObjs = []
+        clusterObjs = [] # List of objs for 'ComputeResource' query
         for cluster in object_content:
             for propSet in cluster.propSet:
                 if propSet.name == "name":
-                    self.clusters[cluster.obj.value] = Cluster(cluster.obj, propSet.val)
+                    self.clusters[cluster.obj.value] = Cluster(propSet.val)
                     clusterObjs.append(cluster.obj)
 
         # Get list of hosts from cluster
-        object_contents = self.RetrieveProperties('ComputeResource', 'host', clusterObjs)
-        hostObjs = []
+        object_contents = self.RetrieveProperties('ComputeResource', ['host'], clusterObjs)
+        hostObjs = [] # List of objs for 'HostSystem' query
         for cluster in object_contents:
             for propSet in cluster.propSet:
                 if propSet.name == 'host':
                     for host in propSet.val.ManagedObjectReference:
-                        h = Host(host)
+                        h = Host()
                         self.hosts[host.value] = h
                         self.clusters[cluster.obj.value].hosts.append(h)
                         hostObjs.append(host)
 
         # Get list of host uuids, names and virtual machines
-        object_contents = self.RetrieveProperties('HostSystem', ['name', 'vm', 'hardware', 'config'], hostObjs)
-        vmObjs = []
+        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
+        vmObjs = [] # List of objs for 'VirtualMachine' query
         for host in object_contents:
             for propSet in host.propSet:
-                if propSet.name == "name":
-                    self.hosts[host.obj.value].name = propSet.val
-                elif propSet.name == "hardware":
+                if propSet.name == "hardware":
                     self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
                 elif propSet.name == "vm":
                     for vm in propSet.val.ManagedObjectReference:
                         vmObjs.append(vm)
-                        v = VM(vm)
+                        v = VM()
                         self.vms[vm.value] = v
                         self.hosts[host.obj.value].vms.append(v)
-                elif propSet.name == 'config':
-                    self.hosts[host.obj.value].osType = propSet.val.product.osType
-                    self.hosts[host.obj.value].product = propSet.val.product.fullName
-                    if hasattr(propSet.val.network, 'pnic'):
-                        for nic in propSet.val.network.pnic:
-                            self.hosts[host.obj.value].nics[nic.mac] = Nic(nic.device, nic.mac, nic.spec.ip.ipAddress)
-                    if hasattr(propSet.val.network, 'consoleVnic'):
-                        for nic in propSet.val.network.consoleVnic:
-                            self.hosts[host.obj.value].nics[nic.spec.mac].ip = nic.spec.ip.ipAddress
-                    if hasattr(propSet.val.network, 'vnic'):
-                        for nic in propSet.val.network.vnic:
-                            self.hosts[host.obj.value].nics[nic.spec.mac].ip = nic.spec.ip.ipAddress
 
         # Get list of virtual machine uuids
-        object_contents = self.RetrieveProperties('VirtualMachine', ['name', 'config'], vmObjs)
+        object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
         for obj in object_contents:
             for propSet in obj.propSet:
-                if propSet.name == 'name':
-                    self.vms[obj.obj.value].name = propSet.val
-                elif propSet.name == 'config':
+                if propSet.name == 'config':
                     self.vms[obj.obj.value].uuid = propSet.val.uuid
 
     def ping(self):
@@ -243,48 +227,23 @@ class VSphere:
         for cluster in self.clusters.values():
             print "ComputeResource: %s" % cluster.name
             for host in cluster.hosts:
-                print "\tHostSystem: %s (%s) <%s, %s>" % (host.name, host.uuid, host.osType, host.product)
-                for mac, nic in host.nics.items():
-                    print "\t\tNIC: %s (MAC: %s, IP: %s)" % (nic.device, mac, nic.ip)
+                print "\tHostSystem: %s" % host.uuid
                 for vm in host.vms:
-                    print "\t\tVirtualMachine: %s (%s)" % (vm.name, vm.uuid)
+                    print "\t\tVirtualMachine: %s" % vm.uuid
 
 class Cluster:
-    def __init__(self, obj, name=None):
-        self.obj = obj
-        self._type = obj._type
-        self.value = obj.value
+    def __init__(self, name):
         self.name = name
-        self.uuid = None
-
         self.hosts = []
 
 class Host:
-    def __init__(self, obj, name=None):
-        self.obj = obj
-        self._type = obj._type
-        self.value = obj.value
-        self.name = name
+    def __init__(self):
         self.uuid = None
-        self.osType = None
-        self.product = None
-
-        self.nics = {}
         self.vms = []
 
 class VM:
-    def __init__(self, obj, name=None):
-        self.obj = obj
-        self.value = obj.value
-        self._type = obj._type
-        self.name = name
+    def __init__(self):
         self.uuid = None
-
-class Nic:
-    def __init__(self, device, mac, ip):
-        self.device = device
-        self.mac = mac
-        self.ip = ip
 
 if __name__ == '__main__':
     # TODO: read from config

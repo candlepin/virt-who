@@ -64,10 +64,10 @@ class Virt:
         print "EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail))
         if self.changedCallback:
             l = self.listDomains()
-            # Workaround: xen sometimes doesn't update domain list when the event happens, add/remove the 
+            uuid = dom.UUIDString()
+            # Workaround: xen sometimes doesn't update domain list when the event happens, add/remove the
             # affected domain manually
             if event == libvirt.VIR_DOMAIN_EVENT_UNDEFINED:
-                uuid = dom.UUIDString()
                 # Copy the list of domains without deleted domain
                 l = [d for d in l if d.UUIDString() != uuid]
             elif event == libvirt.VIR_DOMAIN_EVENT_DEFINED:

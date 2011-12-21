@@ -78,7 +78,7 @@ class Virt:
                         hasDomain = True
                         break
                 if not hasDomain:
-                    l.append(d)
+                    l.append(dom)
             self.changedCallback(l)
 
     def domainListChangedCallback(self, callback):

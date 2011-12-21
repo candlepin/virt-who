@@ -44,6 +44,9 @@ class Virt:
             # Active domains
             for domainID in self.virt.listDomainsID():
                 domain = self.virt.lookupByID(domainID)
+                if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
+                    # Don't send Domain-0 on xen (zeroed uuid)
+                    continue
                 domains.append(domain)
                 self.logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
 

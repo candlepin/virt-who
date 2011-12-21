@@ -60,8 +60,7 @@ class SubscriptionManager:
             if not self.connection.ping()['result']:
                 self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable.")
         except Exception, e:
-            self.logger.warn("Unable to obtain status from server, UEPConnection is likely not usable:")
-            self.logger.exception(e)
+            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """

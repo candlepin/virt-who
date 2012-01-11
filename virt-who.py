@@ -265,6 +265,10 @@ if __name__ == '__main__':
         if len(options.esx_password) == 0:
             options.esx_password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 
+    # Url must contain protocol (usualy https://)
+    if not "://" in options.esx_server:
+        options.esx_server = "https://%s" % options.esx_server
+
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
         options.interval = 0

@@ -262,7 +262,8 @@ if __name__ == '__main__':
         options.esx_env = checkEnv("VIRTWHO_ESX_ENV", options.esx_env, "env")
         options.esx_server = checkEnv("VIRTWHO_ESX_SERVER", options.esx_server, "server")
         options.esx_username = checkEnv("VIRTWHO_ESX_USERNAME", options.esx_username, "username")
-        options.esx_password = checkEnv("VIRTWHO_ESX_PASSWORD", options.esx_password, "password")
+        if len(options.esx_password) == 0:
+            options.esx_password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")

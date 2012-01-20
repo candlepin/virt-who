@@ -136,17 +136,27 @@ class VSphere:
                     self.clusters[cluster.obj.value] = Cluster(propSet.val)
                     clusterObjs.append(cluster.obj)
 
+        if len(clusterObjs) == 0:
+            return
+
         # Get list of hosts from cluster
         object_contents = self.RetrieveProperties('ComputeResource', ['host'], clusterObjs)
         hostObjs = [] # List of objs for 'HostSystem' query
         for cluster in object_contents:
             for propSet in cluster.propSet:
                 if propSet.name == 'host':
-                    for host in propSet.val.ManagedObjectReference:
-                        h = Host()
-                        self.hosts[host.value] = h
-                        self.clusters[cluster.obj.value].hosts.append(h)
-                        hostObjs.append(host)
+                    try:
+                        for host in propSet.val.ManagedObjectReference:
+                            h = Host()
+                            self.hosts[host.value] = h
+                            self.clusters[cluster.obj.value].hosts.append(h)
+                            hostObjs.append(host)
+                    except AttributeError:
+                        # This means that there is no host on given cluster
+                        pass
+
+        if len(hostObjs) == 0:
+            return
 
         # Get list of host uuids, names and virtual machines
         object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
@@ -156,11 +166,18 @@ class VSphere:
                 if propSet.name == "hardware":
                     self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
                 elif propSet.name == "vm":
-                    for vm in propSet.val.ManagedObjectReference:
-                        vmObjs.append(vm)
-                        v = VM()
-                        self.vms[vm.value] = v
-                        self.hosts[host.obj.value].vms.append(v)
+                    try:
+                        for vm in propSet.val.ManagedObjectReference:
+                            vmObjs.append(vm)
+                            v = VM()
+                            self.vms[vm.value] = v
+                            self.hosts[host.obj.value].vms.append(v)
+                    except AttributeError:
+                        # This means that there is no guest on given host
+                        pass
+
+        if len(vmObjs) == 0:
+            return
 
         # Get list of virtual machine uuids
         object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)

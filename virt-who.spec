@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.5
+Version:        0.6
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -69,6 +69,9 @@ fi
 
 
 %changelog
+* Mon Feb 13 2012 Radek Novacek <rnovacek@redhat.com> 0.6-1
+- Version 0.6
+
 * Fri Dec 09 2011 Radek Novacek <rnovacek@redhat.com> 0.5-1
 - VSphere support
 - Req: python-suds

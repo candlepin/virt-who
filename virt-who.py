@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import os
 import time
+import atexit
 
 from virt import Virt, VirtError
 from vdsm import VDSM
@@ -39,6 +40,8 @@ from ConfigParser import NoOptionError
 RetryInterval = 60 # One minute
 # Default interval for sending list of UUIDs
 DefaultInterval = 3600 # Once per hour
+
+PIDFILE = "/var/run/virt-who.pid"
 
 class VirtWho(object):
     def __init__(self, logger, options):
@@ -190,7 +193,82 @@ class VirtWho(object):
             return False
         return self.virt.ping()
 
+def daemonize():
+    """ Perform double-fork and close stdout and stderr file descriptors """
+    # Close all file descriptors (except std*)
+    try:
+        fds = os.listdir("/proc/self/fd")
+    except:
+        fds = []
+    for fd in fds:
+        if int(fd) > 2:
+            try:
+                os.close(int(fd))
+            except Exception:
+                # fd wasn't open, ignore
+                pass
+
+    # First fork
+    try:
+        pid = os.fork()
+    except OSError:
+        return False
+
+    if pid > 0:
+        # Parent process
+        os._exit(0)
+
+    # First child process
+
+    # Create session and set process group ID
+    os.setsid()
+
+    # Second fork
+    try:
+        pid = os.fork()
+    except OSError:
+        return False
+
+    if pid > 0:
+        # Parent process
+        os._exit(0)
+
+    # Second child process
+
+    # Redirect std* to /dev/null
+    devnull = os.open("/dev/null", os.O_RDWR)
+    os.dup2(devnull, 0)
+    os.dup2(devnull, 1)
+    os.dup2(devnull, 2)
+
+    # Reset file creation mask
+    os.umask(0)
+    # Forget current working directory
+    os.chdir("/")
+    return True
+
+def createPidFile():
+    atexit.register(cleanup)
+
+    # Write pid to pidfile
+    try:
+        f = open(PIDFILE, "w")
+        f.write("%d" % os.getpid())
+        f.close()
+    except Exception, e:
+        logger.error("Unable to create pid file: %s" % str(e))
+
+def cleanup():
+    try:
+        os.remove(PIDFILE)
+    except Exception:
+        pass
+
 if __name__ == '__main__':
+    if os.access(PIDFILE, os.F_OK):
+        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
+        sys.exit(1)
+
     log.init_logger()
 
     logger = logging.getLogger("rhsm-app." + __name__)
@@ -278,32 +356,21 @@ if __name__ == '__main__':
         # (e.g. libvirtd restart)
         options.interval = DefaultInterval
 
-    if options.background and options.virtType != "libvirt":
-        logger.warning("Listening for events is not available in VDSM or ESX mode")
-
     if options.background:
-        try:
-            pid = os.fork()
-        except OSError:
-            logger.error("Unable to fork, continuing in foreground")
-            pid = 0
-
-        if pid > 0:
-            # Parent process
-            sys.exit(0)
-
-        # Write pid to pidfile
-        try:
-            f = open("/var/run/virt-who.pid", "w")
-            f.write("%d" % os.getpid())
-            f.close()
-        except Exception, e:
-            logger.error("Unable to create pid file: %s" % str(e))
-
         if options.virtType == "libvirt":
             virEventLoopPureStart()
+        else:
+            logger.warning("Listening for events is not available in VDSM or ESX mode")
 
     virtWho = VirtWho(logger, options)
+    virtWho.checkConnections()
+
+    if options.background:
+        # Do a double-fork and other daemon initialization
+        if not daemonize():
+            logger.error("Unable to fork, continuing in foreground")
+
+    createPidFile()
 
     logger.debug("Virt-who is running in %s mode" % options.virtType)
 

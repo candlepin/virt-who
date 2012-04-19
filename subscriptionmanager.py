@@ -60,7 +60,8 @@ class SubscriptionManager:
             if not self.connection.ping()['result']:
                 self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable.")
         except Exception, e:
-            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
+            self.logger.exception(e)
+            self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable:")
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """
@@ -71,7 +72,7 @@ class SubscriptionManager:
             uuids.append(domain.UUIDString())
         uuids.sort()
 
-        self.logger.debug("Sending update to updateConsumer: %s" % uuids)
+        self.logger.info("Sending list of uuids: %s" % uuids)
 
         # Send list of guest uuids to the server
         try:
@@ -82,7 +83,7 @@ class SubscriptionManager:
     def hypervisorCheckIn(self, owner, env, mapping):
         """ Send hosts to guests mapping to subscription manager. """
 
-        self.logger.debug("Sending updates in hosts-to-guests mapping: %s" % mapping)
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
         # Send the mapping
         try:

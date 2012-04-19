@@ -81,7 +81,7 @@ class VirtWho(object):
             self.subscriptionManager.connect()
             self.tryRegisterEventCallback()
         except NoOptionError, e:
-            logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
+            self.logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
             # Unability to parse configuration file is fatal error, so we'll quit
             sys.exit(4)
         except Exception, e:
@@ -129,6 +129,7 @@ class VirtWho(object):
         retry - Should be True on first run, False on second.
         return - True if sending is successful, False otherwise
         """
+        logger = self.logger
         try:
             self.checkConnections()
             if self.options.virtType == "esx":
@@ -138,10 +139,10 @@ class VirtWho(object):
                     logger.error("Error during update list of guests: %s", str(fail))
                 for updated in result['updated']:
                     guests = [x['guestId'] for x in updated['guestIds']]
-                    logger.debug("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+                    logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
                 for created in result['created']:
                     guests = [x['guestId'] for x in created['guestIds']]
-                    logger.debug("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+                    logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
             else:
                 self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
             return True
@@ -193,20 +194,8 @@ class VirtWho(object):
             return False
         return self.virt.ping()
 
-def daemonize():
-    """ Perform double-fork and close stdout and stderr file descriptors """
-    # Close all file descriptors (except std*)
-    try:
-        fds = os.listdir("/proc/self/fd")
-    except:
-        fds = []
-    for fd in fds:
-        if int(fd) > 2:
-            try:
-                os.close(int(fd))
-            except Exception:
-                # fd wasn't open, ignore
-                pass
+def daemonize(debugMode):
+    """ Perform double-fork and redirect std* to /dev/null """
 
     # First fork
     try:
@@ -239,7 +228,9 @@ def daemonize():
     devnull = os.open("/dev/null", os.O_RDWR)
     os.dup2(devnull, 0)
     os.dup2(devnull, 1)
-    os.dup2(devnull, 2)
+    # Don't redirect stderr in debug mode, we need to write debugging output there
+    if not debugMode:
+        os.dup2(devnull, 2)
 
     # Reset file creation mask
     os.umask(0)
@@ -247,7 +238,7 @@ def daemonize():
     os.chdir("/")
     return True
 
-def createPidFile():
+def createPidFile(logger):
     atexit.register(cleanup)
 
     # Write pid to pidfile
@@ -303,6 +294,8 @@ if __name__ == '__main__':
 
         # Print debugging output to stderr too
         logger.addHandler(logging.StreamHandler())
+    else:
+        logger.setLevel(logging.INFO)
 
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     if env in ["1", "true"]:
@@ -357,6 +350,11 @@ if __name__ == '__main__':
         options.interval = DefaultInterval
 
     if options.background:
+        # Do a double-fork and other daemon initialization
+        if not daemonize(options.debug):
+            logger.error("Unable to fork, continuing in foreground")
+
+    if options.background:
         if options.virtType == "libvirt":
             virEventLoopPureStart()
         else:
@@ -365,12 +363,7 @@ if __name__ == '__main__':
     virtWho = VirtWho(logger, options)
     virtWho.checkConnections()
 
-    if options.background:
-        # Do a double-fork and other daemon initialization
-        if not daemonize():
-            logger.error("Unable to fork, continuing in foreground")
-
-    createPidFile()
+    createPidFile(logger)
 
     logger.debug("Virt-who is running in %s mode" % options.virtType)
 

@@ -64,7 +64,7 @@ class Virt:
             self.virt.close()
 
     def changed(self, conn, dom, event, detail, opaque):
-        print "EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail))
+        self.logger.debug("EVENT: Domain %s(%s) %s %s" % (dom.name(), dom.ID(), eventToString(event), detailToString(event, detail)))
         if self.changedCallback:
             l = self.listDomains()
             uuid = dom.UUIDString()
@@ -100,16 +100,25 @@ def eventToString(event):
                      "Started",
                      "Suspended",
                      "Resumed",
-                     "Stopped" )
-    return eventStrings[event]
+                     "Stopped",
+                     "Shutdown"
+                   )
+    try:
+        return eventStrings[event]
+    except IndexError:
+        return "Unknown (%d)" % event
 
 def detailToString(event, detail):
     eventStrings = (
-        ( "Added", "Updated" ),
-        ( "Removed" ),
-        ( "Booted", "Migrated", "Restored", "Snapshot" ),
-        ( "Paused", "Migrated", "IOError", "Watchdog" ),
-        ( "Unpaused", "Migrated"),
-        ( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot")
+        ( "Added", "Updated" ), # Defined
+        ( "Removed", ), # Undefined
+        ( "Booted", "Migrated", "Restored", "Snapshot", "Wakeup" ), # Started
+        ( "Paused", "Migrated", "IOError", "Watchdog", "Restored", "Snapshot" ), # Suspended
+        ( "Unpaused", "Migrated", "Snapshot" ), # Resumed
+        ( "Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot" ), # Stopped
+        ( "Finished", ), # Shutdown
         )
-    return eventStrings[event][detail]
+    try:
+        return eventStrings[event][detail]
+    except IndexError:
+        return "Unknown (%d)" % detail

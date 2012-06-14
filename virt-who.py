@@ -22,12 +22,13 @@ import sys
 import os
 import time
 import atexit
+import signal
 
 from virt import Virt, VirtError
 from vdsm import VDSM
 from vsphere import VSphere
 from event import virEventLoopPureStart
-from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
+from subscriptionmanager import SubscriptionManager, SubscriptionManagerError, SubscriptionManagerCertError
 
 import logging
 import log
@@ -58,6 +59,11 @@ class VirtWho(object):
         self.virt = None
         self.subscriptionManager = None
 
+        self.unableToRecoverStr = "Unable to recover"
+        if not options.oneshot:
+            self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
+
+
     def initVirt(self):
         """
         Connect to the virtualization supervisor (libvirt or VDSM)
@@ -81,11 +87,13 @@ class VirtWho(object):
             self.subscriptionManager.connect()
             self.tryRegisterEventCallback()
         except NoOptionError, e:
-            self.logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf): %s" % e)
+            self.logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf)")
             # Unability to parse configuration file is fatal error, so we'll quit
             sys.exit(4)
-        except Exception, e:
-            raise e
+        except SubscriptionManagerCertError, e:
+            self.logger.error(e.message)
+            # virt-who can't work properly without certificate, exitting
+            sys.exit(5)
 
     def tryRegisterEventCallback(self):
         """
@@ -158,18 +166,17 @@ class VirtWho(object):
                 logger.error("Error in communication with virt backend, trying to recover")
                 return self._send(False)
             else:
-                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                logger.error(self.unableToRecoverStr)
                 return False
         except SubscriptionManagerError, e:
             # Communication with subscription manager failed
-            logger.exception(e)
             self.subscriptionManager = None
             # Retry once
             if retry:
                 logger.error("Error in communication with candlepin, trying to recover")
                 return self._send(False)
             else:
-                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                logger.error(self.unableToRecoverStr)
                 return False
         except Exception, e:
             # Some other error happens
@@ -181,7 +188,7 @@ class VirtWho(object):
                 logger.error("Unexcepted error occurs, trying to recover")
                 return self._send(False)
             else:
-                logger.error("Unable to recover, retry in %d seconds." % RetryInterval)
+                logger.error(self.unableToRecoverStr)
                 return False
 
     def ping(self):
@@ -240,6 +247,8 @@ def daemonize(debugMode):
 
 def createPidFile(logger):
     atexit.register(cleanup)
+    signal.signal(signal.SIGINT, cleanup)
+    signal.signal(signal.SIGTERM, cleanup)
 
     # Write pid to pidfile
     try:
@@ -249,24 +258,25 @@ def createPidFile(logger):
     except Exception, e:
         logger.error("Unable to create pid file: %s" % str(e))
 
-def cleanup():
+def cleanup(sig=None, stack=None):
     try:
         os.remove(PIDFILE)
     except Exception:
         pass
+
+    if sig is not None and sig in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
+        sys.exit(0)
 
 if __name__ == '__main__':
     if os.access(PIDFILE, os.F_OK):
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
 
-    log.init_logger()
-
-    logger = logging.getLogger("rhsm-app." + __name__)
-
-    parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager")
+    parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager",
+                          epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
+    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
     parser.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
     parser.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
@@ -288,18 +298,16 @@ if __name__ == '__main__':
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
         options.debug = True
-    if options.debug:
-        # Enable debugging output to be writen in /var/log
-        logger.setLevel(logging.DEBUG)
 
-        # Print debugging output to stderr too
-        logger.addHandler(logging.StreamHandler())
-    else:
-        logger.setLevel(logging.INFO)
+    logger = log.getLogger(options.debug, options.background)
 
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     if env in ["1", "true"]:
         options.background = True
+
+    env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.oneshot = True
 
     env = os.getenv("VIRTWHO_INTERVAL", "0").strip().lower()
     try:
@@ -344,7 +352,14 @@ if __name__ == '__main__':
         logger.warning("Interval is not positive number, ignoring")
         options.interval = 0
 
-    if options.background and options.interval == 0:
+    if options.background and options.oneshot:
+        logger.error("Background and oneshot can't be used together, using background mode")
+        options.oneshot = False
+
+    if options.oneshot and options.interval > 0:
+        logger.error("Interval doesn't make sense in oneshot mode, ignoring")
+
+    if not options.oneshot and options.interval == 0:
         # Interval is still used in background mode, because events can get lost
         # (e.g. libvirtd restart)
         options.interval = DefaultInterval
@@ -360,14 +375,23 @@ if __name__ == '__main__':
         else:
             logger.warning("Listening for events is not available in VDSM or ESX mode")
 
+    if options.interval < RetryInterval:
+        RetryInterval = options.interval
+
     virtWho = VirtWho(logger, options)
-    virtWho.checkConnections()
+    try:
+        virtWho.checkConnections()
+    except Exception:
+        pass
 
     createPidFile(logger)
 
     logger.debug("Virt-who is running in %s mode" % options.virtType)
 
-    if options.interval > 0:
+    if options.oneshot:
+        # Send list of virtual guests and exit
+        virtWho.send()
+    else:
         if options.background:
             logger.debug("Starting infinite loop with %d seconds interval and event handling" % options.interval)
         else:
@@ -391,6 +415,3 @@ if __name__ == '__main__':
             else:
                 # If last send fails, new try will be sooner
                 time.sleep(RetryInterval)
-    else:
-        # Send list of virtual guests and exit
-        virtWho.send()

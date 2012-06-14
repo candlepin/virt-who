@@ -26,7 +26,22 @@ import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
 class SubscriptionManagerError(Exception):
-    pass
+    def __init__(self):
+        pass
+
+class SubscriptionManagerCertError(SubscriptionManagerError):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
+class SubscriptionManagerConnectionError(SubscriptionManagerError):
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 class SubscriptionManager:
     """ Class for interacting subscription-manager. """
@@ -34,6 +49,7 @@ class SubscriptionManager:
         self.logger = logger
         self.cert_uuid = None
 
+        self.config = rhsm_config.initConfig()
         self.readConfig()
 
         # Consumer ID obtained from consumer certificate
@@ -42,26 +58,23 @@ class SubscriptionManager:
     def readConfig(self):
         """ Parse rhsm.conf in order to obtain consumer
             certificate and key paths. """
-        self.config = rhsm_config.initConfig()
         consumerCertDir = self.config.get("rhsm", "consumerCertDir")
         cert = 'cert.pem'
         key = 'key.pem'
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
         if not os.access(self.cert_file, os.R_OK):
-            self.logger.error("Unable to read certificate, system is not registered or you are not root")
-            sys.exit(1)
+            raise SubscriptionManagerCertError("Unable to read certificate, system is not registered or you are not root")
 
-    def connect(self):
+    def connect(self, Connection=rhsm_connection.UEPConnection):
         """ Connect to the subscription-manager. """
-        self.connection = rhsm_connection.UEPConnection(
-                cert_file=self.cert_file, key_file=self.key_file)
+        self.connection = Connection(cert_file=self.cert_file, key_file=self.key_file)
         try:
             if not self.connection.ping()['result']:
-                self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable.")
+                raise SubscriptionManagerConnectionError("Unable to obtain status from server, UEPConnection is likely not usable.")
         except Exception, e:
-            self.logger.exception(e)
-            self.logger.error("Unable to obtain status from server, UEPConnection is likely not usable:")
+            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
+            raise SubscriptionManagerError()
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """
@@ -72,24 +85,26 @@ class SubscriptionManager:
             uuids.append(domain.UUIDString())
         uuids.sort()
 
-        self.logger.info("Sending list of uuids: %s" % uuids)
+        self.logger.debug("Sending list of uuids: %s" % uuids)
 
         # Send list of guest uuids to the server
         try:
             self.connection.updateConsumer(self.uuid(), guest_uuids=uuids)
         except Exception, e:
-            raise SubscriptionManagerError(str(e))
+            self.logger.exception("Updating consumer failed:")
+            raise SubscriptionManagerError()
 
     def hypervisorCheckIn(self, owner, env, mapping):
         """ Send hosts to guests mapping to subscription manager. """
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
+        self.logger.debug("Sending update in hosts-to-guests mapping: %s" % mapping)
 
         # Send the mapping
         try:
             return self.connection.hypervisorCheckIn(owner, env, mapping)
         except Exception, e:
-            raise SubscriptionManagerError(str(e))
+            self.logger.exception("Hypervisor check-in failed:")
+            raise SubscriptionManagerError()
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """
@@ -97,8 +112,8 @@ class SubscriptionManager:
             try:
                 f = open(self.cert_file, "r")
             except Exception, e:
-                self.logger.error("Unable to open certificate (%s): %s" % (self.cert_file, e.message))
-                return ""
+                self.logger.exception("Unable to open certificate (%s):" % self.cert_file)
+                raise SubscriptionManagerError()
             certificate = rhsm_certificate.Certificate(f.read())
             f.close()
             self.cert_uuid = certificate.subject().get('CN')

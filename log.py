@@ -24,24 +24,38 @@ import logging.handlers
 import os
 import sys
 
-def init_logger():
-    logging.getLogger("rhsm-app").addHandler(_get_handler())
+def getLogger(debug, background):
+    logger = logging.getLogger("rhsm-app")
 
-def _get_handler():
     path = '/var/log/rhsm/rhsm.log'
     try:
         if not os.path.isdir("/var/log/rhsm"):
             os.mkdir("/var/log/rhsm")
     except:
         pass
-    fmt = '%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s'
 
     # Try to write to /var/log, fallback on console logging:
     try:
-        handler = logging.handlers.RotatingFileHandler(path, maxBytes=0x100000, backupCount=5)
+        fileHandler = logging.handlers.RotatingFileHandler(path, maxBytes=0x100000, backupCount=5)
+        fileHandler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s'))
+        fileHandler.setLevel(logging.DEBUG)
+        logger.addHandler(fileHandler)
     except Exception, e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
-        handler = logging.StreamHandler()
 
-    handler.setFormatter(logging.Formatter(fmt))
-    return handler
+    if not background:
+        streamHandler = logging.StreamHandler()
+        streamHandler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+        if debug:
+            streamHandler.setLevel(logging.DEBUG)
+        else:
+            streamHandler.setLevel(logging.WARNING)
+
+            # Don't print exceptions to stdout in non-debug mode
+            f = logging.Filter()
+            f.filter = lambda record: record.exc_info is None
+            streamHandler.addFilter(f)
+
+        logger.addHandler(streamHandler)
+
+    return logger

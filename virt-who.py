@@ -35,6 +35,24 @@ import log
 
 from optparse import OptionParser, OptionGroup
 
+class OptionParserEpilog(OptionParser):
+    """ Epilog is new in Python 2.5, we need to support Python 2.4. """
+    def __init__(self, description, epilog=None):
+        self.myepilog = epilog
+        OptionParser.__init__(self, description)
+
+    def format_help(self, formatter=None):
+        if formatter is None:
+            formatter = self.formatter
+        help = OptionParser.format_help(self, formatter)
+        return help + "\n" + self.format_myepilog(formatter) + "\n"
+
+    def format_myepilog(self, formatter=None):
+        if self.myepilog is not None:
+            return formatter.format_description(self.myepilog)
+        else:
+            return ""
+
 from ConfigParser import NoOptionError
 
 # Default interval to retry after unsuccessful run
@@ -272,8 +290,8 @@ if __name__ == '__main__':
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
 
-    parser = OptionParser(description="Agent for reporting virtual guest IDs to subscription-manager",
-                          epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
+    parser = OptionParserEpilog(description="Agent for reporting virtual guest IDs to subscription-manager",
+                                epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")

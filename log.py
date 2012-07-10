@@ -26,6 +26,7 @@ import sys
 
 def getLogger(debug, background):
     logger = logging.getLogger("rhsm-app")
+    logger.setLevel(logging.DEBUG)
 
     path = '/var/log/rhsm/rhsm.log'
     try:
@@ -38,7 +39,10 @@ def getLogger(debug, background):
     try:
         fileHandler = logging.handlers.RotatingFileHandler(path, maxBytes=0x100000, backupCount=5)
         fileHandler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s'))
-        fileHandler.setLevel(logging.DEBUG)
+        if debug:
+            fileHandler.setLevel(logging.DEBUG)
+        else:
+            fileHandler.setLevel(logging.WARNING)
         logger.addHandler(fileHandler)
     except Exception, e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))

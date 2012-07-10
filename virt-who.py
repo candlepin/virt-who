@@ -317,11 +317,11 @@ if __name__ == '__main__':
     if env in ["1", "true"]:
         options.debug = True
 
-    logger = log.getLogger(options.debug, options.background)
-
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     if env in ["1", "true"]:
         options.background = True
+
+    logger = log.getLogger(options.debug, options.background)
 
     env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
     if env in ["1", "true"]:

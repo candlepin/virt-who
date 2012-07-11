@@ -33,6 +33,8 @@ class Virt:
         libvirt.registerErrorHandler(lambda ctx, error: None, None) #self.logger.exception(error), None)
         try:
             self.virt = libvirt.openReadOnly("")
+            # Register listener for domain changes
+            self.virt.domainEventRegister(self.changed, None)
         except libvirt.libvirtError, e:
             raise VirtError(str(e))
 
@@ -84,7 +86,7 @@ class Virt:
                     l.append(dom)
             self.changedCallback(l)
 
-    def domainListChangedCallback(self, callback):
+    def domainEventRegisterCallback(self, callback):
         self.changedCallback = callback
 
     def ping(self):

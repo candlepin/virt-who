@@ -86,8 +86,6 @@ class virEventLoopPure:
     def __init__(self):
         self.poll = select.poll()
         self.pipetrick = os.pipe()
-        self.pendingWakeup = False
-        self.runningPoll = False
         self.nextHandleID = 1
         self.nextTimerID = 1
         self.handles = []
@@ -161,7 +159,6 @@ class virEventLoopPure:
     # these pointless repeated tiny sleeps.
     def run_once(self):
         sleep = -1
-        self.runningPoll = True
         next = self.next_timeout()
         if next > 0:
             now = int(time.time() * 1000)
@@ -178,7 +175,6 @@ class virEventLoopPure:
             # telling us to wakup. if so, then discard
             # the data just continue
             if fd == self.pipetrick[0]:
-                self.pendingWakeup = False
                 data = os.read(fd, 1)
                 continue
 
@@ -199,9 +195,6 @@ class virEventLoopPure:
                 t.set_last_fired(now)
                 t.dispatch()
 
-        self.runningPoll = False
-
-
     # Actually the event loop forever
     def run_loop(self):
         self.quit = False
@@ -209,9 +202,7 @@ class virEventLoopPure:
             self.run_once()
 
     def interrupt(self):
-        if self.runningPoll and not self.pendingWakeup:
-            self.pendingWakeup = True
-            os.write(self.pipetrick[1], 'c')
+        os.write(self.pipetrick[1], 'c')
 
 
     # Registers a new file handle 'fd', monitoring  for 'events' (libvirt

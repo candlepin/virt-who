@@ -103,7 +103,6 @@ class VirtWho(object):
         try:
             self.subscriptionManager = SubscriptionManager(self.logger)
             self.subscriptionManager.connect()
-            self.tryRegisterEventCallback()
         except NoOptionError, e:
             self.logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf)")
             # Unability to parse configuration file is fatal error, so we'll quit
@@ -112,6 +111,9 @@ class VirtWho(object):
             self.logger.error(e.message)
             # virt-who can't work properly without certificate, exitting
             sys.exit(5)
+
+        if self.options.virtType == "libvirt":
+            self.tryRegisterEventCallback()
 
     def tryRegisterEventCallback(self):
         """
@@ -124,9 +126,7 @@ class VirtWho(object):
         if self.options.background and self.options.virtType == "libvirt":
             if self.virt is not None and self.subscriptionManager is not None:
                 # Send list of virt guests when something changes in libvirt
-                self.virt.domainListChangedCallback(self.subscriptionManager.sendVirtGuests)
-                # Register listener for domain changes
-                self.virt.virt.domainEventRegister(self.virt.changed, None)
+                self.virt.domainEventRegisterCallback(self.subscriptionManager.sendVirtGuests)
 
     def checkConnections(self):
         """

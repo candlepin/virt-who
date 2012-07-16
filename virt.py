@@ -86,7 +86,10 @@ class Virt:
                         break
                 if not hasDomain:
                     l.append(dom)
-            self.changedCallback(l)
+            try:
+                self.changedCallback(l)
+            except Exception, e:
+                self.logger.exception("Updating consumer failed:")
 
     def domainEventRegisterCallback(self, callback):
         self.changedCallback = callback

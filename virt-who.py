@@ -28,7 +28,7 @@ from virt import Virt, VirtError
 from vdsm import VDSM
 from vsphere import VSphere
 from event import virEventLoopPureStart
-from subscriptionmanager import SubscriptionManager, SubscriptionManagerError, SubscriptionManagerCertError
+from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
 
 import logging
 import log
@@ -107,13 +107,11 @@ class VirtWho(object):
             self.subscriptionManager = SubscriptionManager(self.logger)
             self.subscriptionManager.connect()
         except NoOptionError, e:
-            self.logger.error("Error in reading configuration file (/etc/rhsm/rhsm.conf)")
-            # Unability to parse configuration file is fatal error, so we'll quit
-            sys.exit(4)
-        except SubscriptionManagerCertError, e:
-            self.logger.error(e.message)
-            # virt-who can't work properly without certificate, exitting
-            sys.exit(5)
+            self.logger.exception("Error in reading configuration file (/etc/rhsm/rhsm.conf):")
+            return
+        except SubscriptionManagerError, e:
+            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
+            return
 
         if self.options.virtType == "libvirt":
             self.tryRegisterEventCallback()
@@ -161,8 +159,36 @@ class VirtWho(object):
         logger = self.logger
         try:
             self.checkConnections()
-            if self.options.virtType == "esx":
-                result = self.subscriptionManager.hypervisorCheckIn(self.options.esx_owner, self.options.esx_env, self.virt.getHostGuestMapping())
+        except Exception,e:
+            if retry:
+                logger.exception("Unable to create connection:")
+                return self._send(False)
+            else:
+                logger.error(self.unableToRecoverStr)
+                return False
+
+        try:
+            if self.options.virtType != "esx":
+                virtualGuests = self.virt.listDomains()
+            else:
+                virtualGuests = self.virt.getHostGuestMapping()
+        except Exception, e:
+            # Communication with virtualization supervisor failed
+            self.virt = None
+            # Retry once
+            if retry:
+                logger.exception("Error in communication with virt backend, trying to recover:")
+                return self._send(False)
+            else:
+                logger.error(self.unableToRecoverStr)
+                return False
+
+        try:
+            if self.options.virtType != "esx":
+                self.subscriptionManager.sendVirtGuests(virtualGuests)
+            else:
+                result = self.subscriptionManager.hypervisorCheckIn(self.options.esx_owner, self.options.esx_env, virtualGuests)
+
                 # Show the result of hypervisorCheckIn
                 for fail in result['failedUpdate']:
                     logger.error("Error during update list of guests: %s", str(fail))
@@ -172,45 +198,18 @@ class VirtWho(object):
                 for created in result['created']:
                     guests = [x['guestId'] for x in created['guestIds']]
                     logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
-            else:
-                self.subscriptionManager.sendVirtGuests(self.virt.listDomains())
-            return True
-        except SystemExit,e:
-            # In python2.4 SystemExit is inherited from Exception, so must be catched extra
-            raise e
-        except VirtError, e:
-            # Communication with virtualization supervisor failed
-            logger.exception(e)
-            self.virt = None
-            # Retry once
-            if retry:
-                logger.error("Error in communication with virt backend, trying to recover")
-                return self._send(False)
-            else:
-                logger.error(self.unableToRecoverStr)
-                return False
-        except SubscriptionManagerError, e:
+        except Exception, e:
             # Communication with subscription manager failed
             self.subscriptionManager = None
             # Retry once
             if retry:
-                logger.error("Error in communication with candlepin, trying to recover")
+                logger.exception("Error in communication with subscription manager, trying to recover:")
                 return self._send(False)
             else:
                 logger.error(self.unableToRecoverStr)
                 return False
-        except Exception, e:
-            # Some other error happens
-            logger.exception(e)
-            self.virt = None
-            self.subscriptionManager = None
-            # Retry once
-            if retry:
-                logger.error("Unexcepted error occurs, trying to recover")
-                return self._send(False)
-            else:
-                logger.error(self.unableToRecoverStr)
-                return False
+
+        return True
 
     def ping(self):
         """
@@ -304,7 +303,7 @@ def cleanup(sig=None, stack=None):
     if sig is not None and sig in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
         sys.exit(0)
 
-if __name__ == '__main__':
+def main():
     if os.access(PIDFILE, os.F_OK):
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
@@ -459,3 +458,13 @@ if __name__ == '__main__':
             else:
                 # If last send fails, new try will be sooner
                 time.sleep(RetryInterval)
+
+if __name__ == '__main__':
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception, e:
+        logger = log.getLogger(False, False)
+        logger.exception("Fatal error:")
+        sys.exit(1)

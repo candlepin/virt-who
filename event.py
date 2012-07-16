@@ -14,7 +14,10 @@ import libvirt
 import select
 import time
 import threading
+import signal
 
+# Type of virtualization
+virtType = None
 
 # This general purpose event loop will support waiting for file handle
 # I/O and errors events, as well as scheduling repeatable timers with
@@ -264,6 +267,12 @@ class virEventLoopPure:
         self.handles = handles
         self.interrupt()
 
+        # !!! This is NOT present in original example from libvirt
+        # Remove handle happens when libvirtd dies, so we'll restart ourself
+        # Only for XEN, works fine for other virt types
+        if virtType is not None and virtType == "Xen":
+            os.kill(os.getpid(), signal.SIGHUP)
+
     # Stop firing the periodic timer
     def remove_timer(self, timerID):
         timers = []
@@ -308,12 +317,11 @@ class virEventLoopPure:
 
 # This single global instance of the event loop wil be used for
 # monitoring libvirt events
-eventLoop = virEventLoopPure()
+eventLoop = None
 
 # This keeps track of what thread is running the event loop,
 # (if it is run in a background thread)
 eventLoopThread = None
-
 
 # These next set of 6 methods are the glue between the official
 # libvirt events API, and our particular impl of the event loop
@@ -365,6 +373,8 @@ def virEventLoopPureRun():
 # Spawn a background thread to run the event loop
 def virEventLoopPureStart():
     global eventLoopThread
+    global eventLoop
+    eventLoop = virEventLoopPure()
     virEventLoopPureRegister()
     eventLoopThread = threading.Thread(target=virEventLoopPureRun, name="libvirtEventLoop")
     eventLoopThread.setDaemon(True)

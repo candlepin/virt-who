@@ -49,7 +49,7 @@ class SubscriptionManager:
         self.logger = logger
         self.cert_uuid = None
 
-        self.config = rhsm_config.initConfig()
+        self.config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
 
         # Consumer ID obtained from consumer certificate
@@ -68,13 +68,17 @@ class SubscriptionManager:
 
     def connect(self, Connection=rhsm_connection.UEPConnection):
         """ Connect to the subscription-manager. """
-        self.connection = Connection(cert_file=self.cert_file, key_file=self.key_file)
-        try:
-            if not self.connection.ping()['result']:
-                raise SubscriptionManagerConnectionError("Unable to obtain status from server, UEPConnection is likely not usable.")
-        except Exception, e:
-            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
-            raise SubscriptionManagerError()
+        self.connection = Connection(
+                host=self.config.get('server', 'hostname'),
+                ssl_port=int(self.config.get('server', 'port')),
+                handler=self.config.get('server', 'prefix'),
+                proxy_hostname=self.config.get('server', 'proxy_hostname'),
+                proxy_port=self.config.get('server', 'proxy_port'),
+                proxy_user=self.config.get('server', 'proxy_user'),
+                proxy_password=self.config.get('server', 'proxy_password'),
+                cert_file=self.cert_file, key_file=self.key_file)
+        if not self.connection.ping()['result']:
+            raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
 
     def sendVirtGuests(self, domains):
         """ Update consumer facts with UUIDs of virtual guests. """

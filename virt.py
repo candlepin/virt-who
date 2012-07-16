@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import libvirt
+import event
 
 class VirtError(Exception):
     pass
@@ -35,6 +36,7 @@ class Virt:
             self.virt = libvirt.openReadOnly("")
             # Register listener for domain changes
             self.virt.domainEventRegister(self.changed, None)
+            event.virtType = self.virt.getType()
         except libvirt.libvirtError, e:
             raise VirtError(str(e))
 

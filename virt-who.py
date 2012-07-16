@@ -81,6 +81,9 @@ class VirtWho(object):
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
 
+        # True if reload is queued
+        self.doReload = False
+
 
     def initVirt(self):
         """
@@ -218,6 +221,22 @@ class VirtWho(object):
         if self.virt is None:
             return False
         return self.virt.ping()
+
+    def queueReload(self, *p):
+        """
+        Reload virt-who configuration. Called on SIGHUP signal arrival.
+        """
+        self.doReload = True
+
+    def reloadConfig(self):
+        if self.virt and self.virt.virt:
+            self.virt.virt.close()
+        self.virt = None
+        self.subscriptionManager = None
+        self.checkConnections()
+        self.logger.debug("virt-who configution reloaded")
+        self.doReload = False
+
 
 def daemonize(debugMode):
     """ Perform double-fork and redirect std* to /dev/null """
@@ -397,6 +416,7 @@ if __name__ == '__main__':
         RetryInterval = options.interval
 
     virtWho = VirtWho(logger, options)
+    signal.signal(signal.SIGHUP, virtWho.queueReload)
     try:
         virtWho.checkConnections()
     except Exception:
@@ -426,6 +446,12 @@ if __name__ == '__main__':
                     t = min(RetryInterval, options.interval - slept)
                     time.sleep(t)
                     slept += t
+
+                    # Reload configuration if queued
+                    if virtWho.doReload:
+                        virtWho.reloadConfig()
+                        break
+
                     # Check the connection
                     if not virtWho.ping():
                         # End the cycle

@@ -405,12 +405,14 @@ def main():
         if not daemonize(options.debug):
             logger.error("Unable to fork, continuing in foreground")
 
-    if options.background:
+    if not options.oneshot:
         if options.virtType == "libvirt":
+            logger.debug("Starting event loop")
             virEventLoopPureStart()
         else:
             logger.warning("Listening for events is not available in VDSM or ESX mode")
 
+    global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
 
@@ -440,7 +442,7 @@ def main():
             if virtWho.send():
                 # Check if connection is established each 'RetryInterval' seconds
                 slept = 0
-                while slept < options.interval:
+                while slept <= options.interval:
                     # Sleep 'RetryInterval' or the rest of options.interval
                     t = min(RetryInterval, options.interval - slept)
                     time.sleep(t)

@@ -26,7 +26,7 @@ class VirtError(Exception):
 
 class Virt:
     """ Class for interacting with libvirt. """
-    def __init__(self, logger):
+    def __init__(self, logger, registerEvents=True):
         self.changedCallback = None
         self.logger = logger
         self.virt = None
@@ -34,9 +34,10 @@ class Virt:
         libvirt.registerErrorHandler(lambda ctx, error: None, None) #self.logger.exception(error), None)
         try:
             self.virt = libvirt.openReadOnly("")
-            # Register listener for domain changes
-            self.virt.domainEventRegister(self.changed, None)
-            event.virtType = self.virt.getType()
+            # Register listener for domain changes if we are not in oneshot mode
+            if registerEvents:
+                self.virt.domainEventRegister(self.changed, None)
+                event.virtType = self.virt.getType()
         except libvirt.libvirtError, e:
             raise VirtError(str(e))
 

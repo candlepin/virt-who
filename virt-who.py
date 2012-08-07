@@ -92,7 +92,7 @@ class VirtWho(object):
         if self.options.virtType == "vdsm":
             self.virt = VDSM(self.logger)
         elif self.options.virtType == "libvirt":
-            self.virt = Virt(self.logger)
+            self.virt = Virt(self.logger, registerEvents=not self.options.oneshot)
             # We can listen for libvirt events
             self.tryRegisterEventCallback()
         else:

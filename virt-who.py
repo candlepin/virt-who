@@ -442,9 +442,11 @@ def main():
             if virtWho.send():
                 # Check if connection is established each 'RetryInterval' seconds
                 slept = 0
-                while slept <= options.interval:
+                while slept < options.interval:
                     # Sleep 'RetryInterval' or the rest of options.interval
                     t = min(RetryInterval, options.interval - slept)
+                    # But sleep at least one second
+                    t = max(t, 1)
                     time.sleep(t)
                     slept += t
 

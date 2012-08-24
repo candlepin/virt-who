@@ -95,12 +95,10 @@ class SubscriptionManager:
         """ Read consumer certificate and get consumer UUID from it. """
         if not self.cert_uuid:
             try:
-                f = open(self.cert_file, "r")
+                certificate = rhsm_certificate.create_from_file(self.cert_file)
+                self.cert_uuid = certificate.subject["CN"]
             except Exception, e:
                 raise SubscriptionManagerError("Unable to open certificate %s (%s):" % self.cert_file, str(e))
-            certificate = rhsm_certificate.Certificate(f.read())
-            f.close()
-            self.cert_uuid = certificate.subject().get('CN')
         return self.cert_uuid
 
     def getFacts(self):

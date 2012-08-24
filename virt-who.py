@@ -406,7 +406,7 @@ def main():
             logger.error("Unable to fork, continuing in foreground")
 
     if not options.oneshot:
-        if options.virtType == "libvirt":
+        if options.background and options.virtType == "libvirt":
             logger.debug("Starting event loop")
             virEventLoopPureStart()
         else:

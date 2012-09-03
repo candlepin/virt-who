@@ -98,7 +98,7 @@ class SubscriptionManager:
                 certificate = rhsm_certificate.create_from_file(self.cert_file)
                 self.cert_uuid = certificate.subject["CN"]
             except Exception, e:
-                raise SubscriptionManagerError("Unable to open certificate %s (%s):" % self.cert_file, str(e))
+                raise SubscriptionManagerError("Unable to open certificate %s (%s):" % (self.cert_file, str(e)))
         return self.cert_uuid
 
     def getFacts(self):

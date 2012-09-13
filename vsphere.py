@@ -125,8 +125,16 @@ class VSphere:
         ts.type = 'ComputeResource'
         ts.pathSet = 'name'
         ts.all = True
-        object_content = self.client.service.RetrieveProperties(_this=self.sc.propertyCollector,
-                specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
+        try:
+            retrieve_result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector,
+                    specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
+            if retrieve_result is None:
+                object_content = []
+            else:
+                object_content = retrieve_result[0]
+        except suds.MethodNotFound:
+            object_content = self.client.service.RetrieveProperties(_this=self.sc.propertyCollector,
+                    specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
 
         # Get properties of each cluster
         clusterObjs = [] # List of objs for 'ComputeResource' query
@@ -217,7 +225,14 @@ class VSphere:
         pfs.objectSet = objectSets
 
         # Query the VSphere server
-        return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
+        try:
+            retrieve_result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector, specSet=[pfs])
+            if retrieve_result is None:
+                return []
+            else:
+                return retrieve_result[0]
+        except suds.MethodNotFound:
+            return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
 
     def getHostGuestMapping(self):
         """

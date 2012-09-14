@@ -27,6 +27,7 @@ import signal
 from virt import Virt, VirtError
 from vdsm import VDSM
 from vsphere import VSphere
+from rhevm import RHEVM
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
 
@@ -95,9 +96,11 @@ class VirtWho(object):
             self.virt = Virt(self.logger, registerEvents=self.options.background)
             # We can listen for libvirt events
             self.tryRegisterEventCallback()
+        elif self.options.virtType == "rhevm":
+            self.virt = RHEVM(self.logger, self.options.server, self.options.username, self.options.password)
         else:
             # ESX
-            self.virt = VSphere(self.logger, self.options.esx_server, self.options.esx_username, self.options.esx_password)
+            self.virt = VSphere(self.logger, self.options.server, self.options.username, self.options.password)
 
     def initSM(self):
         """
@@ -168,7 +171,7 @@ class VirtWho(object):
                 return False
 
         try:
-            if self.options.virtType != "esx":
+            if self.options.virtType not in ["esx", "rhevm"]:
                 virtualGuests = self.virt.listDomains()
             else:
                 virtualGuests = self.virt.getHostGuestMapping()
@@ -184,10 +187,10 @@ class VirtWho(object):
                 return False
 
         try:
-            if self.options.virtType != "esx":
+            if self.options.virtType not in ["esx", "rhevm"]:
                 self.subscriptionManager.sendVirtGuests(virtualGuests)
             else:
-                result = self.subscriptionManager.hypervisorCheckIn(self.options.esx_owner, self.options.esx_env, virtualGuests)
+                result = self.subscriptionManager.hypervisorCheckIn(self.options.owner, self.options.env, virtualGuests)
 
                 # Show the result of hypervisorCheckIn
                 for fail in result['failedUpdate']:
@@ -317,15 +320,23 @@ def main():
     parser.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
     parser.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
     parser.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
+    parser.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
 
     esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
-    esxGroup.add_option("--esx-owner", action="store", dest="esx_owner", default="", help="Organization who has purchased subscriptions of the products")
-    esxGroup.add_option("--esx-env", action="store", dest="esx_env", default="", help="Environment where the vCenter server belongs to")
-    esxGroup.add_option("--esx-server", action="store", dest="esx_server", default="", help="URL of the vCenter server to connect to")
-    esxGroup.add_option("--esx-username", action="store", dest="esx_username", default="", help="Username for connecting to vCenter")
-    esxGroup.add_option("--esx-password", action="store", dest="esx_password", default="", help="Password for connecting to vCenter")
+    esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
+    esxGroup.add_option("--esx-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to")
+    esxGroup.add_option("--esx-server", action="store", dest="server", default="", help="URL of the vCenter server to connect to")
+    esxGroup.add_option("--esx-username", action="store", dest="username", default="", help="Username for connecting to vCenter")
+    esxGroup.add_option("--esx-password", action="store", dest="password", default="", help="Password for connecting to vCenter")
     parser.add_option_group(esxGroup)
 
+    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --rhevm")
+    rhevmGroup.add_option("--rhevm-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
+    rhevmGroup.add_option("--rhevm-env", action="store", dest="env", default="", help="Environment where the RHEV-M belongs to")
+    rhevmGroup.add_option("--rhevm-server", action="store", dest="server", default="", help="URL of the RHEV-M server to connect to")
+    rhevmGroup.add_option("--rhevm-username", action="store", dest="username", default="", help="Username for connecting to RHEV-M")
+    rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
+    parser.add_option_group(rhevmGroup)
 
     (options, args) = parser.parse_args()
 
@@ -360,6 +371,10 @@ def main():
     if env in ["1", "true"]:
         options.virtType = "esx"
 
+    env = os.getenv("VIRTWHO_RHEVM", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.virtType = "rhevm"
+
     def checkEnv(variable, option, name):
         """
         If `option` is empty, check enviromental `variable` and return its value.
@@ -368,21 +383,25 @@ def main():
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
         if len(option) == 0:
-            logger.error("Required parameter '%s' for vCenter is not set, exitting" % name)
+            logger.error("Required parameter '%s' is not set, exitting" % name)
             sys.exit(1)
         return option
 
     if options.virtType == "esx":
-        options.esx_owner = checkEnv("VIRTWHO_ESX_OWNER", options.esx_owner, "owner")
-        options.esx_env = checkEnv("VIRTWHO_ESX_ENV", options.esx_env, "env")
-        options.esx_server = checkEnv("VIRTWHO_ESX_SERVER", options.esx_server, "server")
-        options.esx_username = checkEnv("VIRTWHO_ESX_USERNAME", options.esx_username, "username")
-        if len(options.esx_password) == 0:
-            options.esx_password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
+        options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner")
+        options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env")
+        options.server = checkEnv("VIRTWHO_ESX_SERVER", options.server, "server")
+        options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
+        if len(options.password) == 0:
+            options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 
-    # Url must contain protocol (usualy https://)
-    if not "://" in options.esx_server:
-        options.esx_server = "https://%s" % options.esx_server
+    if options.virtType == "rhevm":
+        options.owner = checkEnv("VIRTWHO_RHEVM_OWNER", options.owner, "owner")
+        options.env = checkEnv("VIRTWHO_RHEVM_ENV", options.env, "env")
+        options.server = checkEnv("VIRTWHO_RHEVM_SERVER", options.server, "server")
+        options.username = checkEnv("VIRTWHO_RHEVM_USERNAME", options.username, "username")
+        if len(options.password) == 0:
+            options.password = os.getenv("VIRTWHO_RHEVM_PASSWORD", "")
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
@@ -410,7 +429,7 @@ def main():
             logger.debug("Starting event loop")
             virEventLoopPureStart()
         else:
-            logger.warning("Listening for events is not available in VDSM or ESX mode")
+            logger.warning("Listening for events is not available in VDSM, ESX or RHEV-M mode")
 
     global RetryInterval
     if options.interval < RetryInterval:

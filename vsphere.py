@@ -1,3 +1,22 @@
+"""
+Module for communcating with vCenter/ESX, part of virt-who
+
+Copyright (C) 2012 Radek Novacek <rnovacek@redhat.com>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
 
 import sys
 import suds
@@ -89,6 +108,10 @@ class VSphere:
     def __init__(self, logger, url, username, password):
         self.logger = logger
         self.url = url
+
+        # Url must contain protocol (usualy https://)
+        if not "://" in self.url:
+            self.url = "https://%s" % self.url
 
         # Connect to the vCenter server
         self.client = suds.client.Client("%s/sdk/vimService.wsdl" % url)

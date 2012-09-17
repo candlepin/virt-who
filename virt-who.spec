@@ -66,6 +66,7 @@ fi
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
 %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
+%{_mandir}/man8/virt-who.8.gz
 
 
 %changelog

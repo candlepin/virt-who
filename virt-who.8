@@ -1,0 +1,106 @@
+.TH VIRT-WHO "8" "September 2012" "virt-who"
+.SH NAME
+virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager.
+.SH SYNOPSIS
+virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx]
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+show this help message and exit
+.TP
+\fB\-d\fR, \fB\-\-debug\fR
+Enable debugging output
+.TP
+\fB\-b\fR, \fB\-\-background\fR
+Run in the background and monitor virtual guests
+.TP
+\fB\-o\fR, \fB\-\-one\-shot\fR
+Send the list of guest IDs and exit immediately
+.TP
+\fB\-i\fR INTERVAL, \fB\-\-interval\fR=\fIINTERVAL\fR
+Acquire and send list of virtual guest each N seconds
+.TP
+\fB\-\-libvirt\fR
+Use libvirt to list virtual guests [default]
+.TP
+\fB\-\-vdsm\fR
+Use vdsm to list virtual guests
+.TP
+\fB\-\-esx\fR
+Register ESX machines using vCenter
+.SS vCenter/ESX options
+.TP
+Use this options with \fB\-\-esx\fR
+.TP
+\fB\-\-esx\-owner\fR=\fIOWNER\fR
+Organization who has purchased subscriptions of the products
+.TP
+\fB\-\-esx\-env\fR=\fIENV\fR
+Environment where the vCenter server belongs to
+.TP
+\fB\-\-esx\-server\fR=\fISERVER\fR
+URL of the vCenter server to connect to
+.TP
+\fB\-\-esx\-username\fR=\fIUSERNAME\fR
+Username for connecting to vCenter
+.TP
+\fB\-\-esx\-password\fR=\fIPASSWORD\fR
+Password for connecting to vCenter
+
+.SH ENVIRONMENT
+virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled
+.SH USAGE
+.SS MODE
+virt-who has three modes how it can run:
+.TP
+1. one-shot mode
+# virt-who -o
+
+In this mode virt-who just sends list of guest UUIDs to the server and exits.
+.TP
+2. interval mode
+# virt-who
+
+This is default mode. virt-who will check and send list of guest UUIDs once per hour. This interval can be changed using "-i INTERVAL" option where INTERVAL is number of seconds how often it should check and send the list.
+.TP
+3. background mode
+# virt-who -b
+
+This mode is similar to interval mode but it monitors events from libvirt and update list of guest UUIDs as soon as possible. It also does the interval check (interval can be altered by "-i INTERVAL" option).
+.IP
+NOTE: virt-who don't print anything to terminal in this mode
+.IP
+NOTE: monitoring for events requires libvirt backend, but this mode can be used with all backends.
+
+.SS BACKEND
+
+virt-who can use couple of virtualization backends.
+.TP
+1. libvirt
+# virt-who
+
+# virt-who --libvirt
+
+Use libvirt as virtualization backend. This is default.
+.IP
+
+NOTE: virt-who can monitor for events only in this mode.
+.TP
+2. vdsm
+# virt-who --vdsm
+
+Use vdsm as virtualization backend.
+.TP
+3. ESX
+
+# virt-who --esx --esx-owner=ESX_OWNER  --esx-env=ESX_ENV --esx-server=ESX_SERVER --esx-username=ESX_USERNAME --esx-password=ESX_PASSWORD
+
+Use ESX (vCenter) as virtualization backend and specify option required to connect to ESX server.
+
+.SH LOGGING
+virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.
+
+virt-who can be started with option "-d" in all modes and with all backends. This option will enable verbose output with more information.
+
+.SH AUTHOR
+Radek Novacek <rnovacek at redhat dot com>

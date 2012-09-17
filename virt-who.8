@@ -2,7 +2,7 @@
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx]
+virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx|--rhevm]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -28,8 +28,12 @@ Use vdsm to list virtual guests
 .TP
 \fB\-\-esx\fR
 Register ESX machines using vCenter
-.SS vCenter/ESX options
 .TP
+\fB\-\-rhevm\fR
+Register guests using RHEV\-M
+.IP
+.SS vCenter/ESX options
+.IP
 Use this options with \fB\-\-esx\fR
 .TP
 \fB\-\-esx\-owner\fR=\fIOWNER\fR
@@ -46,7 +50,26 @@ Username for connecting to vCenter
 .TP
 \fB\-\-esx\-password\fR=\fIPASSWORD\fR
 Password for connecting to vCenter
-
+.IP
+.SS RHEV\-M options
+.IP
+Use this options with \fB\-\-rhevm\fR
+.TP
+\fB\-\-rhevm\-owner\fR=\fIOWNER\fR
+Organization who has purchased subscriptions of the products
+.TP
+\fB\-\-rhevm\-env\fR=\fIENV\fR
+Environment where the RHEV\-M belongs to
+.TP
+\fB\-\-rhevm\-server\fR=\fISERVER\fR
+URL of the RHEV\-M server to connect to
+.TP
+\fB\-\-rhevm\-username\fR=\fIUSERNAME\fR
+Username for connecting to RHEV\-M
+.TP
+\fB\-\-rhevm\-password\fR=\fIPASSWORD\fR
+Password for connecting to RHEV\-M
+.PP
 .SH ENVIRONMENT
 virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled
 .SH USAGE
@@ -96,6 +119,13 @@ Use vdsm as virtualization backend.
 # virt-who --esx --esx-owner=ESX_OWNER  --esx-env=ESX_ENV --esx-server=ESX_SERVER --esx-username=ESX_USERNAME --esx-password=ESX_PASSWORD
 
 Use ESX (vCenter) as virtualization backend and specify option required to connect to ESX server.
+
+.TP
+4. RHEV-M
+
+# virt-who --rhevm --rhevm-owner=RHEVM_OWNER  --rhevm-env=RHEVM_ENV --rhevm-server=RHEVM_SERVER --rhevm-username=RHEVM_USERNAME --rhevm-password=RHEVM_PASSWORD
+
+Use RHEV-M as virtualization backend and specify option required to connect to RHEV-M server.
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.

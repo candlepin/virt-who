@@ -231,8 +231,10 @@ class VirtWho(object):
         self.doReload = True
 
     def reloadConfig(self):
-        if self.virt and self.virt.virt:
+        try:
             self.virt.virt.close()
+        except AttributeError:
+            pass
         self.virt = None
         self.subscriptionManager = None
         self.checkConnections()

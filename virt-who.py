@@ -286,7 +286,7 @@ def daemonize(debugMode):
     os.chdir("/")
     return True
 
-def createPidFile(logger):
+def createPidFile(logger=None):
     atexit.register(cleanup)
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
@@ -297,7 +297,8 @@ def createPidFile(logger):
         f.write("%d" % os.getpid())
         f.close()
     except Exception, e:
-        logger.error("Unable to create pid file: %s" % str(e))
+        if logger is not None:
+            logger.error("Unable to create pid file: %s" % str(e))
 
 def cleanup(sig=None, stack=None):
     try:
@@ -312,6 +313,7 @@ def main():
     if os.access(PIDFILE, os.F_OK):
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
+    createPidFile()
 
     parser = OptionParserEpilog(description="Agent for reporting virtual guest IDs to subscription-manager",
                                 epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
@@ -425,6 +427,7 @@ def main():
         # Do a double-fork and other daemon initialization
         if not daemonize(options.debug):
             logger.error("Unable to fork, continuing in foreground")
+        createPidFile(logger)
 
     if not options.oneshot:
         if options.background and options.virtType == "libvirt":
@@ -443,8 +446,6 @@ def main():
         virtWho.checkConnections()
     except Exception:
         pass
-
-    createPidFile(logger)
 
     logger.debug("Virt-who is running in %s mode" % options.virtType)
 

@@ -28,6 +28,7 @@ from virt import Virt, VirtError
 from vdsm import VDSM
 from vsphere import VSphere
 from rhevm import RHEVM
+from hyperv import HyperV
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
 
@@ -98,6 +99,8 @@ class VirtWho(object):
             self.tryRegisterEventCallback()
         elif self.options.virtType == "rhevm":
             self.virt = RHEVM(self.logger, self.options.server, self.options.username, self.options.password)
+        elif self.options.virtType == "hyperv":
+            self.virt = HyperV(self.logger, self.options.server, self.options.username, self.options.password)
         else:
             # ESX
             self.virt = VSphere(self.logger, self.options.server, self.options.username, self.options.password)
@@ -171,7 +174,7 @@ class VirtWho(object):
                 return False
 
         try:
-            if self.options.virtType not in ["esx", "rhevm"]:
+            if self.options.virtType not in ["esx", "rhevm", "hyperv"]:
                 virtualGuests = self.virt.listDomains()
             else:
                 virtualGuests = self.virt.getHostGuestMapping()
@@ -187,7 +190,7 @@ class VirtWho(object):
                 return False
 
         try:
-            if self.options.virtType not in ["esx", "rhevm"]:
+            if self.options.virtType not in ["esx", "rhevm", "hyperv"]:
                 self.subscriptionManager.sendVirtGuests(virtualGuests)
             else:
                 result = self.subscriptionManager.hypervisorCheckIn(self.options.owner, self.options.env, virtualGuests)
@@ -325,6 +328,7 @@ def main():
     parser.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
     parser.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
     parser.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
+    parser.add_option("--hyperv", action="store_const", dest="virtType", const="hyperv", help="Register guests using Hyper-V")
 
     esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
     esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
@@ -341,6 +345,14 @@ def main():
     rhevmGroup.add_option("--rhevm-username", action="store", dest="username", default="", help="Username for connecting to RHEV-M")
     rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
     parser.add_option_group(rhevmGroup)
+
+    hypervGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --hyperv")
+    hypervGroup.add_option("--hyperv-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
+    hypervGroup.add_option("--hyperv-env", action="store", dest="env", default="", help="Environment where the Hyper-V belongs to")
+    hypervGroup.add_option("--hyperv-server", action="store", dest="server", default="", help="URL of the Hyper-V server to connect to")
+    hypervGroup.add_option("--hyperv-username", action="store", dest="username", default="", help="Username for connecting to Hyper-V")
+    hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
+    parser.add_option_group(hypervGroup)
 
     (options, args) = parser.parse_args()
 
@@ -379,6 +391,11 @@ def main():
     if env in ["1", "true"]:
         options.virtType = "rhevm"
 
+    env = os.getenv("VIRTWHO_HYPERV", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.virtType = "hyperv"
+
+
     def checkEnv(variable, option, name):
         """
         If `option` is empty, check enviromental `variable` and return its value.
@@ -406,6 +423,14 @@ def main():
         options.username = checkEnv("VIRTWHO_RHEVM_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_RHEVM_PASSWORD", "")
+
+    if options.virtType == "hyperv":
+        options.owner = checkEnv("VIRTWHO_HYPERV_OWNER", options.owner, "owner")
+        options.env = checkEnv("VIRTWHO_HYPERV_ENV", options.env, "env")
+        options.server = checkEnv("VIRTWHO_HYPERV_SERVER", options.server, "server")
+        options.username = checkEnv("VIRTWHO_HYPERV_USERNAME", options.username, "username")
+        if len(options.password) == 0:
+            options.password = os.getenv("VIRTWHO_HYPERV_PASSWORD", "")
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")

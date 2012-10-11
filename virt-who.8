@@ -2,7 +2,7 @@
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx|--rhevm]
+virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -31,6 +31,9 @@ Register ESX machines using vCenter
 .TP
 \fB\-\-rhevm\fR
 Register guests using RHEV\-M
+.TP
+\fB\-\-hyperv\fR
+Register guests using Hyper\-V
 .IP
 .SS vCenter/ESX options
 .IP
@@ -69,6 +72,25 @@ Username for connecting to RHEV\-M
 .TP
 \fB\-\-rhevm\-password\fR=\fIPASSWORD\fR
 Password for connecting to RHEV\-M
+.IP
+.SS Hyper\-V options
+.IP
+Use this options with \fB\-\-hyperv\fR
+.TP
+\fB\-\-hyperv\-owner\fR=\fIOWNER\fR
+Organization who has purchased subscriptions of the products
+.TP
+\fB\-\-hyperv\-env\fR=\fIENV\fR
+Environment where the Hyper\-V belongs to
+.TP
+\fB\-\-hyperv\-server\fR=\fISERVER\fR
+URL of the Hyper\-V server to connect to
+.TP
+\fB\-\-hyperv\-username\fR=\fIUSERNAME\fR
+Username for connecting to Hyper\-V
+.TP
+\fB\-\-hyperv\-password\fR=\fIPASSWORD\fR
+Password for connecting to Hyper\-V
 .PP
 .SH ENVIRONMENT
 virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled
@@ -126,6 +148,13 @@ Use ESX (vCenter) as virtualization backend and specify option required to conne
 # virt-who --rhevm --rhevm-owner=RHEVM_OWNER  --rhevm-env=RHEVM_ENV --rhevm-server=RHEVM_SERVER --rhevm-username=RHEVM_USERNAME --rhevm-password=RHEVM_PASSWORD
 
 Use RHEV-M as virtualization backend and specify option required to connect to RHEV-M server.
+
+.TP
+4. Hyper-V
+
+# virt-who --hyperv --hyperv-owner=HYPERV_OWNER  --hyperv-env=HYPERV_ENV --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
+
+Use Hyper-V as virtualization backend and specify option required to connect to Hyper-V server.
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.

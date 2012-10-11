@@ -1,0 +1,28 @@
+In order to make virt-who connection to Hyper-V work, some steps needs to be done first.
+
+1. Windows Remote Management must be enabled and HTTP or HTTPS listener must be running.
+
+    Following command can be used on Hyper-V server:
+
+        winrm quickconfig
+
+
+2. Firewall must allow Remote Administration
+
+    Following command can be used on Hyper-V server:
+
+        netsh advfirewall firewall set rule group="Remote Administration" new enable=yes
+
+
+3. Unencrypted connection must be enabled for HTTP (not required for HTTPS)
+
+    Following command can be used on Hyper-V server:
+
+        winrm set winrm/config/service @{AllowUnencrypted="true"}
+
+
+4. Only Basic and NTLM authentication methods are supported
+
+    Verify that at least one of methods Basic or Negotiate is enabled (True)
+
+        winrm get winrm/config/service/auth

@@ -266,7 +266,8 @@ class HyperV:
         guests = []
         connection, headers = self.connect()
         hypervsoap = HyperVSoap(self.url, connection, headers)
-        uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData")
+        # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
+        uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData where SettingType = 3")
         for instance in hypervsoap.Pull(uuid):
             guests.append(HyperV.decodeWinUUID(instance["BIOSGUID"]))
         uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
@@ -274,6 +275,9 @@ class HyperV:
         for instance in hypervsoap.Pull(uuid, "root/cimv2"):
             host = HyperV.decodeWinUUID(instance["UUID"])
         return { host: guests }
+
+    def ping(self):
+        return True
 
 if __name__ == '__main__':
     # TODO: read from config

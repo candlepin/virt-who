@@ -346,7 +346,7 @@ def main():
     rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
     parser.add_option_group(rhevmGroup)
 
-    hypervGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --hyperv")
+    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use this options with --hyperv")
     hypervGroup.add_option("--hyperv-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     hypervGroup.add_option("--hyperv-env", action="store", dest="env", default="", help="Environment where the Hyper-V belongs to")
     hypervGroup.add_option("--hyperv-server", action="store", dest="server", default="", help="URL of the Hyper-V server to connect to")
@@ -459,7 +459,7 @@ def main():
             logger.debug("Starting event loop")
             virEventLoopPureStart()
         else:
-            logger.warning("Listening for events is not available in VDSM, ESX or RHEV-M mode")
+            logger.warning("Listening for events is not available in VDSM, ESX, RHEV-M or Hyper-V mode")
 
     global RetryInterval
     if options.interval < RetryInterval:

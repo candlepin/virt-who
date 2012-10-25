@@ -114,9 +114,9 @@ class VSphere:
             self.url = "https://%s" % self.url
 
         # Connect to the vCenter server
-        self.client = suds.client.Client("%s/sdk/vimService.wsdl" % url)
+        self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
 
-        self.client.set_options(location="%s/sdk" % url)
+        self.client.set_options(location="%s/sdk" % self.url)
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
         self.moRef = suds.sudsobject.Property('ServiceInstance')

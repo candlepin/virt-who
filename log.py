@@ -24,6 +24,40 @@ import logging.handlers
 import os
 import sys
 
+journalEnabled = False
+try:
+    from systemd import journal
+    journalEnabled = True
+except ImportError:
+    pass
+
+class NoExceptionFormatter(logging.Formatter):
+    def format(self, record):
+        if record.exc_info is not None:
+            record.exc_text = "\t" + str(record.exc_info[1])
+        return logging.Formatter.format(self, record)
+
+class JournalHandler(logging.Handler):
+    def __init__(self, level=logging.NOTSET):
+        logging.Handler.__init__(self, level)
+
+    def emit(self, record):
+        if journalEnabled:
+            try:
+                msg = self.format(record)
+                args = ['MESSAGE=' + record.message,
+                        'LOGGER=' + record.name,
+                        'THREAD_NAME=' + record.threadName,
+                        'CODE_FILE=' + record.pathname,
+                        'CODE_LINE=%d' % record.lineno,
+                        'CODE_FUNC=' + record.funcName]
+
+                journal.sendv(*args)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                self.handleError(record)
+
 def getLogger(debug, background):
     logger = logging.getLogger("rhsm-app")
     logger.setLevel(logging.DEBUG)
@@ -56,10 +90,21 @@ def getLogger(debug, background):
             streamHandler.setLevel(logging.WARNING)
 
             # Don't print exceptions to stdout in non-debug mode
-            f = logging.Filter()
-            f.filter = lambda record: record.exc_info is None
-            streamHandler.addFilter(f)
+            streamHandler.setFormatter(NoExceptionFormatter())
+
 
         logger.addHandler(streamHandler)
 
+    if os.getppid() == 1:
+        # Also log to journal if available
+        journalHandler = JournalHandler()
+        if debug:
+            journalHandler.setLevel(logging.DEBUG)
+        else:
+            journalHandler.setLevel(logging.WARNING)
+
+            # Don't print exceptions to journal in non-debug mode
+            journalHandler.setFormatter(NoExceptionFormatter())
+
+        logger.addHandler(journalHandler)
     return logger

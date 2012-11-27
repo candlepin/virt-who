@@ -19,7 +19,7 @@ install:
 	install virt-who-initscript $(DESTDIR)/etc/rc.d/init.d/virt-who
 	install -pm 0644 virt-who.conf $(DESTDIR)/etc/sysconfig/virt-who
 	gzip -c virt-who.8 > virt-who.8.gz
-	install virt-who.8.gz $(DESTDIR)/usr/share/man/man8/
+	install -pm 0644 virt-who.8.gz $(DESTDIR)/usr/share/man/man8/
 
 srpm: pack
 	rpmbuild --define "_sourcedir $(PWD)" --define "_specdir $(PWD)" --define "_srcrpmdir $(PWD)" -bs $(name).spec

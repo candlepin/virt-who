@@ -1,0 +1,13 @@
+[Unit]
+Description=Daemon for reporting virtual guest IDs to subscription-manager
+After=syslog.target libvirtd.service network.target
+
+[Service]
+Type=forking
+PIDFile=/var/run/virt-who.pid
+ExecStart=/usr/bin/virt-who
+EnvironmentFile=-/etc/sysconfig/virt-who
+
+[Install]
+WantedBy=multi-user.target
+

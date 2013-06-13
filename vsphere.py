@@ -162,6 +162,8 @@ class VSphere:
         # Get properties of each cluster
         clusterObjs = [] # List of objs for 'ComputeResource' query
         for cluster in object_content:
+            if not hasattr(cluster, 'propSet'):
+                continue
             for propSet in cluster.propSet:
                 if propSet.name == "name":
                     self.clusters[cluster.obj.value] = Cluster(propSet.val)
@@ -174,6 +176,8 @@ class VSphere:
         object_contents = self.RetrieveProperties('ComputeResource', ['host'], clusterObjs)
         hostObjs = [] # List of objs for 'HostSystem' query
         for cluster in object_contents:
+            if not hasattr(cluster, 'propSet'):
+                continue
             for propSet in cluster.propSet:
                 if propSet.name == 'host':
                     try:
@@ -193,6 +197,8 @@ class VSphere:
         object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
         vmObjs = [] # List of objs for 'VirtualMachine' query
         for host in object_contents:
+            if not hasattr(host, 'propSet'):
+                continue
             for propSet in host.propSet:
                 if propSet.name == "hardware":
                     self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
@@ -213,6 +219,8 @@ class VSphere:
         # Get list of virtual machine uuids
         object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
         for obj in object_contents:
+            if not hasattr(obj, 'propSet'):
+                continue
             for propSet in obj.propSet:
                 if propSet.name == 'config':
                     self.vms[obj.obj.value].uuid = propSet.val.uuid
@@ -271,7 +279,9 @@ class VSphere:
             for host in cluster.hosts:
                 l = []
                 for vm in host.vms:
-                    l.append(vm.uuid)
+                    # Stopped machine doesn't have any uuid
+                    if vm.uuid is not None:
+                        l.append(vm.uuid)
                 mapping[host.uuid] = l
         return mapping
 

@@ -1,9 +1,9 @@
-virt-who is agent for reporting virtual guest IDs to subscription-manager.
+virt-who is agent for reporting virtual guest IDs to subscription manager
+(SAM or Satellite).
 
-It uses libvirt-python to obtain UUIDs of all virtual guests present
-in the system (both running and stopped). It then connects to
-subscription-manager server (candlepin) and set the list of UUIDs to facts
-about host system.
+It works either locally or via remote hypervisor. It obtains list of UUIDs
+on specified hypervisor (or local system) and then it sends the list of UUIDs
+(or host/guest association to the subscription manager (SAM, Satellite).
 
 
 Installation
@@ -19,16 +19,20 @@ $ make rpm
 and then install the package
 
 
+
 Configuration
 -------------
 
-It uses rhsm configuration (usually in /etc/rhsm/rhsm.conf). The system needs
-to be registered in subscription-manager server before running the agent.
+SAM:
+    It uses rhsm configuration (usually in /etc/rhsm/rhsm.conf). The system
+    needs to be registered in subscription-manager server before running
+    the agent.
+Satellite:
+    Configuration is stored in virt-who configuration file:
+    /etc/sysconfig/virt-who
+
 
 Usage
 -----
 
-This agent has two modes of running. First [default] is to obtain UUIDs, send
-them to the server and exit. Second mode is running in infinite loop and
-monitor guests UUIDs changes. When some change happens it will be immediately
-send.
+See the manual page

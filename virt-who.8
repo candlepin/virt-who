@@ -1,8 +1,8 @@
-.TH VIRT-WHO "8" "September 2012" "virt-who"
+.TH VIRT-WHO "8" "August 2013" "virt-who"
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-b] [-o] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]
+virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -19,6 +19,10 @@ Send the list of guest IDs and exit immediately
 .TP
 \fB\-i\fR INTERVAL, \fB\-\-interval\fR=\fIINTERVAL\fR
 Acquire and send list of virtual guest each N seconds
+.IP
+.SS Virtualization backend
+.IP
+Choose virtualization backend that should be used to gather host/guest associations
 .TP
 \fB\-\-libvirt\fR
 Use libvirt to list virtual guests [default]
@@ -34,6 +38,16 @@ Register guests using RHEV\-M
 .TP
 \fB\-\-hyperv\fR
 Register guests using Hyper\-V
+.IP
+.SS Subscription manager
+.IP
+Choose where the host/guest associations should be reported
+.TP
+\fB\-\-sam\fR
+Report host/guest associations to the Subscription Asset Manager [default]
+.TP
+\fB\-\-satellite\fR
+Report host/guest associations to the Satellite
 .IP
 .SS vCenter/ESX options
 .IP
@@ -91,6 +105,19 @@ Username for connecting to Hyper\-V
 .TP
 \fB\-\-hyperv\-password\fR=\fIPASSWORD\fR
 Password for connecting to Hyper\-V
+.IP
+.SS Satellite options:
+.IP
+Use this options with \fB\-\-satellite\fR
+.TP
+\fB\-\-satellite-server\fR=\fISAT_SERVER
+Satellite server URL
+.TP
+\fB\-\-satellite-username\fR=\fISAT_USERNAME
+Username for connecting to Satellite server
+.TP
+\fB\-\-satellite-password\fR=\fISAT_PASSWORD
+Password for connecting to Satellite server
 .PP
 .SH ENVIRONMENT
 virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled
@@ -117,7 +144,7 @@ NOTE: virt-who don't print anything to terminal in this mode
 .IP
 NOTE: monitoring for events requires libvirt backend, but this mode can be used with all backends.
 
-.SS BACKEND
+.SS VIRTUALIZATION BACKEND
 
 virt-who can use couple of virtualization backends.
 .TP
@@ -155,6 +182,25 @@ Use RHEV-M as virtualization backend and specify option required to connect to R
 # virt-who --hyperv --hyperv-owner=HYPERV_OWNER  --hyperv-env=HYPERV_ENV --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
 
 Use Hyper-V as virtualization backend and specify option required to connect to Hyper-V server.
+
+.SS SUBSCRIPTION MANAGER
+
+virt-who can report host/guest associations either to Subscription Asset Manager (SAM) or to Satellite.
+.TP
+1. Subscription Asset Manager
+# virt-who
+
+# virt-who --sam
+
+System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM is shared between subscription-manager and virt-who. This is default.
+
+.TP
+2. Satellite
+# virt-who --satellite --satellite-server=SAT_SERVER --satellite-username=SAT_USERNAME --satellite-password=SAT_PASSWORD
+
+# virt-who --satellite --satellite-server=SAT_SERVER
+
+This option can't be used for monitoring local guests, use rhn-virtualization-host instead. Username and password might not be specified but in that case the system must be registered beforehand using virt-who-register-satellite command.
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.

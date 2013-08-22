@@ -31,6 +31,7 @@ from rhevm import RHEVM
 from hyperv import HyperV
 from event import virEventLoopPureStart
 from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
+from satellite import Satellite, SatelliteError
 
 import logging
 import log
@@ -39,9 +40,9 @@ from optparse import OptionParser, OptionGroup
 
 class OptionParserEpilog(OptionParser):
     """ Epilog is new in Python 2.5, we need to support Python 2.4. """
-    def __init__(self, description, epilog=None):
+    def __init__(self, usage="%prog [options]", description=None, epilog=None):
         self.myepilog = epilog
-        OptionParser.__init__(self, description)
+        OptionParser.__init__(self, usage=usage, description=description)
 
     def format_help(self, formatter=None):
         if formatter is None:
@@ -110,14 +111,24 @@ class VirtWho(object):
         Connect to the subscription manager (candlepin).
         """
         try:
-            self.subscriptionManager = SubscriptionManager(self.logger)
-            self.subscriptionManager.connect()
+            if self.options.smType == "rhsm":
+                self.subscriptionManager = SubscriptionManager(self.logger)
+                self.subscriptionManager.connect()
+            elif self.options.smType == "satellite":
+                self.subscriptionManager = Satellite(self.logger)
+                self.subscriptionManager.connect(self.options.sat_server, self.options.sat_username, self.options.sat_password)
         except NoOptionError, e:
             self.logger.exception("Error in reading configuration file (/etc/rhsm/rhsm.conf):")
-            return
+            raise
         except SubscriptionManagerError, e:
             self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
-            return
+            raise
+        except SatelliteError, e:
+            self.logger.exception("Unable to connect to the RHN Satellite:")
+            raise
+        except Exception, e:
+            self.logger.exception("Unknown error")
+            raise
 
         if self.options.virtType == "libvirt":
             self.tryRegisterEventCallback()
@@ -318,17 +329,26 @@ def main():
         sys.exit(1)
     createPidFile()
 
-    parser = OptionParserEpilog(description="Agent for reporting virtual guest IDs to subscription-manager",
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
+                                description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
-    parser.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
-    parser.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
-    parser.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
-    parser.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
-    parser.add_option("--hyperv", action="store_const", dest="virtType", const="hyperv", help="Register guests using Hyper-V")
+
+    virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
+    virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
+    virtGroup.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
+    virtGroup.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
+    virtGroup.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
+    virtGroup.add_option("--hyperv", action="store_const", dest="virtType", const="hyperv", help="Register guests using Hyper-V")
+    parser.add_option_group(virtGroup)
+
+    managerGroup = OptionGroup(parser, "Subscription manager", "Choose where the host/guest associations should be reported")
+    managerGroup.add_option("--sam", action="store_const", dest="smType", const="sam", help="Report host/guest associations to the Subscription Asset Manager [default]")
+    managerGroup.add_option("--satellite", action="store_const", dest="smType", const="satellite", help="Report host/guest associations to the Satellite")
+    parser.add_option_group(managerGroup)
 
     esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
     esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
@@ -354,6 +374,12 @@ def main():
     hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
     parser.add_option_group(hypervGroup)
 
+    satelliteGroup = OptionGroup(parser, "Satellite options", "Use this options with --satellite")
+    satelliteGroup.add_option("--satellite-server", action="store", dest="sat_server", default="", help="Satellite server URL")
+    satelliteGroup.add_option("--satellite-username", action="store", dest="sat_username", default="", help="Username for connecting to Satellite server")
+    satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
+    parser.add_option_group(satelliteGroup)
+
     (options, args) = parser.parse_args()
 
     # Handle enviromental variables
@@ -378,6 +404,14 @@ def main():
             options.interval = int(env)
     except ValueError:
         logger.warning("Interval is not number, ignoring")
+
+    env = os.getenv("VIRTWHO_SAM", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = "sam"
+
+    env = os.getenv("VIRTWHO_SATELLITE", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = "satellite"
 
     env = os.getenv("VIRTWHO_VDSM", "0").strip().lower()
     if env in ["1", "true"]:
@@ -407,6 +441,16 @@ def main():
             logger.error("Required parameter '%s' is not set, exitting" % name)
             sys.exit(1)
         return option
+
+    if options.smType == "satellite":
+        options.sat_server = checkEnv("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
+        if len(options.sat_username) == 0:
+            options.sat_username = os.getenv("VIRTWHO_SATELLITE_USERNAME", "")
+        if len(options.sat_password) == 0:
+            options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
+
+        if len(options.sat_username) == 0:
+            logger.info('Satellite username is not specified, assuming preregistered system')
 
     if options.virtType == "esx":
         options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner")

@@ -157,7 +157,11 @@ class Satellite(object):
         plan = self._assemble_plan(uuids)
         self.logger.debug("Sending plan: %s" % plan)
         # Send the mapping
-        res = self.server.registration.virt_notify(self.systemid, plan)
+        try:
+            res = self.server.registration.virt_notify(self.systemid, plan)
+        except Exception, e:
+            self.logger.exception("Unable to send host/guest assocaition to the satellite:")
+            raise SatelliteError("Unable to send host/guest assocaition to the satellite: % " % str(e))
 
         # TODO: figure out what to populate here
         result = {}

@@ -37,6 +37,7 @@ report them to the subscription manager.
 rm -rf $RPM_BUILD_ROOT
 
 make DESTDIR=$RPM_BUILD_ROOT install
+mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}
 
 # Don't run test suite in check section, because it need the system to be
 # registered to subscription-manager server
@@ -63,10 +64,12 @@ fi
 %files
 %doc README LICENSE
 %{_bindir}/virt-who
+%{_bindir}/virt-who-register-satellite
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
 %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 %{_mandir}/man8/virt-who.8.gz
+%{_sharedstatedir}/%{name}
 
 
 %changelog

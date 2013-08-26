@@ -92,8 +92,6 @@ class Satellite(object):
             self.logger.exception("Unable to refresh HW profile")
             raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
         try:
-            if not os.path.isdir(self.VAR_DIR):
-                os.mkdir(self.VAR_DIR, 0600)
             f = open(self.HYPERVISOR_SYSTEMID_FILE, "w")
             try:
                 pickle.dump(new_system, f)

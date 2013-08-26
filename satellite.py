@@ -70,8 +70,8 @@ class Satellite(object):
 
     def _register_hypervisor(self, username, password, options):
         if options is None:
-            # We need to emulate options object form argparse
-            class O(): pass
+            # We need to emulate options object from argparse
+            class O(object): pass
             options = O()
         # Fill in some defaults
         if not hasattr(options, "profile_name") or options.profile_name is None:

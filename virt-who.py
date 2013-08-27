@@ -444,13 +444,9 @@ def main():
 
     if options.smType == "satellite":
         options.sat_server = checkEnv("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
-        if len(options.sat_username) == 0:
-            options.sat_username = os.getenv("VIRTWHO_SATELLITE_USERNAME", "")
+        options.sat_username = checkEnv("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
         if len(options.sat_password) == 0:
             options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
-
-        if len(options.sat_username) == 0:
-            logger.info('Satellite username is not specified, assuming preregistered system')
 
     if options.virtType == "esx":
         options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner")

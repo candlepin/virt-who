@@ -204,7 +204,7 @@ class VirtWho(object):
             if self.options.virtType not in ["esx", "rhevm", "hyperv"]:
                 self.subscriptionManager.sendVirtGuests(virtualGuests)
             else:
-                result = self.subscriptionManager.hypervisorCheckIn(self.options.owner, self.options.env, virtualGuests)
+                result = self.subscriptionManager.hypervisorCheckIn(self.options.owner, self.options.env, virtualGuests, type=self.options.virtType)
 
                 # Show the result of hypervisorCheckIn
                 for fail in result['failedUpdate']:

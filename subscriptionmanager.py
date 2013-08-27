@@ -83,7 +83,7 @@ class SubscriptionManager:
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=uuids)
 
-    def hypervisorCheckIn(self, owner, env, mapping):
+    def hypervisorCheckIn(self, owner, env, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
 
         self.logger.debug("Sending update in hosts-to-guests mapping: %s" % mapping)

@@ -64,7 +64,6 @@ fi
 %files
 %doc README LICENSE
 %{_bindir}/virt-who
-%{_bindir}/virt-who-register-satellite
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
 %config(noreplace) %{_sysconfdir}/sysconfig/virt-who

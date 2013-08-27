@@ -132,12 +132,12 @@ class Satellite(object):
 
     def hypervisorCheckIn(self, owner, env, mapping, type=None):
 
-        for hypervisor_uuid in mapping:
+        for hypervisor_uuid, guest_uuids in mapping.items():
             self.logger.debug("Loading systemid for %s" % hypervisor_uuid)
             hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type) 
 
-            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, mapping[hypervisor_uuid]))
-            plan = self._assemble_plan(mapping[hypervisor_uuid], hypervisor_uuid, type = type)
+            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, guest_uuids))
+            plan = self._assemble_plan(guest_uuids, hypervisor_uuid, type=type)
 
             try:
                 self.logger.debug("Sending plan: %s" % plan)

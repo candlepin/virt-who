@@ -111,7 +111,7 @@ class VirtWho(object):
         Connect to the subscription manager (candlepin).
         """
         try:
-            if self.options.smType == "rhsm":
+            if self.options.smType == "sam":
                 self.subscriptionManager = SubscriptionManager(self.logger)
                 self.subscriptionManager.connect()
             elif self.options.smType == "satellite":

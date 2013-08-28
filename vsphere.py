@@ -264,11 +264,14 @@ class VSphere:
 
         # Query the VSphere server
         try:
-            retrieve_result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector, specSet=[pfs])
+            retrieve_result = result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector, specSet=[pfs])
+            while hasattr(result, "token"):
+                result = self.client.service.ContinueRetrievePropertiesEx(_this=self.sc.propertyCollector, token=retrieve_result.token)
+                retrieve_result.objects += result.objects
             if retrieve_result is None:
                 return []
             else:
-                return retrieve_result[0]
+                return retrieve_result.objects
         except suds.MethodNotFound:
             return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
 

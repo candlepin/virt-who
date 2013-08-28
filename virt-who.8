@@ -198,9 +198,7 @@ System must be registered using subscription-manager prior to using virt-who. Co
 2. Satellite
 # virt-who --satellite --satellite-server=SAT_SERVER --satellite-username=SAT_USERNAME --satellite-password=SAT_PASSWORD
 
-# virt-who --satellite --satellite-server=SAT_SERVER
-
-This option can't be used for monitoring local guests, use rhn-virtualization-host instead. Username and password might not be specified but in that case the system must be registered beforehand using virt-who-register-satellite command.
+This option can't be used for monitoring local guests, use rhn-virtualization-host instead.
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.

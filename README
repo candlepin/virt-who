@@ -3,7 +3,7 @@ virt-who is agent for reporting virtual guest IDs to subscription manager
 
 It works either locally or via remote hypervisor. It obtains list of UUIDs
 on specified hypervisor (or local system) and then it sends the list of UUIDs
-(or host/guest association to the subscription manager (SAM, Satellite).
+(or host/guest association) to the subscription manager (SAM, Satellite).
 
 
 Installation

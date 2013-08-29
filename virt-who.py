@@ -346,7 +346,7 @@ def main():
     parser.add_option_group(virtGroup)
 
     managerGroup = OptionGroup(parser, "Subscription manager", "Choose where the host/guest associations should be reported")
-    managerGroup.add_option("--sam", action="store_const", dest="smType", const="sam", help="Report host/guest associations to the Subscription Asset Manager [default]")
+    managerGroup.add_option("--sam", action="store_const", dest="smType", const="sam", default="sam", help="Report host/guest associations to the Subscription Asset Manager [default]")
     managerGroup.add_option("--satellite", action="store_const", dest="smType", const="satellite", help="Report host/guest associations to the Satellite")
     parser.add_option_group(managerGroup)
 

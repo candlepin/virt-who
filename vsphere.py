@@ -266,7 +266,7 @@ class VSphere:
         try:
             retrieve_result = result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector, specSet=[pfs])
             while hasattr(result, "token"):
-                result = self.client.service.ContinueRetrievePropertiesEx(_this=self.sc.propertyCollector, token=retrieve_result.token)
+                result = self.client.service.ContinueRetrievePropertiesEx(_this=self.sc.propertyCollector, token=result.token)
                 retrieve_result.objects += result.objects
             if retrieve_result is None:
                 return []

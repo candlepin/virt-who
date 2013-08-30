@@ -132,6 +132,9 @@ class Satellite(object):
 
     def hypervisorCheckIn(self, owner, env, mapping, type=None):
 
+        if len(mapping) == 0:
+            self.logger.info("no hypervisors found, not sending data to satellite")
+
         for hypervisor_uuid, guest_uuids in mapping.items():
             self.logger.debug("Loading systemid for %s" % hypervisor_uuid)
             hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type) 

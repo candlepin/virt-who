@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import xmlrpclib
-from ConfigParser import SafeConfigParser, NoSectionError
+from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
 class VdsmError(Exception):
@@ -55,7 +55,7 @@ class VDSM:
             else:
                 self.trust_store_path = None
             self.management_port = parser.get("addresses", "management_port")
-        except NoSectionError, e:
+        except (NoSectionError, NoOptionError), e:
             raise VdsmError("Error in vdsm configuration file: %s" % str(e))
 
     def _getLocalVdsName(self, tsPath):

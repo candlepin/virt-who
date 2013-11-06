@@ -195,8 +195,8 @@ class VSphere:
 
         # Get list of host uuids, names and virtual machines
         object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
-        vmObjs = [] # List of objs for 'VirtualMachine' query
         for host in object_contents:
+            vmObjs = [] # List of objs for 'VirtualMachine' query
             if not hasattr(host, 'propSet'):
                 continue
             for propSet in host.propSet:
@@ -209,28 +209,28 @@ class VSphere:
                             v = VM()
                             self.vms[vm.value] = v
                             self.hosts[host.obj.value].vms.append(v)
+
+                            # Get list of virtual machine uuids
+                            vm_object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
+                            for obj in vm_object_contents:
+                                if len(obj) > 1:
+                                    for propSet in obj.propSet:
+                                        if propSet.name == 'config':
+                                            # We need some uuid, let's try a couple of options
+                                            if propSet.val.uuid is not None:
+                                                self.vms[obj.obj.value].uuid = propSet.val.uuid
+                                            elif propSet.val.instanceUuid is not None:
+                                                self.vms[obj.obj.value].uuid = propSet.val.instanceUuid
+                                            else:
+                                                self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
+                                                self.vms[obj.obj.value].uuid = None
+                                else:
+                                    self.logger.error("Cannot read VM list from ESX for host %s (len(obj) <= 1)" % self.hosts[host.obj.value].uuid)
+
                     except AttributeError:
                         # This means that there is no guest on given host
                         pass
 
-        if len(vmObjs) == 0:
-            return
-
-        # Get list of virtual machine uuids
-        object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
-        for obj in object_contents:
-            if not hasattr(obj, 'propSet'):
-                continue
-            for propSet in obj.propSet:
-                if propSet.name == 'config':
-                    # We need some uuid, let's try a couple of options
-                    if propSet.val.uuid is not None:
-                        self.vms[obj.obj.value].uuid = propSet.val.uuid
-                    elif propSet.val.instanceUuid is not None:
-                        self.vms[obj.obj.value].uuid = propSet.val.instanceUuid
-                    else:
-                        self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
-                        self.vms[obj.obj.value].uuid = None
 
     def ping(self):
         return True

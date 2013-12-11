@@ -108,6 +108,8 @@ class VSphere:
     def __init__(self, logger, url, username, password):
         self.logger = logger
         self.url = url
+        self.username = username
+        self.password = password
 
         # Url must contain protocol (usualy https://)
         if not "://" in self.url:
@@ -125,9 +127,6 @@ class VSphere:
         # Service Content object defines properties of the ServiceInstance object
         self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
 
-        # Login to server using given credentials
-        self.client.service.Login(_this=self.sc.sessionManager, userName=username, password=password)
-
         self.clusters = {}
         self.hosts = {}
         self.vms = {}
@@ -137,6 +136,9 @@ class VSphere:
         Scan method does full inventory traversal on the vCenter machine. It finds
         all ComputeResources, Hosts and VirtualMachines.
         """
+
+        # Login to server using given credentials
+        self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
 
         # Clear results from last run
         self.clusters = {}

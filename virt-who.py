@@ -300,6 +300,21 @@ def daemonize(debugMode):
     os.chdir("/")
     return True
 
+def checkPidFile():
+    try:
+        f = open(PIDFILE, "r")
+        pid = int(f.read().strip())
+        try:
+            os.kill(pid, 0)
+            print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
+            sys.exit(1)
+        except OSError:
+            # Process no longer exists
+            print >>sys.stderr, "PID file exists but associated process does not, deleting PID file"
+            os.remove(PIDFILE)
+    except Exception:
+        pass
+
 def createPidFile(logger=None):
     atexit.register(cleanup)
     signal.signal(signal.SIGINT, cleanup)
@@ -324,9 +339,7 @@ def cleanup(sig=None, stack=None):
         sys.exit(0)
 
 def main():
-    if os.access(PIDFILE, os.F_OK):
-        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-        sys.exit(1)
+    checkPidFile()
     createPidFile()
 
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",

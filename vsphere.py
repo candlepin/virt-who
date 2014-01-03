@@ -115,6 +115,16 @@ class VSphere:
         if not "://" in self.url:
             self.url = "https://%s" % self.url
 
+        self.clusters = {}
+        self.hosts = {}
+        self.vms = {}
+
+    def scan(self):
+        """
+        Scan method does full inventory traversal on the vCenter machine. It finds
+        all ComputeResources, Hosts and VirtualMachines.
+        """
+
         # Connect to the vCenter server
         self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
 
@@ -126,16 +136,6 @@ class VSphere:
 
         # Service Content object defines properties of the ServiceInstance object
         self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
-
-        self.clusters = {}
-        self.hosts = {}
-        self.vms = {}
-
-    def scan(self):
-        """
-        Scan method does full inventory traversal on the vCenter machine. It finds
-        all ComputeResources, Hosts and VirtualMachines.
-        """
 
         # Login to server using given credentials
         self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)

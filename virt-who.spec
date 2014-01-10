@@ -12,8 +12,8 @@ BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
-# python-rhsm 1.0.4 contains new module for reading certificates
-Requires:       python-rhsm >= 1.0.4
+# python-rhsm 1.10.10 has required call for guestId support
+Requires:       python-rhsm >= 1.10.10
 # python-suds is required for vSphere support
 Requires:       python-suds
 # m2crypto is required for Hyper-V support

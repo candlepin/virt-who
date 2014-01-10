@@ -28,17 +28,6 @@ import subprocess
 class VdsmError(Exception):
     pass
 
-class Domain:
-    """ Class for compatibility with libvirt Domain class. Only UUID supported. """
-    def __init__(self, uuid):
-        self.uuid = uuid
-
-    def UUIDString(self):
-        return self.uuid
-
-    def __str__(self):
-        return self.uuid
-
 class VDSM:
     def __init__(self, logger):
         self.logger = logger
@@ -101,7 +90,7 @@ class VDSM:
             self.logger.error("Unable to list virtual machines: %s" % response['status']['message'])
         else:
             for vm in response['vmList']:
-                domains.append(Domain(vm['vmId']))
+                domains.append(vm['vmId'])
         return domains
 
     def ping(self):

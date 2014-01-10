@@ -13,8 +13,8 @@ BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
 Requires:       libvirt
-# python-rhsm 0.98.6 has required call for vSphere support
-Requires:       python-rhsm >= 0.98.6
+# python-rhsm 1.10.10 has required call for guestId support
+Requires:       python-rhsm >= 1.10.10
 # python-suds is required for vSphere support
 Requires:       python-suds
 Requires(post): chkconfig

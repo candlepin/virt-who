@@ -24,6 +24,16 @@ import event
 class VirtError(Exception):
     pass
 
+class Domain(dict):
+    def __init__(self, virt, domain):
+        self['guestId'] = domain.UUIDString()
+        self['attributes'] = {
+            'hypervisorType': virt.getType(),
+            'virtWhoType': "libvirt",
+            'active': 1 if domain.isActive() else 0
+        }
+        self['state'] = domain.state(0)[0]
+
 class Virt:
     """ Class for interacting with libvirt. """
     def __init__(self, logger, registerEvents=True):
@@ -52,13 +62,13 @@ class Virt:
                 if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
                     # Don't send Domain-0 on xen (zeroed uuid)
                     continue
-                domains.append(domain)
+                domains.append(Domain(self.virt, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
 
             # Non active domains
             for domainName in self.virt.listDefinedDomains():
                 domain = self.virt.lookupByName(domainName)
-                domains.append(domain)
+                domains.append(Domain(self.virt, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
         except libvirt.libvirtError, e:
             raise VirtError(str(e))
@@ -86,7 +96,7 @@ class Virt:
                         hasDomain = True
                         break
                 if not hasDomain:
-                    l.append(dom)
+                    l.append(Domain(self.virt, dom))
             try:
                 self.changedCallback(l)
             except Exception, e:

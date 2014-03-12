@@ -14,13 +14,37 @@
 import struct
 import base64
 import string
-import hashlib
+import subprocess
+
+try:
+    from hashlib import md5, algorithms
+except ImportError:
+    algorithms = []
+    from md5 import md5
+
 import hmac
 import random
 from socket import gethostname
 
 import M2Crypto
 
+# Use md4 from hashlib or directly from openssl
+class OpenSslMd4(object):
+    def __init__(self, data):
+        self.data = data
+    def digest(self):
+        return subprocess.Popen(["openssl", "md4", "-binary"], stdin=subprocess.PIPE, stdout=subprocess.PIPE).communicate(self.data)[0]
+
+class HashlibMd4(object):
+    def __init__(self, data):
+        self.md4 = hashlib.new('md4', data)
+    def digest(self):
+        return self.md4.digest()
+
+if 'md4' in algorithms:
+    md4 = HashlibMd4
+else:
+    md4 = OpenSslMd4
 
 # DES handling functions
 
@@ -411,7 +435,7 @@ def ComputeResponse(ResponseKeyNT, ResponseKeyLM, ServerChallenge, ServerName, C
 
 def ntlm2sr_calc_resp(ResponseKeyNT, ServerChallenge, ClientChallenge='\xaa'*8):
     LmChallengeResponse = ClientChallenge + '\0'*16
-    sess = hashlib.md5(ServerChallenge+ClientChallenge).digest()
+    sess = md5(ServerChallenge+ClientChallenge).digest()
     NtChallengeResponse = calc_resp(ResponseKeyNT, sess[0:8])
     return (NtChallengeResponse, LmChallengeResponse)
 
@@ -431,7 +455,7 @@ def create_LM_hashed_password_v1(passwd):
 
 def create_NT_hashed_password_v1(passwd, user=None, domain=None):
     "create NT hashed password"
-    digest = hashlib.new('md4', passwd.encode('utf-16le')).digest()
+    digest = md4(passwd.encode('utf-16le')).digest()
     return digest
 
 def create_NT_hashed_password_v2(passwd, user, domain):
@@ -442,7 +466,7 @@ def create_NT_hashed_password_v2(passwd, user, domain):
     return digest
 
 def create_sessionbasekey(password):
-    return hashlib.new('md4', create_NT_hashed_password_v1(password)).digest()
+    return md4(create_NT_hashed_password_v1(password)).digest()
 
 if __name__ == "__main__":
     def ByteToHex( byteStr ):

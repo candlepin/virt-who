@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.8
+Version:        0.9
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -12,11 +12,12 @@ BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:      noarch
 BuildRequires:  python2-devel
 Requires:       libvirt-python
-Requires:       libvirt
-# python-rhsm 0.98.6 has required call for vSphere support
-Requires:       python-rhsm >= 0.98.6
+# python-rhsm 1.0.4 contains new module for reading certificates
+Requires:       python-rhsm >= 1.0.4
 # python-suds is required for vSphere support
 Requires:       python-suds
+# m2crypto is required for Hyper-V support
+Requires:       m2crypto
 Requires(post): chkconfig
 Requires(preun): chkconfig
 # This is for /sbin/service
@@ -72,6 +73,11 @@ fi
 
 
 %changelog
+* Thu Mar 13 2014 Radek Novacek <rnovacek@redhat.com> 0.9-1
+- Remove libvirt dependency
+- Add dependency on m2crypto
+- Version 0.9
+
 * Fri Sep 14 2012 Radek Novacek <rnovacek@redhat.com> 0.8-1
 - Version 0.8
 

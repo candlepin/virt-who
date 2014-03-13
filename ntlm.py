@@ -17,6 +17,7 @@ import string
 import subprocess
 
 try:
+    import hashlib
     from hashlib import md5, algorithms
 except ImportError:
     algorithms = []

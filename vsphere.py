@@ -289,6 +289,9 @@ class VSphere:
         mapping = {}
         for cluster in self.clusters.values():
             for host in cluster.hosts:
+                if host.uuid is None:
+                    # Filter out hosts without uuid
+                    continue
                 l = []
                 for vm in host.vms:
                     # Stopped machine doesn't have any uuid

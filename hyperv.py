@@ -67,6 +67,7 @@ class HyperVSoap(object):
 
     def post(self, body):
         self.headers["Content-Length"] = "%d" % len(body)
+        self.headers["Content-Type"] = "application/soap+xml;charset=UTF-8"
         self.connection.request("POST", self.url, body=body, headers=self.headers)
         response = self.connection.getresponse()
         if response.status == 401:
@@ -151,6 +152,10 @@ class HyperV:
         self.logger = logger
         self.username = username
         self.password = password
+
+        # First try to use old API (root/virtualization namespace) if doesn't
+        # work, go with root/virtualization/v2
+        self.useNewApi = False
 
         # Parse URL and create proper one
         if "//" not in url:
@@ -273,8 +278,22 @@ class HyperV:
         guests = []
         connection, headers = self.connect()
         hypervsoap = HyperVSoap(self.url, connection, headers)
-        # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
-        uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData where SettingType = 3")
+        try:
+            if not self.useNewApi:
+                # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
+                uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData where SettingType = 3", "root/virtualization")
+            else:
+                # Filter out Planned VMs and snapshots, see
+                # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
+                uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData "
+                        "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'", "root/virtualization/v2")
+        except HyperVException, e:
+            if not self.useNewApi:
+                self.logger.debug("Error when enumerating using root/virtualization namespace, trying root/virtualization/v2 namespace")
+                self.useNewApi = True
+                return self.getHostGuestMapping()
+            raise
+
         for instance in hypervsoap.Pull(uuid):
             guests.append(HyperV.decodeWinUUID(instance["BIOSGUID"]))
         uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")

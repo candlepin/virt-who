@@ -67,7 +67,7 @@ fi
 %{_bindir}/virt-who
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
-%config(noreplace) %{_sysconfdir}/sysconfig/virt-who
+%attr(600, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 %{_mandir}/man8/virt-who.8.gz
 %{_sharedstatedir}/%{name}
 

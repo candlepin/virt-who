@@ -23,6 +23,7 @@ import os
 import time
 import atexit
 import signal
+import errno
 
 from virt import Virt, VirtError
 from vdsm import VDSM
@@ -126,7 +127,10 @@ class VirtWho(object):
         except SatelliteError, e:
             self.logger.exception("Unable to connect to the RHN Satellite:")
             raise
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception, e:
+            exceptionCheck(e)
             self.logger.exception("Unknown error")
             raise
 
@@ -176,7 +180,10 @@ class VirtWho(object):
         logger = self.logger
         try:
             self.checkConnections()
-        except Exception,e:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, e:
+            exceptionCheck(e)
             if retry:
                 logger.exception("Unable to create connection:")
                 return self._send(False)
@@ -189,7 +196,10 @@ class VirtWho(object):
                 virtualGuests = self.virt.listDomains()
             else:
                 virtualGuests = self.virt.getHostGuestMapping()
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception, e:
+            exceptionCheck(e)
             # Communication with virtualization supervisor failed
             self.virt = None
             # Retry once
@@ -215,7 +225,10 @@ class VirtWho(object):
                 for created in result['created']:
                     guests = [x['guestId'] for x in created['guestIds']]
                     logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+        except (KeyboardInterrupt, SystemExit):
+            raise
         except Exception, e:
+            exceptionCheck(e)
             # Communication with subscription manager failed
             self.subscriptionManager = None
             # Retry once
@@ -312,6 +325,8 @@ def checkPidFile():
             # Process no longer exists
             print >>sys.stderr, "PID file exists but associated process does not, deleting PID file"
             os.remove(PIDFILE)
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except Exception:
         pass
 
@@ -325,6 +340,8 @@ def createPidFile(logger=None):
         f = open(PIDFILE, "w")
         f.write("%d" % os.getpid())
         f.close()
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except Exception, e:
         if logger is not None:
             logger.error("Unable to create pid file: %s" % str(e))
@@ -332,11 +349,20 @@ def createPidFile(logger=None):
 def cleanup(sig=None, stack=None):
     try:
         os.remove(PIDFILE)
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except Exception:
         pass
 
-    if sig is not None and sig in [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]:
-        sys.exit(0)
+def exceptionCheck(e):
+    try:
+        # This happens when connection to server is interrupted (CTRL+C or signal)
+        if e.args[0] == errno.EALREADY:
+            sys.exit(0)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except Exception:
+        pass
 
 def main():
     checkPidFile()
@@ -522,6 +548,8 @@ def main():
     signal.signal(signal.SIGHUP, virtWho.queueReload)
     try:
         virtWho.checkConnections()
+    except (KeyboardInterrupt, SystemExit):
+        raise
     except Exception:
         pass
 
@@ -566,7 +594,7 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except SystemExit:
+    except (SystemExit, KeyboardInterrupt):
         raise
     except Exception, e:
         logger = log.getLogger(False, False)

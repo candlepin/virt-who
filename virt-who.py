@@ -264,7 +264,13 @@ class VirtWho(object):
             pass
         self.virt = None
         self.subscriptionManager = None
-        self.checkConnections()
+        try:
+            self.checkConnections()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, e:
+            exceptionCheck(e)
+            pass
         self.logger.debug("virt-who configution reloaded")
         self.doReload = False
 

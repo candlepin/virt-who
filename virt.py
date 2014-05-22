@@ -34,7 +34,11 @@ class Domain(dict):
         }
         if domain.isActive():
             self['attributes']['active'] = 1
-        self['state'] = domain.state(0)[0]
+        try:
+            self['state'] = domain.state(0)[0]
+        except AttributeError:
+            # Some versions of libvirt doesn't have domain.state() method
+            pass
 
 class Virt:
     """ Class for interacting with libvirt. """

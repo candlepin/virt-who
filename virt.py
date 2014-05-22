@@ -30,8 +30,10 @@ class Domain(dict):
         self['attributes'] = {
             'hypervisorType': virt.getType(),
             'virtWhoType': "libvirt",
-            'active': 1 if domain.isActive() else 0
+            'active': 0
         }
+        if domain.isActive():
+            self['attributes']['active'] = 1
         self['state'] = domain.state(0)[0]
 
 class Virt:

@@ -25,10 +25,16 @@ import xmlrpclib
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
+from virt import DirectVirt
+
+
 class VdsmError(Exception):
     pass
 
-class VDSM:
+
+class Vdsm(DirectVirt):
+    CONFIG_TYPE = "vdsm"
+
     def __init__(self, logger):
         self.logger = logger
         self._readConfig("/etc/vdsm/vdsm.conf")
@@ -48,8 +54,9 @@ class VDSM:
             raise VdsmError("Error in vdsm configuration file: %s" % str(e))
 
     def _getLocalVdsName(self, tsPath):
-        p = subprocess.Popen(['/usr/bin/openssl', 'x509', '-noout', '-subject', '-in',
-                '%s/certs/vdsmcert.pem' % tsPath], stdout=subprocess.PIPE, close_fds=True)
+        p = subprocess.Popen([
+            '/usr/bin/openssl', 'x509', '-noout', '-subject', '-in',
+            '%s/certs/vdsmcert.pem' % tsPath], stdout=subprocess.PIPE, close_fds=True)
         out, err = p.communicate()
         if p.returncode != 0:
             return '0'
@@ -100,5 +107,5 @@ class VDSM:
 if __name__ == '__main__':
     import logging
     logger = logging.getLogger("rhsm-app." + __name__)
-    vdsm = VDSM(logger)
+    vdsm = Vdsm(logger)
     print vdsm.listDomains()

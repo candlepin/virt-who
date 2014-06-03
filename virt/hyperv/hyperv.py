@@ -1,13 +1,35 @@
+"""
+Module for communcating with Hyper-V, part of virt-who
+
+Copyright (C) 2014 Radek Novacek <rnovacek@redhat.com>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
 
 import sys
 import httplib
 import urlparse
 import base64
 
+import virt
+
 try:
     from uuid import uuid1
 except ImportError:
     import subprocess
+
     def uuid1():
         # fallback to calling commandline uuidgen
         return subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0].strip()
@@ -21,10 +43,10 @@ except ImportError:
 import ntlm
 
 NAMESPACES = {
-    's':     'http://www.w3.org/2003/05/soap-envelope',
-    'wsa':   'http://schemas.xmlsoap.org/ws/2004/08/addressing',
+    's': 'http://www.w3.org/2003/05/soap-envelope',
+    'wsa': 'http://schemas.xmlsoap.org/ws/2004/08/addressing',
     'wsman': 'http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd',
-    'wsen':  'http://schemas.xmlsoap.org/ws/2004/09/enumeration'
+    'wsen': 'http://schemas.xmlsoap.org/ws/2004/09/enumeration'
 }
 
 ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
@@ -32,6 +54,7 @@ ENVELOPE = """<?xml version="1.0" encoding="UTF-8"?>
     %s
     %s
 </s:Envelope>"""
+
 
 def getHeader(action):
     return """<s:Header>
@@ -44,11 +67,13 @@ def getHeader(action):
         </wsa:ReplyTo>
     </s:Header>"""
 
+
 ENUMERATE_BODY = """<s:Body>
         <wsen:Enumerate>
             <wsman:Filter Dialect="http://schemas.microsoft.com/wbem/wsman/1/WQL">%(query)s</wsman:Filter>
         </wsen:Enumerate>
     </s:Body>"""
+
 
 PULL_BODY = """<s:Body>
         <wsen:Pull>
@@ -56,8 +81,10 @@ PULL_BODY = """<s:Body>
         </wsen:Pull>
     </s:Body>"""
 
+
 ENUMERATE_XML = ENVELOPE % (getHeader("Enumerate"), ENUMERATE_BODY)
 PULL_XML = ENVELOPE % (getHeader("Pull"), PULL_BODY)
+
 
 class HyperVSoap(object):
     def __init__(self, url, connection, headers):
@@ -92,7 +119,7 @@ class HyperVSoap(object):
         return properties
 
     def Enumerate(self, query, namespace="root/virtualization"):
-        data = ENUMERATE_XML % { 'url': self.url, 'query': query, 'namespace': namespace }
+        data = ENUMERATE_XML % {'url': self.url, 'query': query, 'namespace': namespace}
         response = self.post(data)
         d = response.read()
         xml = ElementTree.fromstring(d)
@@ -110,7 +137,7 @@ class HyperVSoap(object):
         return contexts[0].text
 
     def _PullOne(self, uuid, namespace):
-        data = PULL_XML % { 'url': self.url, 'EnumerationContext': uuid, 'namespace': namespace }
+        data = PULL_XML % {'url': self.url, 'EnumerationContext': uuid, 'namespace': namespace}
         response = self.post(data)
         d = response.read()
         xml = ElementTree.fromstring(d)
@@ -140,18 +167,22 @@ class HyperVSoap(object):
         return instances
 
 
-class HyperVException(Exception):
+class HyperVException(virt.VirtError):
     pass
+
 
 class HyperVAuthFailed(HyperVException):
     pass
 
 
-class HyperV:
-    def __init__(self, logger, url, username, password):
+class HyperV(virt.HypervisorVirt):
+    CONFIG_TYPE = "hyperv"
+
+    def __init__(self, logger, config):
         self.logger = logger
-        self.username = username
-        self.password = password
+        url = config.server
+        self.username = config.username
+        self.password = config.password
 
         # First try to use old API (root/virtualization namespace) if doesn't
         # work, go with root/virtualization/v2
@@ -177,7 +208,7 @@ class HyperV:
         logger.debug("Hyper-V url: %s" % self.url)
 
         # Check if we have domain defined and set flags accordingly
-        user_parts = username.split('\\', 1)
+        user_parts = self.username.split('\\', 1)
         if len(user_parts) == 1:
             self.username = user_parts[0]
             self.domainname = ''
@@ -285,8 +316,10 @@ class HyperV:
             else:
                 # Filter out Planned VMs and snapshots, see
                 # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
-                uuid = hypervsoap.Enumerate("select BIOSGUID from Msvm_VirtualSystemSettingData "
-                        "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'", "root/virtualization/v2")
+                uuid = hypervsoap.Enumerate(
+                    "select BIOSGUID from Msvm_VirtualSystemSettingData "
+                    "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
+                    "root/virtualization/v2")
         except HyperVException, e:
             if not self.useNewApi:
                 self.logger.debug("Error when enumerating using root/virtualization namespace, trying root/virtualization/v2 namespace")
@@ -300,7 +333,7 @@ class HyperV:
         host = None
         for instance in hypervsoap.Pull(uuid, "root/cimv2"):
             host = HyperV.decodeWinUUID(instance["UUID"])
-        return { host: guests }
+        return {host: guests}
 
     def ping(self):
         return True

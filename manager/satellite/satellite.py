@@ -18,37 +18,46 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import sys
-import os
 import xmlrpclib
 import pickle
 
-class SatelliteError(Exception):
+from manager import Manager, ManagerError
+
+
+class SatelliteError(ManagerError):
     def __init__(self, message):
         self.message = message
 
     def __str__(self):
         return self.message
 
-class Satellite(object):
+
+class Satellite(Manager):
+    smType = "satellite"
     """ Class for interacting with satellite (RHN Classic). """
-    HYPERVISOR_SYSTEMID_FILE="/var/lib/virt-who/hypervisor-systemid-%s"
-    def __init__(self, logger):
+    HYPERVISOR_SYSTEMID_FILE = "/var/lib/virt-who/hypervisor-systemid-%s"
+
+    def __init__(self, logger, options):
         self.logger = logger
         self.server = None
+        self.options = options
 
-    def connect(self, server, username, password, options=None, force_register=False):
-        if not server.startswith("http://") and not server.startswith("https://"):
-            server = "https://%s" % server
-        if not server.endswith("XMLRPC"):
-            server = "%s/XMLRPC" % server
+    def _connect(self):
+        if not self.options.server.startswith("http://") and not self.options.server.startswith("https://"):
+            self.options.server = "https://%s" % self.options.server
+        if not self.options.server.endswith("XMLRPC"):
+            self.options.server = "%s/XMLRPC" % self.options.server
 
-        self.username = username
-        self.password = password
-
-        self.logger.debug("Initializing satellite connection to %s" % server)
+        self.username = self.options.username
+        self.password = self.options.password
         try:
-            self.server = xmlrpclib.Server(server, verbose=0)
+            self.force_register = self.options.force_register
+        except AttributeError:
+            self.force_register = False
+
+        self.logger.debug("Initializing satellite connection to %s" % self.options.server)
+        try:
+            self.server = xmlrpclib.Server(self.options.server, verbose=0)
         except Exception:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server")
@@ -58,14 +67,17 @@ class Satellite(object):
         systemid_filename = self.HYPERVISOR_SYSTEMID_FILE % hypervisor_uuid
         # attempt to read the existing systemid file for the hypervisor
         try:
+            if self.force_register:
+                raise IOError()
             self.logger.debug("Loading system id info from %s" % systemid_filename)
             new_system = pickle.load(open(systemid_filename, "rb"))
         except IOError:
             # assume file was not found, create a new hypervisor
             try:
                 # TODO: what to do here? 6Server will consume subscription
-                new_system = self.server.registration.new_system_user_pass("%s hypervisor %s" % (type, hypervisor_uuid),
-                        "unknown", "6Server", "x86_64", self.username, self.password, {})
+                new_system = self.server.registration.new_system_user_pass(
+                    "%s hypervisor %s" % (type, hypervisor_uuid),
+                    "unknown", "6Server", "x86_64", self.username, self.password, {})
                 self.server.registration.refresh_hw_profile(new_system['system_id'], [])
             except Exception, e:
                 self.logger.exception("Unable to refresh HW profile")
@@ -95,24 +107,21 @@ class Satellite(object):
 
     def _assemble_plan(self, hypervisor_mapping, hypervisor_uuid, type):
 
-        # Get rid of dashes from UUID, spacewalk does not like them
-        #hypervisor_uuid = (str(hypervisor_uuid).replace("-", ""))
         events = []
 
         # the stub_instance_info is not used by the report. When the guest system checks in, it will provide
         # actual hardware info
         stub_instance_info = {
-            'vcpus' : 1,
-            'memory_size' : 0,
-            'virt_type' : 'fully_virtualized',
-            'state' : 'running',
+            'vcpus': 1,
+            'memory_size': 0,
+            'virt_type': 'fully_virtualized',
+            'state': 'running',
         }
 
         # again, remove dashes
         guest_uuids = []
         for g_uuid in hypervisor_mapping:
             guest_uuids.append(str(g_uuid).replace("-", ""))
-
 
         # TODO: spacewalk wants all zeroes for the hypervisor uuid??
         events.append([0, 'exists', 'system', {'identity': 'host', 'uuid': '0000000000000000'}])
@@ -131,13 +140,15 @@ class Satellite(object):
         raise SatelliteError("virt-who does not support sending local hypervisor data to satellite; use rhn-virtualization-host instead")
 
     def hypervisorCheckIn(self, owner, env, mapping, type=None):
+        self._connect()
 
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
         if len(mapping) == 0:
             self.logger.info("no hypervisors found, not sending data to satellite")
 
         for hypervisor_uuid, guest_uuids in mapping.items():
             self.logger.debug("Loading systemid for %s" % hypervisor_uuid)
-            hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type) 
+            hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type)
 
             self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, guest_uuids))
             plan = self._assemble_plan(guest_uuids, hypervisor_uuid, type=type)

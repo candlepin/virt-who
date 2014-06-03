@@ -20,6 +20,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import suds
+from urllib2 import URLError
+
+import virt
+
 
 def get_search_filter_spec(client, begin_entity, property_spec):
     """ Build a PropertyFilterSpec capable of full inventory traversal.
@@ -104,15 +108,17 @@ def get_search_filter_spec(client, begin_entity, property_spec):
     return pfs
 
 
-class VSphere:
-    def __init__(self, logger, url, username, password):
+class Esx(virt.HypervisorVirt):
+    CONFIG_TYPE = "esx"
+
+    def __init__(self, logger, config):
         self.logger = logger
-        self.url = url
-        self.username = username
-        self.password = password
+        self.url = config.server
+        self.username = config.username
+        self.password = config.password
 
         # Url must contain protocol (usualy https://)
-        if not "://" in self.url:
+        if "://" not in self.url:
             self.url = "https://%s" % self.url
 
         self.clusters = {}
@@ -121,12 +127,16 @@ class VSphere:
 
     def scan(self):
         """
-        Scan method does full inventory traversal on the vCenter machine. It finds
-        all ComputeResources, Hosts and VirtualMachines.
+        Scan method does full inventory traversal on the vCenter machine.
+        It finds all ComputeResources, Hosts and VirtualMachines.
         """
 
         # Connect to the vCenter server
-        self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
+        try:
+            self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
+        except URLError, e:
+            self.logger.exception("Unable to connect to ESX")
+            raise virt.VirtError(str(e))
 
         self.client.set_options(location="%s/sdk" % self.url)
 
@@ -138,7 +148,11 @@ class VSphere:
         self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
 
         # Login to server using given credentials
-        self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
+        try:
+            self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
+        except suds.WebFault, e:
+            self.logger.exception("Unable to login to ESX")
+            raise virt.VirtError(str(e))
 
         # Clear results from last run
         self.clusters = {}
@@ -151,15 +165,17 @@ class VSphere:
         ts.pathSet = 'name'
         ts.all = True
         try:
-            retrieve_result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector,
-                    specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
+            retrieve_result = self.client.service.RetrievePropertiesEx(
+                _this=self.sc.propertyCollector,
+                specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
             if retrieve_result is None:
                 object_content = []
             else:
                 object_content = retrieve_result[0]
         except suds.MethodNotFound:
-            object_content = self.client.service.RetrieveProperties(_this=self.sc.propertyCollector,
-                    specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
+            object_content = self.client.service.RetrieveProperties(
+                _this=self.sc.propertyCollector,
+                specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
 
         # Get properties of each cluster
         clusterObjs = [] # List of objs for 'ComputeResource' query
@@ -232,7 +248,6 @@ class VSphere:
                     except AttributeError:
                         # This means that there is no guest on given host
                         pass
-
 
     def ping(self):
         return True
@@ -311,15 +326,18 @@ class VSphere:
                 for vm in host.vms:
                     print "\t\tVirtualMachine: %s" % vm.uuid
 
+
 class Cluster:
     def __init__(self, name):
         self.name = name
         self.hosts = []
 
+
 class Host:
     def __init__(self):
         self.uuid = None
         self.vms = []
+
 
 class VM:
     def __init__(self):
@@ -333,6 +351,8 @@ if __name__ == '__main__':
 
     import logging
     logger = logging.Logger("")
-    vsphere = VSphere(logger, sys.argv[1], sys.argv[2], sys.argv[3])
+    from config import Config
+    config = Config('esx', 'esx', sys.argv[1], sys.argv[2], sys.argv[3])
+    vsphere = Esx(logger, config)
     vsphere.scan()
     vsphere.printLayout()

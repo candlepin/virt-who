@@ -24,20 +24,18 @@ import time
 import atexit
 import signal
 import errno
+import threading
 
+from daemon import daemon
 from virt import Virt, VirtError
-from vdsm import VDSM
-from vsphere import VSphere
-from rhevm import RHEVM
-from hyperv import HyperV
-from event import virEventLoopPureStart
-from subscriptionmanager import SubscriptionManager, SubscriptionManagerError
-from satellite import Satellite, SatelliteError
+from manager import Manager, ManagerError
+from config import Config, ConfigManager
 
 import logging
 import log
 
 from optparse import OptionParser, OptionGroup
+
 
 class OptionParserEpilog(OptionParser):
     """ Epilog is new in Python 2.5, we need to support Python 2.4. """
@@ -66,6 +64,7 @@ DefaultInterval = 3600 # Once per hour
 
 PIDFILE = "/var/run/virt-who.pid"
 
+
 class VirtWho(object):
     def __init__(self, logger, options):
         """
@@ -77,88 +76,15 @@ class VirtWho(object):
         """
         self.logger = logger
         self.options = options
+        self.sync_event = threading.Event()
 
-        self.virt = None
-        self.subscriptionManager = None
+        self.configManager = ConfigManager()
+        for config in self.configManager.configs:
+            logger.debug("Using config named '%s'" % config.name)
 
         self.unableToRecoverStr = "Unable to recover"
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
-
-        # True if reload is queued
-        self.doReload = False
-
-
-    def initVirt(self):
-        """
-        Connect to the virtualization supervisor (libvirt or VDSM)
-        """
-        if self.options.virtType == "vdsm":
-            self.virt = VDSM(self.logger)
-        elif self.options.virtType == "libvirt":
-            self.virt = Virt(self.logger, registerEvents=self.options.background)
-            # We can listen for libvirt events
-            self.tryRegisterEventCallback()
-        elif self.options.virtType == "rhevm":
-            self.virt = RHEVM(self.logger, self.options.server, self.options.username, self.options.password)
-        elif self.options.virtType == "hyperv":
-            self.virt = HyperV(self.logger, self.options.server, self.options.username, self.options.password)
-        else:
-            # ESX
-            self.virt = VSphere(self.logger, self.options.server, self.options.username, self.options.password)
-
-    def initSM(self):
-        """
-        Connect to the subscription manager (candlepin).
-        """
-        try:
-            if self.options.smType == "sam":
-                self.subscriptionManager = SubscriptionManager(self.logger)
-                self.subscriptionManager.connect()
-            elif self.options.smType == "satellite":
-                self.subscriptionManager = Satellite(self.logger)
-                self.subscriptionManager.connect(self.options.sat_server, self.options.sat_username, self.options.sat_password)
-        except NoOptionError, e:
-            self.logger.exception("Error in reading configuration file (/etc/rhsm/rhsm.conf):")
-            raise
-        except SubscriptionManagerError, e:
-            self.logger.exception("Unable to obtain status from server, UEPConnection is likely not usable:")
-            raise
-        except SatelliteError, e:
-            self.logger.exception("Unable to connect to the RHN Satellite:")
-            raise
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception, e:
-            exceptionCheck(e)
-            self.logger.exception("Unknown error")
-            raise
-
-        if self.options.virtType == "libvirt":
-            self.tryRegisterEventCallback()
-
-    def tryRegisterEventCallback(self):
-        """
-        This method register the handler which listen to guest changes
-
-        If virt-who is running in background mode with libvirt backend, it can
-        monitor virt guests changes and send updates as soon as the change happens,
-
-        """
-        if self.options.background and self.options.virtType == "libvirt":
-            if self.virt is not None and self.subscriptionManager is not None:
-                # Send list of virt guests when something changes in libvirt
-                self.virt.domainEventRegisterCallback(self.subscriptionManager.sendVirtGuests)
-
-    def checkConnections(self):
-        """
-        Check if connection to subscription manager and virtualization supervisor
-        is established and reconnect if needed.
-        """
-        if self.subscriptionManager is None:
-            self.initSM()
-        if self.virt is None:
-            self.initVirt()
 
     def send(self):
         """
@@ -167,9 +93,13 @@ class VirtWho(object):
         return - True if sending is successful, False otherwise
         """
         # Try to send it twice
-        return self._send(True)
+        result = True
+        for config in self.configManager.configs:
+            if not self._send(config, True):
+                result = False
+        return result
 
-    def _send(self, retry):
+    def _send(self, config, retry):
         """
         Send list of uuids to subscription manager. This method will call itself
         once if sending fails.
@@ -177,188 +107,85 @@ class VirtWho(object):
         retry - Should be True on first run, False on second.
         return - True if sending is successful, False otherwise
         """
-        logger = self.logger
         try:
-            self.checkConnections()
+            virtualGuests = self._readGuests(config)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
             exceptionCheck(e)
-            if retry:
-                logger.exception("Unable to create connection:")
-                return self._send(False)
-            else:
-                logger.error(self.unableToRecoverStr)
-                return False
-
-        try:
-            if self.options.virtType not in ["esx", "rhevm", "hyperv"]:
-                virtualGuests = self.virt.listDomains()
-            else:
-                virtualGuests = self.virt.getHostGuestMapping()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception, e:
-            exceptionCheck(e)
-            # Communication with virtualization supervisor failed
-            self.virt = None
             # Retry once
             if retry:
-                logger.exception("Error in communication with virt backend, trying to recover:")
-                return self._send(False)
+                self.logger.exception("Error in communication with virtualization backend, trying to recover:")
+                return self._send(config, False)
             else:
-                logger.error(self.unableToRecoverStr)
+                self.logger.error(self.unableToRecoverStr)
                 return False
 
         try:
-            if self.options.virtType not in ["esx", "rhevm", "hyperv"]:
-                self.subscriptionManager.sendVirtGuests(virtualGuests)
-            else:
-                result = self.subscriptionManager.hypervisorCheckIn(self.options.owner, self.options.env, virtualGuests, type=self.options.virtType)
-
-                # Show the result of hypervisorCheckIn
-                for fail in result['failedUpdate']:
-                    logger.error("Error during update list of guests: %s", str(fail))
-                for updated in result['updated']:
-                    guests = [x['guestId'] for x in updated['guestIds']]
-                    logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
-                for created in result['created']:
-                    guests = [x['guestId'] for x in created['guestIds']]
-                    logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+            self._sendGuests(config, virtualGuests)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
-            exceptionCheck(e)
             # Communication with subscription manager failed
-            self.subscriptionManager = None
+            exceptionCheck(e)
             # Retry once
             if retry:
-                logger.exception("Error in communication with subscription manager, trying to recover:")
-                return self._send(False)
+                self.logger.exception("Error in communication with subscription manager, trying to recover:")
+                return self._send(config, False)
             else:
-                logger.error(self.unableToRecoverStr)
+                self.logger.error(self.unableToRecoverStr)
                 return False
-
         return True
 
-    def ping(self):
-        """
-        Test if connection to virtualization manager is alive.
+    def _readGuests(self, config):
+        virt = Virt.fromConfig(self.logger, config)
+        if not self.options.oneshot and virt.canMonitor():
+            virt.startMonitoring(self.sync_event)
+        if config.type not in ["esx", "rhevm", "hyperv"]:
+            return virt.listDomains()
+        else:
+            return virt.getHostGuestMapping()
 
-        return - True if connection is alive, False otherwise
-        """
-        if self.virt is None:
-            return False
-        return self.virt.ping()
+    def _sendGuests(self, config, virtualGuests):
+        manager = Manager.fromOptions(self.logger, self.options)
+        if config.type not in ["esx", "rhevm", "hyperv"]:
+            manager.sendVirtGuests(virtualGuests)
+        else:
+            result = manager.hypervisorCheckIn(config, virtualGuests)
 
-    def queueReload(self, *p):
-        """
-        Reload virt-who configuration. Called on SIGHUP signal arrival.
-        """
-        self.doReload = True
+            # Show the result of hypervisorCheckIn
+            for fail in result['failedUpdate']:
+                logger.error("Error during update list of guests: %s", str(fail))
+            for updated in result['updated']:
+                guests = [x['guestId'] for x in updated['guestIds']]
+                logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+            for created in result['created']:
+                guests = [x['guestId'] for x in created['guestIds']]
+                logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
 
-    def reloadConfig(self):
+    def run(self):
+        if self.options.background and self.options.virtType == "libvirt":
+            self.logger.debug("Starting infinite loop with %d seconds interval and event handling" % self.options.interval)
+        else:
+            self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
+
+        while 1:
+            # Run in infinite loop and send list of UUIDs every 'options.interval' seconds
+
+            if self.send():
+                timeout = self.options.interval
+            else:
+                timeout = RetryInterval
+
+            self.sync_event.wait(timeout)
+            self.sync_event.clear()
+
+    def reload(self):
         try:
-            self.virt.virt.close()
-        except AttributeError:
-            pass
-        self.virt = None
-        self.subscriptionManager = None
-        try:
-            self.checkConnections()
-        except (KeyboardInterrupt, SystemExit):
+            self.sync_event.set()
+        except Exception:
             raise
-        except Exception, e:
-            exceptionCheck(e)
-            pass
-        self.logger.debug("virt-who configution reloaded")
-        self.doReload = False
 
-
-def daemonize(debugMode):
-    """ Perform double-fork and redirect std* to /dev/null """
-
-    # First fork
-    try:
-        pid = os.fork()
-    except OSError:
-        return False
-
-    if pid > 0:
-        # Parent process
-        os._exit(0)
-
-    # First child process
-
-    # Create session and set process group ID
-    os.setsid()
-
-    # Second fork
-    try:
-        pid = os.fork()
-    except OSError:
-        return False
-
-    if pid > 0:
-        # Parent process
-        os._exit(0)
-
-    # Second child process
-
-    # Redirect std* to /dev/null
-    devnull = os.open("/dev/null", os.O_RDWR)
-    os.dup2(devnull, 0)
-    os.dup2(devnull, 1)
-    # Don't redirect stderr in debug mode, we need to write debugging output there
-    if not debugMode:
-        os.dup2(devnull, 2)
-
-    # Reset file creation mask
-    os.umask(0)
-    # Forget current working directory
-    os.chdir("/")
-    return True
-
-def checkPidFile():
-    try:
-        f = open(PIDFILE, "r")
-        pid = int(f.read().strip())
-        try:
-            os.kill(pid, 0)
-            print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-            sys.exit(1)
-        except OSError:
-            # Process no longer exists
-            print >>sys.stderr, "PID file exists but associated process does not, deleting PID file"
-            os.remove(PIDFILE)
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except Exception:
-        pass
-
-def createPidFile(logger=None):
-    atexit.register(cleanup)
-    signal.signal(signal.SIGINT, cleanup)
-    signal.signal(signal.SIGTERM, cleanup)
-
-    # Write pid to pidfile
-    try:
-        f = open(PIDFILE, "w")
-        f.write("%d" % os.getpid())
-        f.close()
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except Exception, e:
-        if logger is not None:
-            logger.error("Unable to create pid file: %s" % str(e))
-
-def cleanup(sig=None, stack=None):
-    try:
-        os.remove(PIDFILE)
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except Exception:
-        pass
 
 def exceptionCheck(e):
     try:
@@ -370,10 +197,8 @@ def exceptionCheck(e):
     except Exception:
         pass
 
-def main():
-    checkPidFile()
-    createPidFile()
 
+def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
@@ -383,7 +208,7 @@ def main():
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
-    virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default="libvirt", help="Use libvirt to list virtual guests [default]")
+    virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
     virtGroup.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
     virtGroup.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
     virtGroup.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
@@ -458,6 +283,10 @@ def main():
     if env in ["1", "true"]:
         options.smType = "satellite"
 
+    env = os.getenv("VIRTWHO_LIBVIRT", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.virtType = "libvirt"
+
     env = os.getenv("VIRTWHO_VDSM", "0").strip().lower()
     if env in ["1", "true"]:
         options.virtType = "vdsm"
@@ -473,7 +302,6 @@ def main():
     env = os.getenv("VIRTWHO_HYPERV", "0").strip().lower()
     if env in ["1", "true"]:
         options.virtType = "hyperv"
-
 
     def checkEnv(variable, option, name):
         """
@@ -533,75 +361,99 @@ def main():
         # (e.g. libvirtd restart)
         options.interval = DefaultInterval
 
+    return (logger, options)
+
+
+class PIDLock(object):
+    def __init__(self, filename):
+        self.filename = filename
+
+    def is_locked(self):
+        try:
+            f = open(self.filename, "r")
+            pid = int(f.read().strip())
+            try:
+                os.kill(pid, 0)
+                return True
+            except OSError:
+                # Process no longer exists
+                print >>sys.stderr, "PID file exists but associated process does not, deleting PID file"
+                os.remove(self.filename)
+                return False
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:
+            return False
+
+    def __enter__(self):
+        # Write pid to pidfile
+        try:
+            f = open(self.filename, "w")
+            f.write("%d" % os.getpid())
+            f.close()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception, e:
+            if logger is not None:
+                logger.error("Unable to create pid file: %s" % str(e))
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            os.remove(self.filename)
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except Exception:
+            pass
+
+
+def main():
+    lock = PIDLock(PIDFILE)
+    if lock.is_locked():
+        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
+        sys.exit(1)
+    logger, options = parseOptions()
+
     if options.background:
-        # Do a double-fork and other daemon initialization
-        if not daemonize(options.debug):
-            logger.error("Unable to fork, continuing in foreground")
-        createPidFile(logger)
+        # Do a daemon initialization
+        with daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream]):
+            _main(logger, options)
+    else:
+        with lock:
+            _main(logger, options)
 
-    if not options.oneshot:
-        if options.background and options.virtType == "libvirt":
-            logger.debug("Starting event loop")
-            virEventLoopPureStart()
-        else:
-            logger.warning("Listening for events is not available in VDSM, ESX, RHEV-M or Hyper-V mode")
 
+def _main(logger, options):
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
 
     virtWho = VirtWho(logger, options)
-    signal.signal(signal.SIGHUP, virtWho.queueReload)
-    try:
-        virtWho.checkConnections()
-    except (KeyboardInterrupt, SystemExit):
-        raise
-    except Exception:
-        pass
+    if options.virtType is not None:
+        config = Config("virt-who", options.virtType, options.server,
+                        options.username, options.password, options.owner, options.env)
+        virtWho.configManager.addConfig(config)
+    if len(virtWho.configManager.configs) == 0:
+        logger.error("No configurations found")
+    else:
+        for config in virtWho.configManager.configs:
+            logger.info("Using virt-who configuration: %s" % config.name)
 
-    logger.debug("Virt-who is running in %s mode" % options.virtType)
+    def reload(signal, stackframe):
+        virtWho.reload()
+    signal.signal(signal.SIGHUP, reload)
 
     if options.oneshot:
         # Send list of virtual guests and exit
         virtWho.send()
     else:
-        if options.background:
-            logger.debug("Starting infinite loop with %d seconds interval and event handling" % options.interval)
-        else:
-            logger.debug("Starting infinite loop with %d seconds interval" % options.interval)
+        virtWho.run()
 
-        while 1:
-            # Run in infinite loop and send list of UUIDs every 'options.interval' seconds
-
-            if virtWho.send():
-                # Check if connection is established each 'RetryInterval' seconds
-                slept = 0
-                while slept < options.interval:
-                    # Sleep 'RetryInterval' or the rest of options.interval
-                    t = min(RetryInterval, options.interval - slept)
-                    # But sleep at least one second
-                    t = max(t, 1)
-                    time.sleep(t)
-                    slept += t
-
-                    # Reload configuration if queued
-                    if virtWho.doReload:
-                        virtWho.reloadConfig()
-                        break
-
-                    # Check the connection
-                    if not virtWho.ping():
-                        # End the cycle
-                        break
-            else:
-                # If last send fails, new try will be sooner
-                time.sleep(RetryInterval)
 
 if __name__ == '__main__':
     try:
         main()
     except (SystemExit, KeyboardInterrupt):
-        raise
+        sys.exit(1)
     except Exception, e:
         logger = log.getLogger(False, False)
         logger.exception("Fatal error:")

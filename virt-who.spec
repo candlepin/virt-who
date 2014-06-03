@@ -39,6 +39,8 @@ rm -rf $RPM_BUILD_ROOT
 
 make DESTDIR=$RPM_BUILD_ROOT install
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}
+mkdir -p %{buildroot}/%{_sysconfdir}/virt-who.d
+touch %{buildroot}/%{_sharedstatedir}/%{name}/key
 
 # Don't run test suite in check section, because it need the system to be
 # registered to subscription-manager server
@@ -65,11 +67,16 @@ fi
 %files
 %doc README LICENSE
 %{_bindir}/virt-who
+%{_bindir}/virt-who-password
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
+%attr(600, root, root) %dir %{_sysconfdir}/virt-who.d
 %attr(600, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 %{_mandir}/man8/virt-who.8.gz
-%{_sharedstatedir}/%{name}
+%{_mandir}/man8/virt-who-password.8.gz
+%{_mandir}/man5/virt-who-config.5.gz
+%attr(600, root, root) %{_sharedstatedir}/%{name}
+%ghost %{_sharedstatedir}/%{name}/key
 
 
 %changelog

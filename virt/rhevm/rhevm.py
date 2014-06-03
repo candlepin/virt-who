@@ -23,13 +23,18 @@ import urlparse
 import urllib2
 import base64
 
+import virt
+
 # Import XML parser
 try:
     from elementtree import ElementTree
 except ImportError:
     from xml.etree import ElementTree
 
-class RHEVM:
+
+class RhevM(virt.HypervisorVirt):
+    CONFIG_TYPE = "rhevm"
+
     def __init__(self, logger, url, username, password):
         self.logger = logger
         self.url = url
@@ -101,5 +106,5 @@ if __name__ == '__main__':
 
     import logging
     logger = logging.Logger("")
-    rhevm = RHEVM(logger, sys.argv[1], sys.argv[2], sys.argv[3])
+    rhevm = RhevM(logger, sys.argv[1], sys.argv[2], sys.argv[3])
     rhevm.getHostGuestMapping()

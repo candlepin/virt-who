@@ -19,11 +19,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import sys
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
+
+from ..manager import Manager
+
 
 class SubscriptionManagerError(Exception):
     def __init__(self, message):
@@ -32,10 +34,14 @@ class SubscriptionManagerError(Exception):
     def __str__(self):
         return self.message
 
-class SubscriptionManager:
+
+class SubscriptionManager(Manager):
+    smType = "sam"
+
     """ Class for interacting subscription-manager. """
-    def __init__(self, logger):
+    def __init__(self, logger, options):
         self.logger = logger
+        self.options = options
         self.cert_uuid = None
 
         self.config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
@@ -55,17 +61,17 @@ class SubscriptionManager:
         if not os.access(self.cert_file, os.R_OK):
             raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
 
-    def connect(self, Connection=rhsm_connection.UEPConnection):
+    def _connect(self):
         """ Connect to the subscription-manager. """
-        self.connection = Connection(
-                host=self.config.get('server', 'hostname'),
-                ssl_port=int(self.config.get('server', 'port')),
-                handler=self.config.get('server', 'prefix'),
-                proxy_hostname=self.config.get('server', 'proxy_hostname'),
-                proxy_port=self.config.get('server', 'proxy_port'),
-                proxy_user=self.config.get('server', 'proxy_user'),
-                proxy_password=self.config.get('server', 'proxy_password'),
-                cert_file=self.cert_file, key_file=self.key_file)
+        self.connection = rhsm_connection.UEPConnection(
+            host=self.config.get('server', 'hostname'),
+            ssl_port=int(self.config.get('server', 'port')),
+            handler=self.config.get('server', 'prefix'),
+            proxy_hostname=self.config.get('server', 'proxy_hostname'),
+            proxy_port=self.config.get('server', 'proxy_port'),
+            proxy_user=self.config.get('server', 'proxy_user'),
+            proxy_password=self.config.get('server', 'proxy_password'),
+            cert_file=self.cert_file, key_file=self.key_file)
         if not self.connection.ping()['result']:
             raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
 
@@ -88,6 +94,8 @@ class SubscriptionManager:
         :type domain: list of str or list of dict domains
         """
 
+        self._connect()
+
         # Sort the list
         key = None
         if len(domains) > 0:
@@ -96,17 +104,18 @@ class SubscriptionManager:
             domains.sort(key=key)
 
         if key is not None:
-            self.logger.debug("Sending list of uuids: %s" % [domain[key] for domain in domains])
+            self.logger.info("Sending list of uuids: %s" % [domain[key] for domain in domains])
         else:
-            self.logger.debug("Sending list of uuids: %s" % domains)
+            self.logger.info("Sending list of uuids: %s" % domains)
 
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=domains)
 
     def hypervisorCheckIn(self, owner, env, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
-        self.logger.debug("Sending update in hosts-to-guests mapping: %s" % mapping)
+        self._connect()
 
         # Send the mapping
         return self.connection.hypervisorCheckIn(owner, env, mapping)

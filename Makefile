@@ -1,6 +1,6 @@
 
 name = virt-who
-version = 0.9
+version = 0.10
 
 .PHONY: pack check install srpm rpm rpmlint upload
 

@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.9
+Version:        0.10
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -80,6 +80,10 @@ fi
 
 
 %changelog
+* Tue May 20 2014 Radek Novacek <rnovacek@redhat.com> 0.10-1
+- Add directory with configuration files
+- Version 0.10
+
 * Thu Mar 13 2014 Radek Novacek <rnovacek@redhat.com> 0.9-1
 - Remove libvirt dependency
 - Add dependency on m2crypto

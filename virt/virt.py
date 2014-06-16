@@ -55,6 +55,7 @@ class Virt(object):
         import esx
         import rhevm
         import vdsm
+        import hyperv
 
         for subcls in cls.__subclasses__():
             for subsubcls in subcls.__subclasses__():

@@ -433,7 +433,10 @@ def _main(logger, options):
                         options.username, options.password, options.owner, options.env)
         virtWho.configManager.addConfig(config)
     if len(virtWho.configManager.configs) == 0:
-        logger.error("No configurations found")
+        # In order to keep compatibility with older releases of virt-who,
+        # fallback to using libvirt as default virt backend
+        logger.info("No configurations found, using libvirt as backend")
+        virtWho.configManager.addConfig(Config("virt-who", "libvirt"))
     else:
         for config in virtWho.configManager.configs:
             logger.info("Using virt-who configuration: %s" % config.name)

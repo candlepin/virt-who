@@ -22,7 +22,6 @@ import time
 import logging
 import libvirt
 import threading
-from event import virEventLoopPureStart
 
 import virt
 

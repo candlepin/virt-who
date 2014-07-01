@@ -29,65 +29,72 @@ import virt
 eventLoopThread = None
 
 
-class LibvirtMonitor(threading.Thread):
+def virEventLoopNativeRun():
+    while True:
+        libvirt.virEventRunDefaultImpl()
+
+
+class LibvirtMonitor(object):
     """ Singleton class that performs background event monitoring. """
     _instance = None
 
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
+            print "Creating new instance of LibvirtMonitor"
             cls._instance = super(LibvirtMonitor, cls).__new__(cls, *args, **kwargs)
+            cls._instance.logger = logging.getLogger("rhsm-app")
             cls._instance.event = None
+            cls._instance.eventLoopThread = None
             cls._instance.terminate = threading.Event()
             cls._instance.domainIds = []
             cls._instance.definedDomains = []
+            cls._instance.vc = None
         return cls._instance
 
     STATUS_NOT_STARTED, STATUS_RUNNING, STATUS_DISABLED = range(3)
 
     def _prepare(self):
-        self.logger = logging.getLogger("rhsm-app")
         self.running = threading.Event()
         self.status = LibvirtMonitor.STATUS_NOT_STARTED
 
-    def run(self):
-        self._prepare()
-        while not self.terminate.isSet():
-            self._checkChange()
-            time.sleep(5)
+    def _loop_start(self):
+        libvirt.virEventRegisterDefaultImpl()
+        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
+            self.eventLoopThread.terminate()
+        self.eventLoopThread = threading.Thread(target=virEventLoopNativeRun, name="libvirtEventLoop")
+        self.eventLoopThread.setDaemon(True)
+        self.eventLoopThread.start()
+        self._create_connection()
 
-    def _checkChange(self):
+    def _create_connection(self):
+        self.vc = libvirt.openReadOnly('')
         try:
-            virt = libvirt.openReadOnly('')
-        except libvirt.libvirtError, e:
-            # Show error only once
-            if self.status != LibvirtMonitor.STATUS_DISABLED:
-                self.logger.debug("Unable to connect to libvirtd, disabling event monitoring")
-                self.logger.exception(e)
-            self.status = LibvirtMonitor.STATUS_DISABLED
-            return
+            self.vc.registerCloseCallback(self._close_callback, None, None)
+        except AttributeError:
+            self.logger.warn("Can't monitor libvirtd restarts due to bug in libvirt-python")
+        self.vc.domainEventRegister(self._callback, None)
+        self.vc.setKeepAlive(5, 3)
 
-        domainIds = virt.listDomainsID()
-        definedDomains = virt.listDefinedDomains()
+    def check(self):
+        if self.eventLoopThread is None or not self.eventLoopThread.isAlive():
+            self.logger.debug("Starting libvirt monitoring event loop")
+            self._loop_start()
+        if self.vc is None or not self.vc.isAlive():
+            self.logger.debug("Reconnecting to libvirtd")
+            self._create_connection()
 
-        changed = domainIds != self.domainIds or definedDomains != self.definedDomains
+    def _callback(self, *args, **kwargs):
+        self.event.set()
 
-        self.domainIds = domainIds
-        self.definedDomains = definedDomains
-
-        virt.close()
-
-        if changed and self.event is not None and self.status != LibvirtMonitor.STATUS_NOT_STARTED:
-            self.event.set()
-
-        if self.status == LibvirtMonitor.STATUS_DISABLED:
-            self.logger.debug("Event monitoring resumed")
-        self.status = LibvirtMonitor.STATUS_RUNNING
+    def _close_callback(self, *args, **kwargs):
+        self.logger.info("Connection to libvirtd lost, reconnecting")
+        self._create_connection()
 
     def set_event(self, event):
         self.event = event
 
-    def stop(self):
-        self.terminate.set()
+    def isAlive(self):
+        return self.eventLoopThread is not None and self.eventLoopThread.isAlive()
 
 
 class Libvirtd(virt.DirectVirt):
@@ -129,7 +136,9 @@ class Libvirtd(virt.DirectVirt):
                 domains.append(virt.Domain(self.virt, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
         except libvirt.libvirtError, e:
+            self.virt.close()
             raise virt.VirtError(str(e))
+        self.virt.close()
         return domains
 
     def canMonitor(self):
@@ -137,9 +146,8 @@ class Libvirtd(virt.DirectVirt):
 
     def startMonitoring(self, event):
         monitor = LibvirtMonitor()
-        if not monitor.isAlive():
-            monitor.set_event(event)
-            monitor.start()
+        monitor.set_event(event)
+        monitor.check()
 
 
 def eventToString(event):

@@ -54,24 +54,28 @@ class TestLibvirtd(unittest.TestCase):
         self.assertRaises(VirtError, libvirtd.listDomains)
 
     @patch('libvirt.openReadOnly')
-    def test_monitoring(self, virt):
+    @patch('threading.Thread')
+    def test_monitoring(self, thread, virt):
         event = threading.Event()
         LibvirtMonitor().set_event(event)
-        LibvirtMonitor()._prepare()
-        LibvirtMonitor()._checkChange()
+        LibvirtMonitor().check()
+
+        thread.assert_called()
 
         virt.assert_called_with('')
-        virt.return_value.listDomainsID.assert_called()
-        virt.return_value.listDefinedDomains.assert_called()
-        virt.return_value.closed.assert_called()
+        virt.return_value.domainEventRegister.assert_called()
+        virt.return_value.setKeepAlive.assert_called()
         self.assertFalse(event.is_set())
 
-        virt.return_value.listDomainsID.return_value = [1]
-        LibvirtMonitor()._checkChange()
+        LibvirtMonitor()._callback()
+        LibvirtMonitor().check()
         self.assertTrue(event.is_set())
         event.clear()
 
-        virt.return_value.listDomainsID.return_value = []
-        LibvirtMonitor()._checkChange()
+        LibvirtMonitor().check()
+        self.assertFalse(event.is_set())
+        event.clear()
+
+        LibvirtMonitor()._callback()
         self.assertTrue(event.is_set())
         event.clear()

@@ -85,12 +85,16 @@ class Password(object):
             raise InvalidKeyFile(str(e))
 
     @classmethod
+    def _can_write(cls):
+        return os.getuid() == 0
+
+    @classmethod
     def _read_or_generate_key_iv(cls):
         try:
             return cls._read_key_iv()
         except InvalidKeyFile:
             pass
-        if os.getuid() != 0:
+        if not cls._can_write():
             raise UnwrittableKeyFile("Only root can write keyfile")
         key = hexlify(cls._generate_key())
         iv = hexlify(cls._generate_key())

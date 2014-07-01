@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import tempfile
 from binascii import hexlify, unhexlify
+from mock import MagicMock
 
 from base import unittest
 
@@ -51,9 +52,9 @@ class TestPassword(unittest.TestCase):
         self.addCleanup(os.unlink, filename)
         Password.KEYFILE = filename
         pwd = "Test password"
+        Password._can_write = MagicMock(retun_value=True)
         encrypted = Password.encrypt(pwd)
         self.assertEqual(pwd, Password.decrypt(encrypted))
-        self.assertEqual(os)
 
     def testPad(self):
         self.assertEqual(hexlify(Password._pad(unhexlify("00010203040506070809"))), "00010203040506070809060606060606")

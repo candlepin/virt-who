@@ -139,7 +139,7 @@ class Satellite(Manager):
     def sendVirtGuests(self, domains):
         raise SatelliteError("virt-who does not support sending local hypervisor data to satellite; use rhn-virtualization-host instead")
 
-    def hypervisorCheckIn(self, owner, env, mapping, type=None):
+    def hypervisorCheckIn(self, config, mapping, type=None):
         self._connect()
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)

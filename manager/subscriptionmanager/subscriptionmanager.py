@@ -111,14 +111,14 @@ class SubscriptionManager(Manager):
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=domains)
 
-    def hypervisorCheckIn(self, owner, env, mapping, type=None):
+    def hypervisorCheckIn(self, config, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
         self._connect()
 
         # Send the mapping
-        return self.connection.hypervisorCheckIn(owner, env, mapping)
+        return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

@@ -155,13 +155,13 @@ class VirtWho(object):
 
             # Show the result of hypervisorCheckIn
             for fail in result['failedUpdate']:
-                logger.error("Error during update list of guests: %s", str(fail))
+                self.logger.error("Error during update list of guests: %s", str(fail))
             for updated in result['updated']:
                 guests = [x['guestId'] for x in updated['guestIds']]
-                logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+                self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
             for created in result['created']:
                 guests = [x['guestId'] for x in created['guestIds']]
-                logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+                self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
 
     def run(self):
         if self.options.background and self.options.virtType == "libvirt":

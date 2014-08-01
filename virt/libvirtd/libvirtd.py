@@ -26,12 +26,17 @@ import threading
 import virt
 
 
-eventLoopThread = None
+class VirEventLoopThread(threading.Thread):
+    def __init__(self, logger, *args, **kwargs):
+        self._terminated = threading.Event()
+        threading.Thread.__init__(self, *args, **kwargs)
 
+    def run(self):
+        while not self._terminated.is_set():
+            libvirt.virEventRunDefaultImpl()
 
-def virEventLoopNativeRun():
-    while True:
-        libvirt.virEventRunDefaultImpl()
+    def terminate(self):
+        self._terminated.set()
 
 
 class LibvirtMonitor(object):
@@ -45,7 +50,6 @@ class LibvirtMonitor(object):
             cls._instance.logger = logging.getLogger("rhsm-app")
             cls._instance.event = None
             cls._instance.eventLoopThread = None
-            cls._instance.terminate = threading.Event()
             cls._instance.domainIds = []
             cls._instance.definedDomains = []
             cls._instance.vc = None
@@ -61,15 +65,19 @@ class LibvirtMonitor(object):
         libvirt.virEventRegisterDefaultImpl()
         if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
             self.eventLoopThread.terminate()
-        self.eventLoopThread = threading.Thread(target=virEventLoopNativeRun, name="libvirtEventLoop")
+        self.eventLoopThread = VirEventLoopThread(self.logger, name="libvirtEventLoop")
         self.eventLoopThread.setDaemon(True)
         self.eventLoopThread.start()
         self._create_connection()
 
     def _create_connection(self):
-        self.vc = libvirt.openReadOnly('')
         try:
-            self.vc.registerCloseCallback(self._close_callback, None, None)
+            self.vc = libvirt.openReadOnly('')
+        except libvirt.libvirtError, e:
+            self.logger.warn("Unable to connect to libvirt: %s" % str(e))
+            return
+        try:
+            self.vc.registerCloseCallback(self._close_callback, None)
         except AttributeError:
             self.logger.warn("Can't monitor libvirtd restarts due to bug in libvirt-python")
         self.vc.domainEventRegister(self._callback, None)
@@ -86,9 +94,17 @@ class LibvirtMonitor(object):
     def _callback(self, *args, **kwargs):
         self.event.set()
 
-    def _close_callback(self, *args, **kwargs):
-        self.logger.info("Connection to libvirtd lost, reconnecting")
-        self._create_connection()
+    def _close_callback(self, conn, reason, opaque):
+        reasonStrings = ("Error", "End-of-file", "Keepalive", "Client")
+        self.logger.info("Connection to libvirtd lost: %s, reconnecting" % reasonStrings[reason])
+        # it might be just a restart, give it some time to recover
+        time.sleep(2)
+        try:
+            self.vc.close()
+        except Exception, e:
+            pass
+        self.vc = None
+        self.event.set()
 
     def set_event(self, event):
         self.event = event

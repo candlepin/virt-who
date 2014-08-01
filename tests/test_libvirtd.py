@@ -25,7 +25,8 @@ import logging
 
 from config import Config
 from virt import Virt, Domain, VirtError
-from virt.libvirtd.libvirtd import LibvirtMonitor
+from virt.libvirtd.libvirtd import LibvirtMonitor, VirEventLoopThread
+import virt.libvirtd.libvirtd
 
 
 def raiseLibvirtError(*args, **kwargs):
@@ -54,7 +55,7 @@ class TestLibvirtd(unittest.TestCase):
         self.assertRaises(VirtError, libvirtd.listDomains)
 
     @patch('libvirt.openReadOnly')
-    @patch('threading.Thread')
+    @patch('virt.libvirtd.libvirtd.VirEventLoopThread')
     def test_monitoring(self, thread, virt):
         event = threading.Event()
         LibvirtMonitor().set_event(event)

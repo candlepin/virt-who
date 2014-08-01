@@ -28,6 +28,8 @@ import tempfile
 import pickle
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
+from mock import MagicMock
+
 from manager.satellite import Satellite, SatelliteError
 
 TEST_SYSTEM_ID = 'test-system-id'
@@ -104,7 +106,10 @@ class TestSatellite(unittest.TestCase):
         options = Options("wrong_server", "abc", "def")
         s = Satellite(self.logger, options)
         #self.assertRaises(SatelliteError, s.connect, "wrong_server", "abc", "def")
-        s.hypervisorCheckIn("owner", "env", {}, "test")
+        options.env = "ENV"
+        options.owner = "OWNER"
+
+        s.hypervisorCheckIn(options, {}, "test")
         #self.assertRaises(SatelliteError, s.connect, "localhost", "abc", "def")
 
     def test_new_system(self):
@@ -121,13 +126,15 @@ class TestSatellite(unittest.TestCase):
     def test_hypervisorCheckIn(self):
         options = Options("http://localhost:8080", "username", "password")
         options.force_register = True
+        options.env = "ENV"
+        options.owner = "OWNER"
         s = Satellite(self.logger, options)
 
         mapping = {
             'host-1': ['guest1-1', 'guest1-2'],
             'host-2': ['guest2-1', 'guest2-2', 'guest2-3']
         }
-        result = s.hypervisorCheckIn("owner", "env", mapping, "type")
+        result = s.hypervisorCheckIn(options, mapping, "type")
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
@@ -140,6 +147,8 @@ class TestSatellite(unittest.TestCase):
         f.close()
 
         options = Options("http://localhost:8080", "username", "password")
+        options.env = "ENV"
+        options.owner = "OWNER"
         s = Satellite(self.logger, options)
 
         s.HYPERVISOR_SYSTEMID_FILE = filename.replace(TEST_SYSTEM_ID, '%s')
@@ -147,7 +156,7 @@ class TestSatellite(unittest.TestCase):
             'host-1': ['guest1-1', 'guest1-2'],
             'host-2': ['guest2-1', 'guest2-2', 'guest2-3']
         }
-        result = s.hypervisorCheckIn("owner", "env", mapping, "type")
+        result = s.hypervisorCheckIn(options, mapping, "type")
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)

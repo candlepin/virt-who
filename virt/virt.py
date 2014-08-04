@@ -36,8 +36,9 @@ class Domain(dict):
         try:
             self['state'] = domain.state(0)[0]
         except AttributeError:
-            # Some versions of libvirt doesn't have domain.state() method
-            pass
+            # Some versions of libvirt doesn't have domain.state() method,
+            # use first value from info instead
+            self['state'] = domain.info()[0]
 
 
 class Virt(object):

@@ -18,10 +18,14 @@ import subprocess
 
 try:
     import hashlib
-    from hashlib import md5, algorithms
+    from hashlib import md5
+except ImportError:
+    from md5 import md5
+
+try:
+    from hashlib import algorithms
 except ImportError:
     algorithms = []
-    from md5 import md5
 
 import hmac
 import random

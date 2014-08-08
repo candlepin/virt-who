@@ -242,8 +242,6 @@ class Esx(virt.HypervisorVirt):
                                             else:
                                                 self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
                                                 self.vms[obj.obj.value].uuid = None
-                                else:
-                                    self.logger.error("Cannot read VM list from ESX for host %s (len(obj) <= 1)" % self.hosts[host.obj.value].uuid)
 
                     except AttributeError:
                         # This means that there is no guest on given host

@@ -35,8 +35,9 @@ class VdsmError(Exception):
 class Vdsm(DirectVirt):
     CONFIG_TYPE = "vdsm"
 
-    def __init__(self, logger):
+    def __init__(self, logger, config):
         self.logger = logger
+        self.config = config
         self._readConfig("/etc/vdsm/vdsm.conf")
         self.connect()
 
@@ -45,13 +46,20 @@ class Vdsm(DirectVirt):
         parser.read(configName)
         try:
             self.ssl = parser.get("vars", "ssl").lower() in ["1", "true"]
-            if self.ssl:
+        except (NoSectionError, NoOptionError):
+            self.ssl = True
+
+        if self.ssl:
+            try:
                 self.trust_store_path = parser.get("vars", "trust_store_path")
-            else:
-                self.trust_store_path = None
+            except (NoSectionError, NoOptionError):
+                self.trust_store_path = '/etc/pki/vdsm'
+        else:
+            self.trust_store_path = None
+        try:
             self.management_port = parser.get("addresses", "management_port")
-        except (NoSectionError, NoOptionError), e:
-            raise VdsmError("Error in vdsm configuration file: %s" % str(e))
+        except (NoSectionError, NoOptionError):
+            self.management_port = 54321
 
     def _getLocalVdsName(self, tsPath):
         p = subprocess.Popen([

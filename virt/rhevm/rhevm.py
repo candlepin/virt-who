@@ -35,11 +35,12 @@ except ImportError:
 class RhevM(virt.HypervisorVirt):
     CONFIG_TYPE = "rhevm"
 
-    def __init__(self, logger, url, username, password):
+    def __init__(self, logger, config):
         self.logger = logger
-        self.url = url
+        self.config = config
+        self.url = self.config.server
         if "//" not in self.url:
-            self.url = "//" + url
+            self.url = "//" + self.config.server
         parsed = urlparse.urlsplit(self.url, "https")
         if ":" not in parsed[1]:
             netloc = parsed[1] + ":8443"
@@ -47,13 +48,13 @@ class RhevM(virt.HypervisorVirt):
             netloc = parsed[1]
         self.url = urlparse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
 
-        self.username = username
-        self.password = password
+        self.username = self.config.username
+        self.password = self.config.password
 
         self.hosts_url = urlparse.urljoin(self.url, "/api/hosts")
         self.vms_url = urlparse.urljoin(self.url, "/api/vms")
 
-        self.auth = base64.encodestring('%s:%s' % (username, password))[:-1]
+        self.auth = base64.encodestring('%s:%s' % (self.config.username, self.config.password))[:-1]
 
     def get(self, url):
         """

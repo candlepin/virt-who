@@ -99,9 +99,12 @@ class SubscriptionManager(Manager):
         # Sort the list
         key = None
         if len(domains) > 0:
-            if isinstance(domains[0], basestring):
+            if not isinstance(domains[0], basestring):
                 key = "guestId"
-            domains.sort(key=key)
+            if key is None:
+                domains.sort()
+            else:
+                domains.sort(key=lambda item: item[key])
 
         if key is not None:
             self.logger.info("Sending list of uuids: %s" % [domain[key] for domain in domains])

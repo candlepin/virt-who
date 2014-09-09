@@ -26,3 +26,17 @@ if sys.version_info[0] > 2 or sys.version_info[1] > 6:
     import unittest
 else:
     import unittest2 as unittest
+
+import logging
+import log
+from mock import patch
+
+
+class TestBase(unittest.TestCase):
+    @classmethod
+    @patch('log.getLogger')
+    def setUpClass(cls, logger):
+        cls.logger = logging.getLogger("")
+        cls.logger.handlers = []
+        cls.logger.setLevel(logging.CRITICAL)
+        logger.return_value = cls.logger

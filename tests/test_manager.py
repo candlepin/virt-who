@@ -25,7 +25,7 @@ import tempfile
 import subprocess
 from mock import patch, MagicMock, ANY
 
-from base import unittest
+from base import TestBase
 from config import Config
 from manager import Manager, ManagerError
 
@@ -36,7 +36,7 @@ import rhsm.connection
 import xmlrpclib
 
 
-class TestManager(unittest.TestCase):
+class TestManager(TestBase):
     """ Test of all available subscription managers. """
 
     guestInfo = [
@@ -65,7 +65,6 @@ class TestSubscriptionManager(TestManager):
     smType = "sam"
 
     def prepare(self, create_from_file, connection):
-        self.logger = logging.getLogger()
         self.options = MagicMock()
         self.options.smType = self.smType
 
@@ -108,20 +107,18 @@ class TestSatellite(TestManager):
     smType = "satellite"
 
     def test_sendVirtGuests(self):
-        logger = logging.getLogger()
         options = MagicMock()
         options.smType = self.smType
 
-        manager = Manager.fromOptions(logger, options)
+        manager = Manager.fromOptions(self.logger, options)
         self.assertRaises(ManagerError, manager.sendVirtGuests, self.guestInfo)
 
     @patch("xmlrpclib.Server")
     def test_hypervisorCheckIn(self, server):
-        logger = logging.getLogger()
         options = MagicMock()
         options.smType = self.smType
 
-        manager = Manager.fromOptions(logger, options)
+        manager = Manager.fromOptions(self.logger, options)
         options.env = "ENV"
         options.owner = "OWNER"
         manager.hypervisorCheckIn(options, self.mapping)

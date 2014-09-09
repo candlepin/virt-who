@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 
-from base import unittest
+from base import TestBase
 
 import logging
 import threading
@@ -90,10 +90,10 @@ class Options(object):
         self.password = password
 
 
-class TestSatellite(unittest.TestCase):
+class TestSatellite(TestBase):
     @classmethod
     def setUpClass(cls):
-        cls.logger = logging.getLogger()
+        super(TestSatellite, cls).setUpClass()
         cls.fake_server = FakeSatellite()
         cls.thread = threading.Thread(target=cls.fake_server.serve_forever)
         cls.thread.start()

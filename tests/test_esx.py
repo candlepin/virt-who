@@ -23,17 +23,16 @@ import urllib2
 import suds
 from mock import patch
 
-from base import unittest
+from base import TestBase
 from config import Config
 from virt.esx import Esx
 from virt import VirtError
 
 
-class TestEsx(unittest.TestCase):
+class TestEsx(TestBase):
     def setUp(self):
-        logger = logging.getLogger()
         config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner', 'env')
-        self.esx = Esx(logger, config)
+        self.esx = Esx(self.logger, config)
 
     @patch('suds.client.Client')
     def test_connect(self, mock_client):

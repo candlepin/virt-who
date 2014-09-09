@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import threading
-from base import unittest
+from base import TestBase
 from mock import patch, Mock
 import logging
 
@@ -34,23 +34,21 @@ def raiseLibvirtError(*args, **kwargs):
     raise libvirt.libvirtError('')
 
 
-class TestLibvirtd(unittest.TestCase):
+class TestLibvirtd(TestBase):
     def setUp(self):
         pass
 
     @patch('libvirt.openReadOnly')
     def test_read(self, libvirt):
-        logger = logging.getLogger()
         config = Config('test', 'libvirt')
-        libvirtd = Virt.fromConfig(logger, config)
+        libvirtd = Virt.fromConfig(self.logger, config)
         domains = libvirtd.listDomains()
         libvirt.assert_called_with("")
 
     @patch('libvirt.openReadOnly')
     def test_read_fail(self, virt):
-        logger = logging.getLogger()
         config = Config('test', 'libvirt')
-        libvirtd = Virt.fromConfig(logger, config)
+        libvirtd = Virt.fromConfig(self.logger, config)
         virt.side_effect = raiseLibvirtError
         self.assertRaises(VirtError, libvirtd.listDomains)
 

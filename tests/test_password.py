@@ -23,12 +23,12 @@ import tempfile
 from binascii import hexlify, unhexlify
 from mock import MagicMock
 
-from base import unittest
+from base import TestBase
 
 from password import Password
 
 
-class TestPassword(unittest.TestCase):
+class TestPassword(TestBase):
     def testEncrypt(self):
         self.assertEqual(hexlify(
             Password._crypt(

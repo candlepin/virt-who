@@ -23,10 +23,10 @@ import os
 import shutil
 from config import ConfigManager, InvalidOption
 from tempfile import mkdtemp
-from base import unittest
+from base import TestBase, unittest
 
 
-class TestReadingConfigs(unittest.TestCase):
+class TestReadingConfigs(TestBase):
     def setUp(self):
         self.config_dir = mkdtemp()
         self.addCleanup(shutil.rmtree, self.config_dir)

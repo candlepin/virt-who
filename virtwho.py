@@ -220,6 +220,14 @@ def parseOptions():
     managerGroup.add_option("--satellite", action="store_const", dest="smType", const="satellite", help="Report host/guest associations to the Satellite")
     parser.add_option_group(managerGroup)
 
+    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use this options with --libvirt")
+    libvirtGroup.add_option("--libvirt-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products, default is owner of current system")
+    libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to, default is environment of current system")
+    libvirtGroup.add_option("--libvirt-server", action="store", dest="server", default="", help="URL of the libvirt server to connect to, default is empty for libvirt on local computer")
+    libvirtGroup.add_option("--libvirt-username", action="store", dest="username", default="", help="Username for connecting to the libvirt daemon")
+    libvirtGroup.add_option("--libvirt-password", action="store", dest="password", default="", help="Password for connecting to the libvirt daemon")
+    parser.add_option_group(libvirtGroup)
+
     esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
     esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     esxGroup.add_option("--esx-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to")
@@ -303,14 +311,14 @@ def parseOptions():
     if env in ["1", "true"]:
         options.virtType = "hyperv"
 
-    def checkEnv(variable, option, name):
+    def checkEnv(variable, option, name, required=True):
         """
         If `option` is empty, check enviromental `variable` and return its value.
         Exit if it's still empty
         """
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
-        if len(option) == 0:
+        if required and len(option) == 0:
             logger.error("Required parameter '%s' is not set, exitting" % name)
             sys.exit(1)
         return option
@@ -320,6 +328,14 @@ def parseOptions():
         options.sat_username = checkEnv("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
         if len(options.sat_password) == 0:
             options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
+
+    if options.virtType == "libvirt":
+        options.owner = checkEnv("VIRTWHO_LIBVIRT_OWNER", options.owner, "owner", required=False)
+        options.env = checkEnv("VIRTWHO_LIBVIRT_ENV", options.env, "env", required=False)
+        options.server = checkEnv("VIRTWHO_LIBVIRT_SERVER", options.server, "server", required=False)
+        options.username = checkEnv("VIRTWHO_LIBVIRT_USERNAME", options.username, "username", required=False)
+        if len(options.password) == 0:
+            options.password = os.getenv("VIRTWHO_LIBVIRT_PASSWORD", "")
 
     if options.virtType == "esx":
         options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner")
@@ -394,8 +410,7 @@ class PIDLock(object):
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
-            if logger is not None:
-                logger.error("Unable to create pid file: %s" % str(e))
+            print >>sys.stderr, "Unable to create pid file: %s" % str(e)
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:

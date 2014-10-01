@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import threading
 from base import TestBase
-from mock import patch, Mock
+from mock import patch, Mock, ANY
 import logging
 
 from config import Config
@@ -78,3 +78,39 @@ class TestLibvirtd(TestBase):
         LibvirtMonitor()._callback()
         self.assertTrue(event.is_set())
         event.clear()
+
+    @patch('libvirt.openReadOnly')
+    def test_remote_hostname(self, virt):
+        config = Config('test', 'libvirt', 'server')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('qemu+ssh://server/system?no_tty=1')
+
+    @patch('libvirt.openReadOnly')
+    def test_remote_url(self, virt):
+        config = Config('test', 'libvirt', 'abc://server/test')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('abc://server/test?no_tty=1')
+
+    @patch('libvirt.openReadOnly')
+    def test_remote_hostname_with_username(self, virt):
+        config = Config('test', 'libvirt', 'server', 'user')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1')
+
+    @patch('libvirt.openReadOnly')
+    def test_remote_url_with_username(self, virt):
+        config = Config('test', 'libvirt', 'abc://server/test', 'user')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('abc://user@server/test?no_tty=1')
+
+    @patch('libvirt.openAuth')
+    def test_remote_hostname_with_username_and_password(self, virt):
+        config = Config('test', 'libvirt', 'server', 'user', 'pass')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1', ANY, ANY)
+
+    @patch('libvirt.openAuth')
+    def test_remote_url_with_username_and_password(self, virt):
+        config = Config('test', 'libvirt', 'abc://server/test', 'user', 'pass')
+        Virt.fromConfig(self.logger, config).listDomains()
+        virt.assert_called_with('abc://user@server/test?no_tty=1', ANY, ANY)

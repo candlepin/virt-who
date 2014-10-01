@@ -38,7 +38,10 @@ class Config(object):
         self._type = type
         if self._type not in VIRTWHO_TYPES:
             raise InvalidOption('Invalid type "%s", must be one of following %s' % (self._type, ", ".join(VIRTWHO_TYPES)))
-        self._server = server
+        if server is None and self._type == 'libvirt':
+            self._server = ''
+        else:
+            self._server = server
         self._username = username
         self._password = password
         self._owner = owner
@@ -60,29 +63,38 @@ class Config(object):
     def fromParser(self, name, parser):
         type = parser.get(name, "type").lower()
         server = username = password = owner = env = None
-        if type != 'libvirt':
+        try:
             server = parser.get(name, "server")
+        except NoOptionError:
+            # Use '' as libvirt url when not given, for backward compatibility
+            if type == 'libvirt':
+                server = ''
+            else:
+                raise
+        try:
             username = parser.get(name, "username")
+        except NoOptionError:
+            username = None
 
+        try:
+            password = parser.get(name, "password")
+        except NoOptionError:
+            password = None
+        if password is None:
             try:
-                password = parser.get(name, "password")
+                crypted = parser.get(name, "encrypted_password")
+                password = Password.decrypt(crypted)
             except NoOptionError:
                 password = None
-            if password is None:
-                try:
-                    crypted = parser.get(name, "encrypted_password")
-                    password = Password.decrypt(crypted)
-                except NoOptionError:
-                    password = None
 
-            try:
-                owner = parser.get(name, "owner")
-            except NoOptionError:
-                owner = None
-            try:
-                env = parser.get(name, "env")
-            except NoOptionError:
-                env = None
+        try:
+            owner = parser.get(name, "owner")
+        except NoOptionError:
+            owner = None
+        try:
+            env = parser.get(name, "env")
+        except NoOptionError:
+            env = None
         return Config(name, type, server, username, password, owner, env)
 
     @property

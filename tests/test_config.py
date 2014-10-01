@@ -184,3 +184,25 @@ env=staging
         self.assertEqual(config2.password, "password")
         self.assertEqual(config2.owner, "root")
         self.assertEqual(config2.env, "staging")
+
+    def testLibvirtConfig(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=libvirt
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+env=staging
+""")
+        manager = ConfigManager(self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0]
+        self.assertEqual(config.name, "test1")
+        self.assertEqual(config.type, "libvirt")
+        self.assertEqual(config.server, "1.2.3.4")
+        self.assertEqual(config.username, "admin")
+        self.assertEqual(config.password, "password")
+        self.assertEqual(config.owner, "root")
+        self.assertEqual(config.env, "staging")

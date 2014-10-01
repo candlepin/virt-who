@@ -22,6 +22,7 @@ import time
 import logging
 import libvirt
 import threading
+import urlparse
 
 import virt
 
@@ -113,6 +114,18 @@ class LibvirtMonitor(object):
         return self.eventLoopThread is not None and self.eventLoopThread.isAlive()
 
 
+def libvirt_cred_request(credentials, config):
+    """ Callback function for requesting credentials from libvirt """
+    for credential in credentials:
+        if credential[0] == libvirt.VIR_CRED_AUTHNAME:
+            credential[4] = config.username
+        elif credential[0] == libvirt.VIR_CRED_PASSPHRASE:
+            credential[4] = config.password
+        else:
+            return -1
+    return 0
+
+
 class Libvirtd(virt.DirectVirt):
     """ Class for interacting with libvirt. """
     CONFIG_TYPE = "libvirt"
@@ -120,13 +133,55 @@ class Libvirtd(virt.DirectVirt):
     def __init__(self, logger, config, registerEvents=True):
         self.changedCallback = None
         self.logger = logger
+        self.config = config
         self.registerEvents = registerEvents
         libvirt.registerErrorHandler(lambda ctx, error: None, None)
 
+    def _get_url(self):
+        if self.config.server:
+            scheme = username = netloc = path = None
+            url = self.config.server
+            if "//" not in url:
+                url = "//" + url
+            splitted_url = urlparse.urlsplit(url)
+
+            netloc = splitted_url.netloc
+
+            if splitted_url.scheme:
+                scheme = splitted_url.scheme
+            else:
+                self.logger.info("Protocol is not specified in libvirt url, using qemu+ssh://")
+                scheme = 'qemu+ssh'
+
+            if self.config.username:
+                username = self.config.username
+            elif splitted_url.username:
+                username = splitted_url.username
+
+            if len(splitted_url.path) > 1:
+                path = splitted_url.path
+            else:
+                self.logger.info("Libvirt path is not specified in the url, using /system")
+                path = '/system'
+
+            return "%(scheme)s://%(username)s%(netloc)s%(path)s?no_tty=1" % {
+                'username': ("%s@" % username) if username else '',
+                'scheme': scheme,
+                'netloc': netloc,
+                'path': path
+            }
+        return ''
+
     def _connect(self):
+        url = self._get_url()
+        self.logger.info("Using libvirt url: %s", url if url else '""')
         monitor = LibvirtMonitor()
         try:
-            self.virt = libvirt.openReadOnly('')
+            if self.config.password:
+                auth = [[libvirt.VIR_CRED_AUTHNAME, libvirt.VIR_CRED_PASSPHRASE], libvirt_cred_request, self.config]
+                self.virt = libvirt.openAuth(url, auth, libvirt.VIR_CONNECT_RO)
+            else:
+                self.virt = libvirt.openReadOnly(url)
         except libvirt.libvirtError, e:
             self.logger.exception("Error in libvirt backend")
             raise virt.VirtError(str(e))

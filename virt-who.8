@@ -49,6 +49,25 @@ Report host/guest associations to the Subscription Asset Manager [default]
 \fB\-\-satellite\fR
 Report host/guest associations to the Satellite
 .IP
+.SS Libvirt options
+.IP
+Use this options with \fB\-\-libvirt\fR
+.TP
+\fB\-\-libvirt\-owner\fR=\fIOWNER\fR
+Organization who has purchased subscriptions of the products, same as current system registration by default
+.TP
+\fB\-\-libvirt\-env\fR=\fIENV\fR
+Environment where the libvirt server belongs to, same as current system registration by default
+.TP
+\fB\-\-libvirt\-server\fR=\fISERVER\fR
+URL of the remote libvirt server to connect to, local server by default
+.TP
+\fB\-\-libvirt\-username\fR=\fIUSERNAME\fR
+Username for connecting to libvirt, username of current user by default
+.TP
+\fB\-\-libvirt\-password\fR=\fIPASSWORD\fR
+Password for connecting to libvirt
+.IP
 .SS vCenter/ESX options
 .IP
 Use this options with \fB\-\-esx\fR

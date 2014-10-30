@@ -85,9 +85,9 @@ class FakeSatellite(SimpleXMLRPCServer):
 
 class Options(object):
     def __init__(self, server, username, password):
-        self.server = server
-        self.username = username
-        self.password = password
+        self.sat_server = server
+        self.sat_username = username
+        self.sat_password = password
 
 
 class TestSatellite(TestBase):

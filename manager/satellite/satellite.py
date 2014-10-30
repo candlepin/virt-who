@@ -43,21 +43,23 @@ class Satellite(Manager):
         self.options = options
 
     def _connect(self):
-        if not self.options.server.startswith("http://") and not self.options.server.startswith("https://"):
-            self.options.server = "https://%s" % self.options.server
-        if not self.options.server.endswith("XMLRPC"):
-            self.options.server = "%s/XMLRPC" % self.options.server
+        server = self.options.sat_server
+        self.username = self.options.sat_username
+        self.password = self.options.sat_password
 
-        self.username = self.options.username
-        self.password = self.options.password
+        if not server.startswith("http://") and not server.startswith("https://"):
+            server = "https://%s" % server
+        if not server.endswith("XMLRPC"):
+            server = "%s/XMLRPC" % server
+
         try:
             self.force_register = self.options.force_register
         except AttributeError:
             self.force_register = False
 
-        self.logger.debug("Initializing satellite connection to %s" % self.options.server)
+        self.logger.debug("Initializing satellite connection to %s" % server)
         try:
-            self.server = xmlrpclib.Server(self.options.server, verbose=0)
+            self.server = xmlrpclib.Server(server, verbose=0)
         except Exception:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server")

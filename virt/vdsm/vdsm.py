@@ -21,6 +21,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import re
 import xmlrpclib
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
@@ -68,7 +69,7 @@ class Vdsm(DirectVirt):
         out, err = p.communicate()
         if p.returncode != 0:
             return '0'
-        return out.split('=')[-1].strip()
+        return re.search('/CN=([^/]+)/', out).group(1)
 
     def _secureConnect(self):
         addr = self._getLocalVdsName(self.trust_store_path)

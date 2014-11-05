@@ -175,7 +175,7 @@ class HyperVAuthFailed(HyperVException):
     pass
 
 
-class HyperV(virt.HypervisorVirt):
+class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
     def __init__(self, logger, config):

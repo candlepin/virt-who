@@ -59,9 +59,8 @@ class Virt(object):
         import hyperv
 
         for subcls in cls.__subclasses__():
-            for subsubcls in subcls.__subclasses__():
-                if config.type == subsubcls.CONFIG_TYPE:
-                    return subsubcls(logger, config)
+            if config.type == subcls.CONFIG_TYPE:
+                return subcls(logger, config)
         raise KeyError("Invalid config type: %s" % config.type)
 
     def canMonitor(self):
@@ -79,12 +78,16 @@ class Virt(object):
         """
         raise NotImplementedError()
 
+    def isHypervisor(self):
+        """
+        Return True if the virt instance represents hypervisor and the guests
+        should be obtained by using getHostGuestMapping method. Otherwise
+        plain listDomains will be used
+        """
+        return True
 
-class DirectVirt(Virt):
     def listDomains(self):
         raise NotImplementedError()
 
-
-class HypervisorVirt(Virt):
     def getHostGuestMapping(self):
         raise NotImplementedError()

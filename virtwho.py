@@ -107,8 +107,9 @@ class VirtWho(object):
         retry - Should be True on first run, False on second.
         return - True if sending is successful, False otherwise
         """
+        virt = Virt.fromConfig(self.logger, config)
         try:
-            virtualGuests = self._readGuests(config)
+            virtualGuests = self._readGuests(virt)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
@@ -122,7 +123,7 @@ class VirtWho(object):
                 return False
 
         try:
-            self._sendGuests(config, virtualGuests)
+            self._sendGuests(virt, virtualGuests)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception, e:
@@ -137,21 +138,20 @@ class VirtWho(object):
                 return False
         return True
 
-    def _readGuests(self, config):
-        virt = Virt.fromConfig(self.logger, config)
+    def _readGuests(self, virt):
         if not self.options.oneshot and virt.canMonitor():
             virt.startMonitoring(self.sync_event)
-        if config.type not in ["esx", "rhevm", "hyperv"]:
+        if not virt.isHypervisor():
             return virt.listDomains()
         else:
             return virt.getHostGuestMapping()
 
-    def _sendGuests(self, config, virtualGuests):
+    def _sendGuests(self, virt, virtualGuests):
         manager = Manager.fromOptions(self.logger, self.options)
-        if config.type not in ["esx", "rhevm", "hyperv"]:
+        if not virt.isHypervisor():
             manager.sendVirtGuests(virtualGuests)
         else:
-            result = manager.hypervisorCheckIn(config, virtualGuests)
+            result = manager.hypervisorCheckIn(virt.config, virtualGuests)
 
             # Show the result of hypervisorCheckIn
             for fail in result['failedUpdate']:

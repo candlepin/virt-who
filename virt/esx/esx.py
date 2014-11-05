@@ -108,7 +108,7 @@ def get_search_filter_spec(client, begin_entity, property_spec):
     return pfs
 
 
-class Esx(virt.HypervisorVirt):
+class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
 
     def __init__(self, logger, config):

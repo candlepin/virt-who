@@ -1,3 +1,3 @@
 
 
-from virt import Virt, DirectVirt, HypervisorVirt, VirtError, Domain
+from virt import Virt, VirtError, Domain

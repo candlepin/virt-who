@@ -26,6 +26,12 @@ import urlparse
 
 import virt
 
+# Import XML parser
+try:
+    from elementtree import ElementTree
+except ImportError:
+    from xml.etree import ElementTree
+
 
 class VirEventLoopThread(threading.Thread):
     def __init__(self, logger, *args, **kwargs):
@@ -126,7 +132,7 @@ def libvirt_cred_request(credentials, config):
     return 0
 
 
-class Libvirtd(virt.DirectVirt):
+class Libvirtd(virt.Virt):
     """ Class for interacting with libvirt. """
     CONFIG_TYPE = "libvirt"
 
@@ -135,7 +141,11 @@ class Libvirtd(virt.DirectVirt):
         self.logger = logger
         self.config = config
         self.registerEvents = registerEvents
+        self._host_uuid = None
         libvirt.registerErrorHandler(lambda ctx, error: None, None)
+
+    def isHypervisor(self):
+        return bool(self.config.server)
 
     def _get_url(self):
         if self.config.server:
@@ -188,9 +198,13 @@ class Libvirtd(virt.DirectVirt):
 
     def listDomains(self):
         """ Get list of all domains. """
-        domains = []
         self._connect()
+        domains = self._listDomains()
+        self.virt.close()
+        return domains
 
+    def _listDomains(self):
+        domains = []
         try:
             # Active domains
             for domainID in self.virt.listDomainsID():
@@ -209,8 +223,21 @@ class Libvirtd(virt.DirectVirt):
         except libvirt.libvirtError, e:
             self.virt.close()
             raise virt.VirtError(str(e))
-        self.virt.close()
         return domains
+
+    def _remote_host_uuid(self):
+        if self._host_uuid is None:
+            xml = ElementTree.fromstring(self.virt.getCapabilities())
+            self._host_uuid = xml.find('host/uuid').text
+        return self._host_uuid
+
+    def getHostGuestMapping(self):
+        self._connect()
+        mapping = {
+            self._remote_host_uuid(): self._listDomains()
+        }
+        self.virt.close()
+        return mapping
 
     def canMonitor(self):
         return True

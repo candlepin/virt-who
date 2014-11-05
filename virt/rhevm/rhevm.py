@@ -32,7 +32,7 @@ except ImportError:
     from xml.etree import ElementTree
 
 
-class RhevM(virt.HypervisorVirt):
+class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
     def __init__(self, logger, config):

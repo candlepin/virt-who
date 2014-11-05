@@ -26,14 +26,14 @@ import xmlrpclib
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
-from virt import DirectVirt
+from virt import Virt
 
 
 class VdsmError(Exception):
     pass
 
 
-class Vdsm(DirectVirt):
+class Vdsm(Virt):
     CONFIG_TYPE = "vdsm"
 
     def __init__(self, logger, config):
@@ -41,6 +41,9 @@ class Vdsm(DirectVirt):
         self.config = config
         self._readConfig("/etc/vdsm/vdsm.conf")
         self.connect()
+
+    def isHypervisor(self):
+        return False
 
     def _readConfig(self, configName):
         parser = SafeConfigParser()

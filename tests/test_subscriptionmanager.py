@@ -10,6 +10,7 @@ from base import TestBase
 
 from config import Config
 from manager.subscriptionmanager import SubscriptionManager
+from virt import Virt
 
 import rhsm.config
 import rhsm.certificate

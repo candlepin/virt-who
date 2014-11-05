@@ -72,7 +72,7 @@ class Vdsm(Virt):
         out, err = p.communicate()
         if p.returncode != 0:
             return '0'
-        return re.search('/CN=([^/]+)/', out).group(1)
+        return re.search('/CN=([^/$\n]+)', out).group(1)
 
     def _secureConnect(self):
         addr = self._getLocalVdsName(self.trust_store_path)

@@ -444,7 +444,7 @@ def _main(logger, options):
 
     virtWho = VirtWho(logger, options)
     if options.virtType is not None:
-        config = Config("virt-who", options.virtType, options.server,
+        config = Config(None, options.virtType, options.server,
                         options.username, options.password, options.owner, options.env)
         virtWho.configManager.addConfig(config)
     if len(virtWho.configManager.configs) == 0:
@@ -452,9 +452,12 @@ def _main(logger, options):
         # fallback to using libvirt as default virt backend
         logger.info("No configurations found, using libvirt as backend")
         virtWho.configManager.addConfig(Config("virt-who", "libvirt"))
-    else:
-        for config in virtWho.configManager.configs:
-            logger.info("Using virt-who configuration: %s" % config.name)
+
+    for config in virtWho.configManager.configs:
+        if config.name is None:
+            logger.info('Using commandline or sysconfig configuration ("%s" mode)' % config.type)
+        else:
+            logger.info('Using configuration "%s" ("%s" mode)' % (config.name, config.type))
 
     def reload(signal, stackframe):
         virtWho.reload()

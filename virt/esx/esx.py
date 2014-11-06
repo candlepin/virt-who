@@ -212,7 +212,7 @@ class Esx(virt.HypervisorVirt):
             return
 
         # Get list of host uuids, names and virtual machines
-        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
+        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware', 'name'], hostObjs)
         for host in object_contents:
             vmObjs = [] # List of objs for 'VirtualMachine' query
             if not hasattr(host, 'propSet'):
@@ -220,6 +220,8 @@ class Esx(virt.HypervisorVirt):
             for propSet in host.propSet:
                 if propSet.name == "hardware":
                     self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
+                elif propSet.name == "name":
+                    self.hosts[host.obj.value].name = propSet.val
                 elif propSet.name == "vm":
                     try:
                         for vm in propSet.val.ManagedObjectReference:
@@ -310,7 +312,7 @@ class Esx(virt.HypervisorVirt):
                     # Stopped machine doesn't have any uuid
                     if vm.uuid is not None:
                         l.append(vm.uuid)
-                mapping[host.uuid] = l
+                mapping[host.name] = l
         return mapping
 
     def printLayout(self):
@@ -320,7 +322,7 @@ class Esx(virt.HypervisorVirt):
         for cluster in self.clusters.values():
             print "ComputeResource: %s" % cluster.name
             for host in cluster.hosts:
-                print "\tHostSystem: %s" % host.uuid
+                print "\tHostSystem: %s" % host.name
                 for vm in host.vms:
                     print "\t\tVirtualMachine: %s" % vm.uuid
 

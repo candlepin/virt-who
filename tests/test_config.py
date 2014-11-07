@@ -24,6 +24,8 @@ import shutil
 from config import ConfigManager, InvalidOption
 from tempfile import mkdtemp
 from base import TestBase, unittest
+from binascii import hexlify
+from mock import patch
 
 
 class TestReadingConfigs(TestBase):
@@ -93,6 +95,28 @@ env=staging
         os.chmod(filename, 0)
         manager = ConfigManager(self.config_dir)
         self.assertEqual(len(manager.configs), 0)
+
+    @patch('password.Password._read_key_iv')
+    def testCryptedPassword(self, password):
+        from password import Password
+        password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
+        passwd = "TestSecretPassword!"
+        crypted = hexlify(Password.encrypt(passwd))
+
+        filename = os.path.join(self.config_dir, "test.conf")
+        with open(filename, "w") as f:
+            f.write("""
+[test]
+type=esx
+server=1.2.3.4
+username=admin
+encrypted_password=%s
+owner=root
+env=staging
+""" % crypted)
+        manager = ConfigManager(self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0].password, passwd)
 
     def testNoOptionsConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:

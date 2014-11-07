@@ -22,6 +22,7 @@ import os
 import logging
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from password import Password
+from binascii import unhexlify
 
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
@@ -83,7 +84,7 @@ class Config(object):
         if password is None:
             try:
                 crypted = parser.get(name, "encrypted_password")
-                password = Password.decrypt(crypted)
+                password = Password.decrypt(unhexlify(crypted))
             except NoOptionError:
                 password = None
 

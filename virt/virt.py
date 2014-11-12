@@ -42,7 +42,8 @@ class Domain(dict):
 
 
 class Virt(object):
-    def __init__(self, config):
+    def __init__(self, logger, config):
+        self.logger = logger
         self.config = config
 
     @classmethod

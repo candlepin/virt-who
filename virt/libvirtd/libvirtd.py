@@ -137,9 +137,8 @@ class Libvirtd(virt.Virt):
     CONFIG_TYPE = "libvirt"
 
     def __init__(self, logger, config, registerEvents=True):
+        super(Libvirtd, self).__init__(logger, config)
         self.changedCallback = None
-        self.logger = logger
-        self.config = config
         self.registerEvents = registerEvents
         self._host_uuid = None
         libvirt.registerErrorHandler(lambda ctx, error: None, None)

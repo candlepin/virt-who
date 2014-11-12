@@ -36,8 +36,7 @@ class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
     def __init__(self, logger, config):
-        self.logger = logger
-        self.config = config
+        super(RhevM, self).__init__(logger, config)
         self.url = self.config.server
         if "//" not in self.url:
             self.url = "//" + self.config.server

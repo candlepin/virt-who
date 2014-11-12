@@ -37,8 +37,7 @@ class Vdsm(Virt):
     CONFIG_TYPE = "vdsm"
 
     def __init__(self, logger, config):
-        self.logger = logger
-        self.config = config
+        super(Vdsm, self).__init__(logger, config)
         self._readConfig("/etc/vdsm/vdsm.conf")
         self.connect()
 

@@ -112,7 +112,7 @@ class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
 
     def __init__(self, logger, config):
-        self.logger = logger
+        super(Esx, self).__init__(logger, config)
         self.url = config.server
         self.username = config.username
         self.password = config.password

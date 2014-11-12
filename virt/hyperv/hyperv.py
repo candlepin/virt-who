@@ -179,7 +179,7 @@ class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
     def __init__(self, logger, config):
-        self.logger = logger
+        super(HyperV, self).__init__(logger, config)
         url = config.server
         self.username = config.username
         self.password = config.password

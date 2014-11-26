@@ -151,7 +151,7 @@ class VirtWho(object):
         if not virt.isHypervisor():
             manager.sendVirtGuests(virtualGuests)
         else:
-            result = manager.hypervisorCheckIn(virt.config, virtualGuests)
+            result = manager.hypervisorCheckIn(virt.config, virtualGuests, virt.config.type)
 
             # Show the result of hypervisorCheckIn
             for fail in result['failedUpdate']:

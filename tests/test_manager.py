@@ -121,7 +121,7 @@ class TestSatellite(TestManager):
         manager = Manager.fromOptions(self.logger, options)
         options.env = "ENV"
         options.owner = "OWNER"
-        manager.hypervisorCheckIn(options, self.mapping)
+        manager.hypervisorCheckIn(options, self.mapping, 'ABC')
         manager.server.registration.virt_notify.assert_called_with(ANY, [
             [
                 0, 'exists', 'system', {'uuid': '0000000000000000', 'identity': 'host'}
@@ -131,7 +131,7 @@ class TestSatellite(TestManager):
                 0, 'exists', 'domain', {
                     'state': 'running',
                     'memory_size': 0,
-                    'name': 'VM from None hypervisor ad58b739-5288-4cbc-a984-bd771612d670',
+                    'name': 'VM from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670',
                     'virt_type': 'fully_virtualized',
                     'vcpus': 1,
                     'uuid': '2147647e6f064ac0982d6902c259f9d6'
@@ -140,7 +140,7 @@ class TestSatellite(TestManager):
                 0, 'exists', 'domain', {
                     'state': 'running',
                     'memory_size': 0,
-                    'name': 'VM from None hypervisor ad58b739-5288-4cbc-a984-bd771612d670',
+                    'name': 'VM from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670',
                     'virt_type': 'fully_virtualized',
                     'vcpus': 1,
                     'uuid': 'd5ffceb5f79d41bea4c1204f836e144a'

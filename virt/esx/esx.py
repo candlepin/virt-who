@@ -228,20 +228,20 @@ class Esx(virt.Virt):
                             self.vms[vm.value] = v
                             self.hosts[host.obj.value].vms.append(v)
 
-                            # Get list of virtual machine uuids
-                            vm_object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
-                            for obj in vm_object_contents:
-                                if len(obj) > 1:
-                                    for propSet in obj.propSet:
-                                        if propSet.name == 'config':
-                                            # We need some uuid, let's try a couple of options
-                                            if propSet.val.uuid is not None:
-                                                self.vms[obj.obj.value].uuid = propSet.val.uuid
-                                            elif propSet.val.instanceUuid is not None:
-                                                self.vms[obj.obj.value].uuid = propSet.val.instanceUuid
-                                            else:
-                                                self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
-                                                self.vms[obj.obj.value].uuid = None
+                        # Get list of virtual machine uuids
+                        vm_object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
+                        for obj in vm_object_contents:
+                            if len(obj) > 1:
+                                for propSet in obj.propSet:
+                                    if propSet.name == 'config':
+                                        # We need some uuid, let's try a couple of options
+                                        if propSet.val.uuid is not None:
+                                            self.vms[obj.obj.value].uuid = propSet.val.uuid
+                                        elif propSet.val.instanceUuid is not None:
+                                            self.vms[obj.obj.value].uuid = propSet.val.instanceUuid
+                                        else:
+                                            self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
+                                            self.vms[obj.obj.value].uuid = None
 
                     except AttributeError:
                         # This means that there is no guest on given host

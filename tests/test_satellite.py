@@ -33,6 +33,7 @@ from mock import MagicMock
 from manager.satellite import Satellite, SatelliteError
 
 TEST_SYSTEM_ID = 'test-system-id'
+TEST_PORT = 8090
 
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
@@ -41,7 +42,7 @@ class RequestHandler(SimpleXMLRPCRequestHandler):
 
 class FakeSatellite(SimpleXMLRPCServer):
     def __init__(self):
-        SimpleXMLRPCServer.__init__(self, ("localhost", 8080), requestHandler=RequestHandler)
+        SimpleXMLRPCServer.__init__(self, ("localhost", TEST_PORT), requestHandler=RequestHandler)
         self.register_function(self.new_system_user_pass, "registration.new_system_user_pass")
         self.register_function(self.refresh_hw_profile, "registration.refresh_hw_profile")
         self.register_function(self.virt_notify, "registration.virt_notify")
@@ -113,7 +114,7 @@ class TestSatellite(TestBase):
         #self.assertRaises(SatelliteError, s.connect, "localhost", "abc", "def")
 
     def test_new_system(self):
-        options = Options("http://localhost:8080", "username", "password")
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
         options.force_register = True
         s = Satellite(self.logger, options)
 
@@ -124,7 +125,7 @@ class TestSatellite(TestBase):
         #self.assertRaises(SatelliteError, s.connect, "http://localhost:8080", "username", "wrong", force_register=True)
 
     def test_hypervisorCheckIn(self):
-        options = Options("http://localhost:8080", "username", "password")
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
         options.force_register = True
         options.env = "ENV"
         options.owner = "OWNER"
@@ -146,7 +147,7 @@ class TestSatellite(TestBase):
         pickle.dump({'system_id': TEST_SYSTEM_ID}, f)
         f.close()
 
-        options = Options("http://localhost:8080", "username", "password")
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
         options.env = "ENV"
         options.owner = "OWNER"
         s = Satellite(self.logger, options)

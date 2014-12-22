@@ -44,7 +44,7 @@ class SubscriptionManager(Manager):
         self.options = options
         self.cert_uuid = None
 
-        self.config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
+        self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
 
         # Consumer ID obtained from consumer certificate
@@ -53,7 +53,7 @@ class SubscriptionManager(Manager):
     def readConfig(self):
         """ Parse rhsm.conf in order to obtain consumer
             certificate and key paths. """
-        consumerCertDir = self.config.get("rhsm", "consumerCertDir")
+        consumerCertDir = self.rhsm_config.get("rhsm", "consumerCertDir")
         cert = 'cert.pem'
         key = 'key.pem'
         self.cert_file = os.path.join(consumerCertDir, cert)
@@ -61,17 +61,28 @@ class SubscriptionManager(Manager):
         if not os.access(self.cert_file, os.R_OK):
             raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
 
-    def _connect(self):
+    def _connect(self, rhsm_username=None, rhsm_password=None):
         """ Connect to the subscription-manager. """
-        self.connection = rhsm_connection.UEPConnection(
-            host=self.config.get('server', 'hostname'),
-            ssl_port=int(self.config.get('server', 'port')),
-            handler=self.config.get('server', 'prefix'),
-            proxy_hostname=self.config.get('server', 'proxy_hostname'),
-            proxy_port=self.config.get('server', 'proxy_port'),
-            proxy_user=self.config.get('server', 'proxy_user'),
-            proxy_password=self.config.get('server', 'proxy_password'),
-            cert_file=self.cert_file, key_file=self.key_file)
+        kwargs = {
+            'host': self.rhsm_config.get('server', 'hostname'),
+            'ssl_port': int(self.rhsm_config.get('server', 'port')),
+            'handler': self.rhsm_config.get('server', 'prefix'),
+            'proxy_hostname': self.rhsm_config.get('server', 'proxy_hostname'),
+            'proxy_port': self.rhsm_config.get('server', 'proxy_port'),
+            'proxy_user': self.rhsm_config.get('server', 'proxy_user'),
+            'proxy_password': self.rhsm_config.get('server', 'proxy_password')
+        }
+
+        if rhsm_username and rhsm_password:
+            self.logger.debug("Authenticating with RHSM username %s" % rhsm_username)
+            kwargs['username'] = rhsm_username
+            kwargs['password'] = rhsm_password
+        else:
+            self.logger.debug("Authenticating with certificate: %s" % self.cert_file)
+            kwargs['cert_file'] = self.cert_file
+            kwargs['key_file'] = self.key_file
+
+        self.connection = rhsm_connection.UEPConnection(**kwargs)
         if not self.connection.ping()['result']:
             raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
 
@@ -118,7 +129,11 @@ class SubscriptionManager(Manager):
         """ Send hosts to guests mapping to subscription manager. """
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
-        self._connect()
+        kwargs = {}
+        if config.rhsm_username and config.rhsm_password:
+            kwargs['rhsm_username'] = config.rhsm_username
+            kwargs['rhsm_password'] = config.rhsm_password
+        self._connect(**kwargs)
 
         # Send the mapping
         return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)

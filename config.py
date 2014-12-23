@@ -50,18 +50,6 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
 
-    def _read_password(self, name, parser):
-        try:
-            password = parser.get(name, "password")
-        except NoOptionError:
-            password = None
-        if password is None:
-            try:
-                crypted = parser.get(name, "encrypted_password")
-                password = Password.decrypt(password)
-            except NoOptionError:
-                return None
-
     @classmethod
     def fromParser(self, name, parser):
         type = parser.get(name, "type").lower()

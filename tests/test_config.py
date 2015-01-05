@@ -47,6 +47,8 @@ username=admin
 password=password
 owner=root
 env=staging
+rhsm_username=admin
+rhsm_password=password
 """)
 
         manager = ConfigManager(self.config_dir)
@@ -59,6 +61,8 @@ env=staging
         self.assertEqual(config.password, "password")
         self.assertEqual(config.owner, "root")
         self.assertEqual(config.env, "staging")
+        self.assertEqual(config.rhsm_username, 'admin')
+        self.assertEqual(config.rhsm_password, 'password')
 
     def testInvalidConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:

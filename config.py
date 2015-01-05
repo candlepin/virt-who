@@ -98,6 +98,14 @@ class Config(object):
         except NoOptionError:
             rhsm_password = None
 
+        # Only attempt to get the encrypted rhsm password if we have a username:
+        if rhsm_username is not None and rhsm_password is None:
+            try:
+                crypted = parser.get(name, "rhsm_encrypted_password")
+                rhsm_password = Password.decrypt(unhexlify(crypted))
+            except NoOptionError:
+                rhsm_password = None
+
         return Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
 
     @property

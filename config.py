@@ -34,7 +34,7 @@ class InvalidOption(Error):
 
 
 class Config(object):
-    def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None):
+    def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None, rhsm_username=None, rhsm_password=None):
         self._name = name
         self._type = type
         if self._type not in VIRTWHO_TYPES:
@@ -47,23 +47,14 @@ class Config(object):
         self._password = password
         self._owner = owner
         self._env = env
-
-    def _read_password(self, name, parser):
-        try:
-            password = parser.get(name, "password")
-        except NoOptionError:
-            password = None
-        if password is None:
-            try:
-                crypted = parser.get(name, "encrypted_password")
-                password = Password.decrypt(password)
-            except NoOptionError:
-                return None
+        self._rhsm_username = rhsm_username
+        self._rhsm_password = rhsm_password
 
     @classmethod
     def fromParser(self, name, parser):
         type = parser.get(name, "type").lower()
-        server = username = password = owner = env = None
+        server = username = password = owner = env = \
+            rhsm_username = rhsm_password = None
         try:
             server = parser.get(name, "server")
         except NoOptionError:
@@ -96,7 +87,26 @@ class Config(object):
             env = parser.get(name, "env")
         except NoOptionError:
             env = None
-        return Config(name, type, server, username, password, owner, env)
+
+        try:
+            rhsm_username = parser.get(name, "rhsm_username")
+        except NoOptionError:
+            rhsm_username = None
+
+        try:
+            rhsm_password = parser.get(name, "rhsm_password")
+        except NoOptionError:
+            rhsm_password = None
+
+        # Only attempt to get the encrypted rhsm password if we have a username:
+        if rhsm_username is not None and rhsm_password is None:
+            try:
+                crypted = parser.get(name, "rhsm_encrypted_password")
+                rhsm_password = Password.decrypt(unhexlify(crypted))
+            except NoOptionError:
+                rhsm_password = None
+
+        return Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
 
     @property
     def name(self):
@@ -125,6 +135,14 @@ class Config(object):
     @property
     def env(self):
         return self._env
+
+    @property
+    def rhsm_username(self):
+        return self._rhsm_username
+
+    @property
+    def rhsm_password(self):
+        return self._rhsm_password
 
 
 class ConfigManager(object):

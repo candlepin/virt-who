@@ -31,6 +31,7 @@ class TestSubscriptionManager(TestBase):
         rhsmcert.return_value.subject = {'CN': 123}
         rhsmconfig.return_value.get.side_effect = lambda group, key: {'consumerCertDir': cls.tempdir}.get(key, DEFAULT)
         cls.sm = SubscriptionManager(cls.logger, config)
+        cls.sm.cert_uuid = 123
 
     @classmethod
     def tearDownClass(cls):

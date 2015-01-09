@@ -173,6 +173,3 @@ class Satellite(Manager):
         """ not implemented """
         return '0000000000000000'
 
-    def getFacts(self):
-        """ Not implemented """
-        pass

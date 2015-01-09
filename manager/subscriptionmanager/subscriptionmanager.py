@@ -47,9 +47,6 @@ class SubscriptionManager(Manager):
         self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
 
-        # Consumer ID obtained from consumer certificate
-        self.cert_uuid = self.uuid()
-
     def readConfig(self):
         """ Parse rhsm.conf in order to obtain consumer
             certificate and key paths. """
@@ -58,8 +55,6 @@ class SubscriptionManager(Manager):
         key = 'key.pem'
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
-        if not os.access(self.cert_file, os.R_OK):
-            raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
 
     def _connect(self, rhsm_username=None, rhsm_password=None):
         """ Connect to the subscription-manager. """
@@ -79,6 +74,8 @@ class SubscriptionManager(Manager):
             kwargs['password'] = rhsm_password
         else:
             self.logger.debug("Authenticating with certificate: %s" % self.cert_file)
+            if not os.access(self.cert_file, os.R_OK):
+                raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
             kwargs['cert_file'] = self.cert_file
             kwargs['key_file'] = self.key_file
 
@@ -148,7 +145,3 @@ class SubscriptionManager(Manager):
                 raise SubscriptionManagerError("Unable to open certificate %s (%s):" % (self.cert_file, str(e)))
         return self.cert_uuid
 
-    def getFacts(self):
-        """ Get fact for current consumer. """
-        self.consumer = self.connection.conn.request_get('/consumers/%s' % self.uuid())
-        return self.consumer['facts']

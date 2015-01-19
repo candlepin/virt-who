@@ -1,6 +1,6 @@
 .TH VIRT-WHO "8" "August 2013" "virt-who"
 .SH NAME
-virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager.
+virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager, Satellite 6, or Satellite 5.
 .SH SYNOPSIS
 virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]
 .SH OPTIONS
@@ -44,10 +44,10 @@ Register guests using Hyper\-V
 Choose where the host/guest associations should be reported
 .TP
 \fB\-\-sam\fR
-Report host/guest associations to the Subscription Asset Manager [default]
+Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]
 .TP
 \fB\-\-satellite\fR
-Report host/guest associations to the Satellite
+Report host/guest associations to the Satellite 5
 .IP
 .SS Libvirt options
 .IP
@@ -204,9 +204,9 @@ Use Hyper-V as virtualization backend and specify option required to connect to 
 
 .SS SUBSCRIPTION MANAGER
 
-virt-who can report host/guest associations either to Subscription Asset Manager (SAM) or to Satellite.
+virt-who can report host/guest associations either to Subscription Asset Manager (SAM), Satellite 6, or Satellite 6.
 .TP
-1. Subscription Asset Manager
+1. Subscription Asset Manager or Satellite 6
 # virt-who
 
 # virt-who --sam
@@ -214,7 +214,7 @@ virt-who can report host/guest associations either to Subscription Asset Manager
 System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM is shared between subscription-manager and virt-who. This is default.
 
 .TP
-2. Satellite
+2. Satellite 5
 # virt-who --satellite --satellite-server=SAT_SERVER --satellite-username=SAT_USERNAME --satellite-password=SAT_PASSWORD
 
 This option can't be used for monitoring local guests, use rhn-virtualization-host instead.

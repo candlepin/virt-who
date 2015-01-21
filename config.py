@@ -170,7 +170,7 @@ class ConfigManager(object):
             try:
                 config = Config.fromParser(section, self._parser)
                 self._configs.append(config)
-            except NoOptionError, e:
+            except NoOptionError as e:
                 logging.error(str(e))
 
     @property

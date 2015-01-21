@@ -134,7 +134,7 @@ class Esx(virt.Virt):
         # Connect to the vCenter server
         try:
             self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
-        except URLError, e:
+        except URLError as e:
             self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
 
@@ -150,7 +150,7 @@ class Esx(virt.Virt):
         # Login to server using given credentials
         try:
             self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
-        except suds.WebFault, e:
+        except suds.WebFault as e:
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))
 
@@ -325,19 +325,19 @@ class Esx(virt.Virt):
                     print "\t\tVirtualMachine: %s" % vm.uuid
 
 
-class Cluster:
+class Cluster(object):
     def __init__(self, name):
         self.name = name
         self.hosts = []
 
 
-class Host:
+class Host(object):
     def __init__(self):
         self.uuid = None
         self.vms = []
 
 
-class VM:
+class VM(object):
     def __init__(self):
         self.uuid = None
 

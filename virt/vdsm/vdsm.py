@@ -96,7 +96,7 @@ class Vdsm(Virt):
             try:
                 self.server = self._secureConnect()
                 return
-            except Exception, e:
+            except Exception as e:
                 self.logger.exception(e)
         # Try http version if ssl is off or fails
         self.server = xmlrpclib.Server("http://localhost:%s" % self.management_port)

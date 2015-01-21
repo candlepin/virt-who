@@ -29,12 +29,13 @@ def getLogger(debug, background):
     logger = logging.getLogger("rhsm-app")
     logger.setLevel(logging.DEBUG)
 
-    path = '/var/log/rhsm/rhsm.log'
+    logdir = '/var/log/rhsm'
+    path = os.path.join(logdir, 'rhsm.log')
     try:
-        if not os.path.isdir("/var/log/rhsm"):
-            os.mkdir("/var/log/rhsm")
-    except:
-        pass
+        if not os.path.isdir(logdir):
+            os.mkdir(logdir)
+    except Exception as e:
+        sys.stderr.write("Unable to create %s directory: %s" % (logdir, str(e)))
 
     # Try to write to /var/log, fallback on console logging:
     try:
@@ -45,7 +46,7 @@ def getLogger(debug, background):
         else:
             fileHandler.setLevel(logging.INFO)
         logger.addHandler(fileHandler)
-    except Exception, e:
+    except Exception as e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
 
     if not background:

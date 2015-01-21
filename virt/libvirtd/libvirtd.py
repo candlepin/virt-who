@@ -80,7 +80,7 @@ class LibvirtMonitor(object):
     def _create_connection(self):
         try:
             self.vc = libvirt.openReadOnly('')
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             self.logger.warn("Unable to connect to libvirt: %s" % str(e))
             return
         try:
@@ -108,7 +108,7 @@ class LibvirtMonitor(object):
         time.sleep(2)
         try:
             self.vc.close()
-        except Exception, e:
+        except Exception:
             pass
         self.vc = None
         self.event.set()
@@ -191,7 +191,7 @@ class Libvirtd(virt.Virt):
                 self.virt = libvirt.openAuth(url, auth, libvirt.VIR_CONNECT_RO)
             else:
                 self.virt = libvirt.openReadOnly(url)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             self.logger.exception("Error in libvirt backend")
             raise virt.VirtError(str(e))
 
@@ -219,7 +219,7 @@ class Libvirtd(virt.Virt):
                 domain = self.virt.lookupByName(domainName)
                 domains.append(virt.Domain(self.virt, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             self.virt.close()
             raise virt.VirtError(str(e))
         return domains

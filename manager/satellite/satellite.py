@@ -81,7 +81,7 @@ class Satellite(Manager):
                     "%s hypervisor %s" % (type, hypervisor_uuid),
                     "unknown", "6Server", "x86_64", self.username, self.password, {})
                 self.server.registration.refresh_hw_profile(new_system['system_id'], [])
-            except Exception, e:
+            except Exception as e:
                 self.logger.exception("Unable to refresh HW profile")
                 raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
             # save the hypervisor systemid
@@ -91,7 +91,7 @@ class Satellite(Manager):
                     pickle.dump(new_system, f)
                 finally:
                     f.close()
-            except (OSError, IOError), e:
+            except (OSError, IOError) as e:
                 self.logger.error("Unable to write system id to %s: %s" % (systemid_filename, str(e)))
 
             self.logger.debug("New system created in satellite, system id saved in %s" % systemid_filename)
@@ -158,9 +158,9 @@ class Satellite(Manager):
             try:
                 self.logger.debug("Sending plan: %s" % plan)
                 self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
-            except Exception, e:
+            except Exception as e:
                 self.logger.exception("Unable to send host/guest assocaition to the satellite:")
-                raise SatelliteError("Unable to send host/guest assocaition to the satellite: % " % str(e))
+                raise SatelliteError("Unable to send host/guest assocaition to the satellite: %s" % str(e))
 
         # TODO: figure out what to populate here
         result = {}

@@ -81,7 +81,7 @@ class Password(object):
                 if not iv or not key:
                     raise InvalidKeyFile("Invalid format")
             return key, iv
-        except IOError, e:
+        except IOError as e:
             raise InvalidKeyFile(str(e))
 
     @classmethod
@@ -101,7 +101,7 @@ class Password(object):
         try:
             with open(cls.KEYFILE, 'w') as f:
                 f.write("%s\n%s\n" % (key, iv))
-        except IOError, e:
+        except IOError as e:
             raise UnwrittableKeyFile(str(e))
         os.chmod(cls.KEYFILE, stat.S_IRUSR | stat.S_IWUSR)
         return key, iv

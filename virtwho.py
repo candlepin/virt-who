@@ -110,9 +110,7 @@ class VirtWho(object):
         virt = Virt.fromConfig(self.logger, config)
         try:
             virtualGuests = self._readGuests(virt)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception, e:
+        except Exception as e:
             exceptionCheck(e)
             # Retry once
             if retry:
@@ -124,9 +122,7 @@ class VirtWho(object):
 
         try:
             self._sendGuests(virt, virtualGuests)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception, e:
+        except Exception as e:
             # Communication with subscription manager failed
             exceptionCheck(e)
             # Retry once
@@ -192,8 +188,6 @@ def exceptionCheck(e):
         # This happens when connection to server is interrupted (CTRL+C or signal)
         if e.args[0] == errno.EALREADY:
             sys.exit(0)
-    except (KeyboardInterrupt, SystemExit):
-        raise
     except Exception:
         pass
 
@@ -396,8 +390,6 @@ class PIDLock(object):
                 print >>sys.stderr, "PID file exists but associated process does not, deleting PID file"
                 os.remove(self.filename)
                 return False
-        except (KeyboardInterrupt, SystemExit):
-            raise
         except Exception:
             return False
 
@@ -407,16 +399,12 @@ class PIDLock(object):
             f = open(self.filename, "w")
             f.write("%d" % os.getpid())
             f.close()
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception, e:
+        except Exception as e:
             print >>sys.stderr, "Unable to create pid file: %s" % str(e)
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             os.remove(self.filename)
-        except (KeyboardInterrupt, SystemExit):
-            raise
         except Exception:
             pass
 
@@ -473,9 +461,7 @@ def _main(logger, options):
 if __name__ == '__main__':
     try:
         main()
-    except (SystemExit, KeyboardInterrupt):
-        sys.exit(1)
-    except Exception, e:
+    except Exception as e:
         logger = log.getLogger(False, False)
         logger.exception("Fatal error:")
         sys.exit(1)

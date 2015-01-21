@@ -320,7 +320,7 @@ class HyperV(virt.Virt):
                     "select BIOSGUID from Msvm_VirtualSystemSettingData "
                     "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
                     "root/virtualization/v2")
-        except HyperVException as e:
+        except HyperVException:
             if not self.useNewApi:
                 self.logger.debug("Error when enumerating using root/virtualization namespace, trying root/virtualization/v2 namespace")
                 self.useNewApi = True

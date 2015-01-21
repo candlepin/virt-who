@@ -20,18 +20,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
-import time
-import atexit
 import signal
 import errno
 import threading
 
 from daemon import daemon
-from virt import Virt, VirtError
-from manager import Manager, ManagerError
+from virt import Virt
+from manager import Manager
 from config import Config, ConfigManager
 
-import logging
 import log
 
 from optparse import OptionParser, OptionGroup
@@ -54,8 +51,6 @@ class OptionParserEpilog(OptionParser):
             return formatter.format_description(self.myepilog)
         else:
             return ""
-
-from ConfigParser import NoOptionError
 
 # Default interval to retry after unsuccessful run
 RetryInterval = 60 # One minute
@@ -313,7 +308,7 @@ def parseOptions():
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
         if required and len(option) == 0:
-            logger.error("Required parameter '%s' is not set, exitting" % name)
+            logger.error("Required parameter '%s' is not set, exitting", name)
             sys.exit(1)
         return option
 
@@ -443,9 +438,9 @@ def _main(logger, options):
 
     for config in virtWho.configManager.configs:
         if config.name is None:
-            logger.info('Using commandline or sysconfig configuration ("%s" mode)' % config.type)
+            logger.info('Using commandline or sysconfig configuration ("%s" mode)', config.type)
         else:
-            logger.info('Using configuration "%s" ("%s" mode)' % (config.name, config.type))
+            logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
     def reload(signal, stackframe):
         virtWho.reload()

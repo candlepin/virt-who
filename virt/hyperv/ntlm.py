@@ -488,7 +488,6 @@ def create_NT_hashed_password_v2(passwd, user, domain):
     digest = create_NT_hashed_password_v1(passwd)
 
     return hmac.new(digest, (user.upper() + domain).encode('utf-16le')).digest()
-    return digest
 
 
 def create_sessionbasekey(password):

@@ -118,5 +118,5 @@ class Vdsm(Virt):
 if __name__ == '__main__':
     import logging
     logger = logging.getLogger("rhsm-app." + __name__)
-    vdsm = Vdsm(logger)
+    vdsm = Vdsm(logger, None)
     print vdsm.listDomains()

@@ -468,8 +468,7 @@ def change_working_directory(directory):
         os.chdir(directory)
     except Exception as exc:
         error = DaemonOSEnvironmentError(
-            "Unable to change working directory (%(exc)s)"
-            % vars())
+            "Unable to change working directory (%s)" % exc)
         raise error
 
 
@@ -486,8 +485,7 @@ def change_root_directory(directory):
         os.chroot(directory)
     except Exception as exc:
         error = DaemonOSEnvironmentError(
-            "Unable to change root directory (%(exc)s)"
-            % vars())
+            "Unable to change root directory (%s)" % exc)
         raise error
 
 
@@ -498,8 +496,7 @@ def change_file_creation_mask(mask):
         os.umask(mask)
     except Exception as exc:
         error = DaemonOSEnvironmentError(
-            "Unable to change file creation mask (%(exc)s)"
-            % vars())
+            "Unable to change file creation mask (%s)" % exc)
         raise error
 
 
@@ -516,8 +513,7 @@ def change_process_owner(uid, gid):
         os.setuid(uid)
     except Exception as exc:
         error = DaemonOSEnvironmentError(
-            "Unable to change file creation mask (%(exc)s)"
-            % vars())
+            "Unable to change file creation mask (%s)" % exc)
         raise error
 
 
@@ -534,11 +530,10 @@ def prevent_core_dump():
     try:
         # Ensure the resource limit exists on this platform, by requesting
         # its current value
-        core_limit_prev = resource.getrlimit(core_resource)
+        resource.getrlimit(core_resource)
     except ValueError as exc:
         error = DaemonOSEnvironmentError(
-            "System does not support RLIMIT_CORE resource limit (%(exc)s)"
-            % vars())
+            "System does not support RLIMIT_CORE resource limit (%s)" % exc)
         raise error
 
     # Set hard and soft limits to zero, i.e. no core dump at all
@@ -568,12 +563,14 @@ def detach_process_context():
         try:
             pid = os.fork()
             if pid > 0:
+                # pylint: disable=W0212
                 os._exit(0)
         except OSError as exc:
-            exc_errno = exc.errno
-            exc_strerror = exc.strerror
             error = DaemonProcessDetachError(
-                "%(error_message)s: [%(exc_errno)d] %(exc_strerror)s" % vars())
+                "%(error_message)s: [%(exc_errno)d] %(exc_strerror)s" % {
+                    'error_message': error_message,
+                    'exc_errno': exc.errno,
+                    'exc_strerror': exc.strerror})
             raise error
 
     fork_then_exit_parent(error_message="Failed first fork")
@@ -609,7 +606,7 @@ def is_socket(fd):
     file_socket = socket.fromfd(fd, socket.AF_INET, socket.SOCK_RAW)
 
     try:
-        socket_type = file_socket.getsockopt(
+        file_socket.getsockopt(
             socket.SOL_SOCKET, socket.SO_TYPE)
     except socket.error as exc:
         exc_errno = exc.args[0]
@@ -678,8 +675,7 @@ def close_file_descriptor_if_open(fd):
         else:
             error = DaemonOSEnvironmentError(
                 "Failed to close file descriptor %(fd)d"
-                " (%(exc)s)"
-                % vars())
+                " (%(exc)s)" % { 'fd': fd, 'exc': exc })
             raise error
 
 
@@ -701,7 +697,7 @@ def get_maximum_file_descriptors():
     return result
 
 
-def close_all_open_files(exclude=set()):
+def close_all_open_files(exclude=None):
     """ Close all open file descriptors.
 
         Closes every file descriptor (if open) of this process. If
@@ -709,6 +705,8 @@ def close_all_open_files(exclude=set()):
         close.
 
         """
+    if exclude is None:
+        exclude = set()
     maxfd = get_maximum_file_descriptors()
     for fd in reversed(range(maxfd)):
         if fd not in exclude:

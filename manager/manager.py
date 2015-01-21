@@ -36,6 +36,10 @@ class Manager(object):
         import subscriptionmanager
         import satellite
 
+        # Silence pyflakes errors
+        assert subscriptionmanager
+        assert satellite
+
         for subcls in cls.__subclasses__():
             if subcls.smType == options.smType:
                 return subcls(logger, options)

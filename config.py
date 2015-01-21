@@ -152,15 +152,15 @@ class ConfigManager(object):
         try:
             config_dir_content = os.listdir(config_dir)
         except OSError:
-            logging.warn("Configuration directory '%s' doesn't exist or is not accessible" % config_dir)
+            logging.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
             return
         for conf in config_dir_content:
             try:
                 filename = self._parser.read(os.path.join(config_dir, conf))
                 if len(filename) == 0:
-                    logging.error("Unable to read configuration file %s" % conf)
+                    logging.error("Unable to read configuration file %s", conf)
             except MissingSectionHeaderError:
-                logging.error("Configuration file %s contains no section headers" % conf)
+                logging.error("Configuration file %s contains no section headers", conf)
 
         self._readConfig()
 

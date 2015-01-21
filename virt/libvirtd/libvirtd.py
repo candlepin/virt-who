@@ -81,7 +81,7 @@ class LibvirtMonitor(object):
         try:
             self.vc = libvirt.openReadOnly('')
         except libvirt.libvirtError as e:
-            self.logger.warn("Unable to connect to libvirt: %s" % str(e))
+            self.logger.warn("Unable to connect to libvirt: %s", str(e))
             return
         try:
             self.vc.registerCloseCallback(self._close_callback, None)
@@ -103,7 +103,7 @@ class LibvirtMonitor(object):
 
     def _close_callback(self, conn, reason, opaque):
         reasonStrings = ("Error", "End-of-file", "Keepalive", "Client")
-        self.logger.info("Connection to libvirtd lost: %s, reconnecting" % reasonStrings[reason])
+        self.logger.info("Connection to libvirtd lost: %s, reconnecting", reasonStrings[reason])
         # it might be just a restart, give it some time to recover
         time.sleep(2)
         try:

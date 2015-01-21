@@ -142,7 +142,7 @@ class Esx(virt.Virt):
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
         self.moRef = suds.sudsobject.Property('ServiceInstance')
-        self.moRef._type = 'ServiceInstance'
+        self.moRef._type = 'ServiceInstance' # pylint: disable=W0212
 
         # Service Content object defines properties of the ServiceInstance object
         self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)

@@ -90,5 +90,5 @@ class Virt(object):
     def listDomains(self):
         raise NotImplementedError()
 
-    def getHostGuestMapping(self):
+    def getHostGuestMapping(self, regname):
         raise NotImplementedError()

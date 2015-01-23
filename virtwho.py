@@ -104,7 +104,7 @@ class VirtWho(object):
         """
         virt = Virt.fromConfig(self.logger, config)
         try:
-            virtualGuests = self._readGuests(virt)
+            virtualGuests = self._readGuests(virt, self.options.regname)
         except Exception as e:
             exceptionCheck(e)
             # Retry once
@@ -129,13 +129,13 @@ class VirtWho(object):
                 return False
         return True
 
-    def _readGuests(self, virt):
+    def _readGuests(self, virt, regname):
         if not self.options.oneshot and virt.canMonitor():
             virt.startMonitoring(self.sync_event)
         if not virt.isHypervisor():
             return virt.listDomains()
         else:
-            return virt.getHostGuestMapping()
+            return virt.getHostGuestMapping(regname)
 
     def _sendGuests(self, virt, virtualGuests):
         manager = Manager.fromOptions(self.logger, self.options)
@@ -144,15 +144,19 @@ class VirtWho(object):
         else:
             result = manager.hypervisorCheckIn(virt.config, virtualGuests, virt.config.type)
 
+            toPrintItem = 'uuid'
+            if self.options.regname == True:
+                toPrintItem = 'name'
+
             # Show the result of hypervisorCheckIn
             for fail in result['failedUpdate']:
                 self.logger.error("Error during update list of guests: %s", str(fail))
             for updated in result['updated']:
                 guests = [x['guestId'] for x in updated['guestIds']]
-                self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+                self.logger.info("Updated host: %s with guests: [%s]", updated[toPrintItem], ", ".join(guests))
             for created in result['created']:
                 guests = [x['guestId'] for x in created['guestIds']]
-                self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+                self.logger.info("Created host: %s with guests: [%s]", created[toPrintItem], ", ".join(guests))
 
     def run(self):
         if self.options.background and self.options.virtType == "libvirt":
@@ -336,7 +340,6 @@ def parseOptions():
         options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env")
         options.server = checkEnv("VIRTWHO_ESX_SERVER", options.server, "server")
         options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
-        options.regname = checkEnv("VIRTWHO_ESX_REGNAME", options.regname, "regname")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 

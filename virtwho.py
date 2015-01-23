@@ -223,6 +223,7 @@ def parseOptions():
     esxGroup.add_option("--esx-server", action="store", dest="server", default="", help="URL of the vCenter server to connect to")
     esxGroup.add_option("--esx-username", action="store", dest="username", default="", help="Username for connecting to vCenter")
     esxGroup.add_option("--esx-password", action="store", dest="password", default="", help="Password for connecting to vCenter")
+    esxGroup.add_option("--esx-regname", action="store_true", dest="regname", default="False", help="Register ESX hosts with hostname instead of UUID")
     parser.add_option_group(esxGroup)
 
     rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --rhevm")
@@ -250,6 +251,10 @@ def parseOptions():
     (options, args) = parser.parse_args()
 
     # Handle enviromental variables
+
+    env = os.getenv("VIRTWHO_ESX_REGNAME", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.regname = True
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
@@ -331,6 +336,7 @@ def parseOptions():
         options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env")
         options.server = checkEnv("VIRTWHO_ESX_SERVER", options.server, "server")
         options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
+        options.regname = checkEnv("VIRTWHO_ESX_REGNAME", options.regname, "regname")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 

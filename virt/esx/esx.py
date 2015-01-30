@@ -212,7 +212,7 @@ class Esx(virt.Virt):
             return
 
         # Get list of host uuids, names and virtual machines
-        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
+        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware', 'name'], hostObjs)
         for host in object_contents:
             vmObjs = [] # List of objs for 'VirtualMachine' query
             if not hasattr(host, 'propSet'):
@@ -220,6 +220,8 @@ class Esx(virt.Virt):
             for propSet in host.propSet:
                 if propSet.name == "hardware":
                     self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
+                elif propSet.name == "name":
+                    self.hosts[host.obj.value].name = propSet.val
                 elif propSet.name == "vm":
                     try:
                         for vm in propSet.val.ManagedObjectReference:
@@ -290,7 +292,7 @@ class Esx(virt.Virt):
         except suds.MethodNotFound:
             return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
 
-    def getHostGuestMapping(self):
+    def getHostGuestMapping(self, regname):
         """
         Returns dictionary with host to guest mapping, e.g.:
 
@@ -310,7 +312,10 @@ class Esx(virt.Virt):
                     # Stopped machine doesn't have any uuid
                     if vm.uuid is not None:
                         l.append(vm.uuid)
-                mapping[host.uuid] = l
+                if regname == True:
+                    mapping[host.name] = l
+                else:
+                    mapping[host.uuid] = l
         return mapping
 
     def printLayout(self):

@@ -91,6 +91,68 @@ class TestOptions(TestBase):
             self.assertEqual(options.username, 'xusername')
             self.assertEqual(options.password, 'xpassword')
 
+    def test_options_virt_satellite(self):
+        for virt in ['esx', 'hyperv', 'rhevm']:
+            self.clearEnv()
+            sys.argv = ["virtwho.py",
+                        "--satellite",
+                        "--satellite-server=localhost",
+                        "--satellite-username=username",
+                        "--satellite-password=password",
+                        "--%s" % virt,
+                        "--%s-server=localhost" % virt,
+                        "--%s-username=username" % virt,
+                        "--%s-password=password" % virt]
+            _, options = parseOptions()
+            self.assertEqual(options.virtType, virt)
+            self.assertEqual(options.owner, '')
+            self.assertEqual(options.env, '')
+            self.assertEqual(options.server, 'localhost')
+            self.assertEqual(options.username, 'username')
+            self.assertEqual(options.password, 'password')
+
+            sys.argv = ["virtwho.py"]
+            virt_up = virt.upper()
+            os.environ["VIRTWHO_SATELLITE"] = "1"
+            os.environ["VIRTWHO_SATELLITE_SERVER"] = "xlocalhost"
+            os.environ["VIRTWHO_SATELLITE_USERNAME"] = "xusername"
+            os.environ["VIRTWHO_SATELLITE_PASSWORD"] = "xpassword"
+            os.environ["VIRTWHO_%s" % virt_up] = "1"
+            os.environ["VIRTWHO_%s_SERVER" % virt_up] = "xlocalhost"
+            os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
+            os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
+            _, options = parseOptions()
+            self.assertEqual(options.virtType, virt)
+            self.assertEqual(options.owner, '')
+            self.assertEqual(options.env, '')
+            self.assertEqual(options.server, 'xlocalhost')
+            self.assertEqual(options.username, 'xusername')
+            self.assertEqual(options.password, 'xpassword')
+
+    def test_missing_option(self):
+        for smType in ['satellite', 'sam']:
+            for virt in ['libvirt', 'vdsm', 'esx', 'hyperv', 'rhevm']:
+                for missing in ['server', 'username', 'password', 'env', 'owner']:
+                    self.clearEnv()
+                    sys.argv = ["virtwho.py", "--%s" % virt]
+                    if virt in ['libvirt', 'esx', 'hyperv', 'rhevm']:
+                        if missing != 'server':
+                            sys.argv.append("--%s-server=localhost" % virt)
+                        if missing != 'username':
+                            sys.argv.append("--%s-username=username" % virt)
+                        if missing != 'password':
+                            sys.argv.append("--%s-password=password" % virt)
+                        if missing != 'env':
+                            sys.argv.append("--%s-env=env" % virt)
+                        if missing != 'owner':
+                            sys.argv.append("--%s-owner=owner" % virt)
+
+                    if virt not in ('libvirt', 'vdsm') and missing != 'password':
+                        if smType == 'satellite' and missing in ['env', 'owner']:
+                            continue
+                        print(smType, virt, missing)
+                        self.assertRaises(OptionError, parseOptions)
+
     @patch('virt.Virt.fromConfig')
     @patch('manager.Manager.fromOptions')
     def test_sending_guests(self, fromOptions, fromConfig):

@@ -27,6 +27,7 @@ import sys
 
 def getLogger(debug, background):
     logger = logging.getLogger("rhsm-app")
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
 
     logdir = '/var/log/rhsm'
@@ -51,7 +52,7 @@ def getLogger(debug, background):
 
     if not background:
         streamHandler = logging.StreamHandler()
-        streamHandler.setFormatter(logging.Formatter('%(levelname)s: %(message)s'))
+        streamHandler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
         if debug:
             streamHandler.setLevel(logging.DEBUG)
         else:

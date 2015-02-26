@@ -18,6 +18,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import sys
+import time
+from datetime import datetime
+from multiprocessing import Process
 
 class VirtError(Exception):
     pass
@@ -40,11 +44,69 @@ class Domain(dict):
             # use first value from info instead
             self['state'] = domain.info()[0]
 
+class AbstractVirtReport(object):
+    '''
+    An abstract report from virt backend.
+    '''
+    def __init__(self, config):
+        self._config = config
 
-class Virt(object):
+    @property
+    def config(self):
+        return self._config
+
+class DomainListReport(AbstractVirtReport):
+    '''
+    Report from virt backend about list of virtual guests on given system.
+    '''
+    def __init__(self, config, guests):
+        super(DomainListReport, self).__init__(config)
+        self._guests = guests
+
+    @property
+    def guests(self):
+        return self._guests
+
+class HostGuestAssociationReport(AbstractVirtReport):
+    '''
+    Report from virt backend about host/guest association on given hypervisor.
+    '''
+    def __init__(self, config, assoc):
+        super(HostGuestAssociationReport, self).__init__(config)
+        self._assoc = assoc
+
+    @property
+    def association(self):
+        return self._assoc
+
+class HypervisorInfoReport(AbstractVirtReport):
+    '''
+    Report from virt backend with info about the hypervisor itself.
+    '''
+    def __init__(self, config, info):
+        super(HypervisorInfoReport, self).__init__(config)
+        self._info = info
+
+    @property
+    def info(self):
+        return self._info
+
+
+class Virt(Process):
+    '''
+    Virtualization backend abstract class.
+
+    This class must be inherited for each of the virtualization backends.
+
+    Run `start` method to start obtaining data about virtual guests. The data
+    will be pushed to the `queue` that is parameter of the `start` method.
+
+    Note that this class is a subclass of `multiprocessing.Process` class.
+    '''
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
+        super(Virt, self).__init__()
 
     @classmethod
     def fromConfig(cls, logger, config):
@@ -64,31 +126,141 @@ class Virt(object):
                 return subcls(logger, config)
         raise KeyError("Invalid config type: %s" % config.type)
 
-    def canMonitor(self):
-        """
-        Return true if inherited class can perform background monitoring
-        for changes in host/guest association.
-        """
-        return False
+    def start(self, queue, terminate_event, interval=None, oneshot=False): # pylint: disable=W0221
+        '''
+        Start obtaining data from the hypervisor/host system. The data will
+        be fetched (as instances of AbstracVirtReport subclasses) to the
+        `queue` parameter (which should be instance of `Queue.Queue` object.
 
-    def startMonitoring(self, event):
-        """
-        Start the monitoring for changes in host/guest association.
+        `terminate_event` is `multiprocessing.Event` instance and will be set when
+        the process should be terminated.
 
-        This should set the 'event' to force resending of host/guest associations.
-        """
-        raise NotImplementedError()
+        `interval` parameter determines maximal interval, how ofter should
+        the data be reported. If the virt backend supports events, it might
+        be less often.
+
+        If `oneshot` parameter is True, the data will be reported only once
+        and the process will be terminated after that. `interval` and
+        `terminate_event` parameters won't be used in that case.
+        '''
+        self._queue = queue
+        self._terminate_event = terminate_event
+        if interval is not None:
+            self._interval = interval
+        else:
+            # TODO: get this value from somewhere
+            self._interval = 3600
+        self._oneshot = oneshot
+        super(Virt, self).start()
+
+    def start_sync(self, queue, terminate_event, interval=None, oneshot=False):
+        '''
+        This method is same as `start()` but runs synchronously, it does NOT
+        create new process.
+
+        Use it only in specific cases!
+        '''
+        self._queue = queue
+        self._terminate_event = terminate_event
+        if interval is not None:
+            self._interval = interval
+        else:
+            # TODO: get this value from somewhere
+            self._interval = 3600
+        self._oneshot = oneshot
+        self._run()
+
+    def _get_report(self):
+        if self.isHypervisor():
+            return HostGuestAssociationReport(self.config, self.getHostGuestMapping())
+        else:
+            return DomainListReport(self.config, self.listDomains())
+
+    def wait(self, wait_time):
+        '''
+        Wait `wait_time` seconds, could be interrupted by setting _terminate_event.
+        '''
+        for i in range(wait_time):
+            if self._terminate_event.is_set():
+                break
+            time.sleep(1)
+
+    def run(self):
+        '''
+        Wrapper around `_run` method that just catches the error messages.
+        '''
+        try:
+            while self._oneshot or not self._terminate_event.is_set():
+                try:
+                    self._run()
+                except VirtError as e:
+                    self.logger.error("Virt backend '%s' fails with error: %s" % (self.config.name, str(e)))
+                except Exception:
+                    self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
+
+                if self._oneshot:
+                    self._queue.put(None)
+                    sys.exit(0)
+
+                if self._terminate_event.is_set():
+                    sys.exit(0)
+
+                self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
+                self.wait(self._interval)
+        except KeyboardInterrupt:
+            sys.exit(1)
+
+    def _run(self):
+        '''
+        Run the endless loop that will fill the `_queue` with reports.
+
+        This method could be reimplemented in subclass to provide
+        it's own way of waiting for changes (like event monitoring)
+        '''
+        self.prepare()
+        while self._oneshot or not self._terminate_event.is_set():
+            start_time = datetime.now()
+            report = self._get_report()
+            self._queue.put(report)
+            end_time = datetime.now()
+
+            delta = end_time - start_time
+            # for python2.6, 2.7 has total_seconds method
+            delta_seconds = ((delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds) / 10**6
+
+            wait_time = self._interval - int(delta_seconds)
+
+            if wait_time <= 0:
+                self.logger.debug("Getting the host/guests association took too long, interval waiting is skipped")
+                continue
+
+            self.wait(wait_time)
+
+    def prepare(self):
+        '''
+        Do pre-mainloop initialization of the backend, for example logging in.
+        '''
+        pass
 
     def isHypervisor(self):
         """
-        Return True if the virt instance represents hypervisor and the guests
-        should be obtained by using getHostGuestMapping method. Otherwise
-        plain listDomains will be used
+        Return True if the virt instance represents hypervisor environment
+        otherwise it represents just one virtual server.
         """
         return True
 
-    def listDomains(self):
-        raise NotImplementedError()
-
     def getHostGuestMapping(self):
-        raise NotImplementedError()
+        '''
+        If subclass doesn't reimplement the `_run` method, it should
+        reimplement either this method or `listDomains` method, based on
+        return value of isHypervisor method.
+        '''
+        raise NotImplementedError('This should be reimplemented in subclass')
+
+    def listDomains(self):
+        '''
+        If subclass doesn't reimplement the `_run` method, it should
+        reimplement either this method or `getHostGuestMapping` method, based on
+        return value of isHypervisor method.
+        '''
+        raise NotImplementedError('This should be reimplemented in subclass')

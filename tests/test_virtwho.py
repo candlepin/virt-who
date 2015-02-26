@@ -20,14 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
-from base import TestBase
+from base import TestBase, unittest
 import logging
 
 from mock import patch, Mock
 
-from virtwho import parseOptions, VirtWho
+from virtwho import parseOptions, VirtWho, OptionError
 from config import Config
-from virt import VirtError
+from virt import VirtError, HostGuestAssociationReport
 from manager import ManagerError
 
 
@@ -96,15 +96,18 @@ class TestOptions(TestBase):
     def test_sending_guests(self, fromOptions, fromConfig):
         options = Mock()
         options.oneshot = True
+        options.interval = 0
         virtwho = VirtWho(self.logger, options)
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
-        self.assertTrue(virtwho.send())
+        virtwho.queue.put(HostGuestAssociationReport(config, {'a': ['b']}))
+        virtwho.run()
 
         fromConfig.assert_called_with(self.logger, config)
-        self.assertTrue(fromConfig.return_value.getHostGuestMapping.called)
+        self.assertTrue(fromConfig.return_value.start.called)
         fromOptions.assert_called_with(self.logger, options)
 
+    @unittest.skip
     @patch('virt.Virt.fromConfig')
     @patch('manager.Manager.fromOptions')
     def test_sending_guests_errors(self, fromOptions, fromConfig):
@@ -113,8 +116,9 @@ class TestOptions(TestBase):
         virtwho = VirtWho(self.logger, options)
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
-        fromConfig.return_value.getHostGuestMapping.side_effect = VirtError
-        self.assertFalse(virtwho.send())
+        fromConfig.side_effect = VirtError
+        report = HostGuestAssociationReport(config, {'a': ['b']})
+        self.assertFalse(virtwho.send(report))
 
         fromConfig.assert_called_with(self.logger, config)
         self.assertTrue(fromConfig.return_value.getHostGuestMapping.called)
@@ -122,7 +126,7 @@ class TestOptions(TestBase):
 
         fromConfig.return_value.getHostGuestMapping.side_effect = None
         fromOptions.return_value.hypervisorCheckIn.side_effect = ManagerError
-        self.assertFalse(virtwho.send())
+        self.assertFalse(virtwho.send(report))
         fromConfig.assert_called_with(self.logger, config)
         self.assertTrue(fromConfig.return_value.getHostGuestMapping.called)
         fromOptions.assert_called()

@@ -18,14 +18,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import threading
+from threading import Event
+from Queue import Queue
 from base import TestBase
 from mock import patch, Mock, ANY
 import logging
 
 from config import Config
 from virt import Virt, Domain, VirtError
-from virt.libvirtd.libvirtd import LibvirtMonitor, VirEventLoopThread
+from virt.libvirtd.libvirtd import VirEventLoopThread
 import virt.libvirtd.libvirtd
 
 
@@ -34,83 +35,71 @@ def raiseLibvirtError(*args, **kwargs):
     raise libvirt.libvirtError('')
 
 
+LIBVIRT_CAPABILITIES_XML = '<capabilities><host><uuid>this-is-uuid</uuid></host></capabilities>'
+
 class TestLibvirtd(TestBase):
     def setUp(self):
         pass
+
+    def run_virt(self, config):
+        v = Virt.fromConfig(self.logger, config)
+        v._queue = Queue()
+        v._terminate_event = Event()
+        v._interval = 3600
+        v._oneshot = True
+        v.run()
 
     @patch('libvirt.openReadOnly')
     def test_read(self, libvirt):
         config = Config('test', 'libvirt')
         libvirtd = Virt.fromConfig(self.logger, config)
-        domains = libvirtd.listDomains()
+        self.run_virt(config)
         libvirt.assert_called_with("")
 
     @patch('libvirt.openReadOnly')
     def test_read_fail(self, virt):
         config = Config('test', 'libvirt')
-        libvirtd = Virt.fromConfig(self.logger, config)
         virt.side_effect = raiseLibvirtError
-        self.assertRaises(VirtError, libvirtd.listDomains)
-
-    @patch('libvirt.openReadOnly')
-    @patch('virt.libvirtd.libvirtd.VirEventLoopThread')
-    def test_monitoring(self, thread, virt):
-        event = threading.Event()
-        LibvirtMonitor().set_event(event)
-        LibvirtMonitor().check()
-
-        thread.assert_called()
-
-        virt.assert_called_with('')
-        virt.return_value.domainEventRegister.assert_called()
-        virt.return_value.setKeepAlive.assert_called()
-        self.assertFalse(event.is_set())
-
-        LibvirtMonitor()._callback()
-        LibvirtMonitor().check()
-        self.assertTrue(event.is_set())
-        event.clear()
-
-        LibvirtMonitor().check()
-        self.assertFalse(event.is_set())
-        event.clear()
-
-        LibvirtMonitor()._callback()
-        self.assertTrue(event.is_set())
-        event.clear()
+        self.assertRaises(VirtError, self.run_virt, config)
 
     @patch('libvirt.openReadOnly')
     def test_remote_hostname(self, virt):
         config = Config('test', 'libvirt', 'server')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('qemu+ssh://server/system?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_url(self, virt):
         config = Config('test', 'libvirt', 'abc://server/test')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('abc://server/test?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_hostname_with_username(self, virt):
         config = Config('test', 'libvirt', 'server', 'user')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_url_with_username(self, virt):
         config = Config('test', 'libvirt', 'abc://server/test', 'user')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('abc://user@server/test?no_tty=1')
 
     @patch('libvirt.openAuth')
     def test_remote_hostname_with_username_and_password(self, virt):
         config = Config('test', 'libvirt', 'server', 'user', 'pass')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1', ANY, ANY)
 
     @patch('libvirt.openAuth')
     def test_remote_url_with_username_and_password(self, virt):
         config = Config('test', 'libvirt', 'abc://server/test', 'user', 'pass')
-        Virt.fromConfig(self.logger, config).listDomains()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config)
         virt.assert_called_with('abc://user@server/test?no_tty=1', ANY, ANY)

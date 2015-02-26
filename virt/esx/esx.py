@@ -18,127 +18,145 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import os
 import sys
 import suds
+import logging
+from datetime import datetime
 from urllib2 import URLError
+import socket
+from collections import defaultdict
 
 import virt
 
 
-def get_search_filter_spec(client, begin_entity, property_spec):
-    """ Build a PropertyFilterSpec capable of full inventory traversal.
-
-    By specifying all valid traversal specs we are creating a PFS that
-    can recursively select any object under the given enitity.
-    """
-
-    # The selection spec for additional objects we want to filter
-    ss_strings = ['resource_pool_traversal_spec',
-                  'resource_pool_vm_traversal_spec',
-                  'folder_traversal_spec',
-                  'datacenter_host_traversal_spec',
-                  'datacenter_vm_traversal_spec',
-                  'compute_resource_rp_traversal_spec',
-                  'compute_resource_host_traversal_spec',
-                  'host_vm_traversal_spec']
-
-    # Create a selection spec for each of the strings specified above
-    selection_specs = []
-    for ss_string in ss_strings:
-        sp = client.factory.create('ns0:SelectionSpec')
-        sp.name = ss_string
-        selection_specs.append(sp)
-
-    rpts = client.factory.create('ns0:TraversalSpec')
-    rpts.name = 'resource_pool_traversal_spec'
-    rpts.type = 'ResourcePool'
-    rpts.path = 'resourcePool'
-    rpts.selectSet = [selection_specs[0], selection_specs[1]]
-
-    rpvts = client.factory.create('ns0:TraversalSpec')
-    rpvts.name = 'resource_pool_vm_traversal_spec'
-    rpvts.type = 'ResourcePool'
-    rpvts.path = 'vm'
-
-    crrts = client.factory.create('ns0:TraversalSpec')
-    crrts.name = 'compute_resource_rp_traversal_spec'
-    crrts.type = 'ComputeResource'
-    crrts.path = 'resourcePool'
-    crrts.selectSet = [selection_specs[0], selection_specs[1]]
-
-    crhts = client.factory.create('ns0:TraversalSpec')
-    crhts.name = 'compute_resource_host_traversal_spec'
-    crhts.type = 'ComputeResource'
-    crhts.path = 'host'
-
-    dhts = client.factory.create('ns0:TraversalSpec')
-    dhts.name = 'datacenter_host_traversal_spec'
-    dhts.type = 'Datacenter'
-    dhts.path = 'hostFolder'
-    dhts.selectSet = [selection_specs[2]]
-
-    dvts = client.factory.create('ns0:TraversalSpec')
-    dvts.name = 'datacenter_vm_traversal_spec'
-    dvts.type = 'Datacenter'
-    dvts.path = 'vmFolder'
-    dvts.selectSet = [selection_specs[2]]
-
-    hvts = client.factory.create('ns0:TraversalSpec')
-    hvts.name = 'host_vm_traversal_spec'
-    hvts.type = 'HostSystem'
-    hvts.path = 'vm'
-    hvts.selectSet = [selection_specs[2]]
-
-    fts = client.factory.create('ns0:TraversalSpec')
-    fts.name = 'folder_traversal_spec'
-    fts.type = 'Folder'
-    fts.path = 'childEntity'
-    fts.selectSet = [selection_specs[2], selection_specs[3],
-                     selection_specs[4], selection_specs[5],
-                     selection_specs[6], selection_specs[7],
-                     selection_specs[1]]
-
-    obj_spec = client.factory.create('ns0:ObjectSpec')
-    obj_spec.obj = begin_entity
-    obj_spec.selectSet = [fts, dvts, dhts, crhts, crrts, rpts, hvts, rpvts]
-
-    pfs = client.factory.create('ns0:PropertyFilterSpec')
-    pfs.propSet = [property_spec]
-    pfs.objectSet = [obj_spec]
-    return pfs
-
-
 class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
+    MAX_WAIT_TIME = 1800 # 30 minutes
 
     def __init__(self, logger, config):
         super(Esx, self).__init__(logger, config)
         self.url = config.server
         self.username = config.username
         self.password = config.password
+        self.config = config
 
         # Url must contain protocol (usualy https://)
         if "://" not in self.url:
             self.url = "https://%s" % self.url
 
-        self.clusters = {}
-        self.hosts = {}
-        self.vms = {}
+        self.filter = None
 
-    def scan(self):
+    def _run(self):
+        self.logger.debug("Log into ESX")
+        self.login()
+
+        self.logger.debug("Creating ESX event filter")
+        self.filter = self.createFilter()
+
+        version = ''
+        self.hosts = defaultdict(Host)
+        self.vms = defaultdict(VM)
+        start_time = end_time = datetime.now()
+
+        while self._oneshot or not self._terminate_event.is_set():
+            delta = end_time - start_time
+            # for python2.6, 2.7 has total_seconds method
+            delta_seconds = ((delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds) / 10**6
+            wait_time = self._interval - int(delta_seconds)
+            if wait_time <= 0:
+                self.logger.debug("Getting the host/guests association took too long, interval waiting is skipped")
+                version = ''
+
+            start_time = datetime.now()
+            if version == '':
+                # We want to read the update no matter how long it will take
+                self.client.set_options(timeout=self.MAX_WAIT_TIME)
+                # also, clean all data we have
+                self.hosts.clear()
+                self.vms.clear()
+            else:
+                self.client.set_options(timeout=wait_time)
+
+            try:
+                updateSet = self.client.service.WaitForUpdatesEx(_this=self.sc.propertyCollector, version=version)
+            except socket.error:
+                self.logger.debug("Wait for ESX event finished, timeout")
+                # Cancel the update
+                try:
+                    self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
+                except Exception:
+                    pass
+                # Get the initial update again
+                version = ''
+                continue
+            except suds.WebFault:
+                self.logger.exception("Waiting for ESX events fails:")
+                try:
+                    self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
+                except Exception:
+                    pass
+                version = ''
+                continue
+
+            if updateSet is not None:
+                version = updateSet.version
+                self.applyUpdates(updateSet)
+
+            assoc = self.getHostGuestMapping()
+            self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
+            end_time = datetime.now()
+
+            if self._oneshot:
+                break
+
+            self.logger.debug("Waiting for ESX changes")
+
+        try:
+            self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
+        except Exception:
+            pass
+
+        if self.filter is not None:
+            self.client.service.DestroyPropertyFilter(self.filter)
+
+    def getHostGuestMapping(self):
+        mapping = {}
+        for host_id, host in self.hosts.items():
+            guests = []
+            uuid = host['hardware.systemInfo.uuid']
+            mapping[uuid] = guests
+            if not host['vm']:
+                continue
+            for vm_id in host['vm'].ManagedObjectReference:
+                if vm_id.value not in self.vms:
+                    self.logger.debug("Host '%s' references non-existing guest '%s'" % (host_id, vm_id.value))
+                    continue
+                vm = self.vms[vm_id.value]
+                if 'config.uuid' not in vm:
+                    self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
+                    continue
+                guests.append(vm['config.uuid'])
+            mapping[uuid] = guests
+        return mapping
+
+    def login(self):
         """
-        Scan method does full inventory traversal on the vCenter machine.
-        It finds all ComputeResources, Hosts and VirtualMachines.
+        Log into ESX
         """
 
         # Connect to the vCenter server
+        if self.config.esx_simplified_vim:
+            wsdl = 'file://%s/vimServiceMinimal.wsdl' % os.path.dirname(os.path.abspath(__file__))
+            kwargs = {'cache': None}
+        else:
+            wsdl = self.url + '/sdk/vimService.wsdl'
+            kwargs = {}
         try:
-            self.client = suds.client.Client("%s/sdk/vimService.wsdl" % self.url)
+            self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
         except URLError as e:
             self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
-
-        self.client.set_options(location="%s/sdk" % self.url)
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
         self.moRef = suds.sudsobject.Property('ServiceInstance')
@@ -154,203 +172,134 @@ class Esx(virt.Virt):
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))
 
-        # Clear results from last run
-        self.clusters = {}
-        self.hosts = {}
-        self.vms = {}
+    def createFilter(self):
+        oSpec = self.objectSpec()
+        oSpec.obj = self.sc.rootFolder
+        oSpec.selectSet = self.buildFullTraversal()
 
-        # Find all ComputeResources in whole vsphere tree
-        ts = self.client.factory.create('ns0:PropertySpec')
-        ts.type = 'ComputeResource'
-        ts.pathSet = 'name'
-        ts.all = True
-        try:
-            retrieve_result = self.client.service.RetrievePropertiesEx(
-                _this=self.sc.propertyCollector,
-                specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
-            if retrieve_result is None:
-                object_content = []
-            else:
-                object_content = retrieve_result[0]
-        except suds.MethodNotFound:
-            object_content = self.client.service.RetrieveProperties(
-                _this=self.sc.propertyCollector,
-                specSet=[get_search_filter_spec(self.client, self.sc.rootFolder, [ts])])
+        pfs = self.propertyFilterSpec()
+        pfs.objectSet = [oSpec]
+        pfs.propSet = [
+            #self.propertySpec("ManagedEntity", ["name"]),
+            self.createPropertySpec("VirtualMachine", ["config.uuid"]), #"config.guestFullName", "config.guestId", "config.instanceUuid"]),
+            self.createPropertySpec("HostSystem", ["vm", "hardware.systemInfo.uuid"]) #, "hardware.systemInfo.vendor", "hardware.systemInfo.model"])
+        ]
 
-        # Get properties of each cluster
-        clusterObjs = [] # List of objs for 'ComputeResource' query
-        for cluster in object_content:
-            if not hasattr(cluster, 'propSet'):
-                continue
-            for propSet in cluster.propSet:
-                if propSet.name == "name":
-                    self.clusters[cluster.obj.value] = Cluster(propSet.val)
-                    clusterObjs.append(cluster.obj)
+        return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)
 
-        if len(clusterObjs) == 0:
-            return
+    def applyUpdates(self, updateSet):
+        for filterSet in updateSet.filterSet:
+            for objectSet in filterSet.objectSet:
+                if objectSet.kind in ['enter', 'modify']:
+                    if objectSet.obj._type == 'VirtualMachine': # pylint: disable=W0212
+                        vm = self.vms[objectSet.obj.value]
+                        for change in objectSet.changeSet:
+                            if change.op == 'assign':
+                                vm[change.name] = change.val
+                            elif change.op in ['remove', 'indirectRemove']:
+                                try:
+                                    del vm[change.name]
+                                except KeyError:
+                                    pass
+                            elif change.op == 'add':
+                                vm[change.name].append(change.val)
+                            else:
+                                self.logger.error("Unknown change operation: %s" % change.op)
+                    elif objectSet.obj._type == 'HostSystem': # pylint: disable=W0212
+                        host = self.hosts[objectSet.obj.value]
+                        for change in objectSet.changeSet:
+                            host[change.name] = change.val
+                elif objectSet.kind == 'leave':
+                    if objectSet.obj._type == 'VirtualMachine': # pylint: disable=W0212
+                        del self.vms[objectSet.obj.value]
+                    elif objectSet.obj._type == 'HostSystem': # pylint: disable=W0212
+                        del self.hosts[objectSet.obj.value]
+                else:
+                    self.logger.error("Unkown update objectSet type: %s" % objectSet.kind)
 
-        # Get list of hosts from cluster
-        object_contents = self.RetrieveProperties('ComputeResource', ['host'], clusterObjs)
-        hostObjs = [] # List of objs for 'HostSystem' query
-        for cluster in object_contents:
-            if not hasattr(cluster, 'propSet'):
-                continue
-            for propSet in cluster.propSet:
-                if propSet.name == 'host':
-                    try:
-                        for host in propSet.val.ManagedObjectReference:
-                            h = Host()
-                            self.hosts[host.value] = h
-                            self.clusters[cluster.obj.value].hosts.append(h)
-                            hostObjs.append(host)
-                    except AttributeError:
-                        # This means that there is no host on given cluster
-                        pass
+    def objectSpec(self):
+        return self.client.factory.create('ns0:ObjectSpec')
 
-        if len(hostObjs) == 0:
-            return
+    def traversalSpec(self):
+        return self.client.factory.create('ns0:TraversalSpec')
 
-        # Get list of host uuids, names and virtual machines
-        object_contents = self.RetrieveProperties('HostSystem', ['vm', 'hardware'], hostObjs)
-        for host in object_contents:
-            vmObjs = [] # List of objs for 'VirtualMachine' query
-            if not hasattr(host, 'propSet'):
-                continue
-            for propSet in host.propSet:
-                if propSet.name == "hardware":
-                    self.hosts[host.obj.value].uuid = propSet.val.systemInfo.uuid
-                elif propSet.name == "vm":
-                    try:
-                        for vm in propSet.val.ManagedObjectReference:
-                            vmObjs.append(vm)
-                            v = VM()
-                            self.vms[vm.value] = v
-                            self.hosts[host.obj.value].vms.append(v)
+    def selectionSpec(self):
+        return self.client.factory.create('ns0:SelectionSpec')
 
-                        # Get list of virtual machine uuids
-                        vm_object_contents = self.RetrieveProperties('VirtualMachine', ['config'], vmObjs)
-                        for obj in vm_object_contents:
-                            if len(obj) > 1:
-                                for propSet in obj.propSet:
-                                    if propSet.name == 'config':
-                                        # We need some uuid, let's try a couple of options
-                                        if propSet.val.uuid is not None:
-                                            self.vms[obj.obj.value].uuid = propSet.val.uuid
-                                        elif propSet.val.instanceUuid is not None:
-                                            self.vms[obj.obj.value].uuid = propSet.val.instanceUuid
-                                        else:
-                                            self.logger.error("No UUID for virtual machine %s", self.vms[obj.obj.value].name)
-                                            self.vms[obj.obj.value].uuid = None
+    def propertyFilterSpec(self):
+        return self.client.factory.create('ns0:PropertyFilterSpec')
 
-                    except AttributeError:
-                        # This means that there is no guest on given host
-                        pass
+    def buildFullTraversal(self):
+        rpToRp = self.createTraversalSpec("rpToRp", "ResourcePool", "resourcePool", ["rpToRp", "rpToVm"])
+        rpToVm = self.createTraversalSpec("rpToVm", "ResourcePool", "vm", [])
+        crToRp = self.createTraversalSpec("crToRp", "ComputeResource", "resourcePool", ["rpToRp", "rpToVm"])
+        crToH = self.createTraversalSpec("crToH", "ComputeResource", "host", [])
+        dcToHf = self.createTraversalSpec("dcToHf", "Datacenter", "hostFolder", ["visitFolders"])
+        dcToVmf = self.createTraversalSpec("dcToVmf", "Datacenter", "vmFolder", ["visitFolders"])
+        hToVm = self.createTraversalSpec("HToVm", "HostSystem", "vm", ["visitFolders"])
+        visitFolders = self.createTraversalSpec("visitFolders", "Folder", "childEntity",
+                ["visitFolders", "dcToHf", "dcToVmf", "crToH", "crToRp", "HToVm", "rpToVm"])
+        return [visitFolders, dcToVmf, dcToHf, crToH, crToRp, rpToRp, hToVm, rpToVm]
 
-    def ping(self):
-        return True
+    def createPropertySpec(self, type, pathSet, all=False):
+        pSpec = self.client.factory.create('ns0:PropertySpec')
+        pSpec.all = all
+        pSpec.type = type
+        pSpec.pathSet = pathSet
+        return pSpec
 
-    def RetrieveProperties(self, propSetType, propSetPathSet, objects):
-        """
-        Retrieve properties (defined by propSetPathSet) of objects of type propSetType.
+    def createTraversalSpec(self, name, type, path, selectSet):
+        ts = self.traversalSpec()
+        ts.name = name
+        ts.type = type
+        ts.path = path
+        if len(selectSet) > 0 and isinstance(selectSet[0], basestring):
+            selectSet = self.createSelectionSpec(selectSet)
+        ts.selectSet = selectSet
+        return ts
 
-        propSetType - name of the type to query
-        propSetPathSet - property or list of properties to obtain
-        objects - get properties of each object from this list
-
-        return - object_properties struct
-        """
-
-        # PropertyFilterSpec is constructed from PropertySpec and ObjectSpec
-        propSet = self.client.factory.create('ns0:PropertySpec')
-        propSet.type = propSetType
-        propSet.all = False
-        propSet.pathSet = propSetPathSet
-
-        objectSets = []
-        for obj in objects:
-            objectSet = self.client.factory.create('ns0:ObjectSpec')
-            objectSet.obj = obj
-            objectSets.append(objectSet)
-
-        pfs = self.client.factory.create('ns0:PropertyFilterSpec')
-        pfs.propSet = [propSet]
-        pfs.objectSet = objectSets
-
-        # Query the VSphere server
-        try:
-            retrieve_result = result = self.client.service.RetrievePropertiesEx(_this=self.sc.propertyCollector, specSet=[pfs])
-            while hasattr(result, "token"):
-                result = self.client.service.ContinueRetrievePropertiesEx(_this=self.sc.propertyCollector, token=result.token)
-                retrieve_result.objects += result.objects
-            if retrieve_result is None:
-                return []
-            else:
-                return retrieve_result.objects
-        except suds.MethodNotFound:
-            return self.client.service.RetrieveProperties(_this=self.sc.propertyCollector, specSet=[pfs])
-
-    def getHostGuestMapping(self):
-        """
-        Returns dictionary with host to guest mapping, e.g.:
-
-        { 'host_id_1': ['guest1', 'guest2'],
-          'host_id_2': ['guest3', 'guest4'],
-        }
-        """
-        self.scan()
-        mapping = {}
-        for cluster in self.clusters.values():
-            for host in cluster.hosts:
-                if host.uuid is None:
-                    # Filter out hosts without uuid
-                    continue
-                l = []
-                for vm in host.vms:
-                    # Stopped machine doesn't have any uuid
-                    if vm.uuid is not None:
-                        l.append(vm.uuid)
-                mapping[host.uuid] = l
-        return mapping
-
-    def printLayout(self):
-        """
-        Prints the layout of vCenter.
-        """
-        for cluster in self.clusters.values():
-            print "ComputeResource: %s" % cluster.name
-            for host in cluster.hosts:
-                print "\tHostSystem: %s" % host.uuid
-                for vm in host.vms:
-                    print "\t\tVirtualMachine: %s" % vm.uuid
+    def createSelectionSpec(self, names):
+        sss = []
+        for name in names:
+            ss = self.selectionSpec()
+            ss.name = name
+            sss.append(ss)
+        return sss
 
 
-class Cluster(object):
-    def __init__(self, name):
-        self.name = name
-        self.hosts = []
-
-
-class Host(object):
+class Host(dict):
     def __init__(self):
         self.uuid = None
         self.vms = []
 
 
-class VM(object):
+class VM(dict):
     def __init__(self):
         self.uuid = None
 
 if __name__ == '__main__':
     # TODO: read from config
     if len(sys.argv) < 4:
-        print "Usage: %s url username password"
+        print("Usage: %s url username password" % sys.argv[0])
         sys.exit(0)
 
-    import logging
-    logger = logging.Logger("")
+    import log
+    logger = log.getLogger(True, False)
     from config import Config
     config = Config('esx', 'esx', sys.argv[1], sys.argv[2], sys.argv[3])
+    #config.esx_simplified_vim = False
     vsphere = Esx(logger, config)
-    vsphere.scan()
-    vsphere.printLayout()
+    from Queue import Queue
+    from threading import Event, Thread
+    q = Queue()
+    class Printer(Thread):
+        def run(self):
+            while True:
+                print q.get(True).association
+    p = Printer()
+    p.daemon = True
+    p.start()
+    try:
+        vsphere.start_sync(q, Event())
+    except KeyboardInterrupt:
+        sys.exit(1)

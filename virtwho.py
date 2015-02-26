@@ -22,10 +22,11 @@ import sys
 import os
 import signal
 import errno
-import threading
+import time
+from multiprocessing import Event, Queue
 
 from daemon import daemon
-from virt import Virt
+from virt import Virt, DomainListReport, HostGuestAssociationReport
 from manager import Manager
 from config import Config, ConfigManager
 
@@ -71,7 +72,9 @@ class VirtWho(object):
         """
         self.logger = logger
         self.options = options
-        self.sync_event = threading.Event()
+        self.terminate_event = Event()
+        # Queue for getting events from virt backends
+        self.queue = Queue()
 
         self.configManager = ConfigManager()
         for config in self.configManager.configs:
@@ -81,78 +84,42 @@ class VirtWho(object):
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
 
-    def send(self):
+    def send(self, report):
         """
         Send list of uuids to subscription manager
 
         return - True if sending is successful, False otherwise
         """
-        # Try to send it twice
-        result = True
-        for config in self.configManager.configs:
-            if not self._send(config, True):
-                result = False
-        return result
-
-    def _send(self, config, retry):
-        """
-        Send list of uuids to subscription manager. This method will call itself
-        once if sending fails.
-
-        retry - Should be True on first run, False on second.
-        return - True if sending is successful, False otherwise
-        """
-        virt = Virt.fromConfig(self.logger, config)
         try:
-            virtualGuests = self._readGuests(virt)
+            if isinstance(report, DomainListReport):
+                self._sendGuestList(report)
+            elif isinstance(report, HostGuestAssociationReport):
+                self._sendGuestAssociation(report)
+            else:
+                self.logger.warn("Unable to handle report of type: %s", type(report))
         except Exception as e:
             exceptionCheck(e)
-            # Retry once
-            if retry:
-                self.logger.exception("Error in communication with virtualization backend, trying to recover:")
-                return self._send(config, False)
-            else:
-                self.logger.error(self.unableToRecoverStr)
-                return False
-
-        try:
-            self._sendGuests(virt, virtualGuests)
-        except Exception as e:
-            # Communication with subscription manager failed
-            exceptionCheck(e)
-            # Retry once
-            if retry:
-                self.logger.exception("Error in communication with subscription manager, trying to recover:")
-                return self._send(config, False)
-            else:
-                self.logger.error(self.unableToRecoverStr)
-                return False
+            self.logger.exception("Error in communication with subscription manager:")
+            return False
         return True
 
-    def _readGuests(self, virt):
-        if not self.options.oneshot and virt.canMonitor():
-            virt.startMonitoring(self.sync_event)
-        if not virt.isHypervisor():
-            return virt.listDomains()
-        else:
-            return virt.getHostGuestMapping()
-
-    def _sendGuests(self, virt, virtualGuests):
+    def _sendGuestList(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
-        if not virt.isHypervisor():
-            manager.sendVirtGuests(virtualGuests)
-        else:
-            result = manager.hypervisorCheckIn(virt.config, virtualGuests, virt.config.type)
+        manager.sendVirtGuests(report.guests)
 
-            # Show the result of hypervisorCheckIn
-            for fail in result['failedUpdate']:
-                self.logger.error("Error during update list of guests: %s", str(fail))
-            for updated in result['updated']:
-                guests = [x['guestId'] for x in updated['guestIds']]
-                self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
-            for created in result['created']:
-                guests = [x['guestId'] for x in created['guestIds']]
-                self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+    def _sendGuestAssociation(self, report):
+        manager = Manager.fromOptions(self.logger, self.options)
+        result = manager.hypervisorCheckIn(report.config, report.association, report.config.type)
+
+        # Show the result of hypervisorCheckIn
+        for fail in result['failedUpdate']:
+            self.logger.error("Error during update list of guests: %s", str(fail))
+        for updated in result['updated']:
+            guests = [x['guestId'] for x in updated['guestIds']]
+            self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
+        for created in result['created']:
+            guests = [x['guestId'] for x in created['guestIds']]
+            self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
 
     def run(self):
         if self.options.background and self.options.virtType == "libvirt":
@@ -160,22 +127,50 @@ class VirtWho(object):
         else:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
 
-        while 1:
-            # Run in infinite loop and send list of UUIDs every 'options.interval' seconds
+        # Run the virtualization backends
+        self.virts = []
+        for config in self.configManager.configs:
+            virt = Virt.fromConfig(self.logger, config)
+            # Run the process
+            virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
+            self.virts.append(virt)
 
-            if self.send():
-                timeout = self.options.interval
+        if self.options.oneshot:
+            oneshot_remaining = len(self.virts)
+
+        result = {}
+        while not self.terminate_event.is_set():
+            # Wait for incoming report from virt backend
+            report = self.queue.get(block=True, timeout=None)
+            # Send the report
+            if self.options.print_:
+                result[report.config] = report
             else:
-                timeout = RetryInterval
+                self.send(report)
 
-            self.sync_event.wait(timeout)
-            self.sync_event.clear()
+            if self.options.oneshot:
+                oneshot_remaining -= 1
+                if oneshot_remaining == 0:
+                    break
+
+        for virt in self.virts:
+            virt.terminate()
+        self.virt = []
+        if self.options.print_:
+            return result
 
     def reload(self):
-        try:
-            self.sync_event.set()
-        except Exception:
-            raise
+        self.warn("virt-who reload")
+        self.terminate_event.set()
+        time.sleep(2)
+        self.run()
+
+    def getMapping(self):
+        mapping = {}
+        for config in self.configManager.configs:
+            virt = Virt.fromConfig(self.logger, config)
+            mapping[config.name or 'none'] = self._readGuests(virt)
+        return mapping
 
 
 def exceptionCheck(e):
@@ -446,11 +441,7 @@ def _main(logger, options):
         virtWho.reload()
     signal.signal(signal.SIGHUP, reload)
 
-    if options.oneshot:
-        # Send list of virtual guests and exit
-        virtWho.send()
-    else:
-        virtWho.run()
+    result = virtWho.run()
 
 
 if __name__ == '__main__':

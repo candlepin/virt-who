@@ -39,7 +39,6 @@ class Vdsm(Virt):
     def __init__(self, logger, config):
         super(Vdsm, self).__init__(logger, config)
         self._readConfig("/etc/vdsm/vdsm.conf")
-        self.connect()
 
     def isHypervisor(self):
         return False
@@ -101,6 +100,9 @@ class Vdsm(Virt):
         # Try http version if ssl is off or fails
         self.server = xmlrpclib.Server("http://localhost:%s" % self.management_port)
 
+    def prepare(self):
+        self.connect()
+
     def listDomains(self):
         domains = []
         response = self.server.list(True)
@@ -111,9 +113,6 @@ class Vdsm(Virt):
                 domains.append(vm['vmId'])
         return domains
 
-    def ping(self):
-        # Not implemented yet
-        return True
 
 if __name__ == '__main__':
     import logging

@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import time
-import logging
 import libvirt
 import threading
 import urlparse
@@ -46,80 +45,6 @@ class VirEventLoopThread(threading.Thread):
         self._terminated.set()
 
 
-class LibvirtMonitor(object):
-    """ Singleton class that performs background event monitoring. """
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            print "Creating new instance of LibvirtMonitor"
-            cls._instance = super(LibvirtMonitor, cls).__new__(cls, *args, **kwargs)
-            cls._instance.logger = logging.getLogger("rhsm-app")
-            cls._instance.event = None
-            cls._instance.eventLoopThread = None
-            cls._instance.domainIds = []
-            cls._instance.definedDomains = []
-            cls._instance.vc = None
-        return cls._instance
-
-    STATUS_NOT_STARTED, STATUS_RUNNING, STATUS_DISABLED = range(3)
-
-    def _prepare(self):
-        self.running = threading.Event()
-        self.status = LibvirtMonitor.STATUS_NOT_STARTED
-
-    def _loop_start(self):
-        libvirt.virEventRegisterDefaultImpl()
-        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
-            self.eventLoopThread.terminate()
-        self.eventLoopThread = VirEventLoopThread(self.logger, name="libvirtEventLoop")
-        self.eventLoopThread.setDaemon(True)
-        self.eventLoopThread.start()
-        self._create_connection()
-
-    def _create_connection(self):
-        try:
-            self.vc = libvirt.openReadOnly('')
-        except libvirt.libvirtError as e:
-            self.logger.warn("Unable to connect to libvirt: %s", str(e))
-            return
-        try:
-            self.vc.registerCloseCallback(self._close_callback, None)
-        except AttributeError:
-            self.logger.warn("Can't monitor libvirtd restarts due to bug in libvirt-python")
-        self.vc.domainEventRegister(self._callback, None)
-        self.vc.setKeepAlive(5, 3)
-
-    def check(self):
-        if self.eventLoopThread is None or not self.eventLoopThread.isAlive():
-            self.logger.debug("Starting libvirt monitoring event loop")
-            self._loop_start()
-        if self.vc is None or not self.vc.isAlive():
-            self.logger.debug("Reconnecting to libvirtd")
-            self._create_connection()
-
-    def _callback(self, *args, **kwargs):
-        self.event.set()
-
-    def _close_callback(self, conn, reason, opaque):
-        reasonStrings = ("Error", "End-of-file", "Keepalive", "Client")
-        self.logger.info("Connection to libvirtd lost: %s, reconnecting", reasonStrings[reason])
-        # it might be just a restart, give it some time to recover
-        time.sleep(2)
-        try:
-            self.vc.close()
-        except Exception:
-            pass
-        self.vc = None
-        self.event.set()
-
-    def set_event(self, event):
-        self.event = event
-
-    def isAlive(self):
-        return self.eventLoopThread is not None and self.eventLoopThread.isAlive()
-
-
 def libvirt_cred_request(credentials, config):
     """ Callback function for requesting credentials from libvirt """
     for credential in credentials:
@@ -141,6 +66,7 @@ class Libvirtd(virt.Virt):
         self.changedCallback = None
         self.registerEvents = registerEvents
         self._host_uuid = None
+        self.eventLoopThread = None
         libvirt.registerErrorHandler(lambda ctx, error: None, None)
 
     def isHypervisor(self):
@@ -181,26 +107,75 @@ class Libvirtd(virt.Virt):
             }
         return ''
 
+    def _createEventLoop(self):
+        libvirt.virEventRegisterDefaultImpl()
+        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
+            self.eventLoopThread.terminate()
+        self.eventLoopThread = VirEventLoopThread(self.logger, name="libvirtEventLoop")
+        self.eventLoopThread.setDaemon(True)
+        self.eventLoopThread.start()
+
     def _connect(self):
         url = self._get_url()
         self.logger.info("Using libvirt url: %s", url if url else '""')
-        monitor = LibvirtMonitor()
         try:
             if self.config.password:
                 auth = [[libvirt.VIR_CRED_AUTHNAME, libvirt.VIR_CRED_PASSPHRASE], libvirt_cred_request, self.config]
-                self.virt = libvirt.openAuth(url, auth, libvirt.VIR_CONNECT_RO)
+                v = libvirt.openAuth(url, auth, libvirt.VIR_CONNECT_RO)
             else:
-                self.virt = libvirt.openReadOnly(url)
+                v = libvirt.openReadOnly(url)
         except libvirt.libvirtError as e:
             self.logger.exception("Error in libvirt backend")
             raise virt.VirtError(str(e))
+        v.domainEventRegister(self._callback, None)
+        v.setKeepAlive(5, 3)
+        return v
 
-    def listDomains(self):
-        """ Get list of all domains. """
-        self._connect()
-        domains = self._listDomains()
-        self.virt.close()
-        return domains
+    def _disconnect(self):
+        if self.virt is None:
+            return
+        try:
+            self.virt.domainEventDeregister(self._callback)
+            self.virt.close()
+        except libvirt.libvirtError:
+            pass
+        self.virt = None
+
+    def _run(self):
+        self._createEventLoop()
+
+        self.virt = None
+
+        while not self._terminate_event.is_set():
+            if self.virt is None:
+                self.virt = self._connect()
+
+            if self.virt.isAlive() != 1:
+                self._disconnect()
+                self.virt = self._connect()
+
+            report = self._get_report()
+            self._queue.put(report)
+            self.time_since_update = 0
+
+            if self._oneshot:
+                return
+
+            while self.time_since_update < self._interval and self.virt.isAlive() == 1:
+                self.time_since_update += 1
+                time.sleep(1)
+
+
+    def _callback(self, *args, **kwargs):
+        report = self._get_report()
+        self._queue.put(report)
+        self.time_since_update = 0
+
+    def _get_report(self):
+        if self.isHypervisor():
+            return virt.HostGuestAssociationReport(self.config, self._getHostGuestMapping())
+        else:
+            return virt.DomainListReport(self.config, self._listDomains())
 
     def _listDomains(self):
         domains = []
@@ -222,6 +197,7 @@ class Libvirtd(virt.Virt):
         except libvirt.libvirtError as e:
             self.virt.close()
             raise virt.VirtError(str(e))
+        self.logger.debug("Libvirt domains found: %s" % domains)
         return domains
 
     def _remote_host_uuid(self):
@@ -230,21 +206,11 @@ class Libvirtd(virt.Virt):
             self._host_uuid = xml.find('host/uuid').text
         return self._host_uuid
 
-    def getHostGuestMapping(self):
-        self._connect()
+    def _getHostGuestMapping(self):
         mapping = {
             self._remote_host_uuid(): self._listDomains()
         }
-        self.virt.close()
         return mapping
-
-    def canMonitor(self):
-        return True
-
-    def startMonitoring(self, event):
-        monitor = LibvirtMonitor()
-        monitor.set_event(event)
-        monitor.check()
 
 
 def eventToString(event):

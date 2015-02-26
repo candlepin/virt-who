@@ -213,10 +213,10 @@ class Virt(Process):
 
                 if self._oneshot:
                     self._queue.put(None)
-                    sys.exit(0)
+                    return
 
                 if self._terminate_event.is_set():
-                    sys.exit(0)
+                    return
 
                 self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
                 self.wait(self._interval)

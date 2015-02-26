@@ -47,7 +47,7 @@ class TestLibvirtd(TestBase):
         v._terminate_event = Event()
         v._interval = 3600
         v._oneshot = True
-        v.run()
+        v._run()
 
     @patch('libvirt.openReadOnly')
     def test_read(self, libvirt):

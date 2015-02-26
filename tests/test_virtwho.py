@@ -159,6 +159,7 @@ class TestOptions(TestBase):
         options = Mock()
         options.oneshot = True
         options.interval = 0
+        options.print_ = False
         virtwho = VirtWho(self.logger, options)
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)

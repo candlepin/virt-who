@@ -38,6 +38,7 @@ class TestEsx(TestBase):
             return MagicMock()
         Vdsm._secureConnect = fakeSecureConnect
         self.vdsm = Vdsm(self.logger, config)
+        self.vdsm.prepare()
 
     def test_connect(self):
         self.vdsm.server.list = MagicMock()

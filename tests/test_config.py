@@ -198,6 +198,10 @@ env=staging
 
         config2, config1 = manager.configs
 
+        self.assertIn(config1.name, ("test1", "test2"))
+        if config1.name == "test2":
+            config2, config1 = config1, config2
+
         self.assertEqual(config1.name, "test1")
         self.assertEqual(config1.type, "esx")
         self.assertEqual(config1.server, "1.2.3.4")

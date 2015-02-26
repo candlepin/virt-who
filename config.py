@@ -197,7 +197,7 @@ class Config(object):
 
 class ConfigManager(object):
     def __init__(self, config_dir=VIRTWHO_CONF_DIR):
-        _parser = SafeConfigParser()
+        parser = SafeConfigParser()
         self._configs = []
         try:
             config_dir_content = os.listdir(config_dir)
@@ -206,7 +206,7 @@ class ConfigManager(object):
             return
         for conf in config_dir_content:
             try:
-                filename = _parser.read(os.path.join(config_dir, conf))
+                filename = parser.read(os.path.join(config_dir, conf))
                 if len(filename) == 0:
                     logging.error("Unable to read configuration file %s", conf)
             except MissingSectionHeaderError:

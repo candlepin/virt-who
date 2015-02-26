@@ -42,7 +42,7 @@ class TestEsx(TestBase):
         self.esx._terminate_event = Event()
         self.esx._oneshot = True
         self.esx._interval = 0
-        self.esx.run()
+        self.esx._run()
 
     @patch('suds.client.Client')
     def test_connect(self, mock_client):

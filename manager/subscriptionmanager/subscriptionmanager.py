@@ -114,10 +114,7 @@ class SubscriptionManager(Manager):
             else:
                 domains.sort(key=lambda item: item[key])
 
-        if key is not None:
-            self.logger.info("Sending list of uuids: %s" % [domain[key] for domain in domains])
-        else:
-            self.logger.info("Sending list of uuids: %s" % domains)
+        self.logger.info("Sending domain info: %s" % domains)
 
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=domains)

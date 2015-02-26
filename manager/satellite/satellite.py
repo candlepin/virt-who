@@ -82,7 +82,7 @@ class Satellite(Manager):
                     "unknown", "6Server", "x86_64", self.username, self.password, {})
                 self.server.registration.refresh_hw_profile(new_system['system_id'], [])
             except Exception as e:
-                self.logger.exception("Unable to refresh HW profile")
+                self.logger.exception("Unable to refresh HW profile:")
                 raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
             # save the hypervisor systemid
             try:

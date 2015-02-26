@@ -28,7 +28,7 @@ import json
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
-from manager import Manager
+from manager import Manager, ManagerError
 from config import Config, ConfigManager
 
 import log
@@ -98,6 +98,8 @@ class VirtWho(object):
                 self._sendGuestAssociation(report)
             else:
                 self.logger.warn("Unable to handle report of type: %s", type(report))
+        except ManagerError as e:
+            self.logger.error("Unable to send data: %s" % str(e))
         except Exception as e:
             exceptionCheck(e)
             self.logger.exception("Error in communication with subscription manager:")

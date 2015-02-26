@@ -167,7 +167,10 @@ class Esx(virt.Virt):
 
         # Login to server using given credentials
         try:
+            # Don't log message containing password
+            logging.getLogger('suds.client').setLevel(logging.CRITICAL)
             self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
+            logging.getLogger('suds.client').setLevel(logging.ERROR)
         except suds.WebFault as e:
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))

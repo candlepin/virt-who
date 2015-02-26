@@ -182,6 +182,9 @@ def exceptionCheck(e):
         pass
 
 
+class OptionError(Exception):
+    pass
+
 def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
@@ -190,6 +193,7 @@ def parseOptions():
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
+    parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -260,6 +264,9 @@ def parseOptions():
     if env in ["1", "true"]:
         options.oneshot = True
 
+    if options.print_:
+        options.oneshot = True
+
     env = os.getenv("VIRTWHO_INTERVAL", "0").strip().lower()
     try:
         if int(env) > 0 and options.interval == 0:
@@ -303,8 +310,7 @@ def parseOptions():
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
         if required and len(option) == 0:
-            logger.error("Required parameter '%s' is not set, exitting", name)
-            sys.exit(1)
+            raise OptionError("Required parameter '%s' is not set, exitting" % name)
         return option
 
     if options.smType == "satellite":
@@ -322,28 +328,34 @@ def parseOptions():
             options.password = os.getenv("VIRTWHO_LIBVIRT_PASSWORD", "")
 
     if options.virtType == "esx":
-        options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner")
-        options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env")
+        options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner", required=False)
+        options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env", required=False)
         options.server = checkEnv("VIRTWHO_ESX_SERVER", options.server, "server")
         options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 
     if options.virtType == "rhevm":
-        options.owner = checkEnv("VIRTWHO_RHEVM_OWNER", options.owner, "owner")
-        options.env = checkEnv("VIRTWHO_RHEVM_ENV", options.env, "env")
+        options.owner = checkEnv("VIRTWHO_RHEVM_OWNER", options.owner, "owner", required=False)
+        options.env = checkEnv("VIRTWHO_RHEVM_ENV", options.env, "env", required=False)
         options.server = checkEnv("VIRTWHO_RHEVM_SERVER", options.server, "server")
         options.username = checkEnv("VIRTWHO_RHEVM_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_RHEVM_PASSWORD", "")
 
     if options.virtType == "hyperv":
-        options.owner = checkEnv("VIRTWHO_HYPERV_OWNER", options.owner, "owner")
-        options.env = checkEnv("VIRTWHO_HYPERV_ENV", options.env, "env")
+        options.owner = checkEnv("VIRTWHO_HYPERV_OWNER", options.owner, "owner", required=False)
+        options.env = checkEnv("VIRTWHO_HYPERV_ENV", options.env, "env", required=False)
         options.server = checkEnv("VIRTWHO_HYPERV_SERVER", options.server, "server")
         options.username = checkEnv("VIRTWHO_HYPERV_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_HYPERV_PASSWORD", "")
+
+    if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv'):
+        if not options.owner:
+            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
+        if not options.env:
+            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
@@ -404,7 +416,12 @@ def main():
     if lock.is_locked():
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
-    logger, options = parseOptions()
+
+    try:
+        logger, options = parseOptions()
+    except OptionError as e:
+        print >>sys.stderr, str(e)
+        sys.exit(1)
 
     if options.background:
         # Do a daemon initialization
@@ -442,12 +459,21 @@ def _main(logger, options):
     signal.signal(signal.SIGHUP, reload)
 
     result = virtWho.run()
+    if virtWho.options.print_:
+        r = {}
+        for config, report in result.items():
+            if isinstance(report, DomainListReport):
+                r[config.name] = report.guests
+            elif isinstance(report, HostGuestAssociationReport):
+                r[config.name] = report.association
+        print r
 
 
 if __name__ == '__main__':
     try:
         main()
     except Exception as e:
+        print >>sys.stderr, e
         logger = log.getLogger(False, False)
         logger.exception("Fatal error:")
         sys.exit(1)

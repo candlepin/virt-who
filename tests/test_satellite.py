@@ -52,17 +52,14 @@ class FakeSatellite(SimpleXMLRPCServer):
             raise Exception("Wrong username")
         if password != "password":
             raise Exception("Wrong password")
-        print "RPC: new_system_user_pass", profile_name, os_release_name, version, arch, username, password, options
         return {'system_id': TEST_SYSTEM_ID}
 
     def refresh_hw_profile(self, system_id, profile):
-        print "RPC: refresh_hw_profile", system_id, profile
         if system_id != TEST_SYSTEM_ID:
             raise Exception("Wrong system id")
         return ""
 
     def virt_notify(self, system_id, plan):
-        print "RPC: virt_notify", system_id, plan
         if system_id != TEST_SYSTEM_ID:
             raise Exception("Wrong system id")
 

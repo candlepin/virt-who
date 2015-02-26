@@ -18,6 +18,7 @@ install:
 	    install -d $(DESTDIR)/usr/share/$(name)/$$dir/ ; \
 	    install -pm 0644 $$dir/*.py $(DESTDIR)/usr/share/$(name)/$$dir/ ; \
 	done
+	install -pm 0644 virt/esx/vimServiceMinimal.wsdl $(DESTDIR)/usr/share/$(name)/virt/esx/
 	install -pm 0644 *.py $(DESTDIR)/usr/share/$(name)/
 	install -d $(DESTDIR)/usr/bin $(DESTDIR)/etc/rc.d/init.d $(DESTDIR)/etc/sysconfig $(DESTDIR)/usr/share/man/man8/ $(DESTDIR)/usr/share/man/man5/ $(DESTDIR)/var/lib/virt-who/
 	install virt-who $(DESTDIR)/usr/bin/

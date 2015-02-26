@@ -1,0 +1,726 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Copyright 2005-2011 VMware, Inc.  All rights reserved.
+-->
+<definitions targetNamespace="urn:vim25" xmlns="http://schemas.xmlsoap.org/wsdl/" xmlns:interface="urn:vim25" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:vim25="urn:vim25" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+ <types>
+  <xsd:schema elementFormDefault="qualified" targetNamespace="urn:vim25">
+   <xsd:complexType name="DynamicData">
+    <xsd:sequence>
+     <xsd:element minOccurs="0" name="dynamicType" type="xsd:string"/>
+     <xsd:element maxOccurs="unbounded" minOccurs="0" name="dynamicProperty" type="vim25:DynamicProperty"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="DynamicProperty">
+    <xsd:sequence>
+     <xsd:element name="name" type="xsd:string"/>
+     <xsd:element name="val" type="xsd:anyType"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="ArrayOfDynamicProperty">
+    <xsd:sequence>
+     <xsd:element maxOccurs="unbounded" minOccurs="0" name="DynamicProperty" type="vim25:DynamicProperty"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="KeyAnyValue">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="key" type="xsd:string"/>
+       <xsd:element name="value" type="xsd:anyType"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="LocalizableMessage">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="key" type="xsd:string"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="arg" type="vim25:KeyAnyValue"/>
+       <xsd:element minOccurs="0" name="message" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="LocalizedMethodFault">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="fault" type="vim25:MethodFault"/>
+       <xsd:element minOccurs="0" name="localizedMessage" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="MethodFault">
+    <xsd:sequence>
+     <xsd:element minOccurs="0" name="dynamicType" type="xsd:string"/>
+     <xsd:element maxOccurs="unbounded" minOccurs="0" name="dynamicProperty" type="vim25:DynamicProperty"/>
+     <xsd:element minOccurs="0" name="faultCause" type="vim25:LocalizedMethodFault"/>
+     <xsd:element maxOccurs="unbounded" minOccurs="0" name="faultMessage" type="vim25:LocalizableMessage"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="RuntimeFault">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:MethodFault">
+      <xsd:sequence>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="ManagedObjectReference">
+    <xsd:simpleContent>
+     <xsd:extension base="xsd:string">
+      <xsd:attribute name="type" type="xsd:string"/>
+     </xsd:extension>
+    </xsd:simpleContent>
+   </xsd:complexType>
+   <xsd:complexType name="ArrayOfManagedObjectReference">
+    <xsd:sequence>
+     <xsd:element maxOccurs="unbounded" minOccurs="0" name="ManagedObjectReference" type="vim25:ManagedObjectReference"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="InvalidCollectorVersion">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:MethodFault">
+      <xsd:sequence>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="InvalidProperty">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:MethodFault">
+      <xsd:sequence>
+       <xsd:element name="name" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="PropertyFilterSpec">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element maxOccurs="unbounded" name="propSet" type="vim25:PropertySpec"/>
+       <xsd:element maxOccurs="unbounded" name="objectSet" type="vim25:ObjectSpec"/>
+       <xsd:element minOccurs="0" name="reportMissingObjectsInResults" type="xsd:boolean"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="PropertySpec">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="type" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="all" type="xsd:boolean"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="pathSet" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="ObjectSpec">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="obj" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="skip" type="xsd:boolean"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="selectSet" type="vim25:SelectionSpec"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="SelectionSpec">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element minOccurs="0" name="name" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="TraversalSpec">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:SelectionSpec">
+      <xsd:sequence>
+       <xsd:element name="type" type="xsd:string"/>
+       <xsd:element name="path" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="skip" type="xsd:boolean"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="selectSet" type="vim25:SelectionSpec"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="ObjectContent">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="obj" type="vim25:ManagedObjectReference"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="propSet" type="vim25:DynamicProperty"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="missingSet" type="vim25:MissingProperty"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="UpdateSet">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="version" type="xsd:string"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="filterSet" type="vim25:PropertyFilterUpdate"/>
+       <xsd:element minOccurs="0" name="truncated" type="xsd:boolean"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="PropertyFilterUpdate">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="filter" type="vim25:ManagedObjectReference"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="objectSet" type="vim25:ObjectUpdate"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="missingSet" type="vim25:MissingObject"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:simpleType name="ObjectUpdateKind">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="modify"/>
+     <xsd:enumeration value="enter"/>
+     <xsd:enumeration value="leave"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:complexType name="ObjectUpdate">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="kind" type="vim25:ObjectUpdateKind"/>
+       <xsd:element name="obj" type="vim25:ManagedObjectReference"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="changeSet" type="vim25:PropertyChange"/>
+       <xsd:element maxOccurs="unbounded" minOccurs="0" name="missingSet" type="vim25:MissingProperty"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:simpleType name="PropertyChangeOp">
+    <xsd:restriction base="xsd:string">
+     <xsd:enumeration value="add"/>
+     <xsd:enumeration value="remove"/>
+     <xsd:enumeration value="assign"/>
+     <xsd:enumeration value="indirectRemove"/>
+    </xsd:restriction>
+   </xsd:simpleType>
+   <xsd:complexType name="PropertyChange">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="name" type="xsd:string"/>
+       <xsd:element name="op" type="vim25:PropertyChangeOp"/>
+       <xsd:element minOccurs="0" name="val" type="xsd:anyType"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="MissingProperty">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="path" type="xsd:string"/>
+       <xsd:element name="fault" type="vim25:LocalizedMethodFault"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="MissingObject">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="obj" type="vim25:ManagedObjectReference"/>
+       <xsd:element name="fault" type="vim25:LocalizedMethodFault"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="WaitOptions">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element minOccurs="0" name="maxWaitSeconds" type="xsd:int"/>
+       <xsd:element minOccurs="0" name="maxObjectUpdates" type="xsd:int"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="RetrieveOptions">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element minOccurs="0" name="maxObjects" type="xsd:int"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="RetrieveResult">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element minOccurs="0" name="token" type="xsd:string"/>
+       <xsd:element maxOccurs="unbounded" name="objects" type="vim25:ObjectContent"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="DestroyPropertyFilterRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="CreateFilterRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+     <xsd:element name="spec" type="vim25:PropertyFilterSpec"/>
+     <xsd:element name="partialUpdates" type="xsd:boolean"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="RetrievePropertiesRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+     <xsd:element maxOccurs="unbounded" name="specSet" type="vim25:PropertyFilterSpec"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="CancelWaitForUpdatesRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="WaitForUpdatesExRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+     <xsd:element minOccurs="0" name="version" type="xsd:string"/>
+     <xsd:element minOccurs="0" name="options" type="vim25:WaitOptions"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="RetrievePropertiesExRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+     <xsd:element maxOccurs="unbounded" name="specSet" type="vim25:PropertyFilterSpec"/>
+     <xsd:element name="options" type="vim25:RetrieveOptions"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="AboutInfo">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="name" type="xsd:string"/>
+       <xsd:element name="fullName" type="xsd:string"/>
+       <xsd:element name="vendor" type="xsd:string"/>
+       <xsd:element name="version" type="xsd:string"/>
+       <xsd:element name="build" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="localeVersion" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="localeBuild" type="xsd:string"/>
+       <xsd:element name="osType" type="xsd:string"/>
+       <xsd:element name="productLineId" type="xsd:string"/>
+       <xsd:element name="apiType" type="xsd:string"/>
+       <xsd:element name="apiVersion" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="instanceUuid" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="licenseProductName" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="licenseProductVersion" type="xsd:string"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="ServiceContent">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="rootFolder" type="vim25:ManagedObjectReference"/>
+       <xsd:element name="propertyCollector" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="viewManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element name="about" type="vim25:AboutInfo"/>
+       <xsd:element minOccurs="0" name="setting" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="userDirectory" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="sessionManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="authorizationManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="perfManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="scheduledTaskManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="alarmManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="eventManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="taskManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="extensionManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="customizationSpecManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="customFieldsManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="accountManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="diagnosticManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="licenseManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="searchIndex" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="fileManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="virtualDiskManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="virtualizationManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="snmpSystem" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="vmProvisioningChecker" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="vmCompatibilityChecker" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="ovfManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="ipPoolManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="dvSwitchManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="hostProfileManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="clusterProfileManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="complianceManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="localizationManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="storageResourceManager" type="vim25:ManagedObjectReference"/>
+       <xsd:element minOccurs="0" name="guestOperationsManager" type="vim25:ManagedObjectReference"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="UserSession">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:DynamicData">
+      <xsd:sequence>
+       <xsd:element name="key" type="xsd:string"/>
+       <xsd:element name="userName" type="xsd:string"/>
+       <xsd:element name="fullName" type="xsd:string"/>
+       <xsd:element name="loginTime" type="xsd:dateTime"/>
+       <xsd:element name="lastActiveTime" type="xsd:dateTime"/>
+       <xsd:element name="locale" type="xsd:string"/>
+       <xsd:element name="messageLocale" type="xsd:string"/>
+       <xsd:element minOccurs="0" name="extensionSession" type="xsd:boolean"/>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="InvalidLocale">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:VimFault">
+      <xsd:sequence>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="InvalidLogin">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:VimFault">
+      <xsd:sequence>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="VimFault">
+    <xsd:complexContent>
+     <xsd:extension base="vim25:MethodFault">
+      <xsd:sequence>
+      </xsd:sequence>
+     </xsd:extension>
+    </xsd:complexContent>
+   </xsd:complexType>
+   <xsd:complexType name="RetrieveServiceContentRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:complexType name="LoginRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference"/>
+     <xsd:element name="userName" type="xsd:string"/>
+     <xsd:element name="password" type="xsd:string"/>
+     <xsd:element minOccurs="0" name="locale" type="xsd:string"/>
+    </xsd:sequence>
+   </xsd:complexType>
+   <xsd:element name="RetrieveServiceContent" type="vim25:RetrieveServiceContentRequestType"/>
+   <xsd:element name="RetrieveServiceContentResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="returnval" type="vim25:ServiceContent"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="Login" type="vim25:LoginRequestType"/>
+   <xsd:element name="LoginResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="returnval" type="vim25:UserSession"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="InvalidLocaleFault" type="vim25:InvalidLocale"/>
+   <xsd:element name="InvalidLoginFault" type="vim25:InvalidLogin"/>
+   <xsd:element name="InvalidCollectorVersionFault" type="vim25:InvalidCollectorVersion"/>
+   <xsd:element name="InvalidPropertyFault" type="vim25:InvalidProperty"/>
+   <xsd:element name="DestroyPropertyFilter" type="vim25:DestroyPropertyFilterRequestType"/>
+   <xsd:element name="DestroyPropertyFilterResponse">
+    <xsd:complexType/>
+   </xsd:element>
+   <xsd:element name="CreateFilter" type="vim25:CreateFilterRequestType"/>
+   <xsd:element name="CreateFilterResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element name="returnval" type="vim25:ManagedObjectReference"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="RetrieveProperties" type="vim25:RetrievePropertiesRequestType"/>
+   <xsd:element name="RetrievePropertiesResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element maxOccurs="unbounded" minOccurs="0" name="returnval" type="vim25:ObjectContent"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="CancelWaitForUpdates" type="vim25:CancelWaitForUpdatesRequestType"/>
+   <xsd:element name="CancelWaitForUpdatesResponse">
+    <xsd:complexType/>
+   </xsd:element>
+   <xsd:element name="WaitForUpdatesEx" type="vim25:WaitForUpdatesExRequestType"/>
+   <xsd:element name="WaitForUpdatesExResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element minOccurs="0" name="returnval" type="vim25:UpdateSet"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="RetrievePropertiesEx" type="vim25:RetrievePropertiesExRequestType"/>
+   <xsd:element name="RetrievePropertiesExResponse">
+    <xsd:complexType>
+     <xsd:sequence>
+      <xsd:element minOccurs="0" name="returnval" type="vim25:RetrieveResult"/>
+     </xsd:sequence>
+    </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="RuntimeFaultFault" type="vim25:RuntimeFault"/>
+  </xsd:schema>
+ </types>
+ <message name="RuntimeFaultFaultMsg">
+  <part element="vim25:RuntimeFaultFault" name="fault"/>
+ </message>
+ <message name="InvalidCollectorVersionFaultMsg">
+  <part element="vim25:InvalidCollectorVersionFault" name="fault"/>
+ </message>
+ <message name="InvalidPropertyFaultMsg">
+  <part element="vim25:InvalidPropertyFault" name="fault"/>
+ </message>
+ <message name="DestroyPropertyFilterRequestMsg">
+  <part element="vim25:DestroyPropertyFilter" name="parameters"/>
+ </message>
+ <message name="DestroyPropertyFilterResponseMsg">
+  <part element="vim25:DestroyPropertyFilterResponse" name="parameters"/>
+ </message>
+ <message name="CreateFilterRequestMsg">
+  <part element="vim25:CreateFilter" name="parameters"/>
+ </message>
+ <message name="CreateFilterResponseMsg">
+  <part element="vim25:CreateFilterResponse" name="parameters"/>
+ </message>
+ <message name="RetrievePropertiesRequestMsg">
+  <part element="vim25:RetrieveProperties" name="parameters"/>
+ </message>
+ <message name="RetrievePropertiesResponseMsg">
+  <part element="vim25:RetrievePropertiesResponse" name="parameters"/>
+ </message>
+ <message name="CancelWaitForUpdatesRequestMsg">
+  <part element="vim25:CancelWaitForUpdates" name="parameters"/>
+ </message>
+ <message name="CancelWaitForUpdatesResponseMsg">
+  <part element="vim25:CancelWaitForUpdatesResponse" name="parameters"/>
+ </message>
+ <message name="WaitForUpdatesExRequestMsg">
+  <part element="vim25:WaitForUpdatesEx" name="parameters"/>
+ </message>
+ <message name="WaitForUpdatesExResponseMsg">
+  <part element="vim25:WaitForUpdatesExResponse" name="parameters"/>
+ </message>
+ <message name="RetrievePropertiesExRequestMsg">
+  <part element="vim25:RetrievePropertiesEx" name="parameters"/>
+ </message>
+ <message name="RetrievePropertiesExResponseMsg">
+  <part element="vim25:RetrievePropertiesExResponse" name="parameters"/>
+ </message>
+ <message name="RetrieveServiceContentRequestMsg">
+  <part element="vim25:RetrieveServiceContent" name="parameters"/>
+ </message>
+ <message name="RetrieveServiceContentResponseMsg">
+  <part element="vim25:RetrieveServiceContentResponse" name="parameters"/>
+ </message>
+ <message name="LoginRequestMsg">
+  <part element="vim25:Login" name="parameters"/>
+ </message>
+ <message name="LoginResponseMsg">
+  <part element="vim25:LoginResponse" name="parameters"/>
+ </message>
+ <message name="InvalidLocaleFaultMsg">
+  <part element="vim25:InvalidLocaleFault" name="fault"/>
+ </message>
+ <message name="InvalidLoginFaultMsg">
+  <part element="vim25:InvalidLoginFault" name="fault"/>
+ </message>
+ <portType name="VimPortType">
+  <operation name="DestroyPropertyFilter">
+   <input message="vim25:DestroyPropertyFilterRequestMsg"/>
+   <output message="vim25:DestroyPropertyFilterResponseMsg"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="CreateFilter">
+   <input message="vim25:CreateFilterRequestMsg"/>
+   <output message="vim25:CreateFilterResponseMsg"/>
+   <fault message="vim25:InvalidPropertyFaultMsg" name="InvalidPropertyFault"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="RetrieveProperties">
+   <input message="vim25:RetrievePropertiesRequestMsg"/>
+   <output message="vim25:RetrievePropertiesResponseMsg"/>
+   <fault message="vim25:InvalidPropertyFaultMsg" name="InvalidPropertyFault"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="CancelWaitForUpdates">
+   <input message="vim25:CancelWaitForUpdatesRequestMsg"/>
+   <output message="vim25:CancelWaitForUpdatesResponseMsg"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="WaitForUpdatesEx">
+   <input message="vim25:WaitForUpdatesExRequestMsg"/>
+   <output message="vim25:WaitForUpdatesExResponseMsg"/>
+   <fault message="vim25:InvalidCollectorVersionFaultMsg" name="InvalidCollectorVersionFault"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="RetrievePropertiesEx">
+   <input message="vim25:RetrievePropertiesExRequestMsg"/>
+   <output message="vim25:RetrievePropertiesExResponseMsg"/>
+   <fault message="vim25:InvalidPropertyFaultMsg" name="InvalidPropertyFault"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="RetrieveServiceContent">
+   <input message="vim25:RetrieveServiceContentRequestMsg"/>
+   <output message="vim25:RetrieveServiceContentResponseMsg"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="Login">
+   <input message="vim25:LoginRequestMsg"/>
+   <output message="vim25:LoginResponseMsg"/>
+   <fault message="vim25:InvalidLoginFaultMsg" name="InvalidLoginFault"/>
+   <fault message="vim25:InvalidLocaleFaultMsg" name="InvalidLocaleFault"/>
+   <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+ </portType>
+ <binding name="VimBinding" type="vim25:VimPortType">
+  <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+  <operation name="DestroyPropertyFilter">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="CreateFilter">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="InvalidPropertyFault">
+    <soap:fault name="InvalidPropertyFault" use="literal"/>
+   </fault>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="RetrieveProperties">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="InvalidPropertyFault">
+    <soap:fault name="InvalidPropertyFault" use="literal"/>
+   </fault>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="CancelWaitForUpdates">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="WaitForUpdatesEx">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="InvalidCollectorVersionFault">
+    <soap:fault name="InvalidCollectorVersionFault" use="literal"/>
+   </fault>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="RetrievePropertiesEx">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="InvalidPropertyFault">
+    <soap:fault name="InvalidPropertyFault" use="literal"/>
+   </fault>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="RetrieveServiceContent">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="Login">
+   <soap:operation soapAction="urn:vim25/5.0" style="document"/>
+   <input>
+    <soap:body use="literal"/>
+   </input>
+   <output>
+    <soap:body use="literal"/>
+   </output>
+   <fault name="InvalidLoginFault">
+    <soap:fault name="InvalidLoginFault" use="literal"/>
+   </fault>
+   <fault name="InvalidLocaleFault">
+    <soap:fault name="InvalidLocaleFault" use="literal"/>
+   </fault>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+ </binding>
+ <service name="VimService">
+  <port binding="interface:VimBinding" name="VimPort">
+   <soap:address location="https://localhost/sdk/vimService"/>
+  </port>
+ </service>
+</definitions>

@@ -50,6 +50,9 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
 
+        # Optional options for backends
+        self.esx_simplified_vim = True
+
     @classmethod
     def fromParser(self, name, parser):
         type = parser.get(name, "type").lower()
@@ -106,7 +109,15 @@ class Config(object):
             except NoOptionError:
                 rhsm_password = None
 
-        return Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
+        config = Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
+
+        if type == 'esx':
+            try:
+                config.esx_simplified_vim = parser.get(name, "simplified_vim").lower() not in ("0", "false", "no")
+            except NoOptionError:
+                pass
+
+        return config
 
     @property
     def name(self):

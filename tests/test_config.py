@@ -63,6 +63,7 @@ rhsm_password=password
         self.assertEqual(config.env, "staging")
         self.assertEqual(config.rhsm_username, 'admin')
         self.assertEqual(config.rhsm_password, 'password')
+        self.assertEqual(config.esx_simplified_vim, True)
 
     def testInvalidConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
@@ -234,3 +235,20 @@ env=staging
         self.assertEqual(config.password, "password")
         self.assertEqual(config.owner, "root")
         self.assertEqual(config.env, "staging")
+
+    def testEsxDisableSimplifiedVim(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+env=staging
+simplified_vim=false
+""")
+        manager = ConfigManager(self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0]
+        self.assertFalse(config.esx_simplified_vim)

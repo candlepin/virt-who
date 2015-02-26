@@ -13,7 +13,7 @@ check:
 	pyflakes *.py
 
 install:
-	for dir in {daemon,password,manager,virt} manager/{satellite,subscriptionmanager} virt/{esx,hyperv,libvirtd,rhevm,vdsm}; do \
+	for dir in {daemon,password,manager,virt} manager/{satellite,subscriptionmanager} virt/{esx,hyperv,libvirtd,rhevm,vdsm,fakevirt}; do \
 	    echo $$dir ; \
 	    install -d $(DESTDIR)/usr/share/$(name)/$$dir/ ; \
 	    install -pm 0644 $$dir/*.py $(DESTDIR)/usr/share/$(name)/$$dir/ ; \

@@ -24,6 +24,7 @@ import signal
 import errno
 import time
 from multiprocessing import Event, Queue
+import json
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
@@ -122,9 +123,7 @@ class VirtWho(object):
             self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
 
     def run(self):
-        if self.options.background and self.options.virtType == "libvirt":
-            self.logger.debug("Starting infinite loop with %d seconds interval and event handling" % self.options.interval)
-        else:
+        if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
 
         # Run the virtualization backends
@@ -142,11 +141,15 @@ class VirtWho(object):
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             report = self.queue.get(block=True, timeout=None)
-            # Send the report
-            if self.options.print_:
-                result[report.config] = report
-            else:
-                self.send(report)
+
+            if report is not None:
+                # None means that there was some error in the backend
+
+                # Send the report
+                if self.options.print_:
+                    result[report.config] = report
+                else:
+                    self.send(report)
 
             if self.options.oneshot:
                 oneshot_remaining -= 1
@@ -194,6 +197,7 @@ def parseOptions():
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
+    parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -439,14 +443,16 @@ def _main(logger, options):
 
     virtWho = VirtWho(logger, options)
     if options.virtType is not None:
-        config = Config(None, options.virtType, options.server,
+        config = Config("env/cmdline", options.virtType, options.server,
                         options.username, options.password, options.owner, options.env)
         virtWho.configManager.addConfig(config)
+    for conffile in options.configs:
+        virtWho.configManager.readFile(conffile)
     if len(virtWho.configManager.configs) == 0:
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
         logger.info("No configurations found, using libvirt as backend")
-        virtWho.configManager.addConfig(Config("virt-who", "libvirt"))
+        virtWho.configManager.addConfig(Config("env/cmdline", "libvirt"))
 
     for config in virtWho.configManager.configs:
         if config.name is None:
@@ -458,15 +464,28 @@ def _main(logger, options):
         virtWho.reload()
     signal.signal(signal.SIGHUP, reload)
 
-    result = virtWho.run()
+    try:
+        result = virtWho.run()
+    except KeyboardInterrupt:
+        sys.exit(1)
+
     if virtWho.options.print_:
-        r = {}
+        hypervisors = []
         for config, report in result.items():
             if isinstance(report, DomainListReport):
-                r[config.name] = report.guests
+                hypervisors.append({
+                    'guests': report.guests
+                })
             elif isinstance(report, HostGuestAssociationReport):
-                r[config.name] = report.association
-        print r
+                for hypervisor, guests in report.association.items():
+                    h = {
+                        'uuid': hypervisor,
+                        'guests': guests
+                    }
+                    hypervisors.append(h)
+        print json.dumps({
+            'hypervisors': hypervisors
+        })
 
 
 if __name__ == '__main__':

@@ -19,6 +19,12 @@ Send the list of guest IDs and exit immediately
 .TP
 \fB\-i\fR INTERVAL, \fB\-\-interval\fR=\fIINTERVAL\fR
 Acquire and send list of virtual guest each N seconds
+.TP
+\fB\-p\fR, \fB\-\-print\fR
+Print the host/guests association in JSON format to stdout
+.TP
+\fB\-c\fR, \fB\-\-config\fR
+Use configuration file directly, can be used multiple times. See virt-who-config(5) for details about configuration file format.
 .IP
 .SS Virtualization backend
 .IP
@@ -201,6 +207,54 @@ Use RHEV-M as virtualization backend and specify option required to connect to R
 # virt-who --hyperv --hyperv-owner=HYPERV_OWNER  --hyperv-env=HYPERV_ENV --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
 
 Use Hyper-V as virtualization backend and specify option required to connect to Hyper-V server.
+
+.TP
+6. Fake
+
+Fake virtualization backend fetches the host/guests association from file. This can be useful in environments where the hypervisor is not accessible by virt-who.
+
+Only available through configuration file with following format:
+.br
+[fake-virt]
+.br
+type=fake
+.br
+file=/path/to/json
+.br
+is_hypervisor=True
+.br
+
+The \fBtype\fR must be \fBfake\fR. Option \fBfile\fR must be absolute path to JSON file
+that has the same structure as file returned from \fBvirt-who --print\fR command, for example:
+.br
+{
+    "hypervisors": [
+.br
+        {
+.br
+            "uuid": "7e98b6ea-0af1-4afa-b846-919549bb0fe2",
+.br
+            "guests": [
+.br
+                {
+.br
+                    "guestId": "8ae19f08-2605-b476-d42e-4bd5a39f466c"
+.br
+                },
+.br
+                ...
+.br
+            ]
+.br
+        },
+.br
+        ...
+.br
+    ]
+.br
+}
+
+The \fBis_hypervisor\fR option determines if the fake data are fetched from multihost environment.
 
 .SS SUBSCRIPTION MANAGER
 

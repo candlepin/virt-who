@@ -26,7 +26,7 @@ from binascii import unhexlify
 
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
-VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv")
+VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
 
 
 class InvalidOption(Error):
@@ -52,6 +52,8 @@ class Config(object):
 
         # Optional options for backends
         self.esx_simplified_vim = True
+        self.fake_is_hypervisor = True
+        self.fake_file = None
 
     @classmethod
     def fromParser(self, name, parser):
@@ -62,7 +64,7 @@ class Config(object):
             server = parser.get(name, "server")
         except NoOptionError:
             # Use '' as libvirt url when not given, for backward compatibility
-            if type == 'libvirt':
+            if type in ['libvirt', 'vdsm', 'fake']:
                 server = ''
             else:
                 raise
@@ -116,6 +118,12 @@ class Config(object):
                 config.esx_simplified_vim = parser.get(name, "simplified_vim").lower() not in ("0", "false", "no")
             except NoOptionError:
                 pass
+        elif type == 'fake':
+            try:
+                config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")
+            except NoOptionError:
+                pass
+            config.fake_file = parser.get(name, "file")
 
         return config
 
@@ -158,7 +166,7 @@ class Config(object):
 
 class ConfigManager(object):
     def __init__(self, config_dir=VIRTWHO_CONF_DIR):
-        self._parser = SafeConfigParser()
+        _parser = SafeConfigParser()
         self._configs = []
         try:
             config_dir_content = os.listdir(config_dir)
@@ -167,22 +175,29 @@ class ConfigManager(object):
             return
         for conf in config_dir_content:
             try:
-                filename = self._parser.read(os.path.join(config_dir, conf))
+                filename = _parser.read(os.path.join(config_dir, conf))
                 if len(filename) == 0:
                     logging.error("Unable to read configuration file %s", conf)
             except MissingSectionHeaderError:
                 logging.error("Configuration file %s contains no section headers", conf)
 
-        self._readConfig()
+        self._readConfig(parser)
 
-    def _readConfig(self):
+    def _readConfig(self, parser):
         self._configs = []
-        for section in self._parser.sections():
+        for section in parser.sections():
             try:
-                config = Config.fromParser(section, self._parser)
+                config = Config.fromParser(section, parser)
                 self._configs.append(config)
             except NoOptionError as e:
                 logging.error(str(e))
+
+    def readFile(self, filename):
+        parser = SafeConfigParser()
+        fname = parser.read(filename)
+        if len(fname) == 0:
+            logging.error("Unable to read configuration file %s", filename)
+        self._readConfig(parser)
 
     @property
     def configs(self):

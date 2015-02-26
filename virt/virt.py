@@ -120,6 +120,7 @@ class Virt(Process):
         import rhevm
         import vdsm
         import hyperv
+        import fakevirt
 
         for subcls in cls.__subclasses__():
             if config.type == subcls.CONFIG_TYPE:

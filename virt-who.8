@@ -212,49 +212,8 @@ Use Hyper-V as virtualization backend and specify option required to connect to 
 6. Fake
 
 Fake virtualization backend fetches the host/guests association from file. This can be useful in environments where the hypervisor is not accessible by virt-who.
+It's only available through configuration file, see virt-who-config(5) for details about configuration of this backend.
 
-Only available through configuration file with following format:
-.br
-[fake-virt]
-.br
-type=fake
-.br
-file=/path/to/json
-.br
-is_hypervisor=True
-.br
-
-The \fBtype\fR must be \fBfake\fR. Option \fBfile\fR must be absolute path to JSON file
-that has the same structure as file returned from \fBvirt-who --print\fR command, for example:
-.br
-{
-    "hypervisors": [
-.br
-        {
-.br
-            "uuid": "7e98b6ea-0af1-4afa-b846-919549bb0fe2",
-.br
-            "guests": [
-.br
-                {
-.br
-                    "guestId": "8ae19f08-2605-b476-d42e-4bd5a39f466c"
-.br
-                },
-.br
-                ...
-.br
-            ]
-.br
-        },
-.br
-        ...
-.br
-    ]
-.br
-}
-
-The \fBis_hypervisor\fR option determines if the fake data are fetched from multihost environment.
 
 .SS SUBSCRIPTION MANAGER
 

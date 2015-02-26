@@ -123,6 +123,14 @@ class Esx(virt.Virt):
     def getHostGuestMapping(self):
         mapping = {}
         for host_id, host in self.hosts.items():
+            parent = host['parent'].value
+            if parent in self.config.exclude_host_parents:
+                self.logger.debug("Skipping host '%s' because its parent '%s' is excluded" % (host_id, parent))
+                continue
+            if len(self.config.filter_host_parents) > 0 and parent not in self.config.filter_host_parents:
+                self.logger.debug("Skipping host '%s' because its parent '%s' is not included" % (host_id, parent))
+                continue
+
             guests = []
             uuid = host['hardware.systemInfo.uuid']
             mapping[uuid] = guests
@@ -185,7 +193,7 @@ class Esx(virt.Virt):
         pfs.propSet = [
             #self.propertySpec("ManagedEntity", ["name"]),
             self.createPropertySpec("VirtualMachine", ["config.uuid"]), #"config.guestFullName", "config.guestId", "config.instanceUuid"]),
-            self.createPropertySpec("HostSystem", ["vm", "hardware.systemInfo.uuid"]) #, "hardware.systemInfo.vendor", "hardware.systemInfo.model"])
+            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent"]) #, "hardware.systemInfo.vendor", "hardware.systemInfo.model"])
         ]
 
         return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)

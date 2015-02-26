@@ -20,10 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import logging
+from csv import reader
+
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from password import Password
 from binascii import unhexlify
-
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
@@ -32,6 +33,12 @@ VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
 class InvalidOption(Error):
     pass
 
+
+def parse_list(s):
+    '''
+    Parse comma-separated list of items that might be in double-quotes to the list of strings
+    '''
+    return reader([s]).next()
 
 class Config(object):
     def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None, rhsm_username=None, rhsm_password=None):
@@ -50,7 +57,12 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
 
+        self.filter_host_uuids = []
+        self.exclude_host_uuids = []
+
         # Optional options for backends
+        self.filter_host_parents = []
+        self.exclude_host_parents = []
         self.esx_simplified_vim = True
         self.fake_is_hypervisor = True
         self.fake_file = None
@@ -113,11 +125,30 @@ class Config(object):
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
 
+        try:
+            config.filter_host_uuids = parse_list(parser.get(name, "filter_host_uuids"))
+        except NoOptionError:
+            config.filter_host_uuids = []
+
+        try:
+            config.exclude_host_uuids = parse_list(parser.get(name, "exclude_host_uuids"))
+        except NoOptionError:
+            config.exclude_host_uuids = []
+
         if type == 'esx':
             try:
                 config.esx_simplified_vim = parser.get(name, "simplified_vim").lower() not in ("0", "false", "no")
             except NoOptionError:
                 pass
+            try:
+                config.filter_host_parents = parse_list(parser.get(name, "filter_host_parents"))
+            except NoOptionError:
+                config.filter_host_parents = []
+
+            try:
+                config.exclude_host_parents = parse_list(parser.get(name, "exclude_host_parents"))
+            except NoOptionError:
+                config.exclude_host_parents = []
         elif type == 'fake':
             try:
                 config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")

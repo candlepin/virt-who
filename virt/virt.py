@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import time
+import logging
 from datetime import datetime
 from multiprocessing import Process
 
@@ -77,7 +78,18 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
     @property
     def association(self):
-        return self._assoc
+        # Apply filter
+        assoc = {}
+        logger = logging.getLogger("rhsm-app")
+        for host, guests in self._assoc.items():
+            if host in self._config.exclude_host_uuids:
+                logger.debug("Skipping host '%s' because its uuid is excluded" % host)
+                continue
+            if len(self._config.filter_host_uuids) > 0 and host not in self._config.filter_host_uuids:
+                logger.debug("Skipping host '%s' because its uuid is not included" % host)
+                continue
+            assoc[host] = guests
+        return assoc
 
 class HypervisorInfoReport(AbstractVirtReport):
     '''

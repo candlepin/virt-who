@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 import suds
+from suds.transport.http import HttpTransport as SudsHttpTransport
 import logging
 from datetime import datetime
 from urllib2 import URLError
@@ -28,6 +29,15 @@ import socket
 from collections import defaultdict
 
 import virt
+
+class WellBehavedHttpTransport(SudsHttpTransport):
+    """
+    HttpTransport which properly obeys the ``*_proxy`` environment variables.
+
+    Taken from https://gist.github.com/rbarrois/3721801
+    """
+    def u2handlers(self):
+        return []
 
 
 class Esx(virt.Virt):
@@ -161,7 +171,7 @@ class Esx(virt.Virt):
             wsdl = self.url + '/sdk/vimService.wsdl'
             kwargs = {}
         try:
-            self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
+            self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, transport=WellBehavedHttpTransport(), **kwargs)
         except URLError as e:
             self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))

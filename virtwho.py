@@ -33,7 +33,7 @@ from config import Config, ConfigManager
 
 import log
 
-from optparse import OptionParser, OptionGroup
+from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
 
 class OptionParserEpilog(OptionParser):
@@ -60,6 +60,8 @@ RetryInterval = 60 # One minute
 DefaultInterval = 3600 # Once per hour
 
 PIDFILE = "/var/run/virt-who.pid"
+SAT5 = "satellite"
+SAT6 = "sam"
 
 
 class VirtWho(object):
@@ -191,7 +193,7 @@ class OptionError(Exception):
     pass
 
 def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
@@ -210,11 +212,13 @@ def parseOptions():
     parser.add_option_group(virtGroup)
 
     managerGroup = OptionGroup(parser, "Subscription manager", "Choose where the host/guest associations should be reported")
-    managerGroup.add_option("--sam", action="store_const", dest="smType", const="sam", default="sam", help="Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]")
-    managerGroup.add_option("--satellite", action="store_const", dest="smType", const="satellite", help="Report host/guest associations to the Satellite 5")
+    managerGroup.add_option("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6, help="Report host/guest associations to the Subscription Asset Manager [default]")
+    managerGroup.add_option("--satellite6", action="store_const", dest="smType", const=SAT6, help="Report host/guest associations to the Satellite 6 server")
+    managerGroup.add_option("--satellite5", action="store_const", dest="smType", const=SAT5, help="Report host/guest associations to the Satellite 5 server")
+    managerGroup.add_option("--satellite", action="store_const", dest="smType", const=SAT5, help=SUPPRESS_HELP)
     parser.add_option_group(managerGroup)
 
-    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use this options with --libvirt")
+    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use these options with --libvirt")
     libvirtGroup.add_option("--libvirt-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products, default is owner of current system")
     libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to, default is environment of current system")
     libvirtGroup.add_option("--libvirt-server", action="store", dest="server", default="", help="URL of the libvirt server to connect to, default is empty for libvirt on local computer")
@@ -222,7 +226,7 @@ def parseOptions():
     libvirtGroup.add_option("--libvirt-password", action="store", dest="password", default="", help="Password for connecting to the libvirt daemon")
     parser.add_option_group(libvirtGroup)
 
-    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
+    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use these options with --esx")
     esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     esxGroup.add_option("--esx-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to")
     esxGroup.add_option("--esx-server", action="store", dest="server", default="", help="URL of the vCenter server to connect to")
@@ -230,7 +234,7 @@ def parseOptions():
     esxGroup.add_option("--esx-password", action="store", dest="password", default="", help="Password for connecting to vCenter")
     parser.add_option_group(esxGroup)
 
-    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --rhevm")
+    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use these options with --rhevm")
     rhevmGroup.add_option("--rhevm-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     rhevmGroup.add_option("--rhevm-env", action="store", dest="env", default="", help="Environment where the RHEV-M belongs to")
     rhevmGroup.add_option("--rhevm-server", action="store", dest="server", default="", help="URL of the RHEV-M server to connect to (preferable use secure connection - https://<ip or domain name>:<secure port, usually 8443>)")
@@ -238,7 +242,7 @@ def parseOptions():
     rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
     parser.add_option_group(rhevmGroup)
 
-    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use this options with --hyperv")
+    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use these options with --hyperv")
     hypervGroup.add_option("--hyperv-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     hypervGroup.add_option("--hyperv-env", action="store", dest="env", default="", help="Environment where the Hyper-V belongs to")
     hypervGroup.add_option("--hyperv-server", action="store", dest="server", default="", help="URL of the Hyper-V server to connect to")
@@ -246,7 +250,7 @@ def parseOptions():
     hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
     parser.add_option_group(hypervGroup)
 
-    satelliteGroup = OptionGroup(parser, "Satellite options", "Use this options with --satellite")
+    satelliteGroup = OptionGroup(parser, "Satellite 5 options", "Use these options with --satellite5")
     satelliteGroup.add_option("--satellite-server", action="store", dest="sat_server", default="", help="Satellite server URL")
     satelliteGroup.add_option("--satellite-username", action="store", dest="sat_username", default="", help="Username for connecting to Satellite server")
     satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
@@ -282,11 +286,19 @@ def parseOptions():
 
     env = os.getenv("VIRTWHO_SAM", "0").strip().lower()
     if env in ["1", "true"]:
-        options.smType = "sam"
+        options.smType = SAT6
+
+    env = os.getenv("VIRTWHO_SATELLITE6", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = SAT6
+
+    env = os.getenv("VIRTWHO_SATELLITE5", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = SAT5
 
     env = os.getenv("VIRTWHO_SATELLITE", "0").strip().lower()
     if env in ["1", "true"]:
-        options.smType = "satellite"
+        options.smType = SAT5
 
     env = os.getenv("VIRTWHO_LIBVIRT", "0").strip().lower()
     if env in ["1", "true"]:
@@ -316,10 +328,10 @@ def parseOptions():
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
         if required and len(option) == 0:
-            raise OptionError("Required parameter '%s' is not set, exitting" % name)
+            raise OptionError("Required parameter '%s' is not set, exiting" % name)
         return option
 
-    if options.smType == "satellite":
+    if options.smType == SAT5:
         options.sat_server = checkEnv("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
         options.sat_username = checkEnv("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
         if len(options.sat_password) == 0:

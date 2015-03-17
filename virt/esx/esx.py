@@ -142,7 +142,14 @@ class Esx(virt.Virt):
                 continue
 
             guests = []
-            uuid = host['hardware.systemInfo.uuid']
+            if self.config.hypervisor_id == 'uuid':
+                uuid = host['hardware.systemInfo.uuid']
+            elif self.config.hypervisor_id == 'hwuuid':
+                uuid = host_id
+            elif self.config.hypervisor_id == 'hostname':
+                uuid = host['name']
+            else:
+                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
             mapping[uuid] = guests
             if not host['vm']:
                 continue

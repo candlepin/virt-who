@@ -25,6 +25,8 @@ import base64
 
 import virt
 
+from config import Config
+
 # Import XML parser
 try:
     from elementtree import ElementTree
@@ -72,12 +74,21 @@ class RhevM(virt.Virt):
         }
         """
         mapping = {}
+        host_ids = {}
 
         hosts_xml = ElementTree.parse(self.get(self.hosts_url))
         vms_xml = ElementTree.parse(self.get(self.vms_url))
 
         for host in hosts_xml.findall('host'):
             id = host.get('id')
+            if self.config.hypervisor_id == 'uuid':
+                host_ids[id] = id
+            elif self.config.hypervisor_id == 'hwuuid':
+                host_ids[id] = host.find('hardware_information').find('uuid').text
+            elif self.config.hypervisor_id == 'hostname':
+                host_ids[id] = host.find('name').text
+            else:
+                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
             mapping[id] = []
 
         for vm in vms_xml.findall('vm'):
@@ -93,7 +104,10 @@ class RhevM(virt.Virt):
             else:
                 mapping[host_id].append(guest_id)
 
-        return mapping
+        mapping_with_ids = {}
+        for host_id, vms in mapping.items():
+            mapping_with_ids[host_ids[host_id]] = vms
+        return mapping_with_ids
 
     def ping(self):
         return True
@@ -101,10 +115,11 @@ class RhevM(virt.Virt):
 if __name__ == '__main__':
     # TODO: read from config
     if len(sys.argv) < 4:
-        print "Usage: %s url username password"
+        print("Usage: %s url username password" % sys.argv[0])
         sys.exit(0)
 
     import logging
     logger = logging.Logger("")
-    rhevm = RhevM(logger, sys.argv[1], sys.argv[2], sys.argv[3])
+    config = Config('rhevm', 'rhevm', sys.argv[1], sys.argv[2], sys.argv[3])
+    rhevm = RhevM(logger, config)
     rhevm.getHostGuestMapping()

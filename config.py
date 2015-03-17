@@ -60,6 +60,8 @@ class Config(object):
         self.filter_host_uuids = []
         self.exclude_host_uuids = []
 
+        self.hypervisor_id = 'uuid'
+
         # Optional options for backends
         self.filter_host_parents = []
         self.exclude_host_parents = []
@@ -124,6 +126,11 @@ class Config(object):
                 rhsm_password = None
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
+
+        try:
+            config.hypervisor_id = parser.get(name, "hypervisor_id")
+        except NoOptionError:
+            config.hypervisor_id = "uuid"
 
         try:
             config.filter_host_uuids = parse_list(parser.get(name, "filter_host_uuids"))

@@ -90,7 +90,7 @@ class Esx(virt.Virt):
 
             try:
                 updateSet = self.client.service.WaitForUpdatesEx(_this=self.sc.propertyCollector, version=version)
-            except socket.error:
+            except (socket.error, URLError):
                 self.logger.debug("Wait for ESX event finished, timeout")
                 # Cancel the update
                 try:

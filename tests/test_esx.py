@@ -50,7 +50,7 @@ class TestEsx(TestBase):
         self.run_once()
 
         self.assertTrue(mock_client.called)
-        mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None, transport=ANY)
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None)
         mock_client.service.RetrieveServiceContent.assert_called_once()
         mock_client.service.Login.assert_called_once()
 
@@ -71,6 +71,6 @@ class TestEsx(TestBase):
         self.run_once()
 
         self.assertTrue(mock_client.called)
-        mock_client.assert_called_with(ANY, location="https://localhost/sdk", transport=ANY)
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk")
         mock_client.service.RetrieveServiceContent.assert_called_once()
         mock_client.service.Login.assert_called_once()

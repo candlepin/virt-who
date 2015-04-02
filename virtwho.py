@@ -25,6 +25,7 @@ import errno
 import time
 from multiprocessing import Event, Queue
 import json
+import atexit
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
@@ -151,7 +152,13 @@ class VirtWho(object):
         result = {}
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
-            report = self.queue.get(block=True, timeout=None)
+            try:
+                report = self.queue.get(block=True, timeout=None)
+            except IOError:
+                break
+
+            if report == "exit":
+                break
 
             if report is not None:
                 # None means that there was some error in the backend
@@ -173,9 +180,18 @@ class VirtWho(object):
         if self.options.print_:
             return result
 
-    def reload(self):
-        self.warn("virt-who reload")
+    def terminate(self):
+        self.logger.warn("shut down started")
+        if self.queue:
+            self.queue.put("exit")
         self.terminate_event.set()
+        for virt in self.virts:
+            virt.terminate()
+        self.virt = []
+
+    def reload(self):
+        self.logger.warn("virt-who reload")
+        self.queue.put("exit")
         time.sleep(2)
         self.run()
 
@@ -456,13 +472,21 @@ def main():
         with lock:
             _main(logger, options)
 
+virtWho = None
 
 def _main(logger, options):
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
 
+    global virtWho
     virtWho = VirtWho(logger, options)
+
+    def atexit_fn():
+        global virtWho
+        virtWho.terminate()
+    atexit.register(atexit_fn)
+
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
                         options.username, options.password, options.owner, options.env)
@@ -485,13 +509,14 @@ def _main(logger, options):
             logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
     def reload(signal, stackframe):
-        virtWho.reload()
+        global virtWho
+        virtWho.terminate()
+        virtWho = VirtWho(logger, options)
+        virtWho.run()
+
     signal.signal(signal.SIGHUP, reload)
 
-    try:
-        result = virtWho.run()
-    except KeyboardInterrupt:
-        sys.exit(1)
+    result = virtWho.run()
 
     if virtWho.options.print_:
         hypervisors = []

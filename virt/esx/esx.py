@@ -26,6 +26,7 @@ from datetime import datetime
 from urllib2 import URLError
 import socket
 from collections import defaultdict
+from httplib import HTTPException
 
 import virt
 
@@ -47,12 +48,16 @@ class Esx(virt.Virt):
 
         self.filter = None
 
-    def _run(self):
+    def _prepare(self):
+        """ Prepare for obtaining information from ESX server. """
         self.logger.debug("Log into ESX")
         self.login()
 
         self.logger.debug("Creating ESX event filter")
         self.filter = self.createFilter()
+
+    def _run(self):
+        self._prepare()
 
         version = ''
         self.hosts = defaultdict(Host)
@@ -90,13 +95,15 @@ class Esx(virt.Virt):
                 # Get the initial update again
                 version = ''
                 continue
-            except suds.WebFault:
+            except (suds.WebFault, HTTPException):
                 self.logger.exception("Waiting for ESX events fails:")
                 try:
                     self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
                 except Exception:
                     pass
                 version = ''
+                self._prepare()
+                start_time = end_time = datetime.now()
                 continue
 
             if updateSet is not None:

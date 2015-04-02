@@ -65,7 +65,7 @@ SAT6 = "sam"
 
 
 class VirtWho(object):
-    def __init__(self, logger, options):
+    def __init__(self, logger, options, config_dir=None):
         """
         VirtWho class provides bridge between virtualization supervisor and
         Subscription Manager.
@@ -79,7 +79,7 @@ class VirtWho(object):
         # Queue for getting events from virt backends
         self.queue = Queue()
 
-        self.configManager = ConfigManager()
+        self.configManager = ConfigManager(config_dir)
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 
@@ -133,13 +133,20 @@ class VirtWho(object):
         # Run the virtualization backends
         self.virts = []
         for config in self.configManager.configs:
-            virt = Virt.fromConfig(self.logger, config)
+            try:
+                virt = Virt.fromConfig(self.logger, config)
+            except Exception as e:
+                self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
+                continue
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
 
         if self.options.oneshot:
             oneshot_remaining = len(self.virts)
+
+        if len(self.virts) == 0:
+            return
 
         result = {}
         while not self.terminate_event.is_set():
@@ -461,7 +468,10 @@ def _main(logger, options):
                         options.username, options.password, options.owner, options.env)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:
-        virtWho.configManager.readFile(conffile)
+        try:
+            virtWho.configManager.readFile(conffile)
+        except Exception as e:
+            logger.error('Config file "%s" skipped because of an error: %s' % (conffile, str(e)))
     if len(virtWho.configManager.configs) == 0:
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend

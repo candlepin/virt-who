@@ -160,7 +160,7 @@ class TestOptions(TestBase):
         options.oneshot = True
         options.interval = 0
         options.print_ = False
-        virtwho = VirtWho(self.logger, options)
+        virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
         virtwho.queue.put(HostGuestAssociationReport(config, {'a': ['b']}))

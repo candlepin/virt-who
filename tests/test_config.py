@@ -24,7 +24,7 @@ import shutil
 from config import ConfigManager, InvalidOption
 from tempfile import mkdtemp
 from base import TestBase, unittest
-from binascii import hexlify
+from binascii import hexlify, unhexlify
 from mock import patch
 
 
@@ -122,6 +122,13 @@ env=staging
         manager = ConfigManager(self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].password, passwd)
+
+    def testCryptedPasswordWithoutKey(self):
+        from password import Password, InvalidKeyFile
+        Password.KEYFILE = "/some/nonexistant/file"
+        passwd = "TestSecretPassword!"
+        with self.assertRaises(InvalidKeyFile):
+            Password.decrypt(unhexlify("06a9214036b8a15b512e03d534120006"))
 
     def testNoOptionsConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:

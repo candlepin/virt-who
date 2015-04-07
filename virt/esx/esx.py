@@ -110,6 +110,9 @@ class Esx(virt.Virt):
                 version = updateSet.version
                 self.applyUpdates(updateSet)
 
+            if hasattr(updateSet, 'truncated') and updateSet.truncated:
+                continue
+
             assoc = self.getHostGuestMapping()
             self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
             end_time = datetime.now()

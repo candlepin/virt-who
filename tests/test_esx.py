@@ -68,6 +68,7 @@ class TestEsx(TestBase):
     def test_disable_simplified_vim(self, mock_client):
         self.esx.config.esx_simplified_vim = False
         mock_client.return_value.service.RetrievePropertiesEx.return_value = None
+        mock_client.return_value.service.WaitForUpdatesEx.return_value.truncated = False
         self.run_once()
 
         self.assertTrue(mock_client.called)

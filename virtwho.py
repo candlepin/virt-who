@@ -36,6 +36,9 @@ import log
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
+class ReloadRequest(Exception):
+    ''' Reload of virt-who was requested by sending SIGHUP signal. '''
+
 
 class OptionParserEpilog(OptionParser):
     """ Epilog is new in Python 2.5, we need to support Python 2.4. """
@@ -155,10 +158,16 @@ class VirtWho(object):
             try:
                 report = self.queue.get(block=True, timeout=None)
             except IOError:
-                break
+                continue
 
             if report == "exit":
                 break
+            if report == "reload":
+                for virt in self.virts:
+                    virt.terminate()
+                self.virts = []
+                raise ReloadRequest()
+
 
             if report is not None:
                 # None means that there was some error in the backend
@@ -176,12 +185,12 @@ class VirtWho(object):
 
         for virt in self.virts:
             virt.terminate()
-        self.virt = []
+        self.virts = []
         if self.options.print_:
             return result
 
     def terminate(self):
-        self.logger.warn("shut down started")
+        self.logger.debug("virt-who shut down started")
         if self.queue:
             self.queue.put("exit")
         self.terminate_event.set()
@@ -191,9 +200,7 @@ class VirtWho(object):
 
     def reload(self):
         self.logger.warn("virt-who reload")
-        self.queue.put("exit")
-        time.sleep(2)
-        self.run()
+        self.queue.put("reload")
 
     def getMapping(self):
         mapping = {}
@@ -451,6 +458,7 @@ class PIDLock(object):
         except Exception:
             pass
 
+virtWho = None
 
 def main():
     lock = PIDLock(PIDFILE)
@@ -464,15 +472,30 @@ def main():
         print >>sys.stderr, str(e)
         sys.exit(1)
 
-    if options.background:
-        # Do a daemon initialization
-        with daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream]):
-            _main(logger, options)
-    else:
-        with lock:
-            _main(logger, options)
+    def atexit_fn():
+        global virtWho
+        virtWho.terminate()
+    atexit.register(atexit_fn)
 
-virtWho = None
+    def reload(signal, stackframe):
+        global virtWho
+        virtWho.reload()
+
+    signal.signal(signal.SIGHUP, reload)
+
+    if options.background:
+        locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
+    else:
+        locker = lambda: lock
+
+    with locker():
+        while True:
+            try:
+                _main(logger, options)
+                break
+            except ReloadRequest:
+                logger.info("Reloading")
+                continue
 
 def _main(logger, options):
     global RetryInterval
@@ -481,11 +504,6 @@ def _main(logger, options):
 
     global virtWho
     virtWho = VirtWho(logger, options)
-
-    def atexit_fn():
-        global virtWho
-        virtWho.terminate()
-    atexit.register(atexit_fn)
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
@@ -507,14 +525,6 @@ def _main(logger, options):
             logger.info('Using commandline or sysconfig configuration ("%s" mode)', config.type)
         else:
             logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
-
-    def reload(signal, stackframe):
-        global virtWho
-        virtWho.terminate()
-        virtWho = VirtWho(logger, options)
-        virtWho.run()
-
-    signal.signal(signal.SIGHUP, reload)
 
     result = virtWho.run()
 
@@ -540,6 +550,8 @@ def _main(logger, options):
 if __name__ == '__main__':
     try:
         main()
+    except KeyboardInterrupt:
+        sys.exit(1)
     except Exception as e:
         print >>sys.stderr, e
         logger = log.getLogger(False, False)

@@ -461,15 +461,15 @@ class PIDLock(object):
 virtWho = None
 
 def main():
-    lock = PIDLock(PIDFILE)
-    if lock.is_locked():
-        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-        sys.exit(1)
-
     try:
         logger, options = parseOptions()
     except OptionError as e:
         print >>sys.stderr, str(e)
+        sys.exit(1)
+
+    lock = PIDLock(PIDFILE)
+    if lock.is_locked():
+        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
         sys.exit(1)
 
     def atexit_fn():

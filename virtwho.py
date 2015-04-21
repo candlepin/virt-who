@@ -119,6 +119,7 @@ class VirtWho(object):
     def _sendGuestList(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
         manager.sendVirtGuests(report.guests)
+        self.logger.info("virt-who guest list update successful")
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
@@ -133,6 +134,9 @@ class VirtWho(object):
         for created in result['created']:
             guests = [x['guestId'] for x in created['guestIds']]
             self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+
+        if not result['failedUpdate']:
+            self.logger.info("virt-who host/guest association update successful")
 
     def run(self):
         if not self.options.oneshot:

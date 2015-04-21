@@ -29,7 +29,7 @@ import atexit
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
-from manager import Manager, ManagerError
+from manager import Manager, ManagerError, ManagerFatalError
 from config import Config, ConfigManager
 from password import InvalidKeyFile
 
@@ -106,6 +106,10 @@ class VirtWho(object):
                 self.logger.warn("Unable to handle report of type: %s", type(report))
         except ManagerError as e:
             self.logger.error("Unable to send data: %s" % str(e))
+        except ManagerFatalError as e:
+            # Something really bad happened (system is not register), stop the backends
+            self.logger.exception("Error in communication with subscription manager:")
+            raise
         except Exception as e:
             exceptionCheck(e)
             self.logger.exception("Error in communication with subscription manager:")
@@ -154,6 +158,7 @@ class VirtWho(object):
             oneshot_remaining = len(self.virts)
 
         if len(self.virts) == 0:
+            self.logger.error("No suitable virt backend found")
             return
 
         result = {}
@@ -180,7 +185,13 @@ class VirtWho(object):
                 if self.options.print_:
                     result[report.config] = report
                 else:
-                    self.send(report)
+                    try:
+                        self.send(report)
+                    except ManagerFatalError:
+                        # System not register (probably), stop the backends
+                        for virt in self.virts:
+                            virt.terminate()
+                        self.virts = []
 
             if self.options.oneshot:
                 oneshot_remaining -= 1

@@ -24,15 +24,14 @@ import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
-from ..manager import Manager
+from ..manager import Manager, ManagerError, ManagerFatalError
 
 
-class SubscriptionManagerError(Exception):
-    def __init__(self, message):
-        self.message = message
+class SubscriptionManagerError(ManagerError):
+    pass
 
-    def __str__(self):
-        return self.message
+class SubscriptionManagerUnregisteredError(ManagerFatalError):
+    pass
 
 
 class SubscriptionManager(Manager):
@@ -75,7 +74,7 @@ class SubscriptionManager(Manager):
         else:
             self.logger.debug("Authenticating with certificate: %s" % self.cert_file)
             if not os.access(self.cert_file, os.R_OK):
-                raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
+                raise SubscriptionManagerUnregisteredError("Unable to read certificate, system is not registered or you are not root")
             kwargs['cert_file'] = self.cert_file
             kwargs['key_file'] = self.key_file
 

@@ -71,8 +71,11 @@ class Password(object):
 
     @classmethod
     def decrypt(cls, enc):
-        key, iv = cls._read_key_iv()
-        return cls._unpad(cls._crypt(cls.DECRYPT, key, iv, enc))
+        try:
+            key, iv = cls._read_key_iv()
+            return cls._unpad(cls._crypt(cls.DECRYPT, key, iv, enc))
+        except TypeError:
+            raise InvalidKeyFile("Encryption key is invalid")
 
     @classmethod
     def _read_key_iv(cls):

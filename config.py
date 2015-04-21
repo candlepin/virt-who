@@ -43,8 +43,7 @@ def parse_list(s):
 class Config(object):
     def __init__(self, name, type, server=None, username=None,
                  password=None, owner=None, env=None,
-                 rhsm_username=None, rhsm_password=None,
-                 encrypted_password=None, encrypted_rhsm_password=None):
+                 rhsm_username=None, rhsm_password=None):
 
         self._name = name
         self._type = type
@@ -56,12 +55,10 @@ class Config(object):
             self._server = server
         self._username = username
         self._password = password
-        self._encrypted_password = encrypted_password
         self._owner = owner
         self._env = env
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
-        self._encrypted_rhsm_password = encrypted_rhsm_password
 
         self.filter_host_uuids = []
         self.exclude_host_uuids = []
@@ -96,12 +93,11 @@ class Config(object):
         try:
             password = parser.get(name, "password")
         except NoOptionError:
-            password = None
-
-        try:
-            encrypted_password = parser.get(name, "encrypted_password")
-        except NoOptionError:
-            encrypted_password = None
+            try:
+                encrypted_password = parser.get(name, "encrypted_password")
+                password = Password.decrypt(unhexlify(encrypted_password))
+            except NoOptionError:
+                password = None
 
         try:
             owner = parser.get(name, "owner")
@@ -120,22 +116,16 @@ class Config(object):
         try:
             rhsm_password = parser.get(name, "rhsm_password")
         except NoOptionError:
-            rhsm_password = None
-
-        # Only attempt to get the encrypted rhsm password if we have a username:
-        encrypted_rhsm_password = None
-        if rhsm_username is not None and rhsm_password is None:
             try:
                 encrypted_rhsm_password = parser.get(name, "rhsm_encrypted_password")
+                rhsm_password = Password.decrypt(unhexlify(encrypted_rhsm_password))
             except NoOptionError:
-                pass
+                rhsm_password = None
 
         config = Config(name=name, type=type, server=server, username=username,
                         password=password, owner=owner, env=env,
                         rhsm_username=rhsm_username,
-                        rhsm_password=rhsm_password,
-                        encrypted_password=encrypted_password,
-                        encrypted_rhsm_password=encrypted_rhsm_password)
+                        rhsm_password=rhsm_password)
 
         try:
             config.hypervisor_id = parser.get(name, "hypervisor_id")
@@ -193,12 +183,7 @@ class Config(object):
 
     @property
     def password(self):
-        if self._password is not None:
-            return self._password
-        elif self._encrypted_password is not None:
-            return Password.decrypt(unhexlify(self._encrypted_password))
-        else:
-            return None
+        return self._password
 
     @property
     def owner(self):
@@ -214,12 +199,7 @@ class Config(object):
 
     @property
     def rhsm_password(self):
-        if self._rhsm_password is not None:
-            return self._rhsm_password
-        elif self._encrypted_rhsm_password is not None:
-            return Password.decrypt(unhexlify(self._encrypted_rhsm_password))
-        else:
-            return None
+        return self._rhsm_password
 
 
 class ConfigManager(object):

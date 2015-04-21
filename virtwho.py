@@ -31,6 +31,7 @@ from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
 from manager import Manager, ManagerError
 from config import Config, ConfigManager
+from password import InvalidKeyFile
 
 import log
 
@@ -80,8 +81,7 @@ class VirtWho(object):
         self.logger = logger
         self.options = options
         self.terminate_event = Event()
-        # Queue for getting events from virt backends
-        self.queue = Queue()
+        self.queue = None
 
         self.configManager = ConfigManager(config_dir)
         for config in self.configManager.configs:
@@ -134,6 +134,10 @@ class VirtWho(object):
         if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
 
+        # Queue for getting events from virt backends
+        if self.queue is None:
+            self.queue = Queue()
+
         # Run the virtualization backends
         self.virts = []
         for config in self.configManager.configs:
@@ -183,6 +187,7 @@ class VirtWho(object):
                 if oneshot_remaining == 0:
                     break
 
+        self.queue = None
         for virt in self.virts:
             virt.terminate()
         self.virts = []
@@ -474,7 +479,8 @@ def main():
 
     def atexit_fn():
         global virtWho
-        virtWho.terminate()
+        if virtWho:
+            virtWho.terminate()
     atexit.register(atexit_fn)
 
     def reload(signal, stackframe):
@@ -483,27 +489,16 @@ def main():
 
     signal.signal(signal.SIGHUP, reload)
 
-    if options.background:
-        locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
-    else:
-        locker = lambda: lock
-
-    with locker():
-        while True:
-            try:
-                _main(logger, options)
-                break
-            except ReloadRequest:
-                logger.info("Reloading")
-                continue
-
-def _main(logger, options):
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
 
     global virtWho
-    virtWho = VirtWho(logger, options)
+    try:
+        virtWho = VirtWho(logger, options)
+    except InvalidKeyFile as e:
+        logger.error(str(e))
+        sys.exit(1)
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
@@ -526,6 +521,21 @@ def _main(logger, options):
         else:
             logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
+    if options.background:
+        locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
+    else:
+        locker = lambda: lock
+
+    with locker():
+        while True:
+            try:
+                _main(virtWho)
+                break
+            except ReloadRequest:
+                logger.info("Reloading")
+                continue
+
+def _main(virtWho):
     result = virtWho.run()
 
     if virtWho.options.print_:

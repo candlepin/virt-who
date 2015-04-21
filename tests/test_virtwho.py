@@ -25,7 +25,7 @@ import logging
 
 from mock import patch, Mock
 
-from virtwho import parseOptions, VirtWho, OptionError
+from virtwho import parseOptions, VirtWho, OptionError, Queue
 from config import Config
 from virt import VirtError, HostGuestAssociationReport
 from manager import ManagerError
@@ -163,6 +163,7 @@ class TestOptions(TestBase):
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
+        virtwho.queue = Queue()
         virtwho.queue.put(HostGuestAssociationReport(config, {'a': ['b']}))
         virtwho.run()
 

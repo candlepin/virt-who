@@ -142,14 +142,18 @@ class Esx(virt.Virt):
                 continue
 
             guests = []
-            if self.config.hypervisor_id == 'uuid':
-                uuid = host['hardware.systemInfo.uuid']
-            elif self.config.hypervisor_id == 'hwuuid':
-                uuid = host_id
-            elif self.config.hypervisor_id == 'hostname':
-                uuid = host['name']
-            else:
-                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
+            try:
+                if self.config.hypervisor_id == 'uuid':
+                    uuid = host['hardware.systemInfo.uuid']
+                elif self.config.hypervisor_id == 'hwuuid':
+                    uuid = host_id
+                elif self.config.hypervisor_id == 'hostname':
+                    uuid = host['name']
+                else:
+                    raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
+            except KeyError:
+                self.logger.debug("Host '%s' doesn't have hypervisor_id property" % host_id)
+                continue
             mapping[uuid] = guests
             if not host['vm']:
                 continue
@@ -242,7 +246,12 @@ class Esx(virt.Virt):
                     elif objectSet.obj._type == 'HostSystem': # pylint: disable=W0212
                         host = self.hosts[objectSet.obj.value]
                         for change in objectSet.changeSet:
-                            host[change.name] = change.val
+                            if change.op == 'indirectRemove':
+                                # Host has been added but without sufficient data
+                                # It will be filled in next update
+                                pass
+                            elif change.op == 'assign':
+                                host[change.name] = change.val
                 elif objectSet.kind == 'leave':
                     if objectSet.obj._type == 'VirtualMachine': # pylint: disable=W0212
                         del self.vms[objectSet.obj.value]

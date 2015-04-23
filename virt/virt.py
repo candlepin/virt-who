@@ -82,10 +82,10 @@ class HostGuestAssociationReport(AbstractVirtReport):
         assoc = {}
         logger = logging.getLogger("rhsm-app")
         for host, guests in self._assoc.items():
-            if host in self._config.exclude_host_uuids:
+            if self._config.exclude_host_uuids is not None and host in self._config.exclude_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is excluded" % host)
                 continue
-            if len(self._config.filter_host_uuids) > 0 and host not in self._config.filter_host_uuids:
+            if self._config.filter_host_uuids is not None and host not in self._config.filter_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is not included" % host)
                 continue
             assoc[host] = guests

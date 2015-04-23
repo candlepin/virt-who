@@ -60,14 +60,14 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
 
-        self.filter_host_uuids = []
-        self.exclude_host_uuids = []
+        self.filter_host_uuids = None
+        self.exclude_host_uuids = None
 
         self.hypervisor_id = 'uuid'
 
         # Optional options for backends
-        self.filter_host_parents = []
-        self.exclude_host_parents = []
+        self.filter_host_parents = None
+        self.exclude_host_parents = None
         self.esx_simplified_vim = True
         self.fake_is_hypervisor = True
         self.fake_file = None
@@ -135,12 +135,12 @@ class Config(object):
         try:
             config.filter_host_uuids = parse_list(parser.get(name, "filter_host_uuids"))
         except NoOptionError:
-            config.filter_host_uuids = []
+            config.filter_host_uuids = None
 
         try:
             config.exclude_host_uuids = parse_list(parser.get(name, "exclude_host_uuids"))
         except NoOptionError:
-            config.exclude_host_uuids = []
+            config.exclude_host_uuids = None
 
         if type == 'esx':
             try:
@@ -150,12 +150,12 @@ class Config(object):
             try:
                 config.filter_host_parents = parse_list(parser.get(name, "filter_host_parents"))
             except NoOptionError:
-                config.filter_host_parents = []
+                config.filter_host_parents = None
 
             try:
                 config.exclude_host_parents = parse_list(parser.get(name, "exclude_host_parents"))
             except NoOptionError:
-                config.exclude_host_parents = []
+                config.exclude_host_parents = None
         elif type == 'fake':
             try:
                 config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")

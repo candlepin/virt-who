@@ -134,10 +134,10 @@ class Esx(virt.Virt):
         mapping = {}
         for host_id, host in self.hosts.items():
             parent = host['parent'].value
-            if parent in self.config.exclude_host_parents:
+            if self.config.exclude_host_parents is not None and parent in self.config.exclude_host_parents:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is excluded" % (host_id, parent))
                 continue
-            if len(self.config.filter_host_parents) > 0 and parent not in self.config.filter_host_parents:
+            if self.config.filter_host_parents is not None and parent not in self.config.filter_host_parents:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is not included" % (host_id, parent))
                 continue
 

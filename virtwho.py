@@ -28,7 +28,7 @@ import json
 import atexit
 
 from daemon import daemon
-from virt import Virt, DomainListReport, HostGuestAssociationReport
+from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
 from config import Config, ConfigManager
 from password import InvalidKeyFile
@@ -159,7 +159,7 @@ class VirtWho(object):
             self.virts.append(virt)
 
         if self.options.oneshot:
-            oneshot_remaining = len(self.virts)
+            oneshot_remaining = set(virt.config.name for virt in self.virts)
 
         if len(self.virts) == 0:
             self.logger.error("No suitable virt backend found")
@@ -181,25 +181,29 @@ class VirtWho(object):
                 self.virts = []
                 raise ReloadRequest()
 
-
-            if report is not None:
-                # None means that there was some error in the backend
-
-                # Send the report
-                if self.options.print_:
-                    result[report.config] = report
-                else:
-                    try:
-                        self.send(report)
-                    except ManagerFatalError:
-                        # System not register (probably), stop the backends
-                        for virt in self.virts:
-                            virt.terminate()
-                        self.virts = []
+            # Send the report
+            if not self.options.print_ and not isinstance(report, ErrorReport):
+                try:
+                    self.send(report)
+                except ManagerFatalError:
+                    # System not register (probably), stop the backends
+                    for virt in self.virts:
+                        virt.terminate()
+                    self.virts = []
 
             if self.options.oneshot:
-                oneshot_remaining -= 1
-                if oneshot_remaining == 0:
+                try:
+                    oneshot_remaining.remove(report.config.name)
+                    if not isinstance(report, ErrorReport):
+                        if self.options.print_:
+                            result[report.config] = report
+                        self.logger.debug("Association for config %s gathered" % report.config.name)
+                    for virt in self.virts:
+                        if virt.config.name == report.config.name:
+                            virt.terminate()
+                except KeyError:
+                    self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
+                if not oneshot_remaining:
                     break
 
         self.queue = None

@@ -56,6 +56,12 @@ class AbstractVirtReport(object):
     def config(self):
         return self._config
 
+class ErrorReport(AbstractVirtReport):
+    '''
+    Report that virt backend fails. Used in oneshot mode to inform
+    main process that now data are coming.
+    '''
+
 class DomainListReport(AbstractVirtReport):
     '''
     Report from virt backend about list of virtual guests on given system.
@@ -212,7 +218,7 @@ class Virt(Process):
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
 
                 if self._oneshot:
-                    self._queue.put(None)
+                    self._queue.put(ErrorReport(self.config))
                     return
 
                 if self._terminate_event.is_set():

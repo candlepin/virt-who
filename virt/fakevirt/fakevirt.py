@@ -3,6 +3,16 @@ from virt import Virt, VirtError
 
 import json
 
+def _decode_dict(data):
+    rv = {}
+    for key, value in data.iteritems():
+        if isinstance(key, unicode):
+            key = key.encode('utf-8')
+        if isinstance(value, unicode):
+            value = value.encode('utf-8')
+        rv[key] = value
+    return rv
+
 class FakeVirt(Virt):
     CONFIG_TYPE = 'fake'
 
@@ -15,7 +25,7 @@ class FakeVirt(Virt):
         # TODO: do some checking of the file content
         try:
             with open(self.config.fake_file, 'r') as f:
-                return json.load(f)
+                return json.load(f, object_hook=_decode_dict)
         except (IOError, ValueError) as e:
             raise VirtError("Can't read fake '%s' virt data: %s" % (self.config.fake_file, str(e)))
 

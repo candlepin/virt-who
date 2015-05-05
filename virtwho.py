@@ -571,9 +571,11 @@ def _main(virtWho):
                         'guests': guests
                     }
                     hypervisors.append(h)
-        print json.dumps({
+        data = json.dumps({
             'hypervisors': hypervisors
         })
+        virtWho.logger.debug("Associations found: %s" % data)
+        print data
 
 
 if __name__ == '__main__':

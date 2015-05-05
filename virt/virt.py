@@ -125,6 +125,7 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         super(Virt, self).__init__()
+        self.daemon = True
 
     @classmethod
     def fromConfig(cls, logger, config):

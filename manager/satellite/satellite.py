@@ -159,8 +159,8 @@ class Satellite(Manager):
                 self.logger.debug("Sending plan: %s" % plan)
                 self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
             except Exception as e:
-                self.logger.exception("Unable to send host/guest assocaition to the satellite:")
-                raise SatelliteError("Unable to send host/guest assocaition to the satellite: %s" % str(e))
+                self.logger.exception("Unable to send host/guest association to the satellite:")
+                raise SatelliteError("Unable to send host/guest association to the satellite: %s" % str(e))
 
         # TODO: figure out what to populate here
         result = {}

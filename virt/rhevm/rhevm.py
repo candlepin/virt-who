@@ -100,7 +100,7 @@ class RhevM(virt.Virt):
 
             host_id = host.get('id')
             if host_id not in mapping.keys():
-                self.logger.warning("Guest %s claims that it belongs to host %s which doen't exist" % (guest_id, host_id))
+                self.logger.warning("Guest %s claims that it belongs to host %s which doesn't exist" % (guest_id, host_id))
             else:
                 mapping[host_id].append(guest_id)
 

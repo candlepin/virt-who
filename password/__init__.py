@@ -18,7 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-__all__ = ['InvalidKeyFile', 'UnwrittableKeyFile', 'Password']
+__all__ = ['InvalidKeyFile', 'UnwritableKeyFile', 'Password']
 
 import os
 import stat
@@ -31,7 +31,7 @@ class InvalidKeyFile(Exception):
     pass
 
 
-class UnwrittableKeyFile(Exception):
+class UnwritableKeyFile(Exception):
     pass
 
 
@@ -100,14 +100,14 @@ class Password(object):
         except InvalidKeyFile:
             pass
         if not cls._can_write():
-            raise UnwrittableKeyFile("Only root can write keyfile")
+            raise UnwritableKeyFile("Only root can write keyfile")
         key = hexlify(cls._generate_key())
         iv = hexlify(cls._generate_key())
         try:
             with open(cls.KEYFILE, 'w') as f:
                 f.write("%s\n%s\n" % (key, iv))
         except IOError as e:
-            raise UnwrittableKeyFile(str(e))
+            raise UnwritableKeyFile(str(e))
         os.chmod(cls.KEYFILE, stat.S_IRUSR | stat.S_IWUSR)
         return key, iv
 

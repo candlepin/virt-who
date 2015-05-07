@@ -249,7 +249,7 @@ class OptionError(Exception):
 def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
-                                epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
+                                epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
@@ -312,7 +312,7 @@ def parseOptions():
 
     (options, args) = parser.parse_args()
 
-    # Handle enviromental variables
+    # Handle enviroment variables
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
@@ -376,7 +376,7 @@ def parseOptions():
 
     def checkEnv(variable, option, name, required=True):
         """
-        If `option` is empty, check enviromental `variable` and return its value.
+        If `option` is empty, check enviroment `variable` and return its value.
         Exit if it's still empty
         """
         if len(option) == 0:
@@ -425,9 +425,9 @@ def parseOptions():
 
     if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv'):
         if not options.owner:
-            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
         if not options.env:
-            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")

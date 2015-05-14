@@ -151,7 +151,7 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         if self.queue is None:
-            self.queue = Queue()
+            self.queue = Queue(len(self.configManager.configs))
 
         # Run the virtualization backends
         self.virts = []

@@ -22,7 +22,7 @@ import os
 import sys
 import suds
 import logging
-from datetime import datetime
+from time import time
 from urllib2 import URLError
 import socket
 from collections import defaultdict
@@ -62,29 +62,32 @@ class Esx(virt.Virt):
         version = ''
         self.hosts = defaultdict(Host)
         self.vms = defaultdict(VM)
-        start_time = end_time = datetime.now()
+        start_time = end_time = time()
+        initial = True
 
         while self._oneshot or not self.is_terminated():
             delta = end_time - start_time
-            # for python2.6, 2.7 has total_seconds method
-            delta_seconds = ((delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds) / 10**6
-            wait_time = self._interval - int(delta_seconds)
-            if wait_time <= 0:
-                self.logger.debug("Getting the host/guests association took too long, interval waiting is skipped")
-                version = ''
 
-            start_time = datetime.now()
+            if initial:
+                # We want to read the update asap
+                max_wait_seconds = 0
+            else:
+                if delta - self._interval > 2.0:
+                    # The update took longer than it should, don't wait so long next time
+                    max_wait_seconds = max(self._interval - int(delta - self._interval), 0)
+                    self.logger.debug("Getting the host/guests association took too long, interval waiting is shortened to %s", max_wait_seconds)
+                else:
+                    max_wait_seconds = self._interval
+
             if version == '':
-                # We want to read the update no matter how long it will take
-                self.client.set_options(timeout=self.MAX_WAIT_TIME)
                 # also, clean all data we have
                 self.hosts.clear()
                 self.vms.clear()
-            else:
-                self.client.set_options(timeout=wait_time)
 
+            start_time = time()
             try:
-                updateSet = self.client.service.WaitForUpdatesEx(_this=self.sc.propertyCollector, version=version)
+                updateSet = self.client.service.WaitForUpdatesEx(_this=self.sc.propertyCollector, version=version, options={'maxWaitSeconds': max_wait_seconds})
+                initial = False
             except (socket.error, URLError):
                 self.logger.debug("Wait for ESX event finished, timeout")
                 # Cancel the update
@@ -115,7 +118,8 @@ class Esx(virt.Virt):
 
             assoc = self.getHostGuestMapping()
             self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
-            end_time = datetime.now()
+
+            end_time = time()
 
             if self._oneshot:
                 break
@@ -192,6 +196,8 @@ class Esx(virt.Virt):
         except URLError as e:
             self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
+
+        self.client.set_options(timeout=self.MAX_WAIT_TIME)
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
         self.moRef = suds.sudsobject.Property('ServiceInstance')

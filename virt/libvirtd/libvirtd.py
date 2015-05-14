@@ -146,7 +146,7 @@ class Libvirtd(virt.Virt):
 
         self.virt = None
 
-        while not self._terminate_event.is_set():
+        while not self.is_terminated():
             if self.virt is None:
                 self.virt = self._connect()
 

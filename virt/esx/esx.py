@@ -64,7 +64,7 @@ class Esx(virt.Virt):
         self.vms = defaultdict(VM)
         start_time = end_time = datetime.now()
 
-        while self._oneshot or not self._terminate_event.is_set():
+        while self._oneshot or not self.is_terminated():
             delta = end_time - start_time
             # for python2.6, 2.7 has total_seconds method
             delta_seconds = ((delta.days * 86400 + delta.seconds) * 10**6 + delta.microseconds) / 10**6

@@ -110,6 +110,13 @@ class VirtWho(object):
             # Something really bad happened (system is not register), stop the backends
             self.logger.exception("Error in communication with subscription manager:")
             raise
+        except IOError as e:
+            if e.errno == errno.EINTR:
+                self.logger.debug("Communication with subscription manager interrupted")
+                return False
+            exceptionCheck(e)
+            self.logger.exception("Error in communication with subscription manager:")
+            return False
         except Exception as e:
             exceptionCheck(e)
             self.logger.exception("Error in communication with subscription manager:")
@@ -200,7 +207,7 @@ class VirtWho(object):
                         self.logger.debug("Association for config %s gathered" % report.config.name)
                     for virt in self.virts:
                         if virt.config.name == report.config.name:
-                            virt.terminate()
+                            virt.stop()
                 except KeyError:
                     self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
                 if not oneshot_remaining:

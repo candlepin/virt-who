@@ -22,7 +22,7 @@ import sys
 import time
 import logging
 from datetime import datetime
-from multiprocessing import Process
+from multiprocessing import Process, Event
 
 class VirtError(Exception):
     pass
@@ -124,6 +124,7 @@ class Virt(Process):
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
+        self._internal_terminate_event = Event()
         super(Virt, self).__init__()
         self.daemon = True
 
@@ -160,8 +161,7 @@ class Virt(Process):
         be less often.
 
         If `oneshot` parameter is True, the data will be reported only once
-        and the process will be terminated after that. `interval` and
-        `terminate_event` parameters won't be used in that case.
+        and the process will be terminated after that.
         '''
         self._queue = queue
         self._terminate_event = terminate_event
@@ -198,19 +198,25 @@ class Virt(Process):
 
     def wait(self, wait_time):
         '''
-        Wait `wait_time` seconds, could be interrupted by setting _terminate_event.
+        Wait `wait_time` seconds, could be interrupted by setting _terminate_event or _internal_terminate_event.
         '''
         for i in range(wait_time):
-            if self._terminate_event.is_set():
+            if self.is_terminated():
                 break
             time.sleep(1)
+
+    def stop(self):
+        self._internal_terminate_event.set()
+
+    def is_terminated(self):
+        return self._internal_terminate_event.is_set() or self._terminate_event.is_set()
 
     def run(self):
         '''
         Wrapper around `_run` method that just catches the error messages.
         '''
         try:
-            while self._oneshot or not self._terminate_event.is_set():
+            while not self.is_terminated():
                 try:
                     self._run()
                 except VirtError as e:
@@ -222,7 +228,7 @@ class Virt(Process):
                     self._queue.put(ErrorReport(self.config))
                     return
 
-                if self._terminate_event.is_set():
+                if self.is_terminated():
                     return
 
                 self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
@@ -238,7 +244,7 @@ class Virt(Process):
         it's own way of waiting for changes (like event monitoring)
         '''
         self.prepare()
-        while self._oneshot or not self._terminate_event.is_set():
+        while not self.is_terminated():
             start_time = datetime.now()
             report = self._get_report()
             self._queue.put(report)
@@ -250,7 +256,7 @@ class Virt(Process):
 
             wait_time = self._interval - int(delta_seconds)
 
-            if wait_time <= 0:
+            if wait_time < 0:
                 self.logger.debug("Getting the host/guests association took too long, interval waiting is skipped")
                 continue
 

@@ -30,7 +30,7 @@ import atexit
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
-from config import Config, ConfigManager
+from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
 
 import log
@@ -522,7 +522,7 @@ def main():
     global virtWho
     try:
         virtWho = VirtWho(logger, options)
-    except InvalidKeyFile as e:
+    except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
         sys.exit(1)
 

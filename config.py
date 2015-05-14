@@ -34,6 +34,9 @@ class InvalidOption(Error):
     pass
 
 
+class InvalidPasswordFormat(Exception):
+    pass
+
 def parse_list(s):
     '''
     Parse comma-separated list of items that might be in double-quotes to the list of strings
@@ -96,6 +99,8 @@ class Config(object):
             try:
                 encrypted_password = parser.get(name, "encrypted_password")
                 password = Password.decrypt(unhexlify(encrypted_password))
+            except TypeError:
+                raise InvalidPasswordFormat("Password can't be decrypted, possibly corrupted")
             except NoOptionError:
                 password = None
 

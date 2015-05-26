@@ -162,9 +162,12 @@ class Libvirtd(virt.Virt):
                 return
 
             while self.time_since_update < self._interval and self.virt.isAlive() == 1:
+                if self.is_terminated():
+                    self._disconnect()
+                    return
                 self.time_since_update += 1
                 time.sleep(1)
-
+        self._disconnect()
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()

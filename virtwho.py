@@ -232,6 +232,8 @@ class VirtWho(object):
                 pass
             self.queue.put("exit")
         self.terminate_event.set()
+        # Give backends some time to terminate properly
+        time.sleep(1)
         for virt in self.virts:
             virt.terminate()
         self.virt = []

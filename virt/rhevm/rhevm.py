@@ -88,6 +88,7 @@ class RhevM(virt.Virt):
                     host_ids[id] = host.find('hardware_information').find('uuid').text
                 except AttributeError:
                     self.logger.warn("Host %s doesn't have hardware uuid", id)
+                    continue
             elif self.config.hypervisor_id == 'hostname':
                 host_ids[id] = host.find('name').text
             else:

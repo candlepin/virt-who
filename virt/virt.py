@@ -125,7 +125,7 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         self._internal_terminate_event = Event()
-        super(Virt, self).__init__()
+        super(Virt, self).__init__(name=config.name)
         self.daemon = True
 
     @classmethod

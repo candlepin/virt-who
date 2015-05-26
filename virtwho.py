@@ -26,6 +26,7 @@ import time
 from multiprocessing import Event, Queue
 import json
 import atexit
+from Queue import Empty
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
@@ -223,6 +224,12 @@ class VirtWho(object):
     def terminate(self):
         self.logger.debug("virt-who shut down started")
         if self.queue:
+            # clear the queue and put "exit" there
+            try:
+                while True:
+                    self.queue.get(False)
+            except Empty:
+                pass
             self.queue.put("exit")
         self.terminate_event.set()
         for virt in self.virts:
@@ -231,6 +238,12 @@ class VirtWho(object):
 
     def reload(self):
         self.logger.warn("virt-who reload")
+        # clear the queue and put "reload" there
+        try:
+            while True:
+                self.queue.get(False)
+        except Empty:
+            pass
         self.queue.put("reload")
 
     def getMapping(self):

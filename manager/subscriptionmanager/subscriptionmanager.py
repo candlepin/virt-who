@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
+from httplib import BadStatusLine
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
@@ -129,7 +130,10 @@ class SubscriptionManager(Manager):
         self._connect(**kwargs)
 
         # Send the mapping
-        return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
+        try:
+            return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

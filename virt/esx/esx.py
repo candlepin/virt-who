@@ -56,6 +56,12 @@ class Esx(virt.Virt):
         self.logger.debug("Creating ESX event filter")
         self.filter = self.createFilter()
 
+    def _cancel_wait(self):
+        try:
+            self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
+        except Exception:
+            pass
+
     def _run(self):
         self._prepare()
 
@@ -90,23 +96,25 @@ class Esx(virt.Virt):
                 initial = False
             except (socket.error, URLError):
                 self.logger.debug("Wait for ESX event finished, timeout")
-                # Cancel the update
-                try:
-                    self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
-                except Exception:
-                    pass
+                self._cancel_wait()
                 # Get the initial update again
                 version = ''
                 continue
-            except (suds.WebFault, HTTPException):
-                self.logger.exception("Waiting for ESX events fails:")
+            except (suds.WebFault, HTTPException) as e:
+                suppress_exception = False
                 try:
-                    self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
+                    if e.fault.faultstring == 'The session is not authenticated.':
+                        # Do not print the exception if we get 'not authenticated',
+                        # it's quite normal behaviour and nothing to worry about
+                        suppress_exception = True
                 except Exception:
                     pass
+                if not suppress_exception:
+                    self.logger.exception("Waiting for ESX events fails:")
+                self._cancel_wait()
                 version = ''
                 self._prepare()
-                start_time = end_time = datetime.now()
+                start_time = end_time = time()
                 continue
 
             if updateSet is not None:
@@ -126,10 +134,7 @@ class Esx(virt.Virt):
 
             self.logger.debug("Waiting for ESX changes")
 
-        try:
-            self.client.service.CancelWaitForUpdates(_this=self.sc.propertyCollector)
-        except Exception:
-            pass
+        self._cancel_wait()
 
         if self.filter is not None:
             self.client.service.DestroyPropertyFilter(self.filter)

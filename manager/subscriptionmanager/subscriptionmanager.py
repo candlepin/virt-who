@@ -121,13 +121,26 @@ class SubscriptionManager(Manager):
 
     def hypervisorCheckIn(self, config, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
-
         kwargs = {}
         if config.rhsm_username and config.rhsm_password:
             kwargs['rhsm_username'] = config.rhsm_username
             kwargs['rhsm_password'] = config.rhsm_password
         self._connect(**kwargs)
+
+        self.logger.debug("Checking if server has capability 'hypervisor_async'")
+        if (self.connection.has_capability('hypervisors_async')):
+            self.logger.debug("Server has capability 'hypervisors_async'")
+            # Transform the mapping into the async version
+            # GOLDFISH
+            new_mapping = {'hypervisors':[]}
+            for k,v in mapping.iteritems():
+                new_mapping['hypervisors'].append({'hypervisorId':k, 'guestIds':v})
+            mapping = new_mapping
+        else:
+            self.logger.debug("Server does not have 'hypervisors_async' capability")
+            # Do nothing else as the data we have already is in the form that we need
+
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
         # Send the mapping
         return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)

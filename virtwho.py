@@ -223,6 +223,12 @@ class VirtWho(object):
 
     def terminate(self):
         self.logger.debug("virt-who shut down started")
+        # Terminate the backends before clearing the queue, the queue must be empty
+        # to end a child process, otherwise it will be stuck in queue.put()
+        self.terminate_event.set()
+        # Give backends some time to terminate properly
+        time.sleep(0.5)
+
         if self.queue:
             # clear the queue and put "exit" there
             try:
@@ -231,9 +237,10 @@ class VirtWho(object):
             except Empty:
                 pass
             self.queue.put("exit")
-        self.terminate_event.set()
-        # Give backends some time to terminate properly
-        time.sleep(1)
+
+        # Give backends some more time to terminate properly
+        time.sleep(0.5)
+
         for virt in self.virts:
             virt.terminate()
         self.virt = []

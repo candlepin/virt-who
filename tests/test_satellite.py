@@ -32,6 +32,8 @@ from mock import MagicMock
 
 from manager.satellite import Satellite, SatelliteError
 
+from virt import Guest
+
 TEST_SYSTEM_ID = 'test-system-id'
 TEST_PORT = 8090
 
@@ -88,7 +90,20 @@ class Options(object):
         self.sat_password = password
 
 
+xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
+
+
 class TestSatellite(TestBase):
+    mapping = {
+        'host-1': [
+            Guest('guest1-1', xvirt, Guest.STATE_RUNNING),
+            Guest('guest1-2', xvirt, Guest.STATE_SHUTOFF)],
+        'host-2': [
+            Guest('guest2-1', xvirt, Guest.STATE_RUNNING),
+            Guest('guest2-2', xvirt, Guest.STATE_SHUTOFF),
+            Guest('guest2-3', xvirt, Guest.STATE_RUNNING)]
+    }
+
     @classmethod
     def setUpClass(cls):
         super(TestSatellite, cls).setUpClass()
@@ -128,11 +143,7 @@ class TestSatellite(TestBase):
         options.owner = "OWNER"
         s = Satellite(self.logger, options)
 
-        mapping = {
-            'host-1': ['guest1-1', 'guest1-2'],
-            'host-2': ['guest2-1', 'guest2-2', 'guest2-3']
-        }
-        result = s.hypervisorCheckIn(options, mapping, "type")
+        result = s.hypervisorCheckIn(options, self.mapping, "type")
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
@@ -150,11 +161,8 @@ class TestSatellite(TestBase):
         s = Satellite(self.logger, options)
 
         s.HYPERVISOR_SYSTEMID_FILE = filename.replace(TEST_SYSTEM_ID, '%s')
-        mapping = {
-            'host-1': ['guest1-1', 'guest1-2'],
-            'host-2': ['guest2-1', 'guest2-2', 'guest2-3']
-        }
-        result = s.hypervisorCheckIn(options, mapping, "type")
+
+        result = s.hypervisorCheckIn(options, self.mapping, "type")
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)

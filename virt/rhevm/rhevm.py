@@ -34,6 +34,28 @@ except ImportError:
     from xml.etree import ElementTree
 
 
+RHEVM_STATE_TO_GUEST_STATE = {
+    'unassigned': virt.Guest.STATE_UNKNOWN,
+    'down': virt.Guest.STATE_SHUTOFF,
+    'up': virt.Guest.STATE_RUNNING,
+    'powering_up': virt.Guest.STATE_SHUTOFF,
+    'powered_down': virt.Guest.STATE_SHUTINGDOWN,
+    'paused': virt.Guest.STATE_PAUSED,
+    'migrating_from': virt.Guest.STATE_SHUTOFF,
+    'migrating_to': virt.Guest.STATE_SHUTOFF,
+    'unknown': virt.Guest.STATE_UNKNOWN,
+    'not_responding': virt.Guest.STATE_BLOCKED,
+    'wait_for_launch': virt.Guest.STATE_BLOCKED,
+    'reboot_in_progress': virt.Guest.STATE_SHUTOFF,
+    'saving_state': virt.Guest.STATE_SHUTINGDOWN,
+    'restoring_state': virt.Guest.STATE_SHUTOFF,
+    'suspended': virt.Guest.STATE_PMSUSPENDED,
+    'image_illegal': virt.Guest.STATE_CRASHED,
+    'image_locked': virt.Guest.STATE_CRASHED,
+    'powering_down': virt.Guest.STATE_SHUTINGDOWN
+}
+
+
 class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
@@ -92,7 +114,9 @@ class RhevM(virt.Virt):
             elif self.config.hypervisor_id == 'hostname':
                 host_ids[id] = host.find('name').text
             else:
-                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
+                raise virt.VirtError(
+                    'Reporting of hypervisor %s is not implemented in %s backend',
+                    self.config.hypervisor_id, self.CONFIG_TYPE)
             mapping[id] = []
 
         for vm in vms_xml.findall('vm'):
@@ -104,9 +128,21 @@ class RhevM(virt.Virt):
 
             host_id = host.get('id')
             if host_id not in mapping.keys():
-                self.logger.warning("Guest %s claims that it belongs to host %s which doesn't exist" % (guest_id, host_id))
-            else:
-                mapping[host_id].append(guest_id)
+                self.logger.warning(
+                    "Guest %s claims that it belongs to host %s which doesn't exist",
+                    guest_id, host_id)
+                continue
+            try:
+                state = RHEVM_STATE_TO_GUEST_STATE.get(
+                    vm.find('status').find('state').text.lower(),
+                    virt.Guest.STATE_UNKNOWN)
+            except AttributeError:
+                self.logger.warning(
+                    "Guest %s doesn't report any status",
+                    guest_id)
+                state = virt.Guest.STATE_UNKNOWN
+
+            mapping[host_id].append(virt.Guest(guest_id, self, state))
 
         mapping_with_ids = {}
         for host_id, vms in mapping.items():

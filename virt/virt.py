@@ -24,26 +24,58 @@ import logging
 from datetime import datetime
 from multiprocessing import Process, Event
 
+
 class VirtError(Exception):
     pass
 
 
-class Domain(dict):
-    def __init__(self, virt, domain):
-        self['guestId'] = domain.UUIDString()
-        self['attributes'] = {
-            'hypervisorType': virt.getType(),
-            'virtWhoType': "libvirt",
-            'active': 0
+class Guest(object):
+    """
+    This class represents one virtualization guest running on some
+    host/hypervisor.
+    """
+
+    STATE_UNKNOWN = 0      # unknown state
+    STATE_RUNNING = 1      # running
+    STATE_BLOCKED = 2      # blocked on resource
+    STATE_PAUSED = 3       # paused by user
+    STATE_SHUTINGDOWN = 4  # guest is being shut down
+    STATE_SHUTOFF = 5      # shut off
+    STATE_CRASHED = 6      # crashed
+    STATE_PMSUSPENDED = 7  # suspended by guest power management
+
+    def __init__(self, uuid, virt, state, hypervisorType=None):
+        """
+        Create new guest instance that will be sent to the subscription manager.
+
+        `uuid` is unique identification of the guest.
+
+        `virt` is a `Virt` class instance that represents virtualization hypervisor
+        that owns the guest.
+
+        `hypervisorType` is additional type of the virtualization, used in libvirt.
+
+        `state` is a number that represents the state of the guest (stopped, running, ...)
+        """
+        self.uuid = uuid
+        self.virtWhoType = virt.CONFIG_TYPE
+        self.hypervisorType = hypervisorType
+        self.state = state
+
+    def toDict(self):
+        d = {
+            'guestId': self.uuid,
+            'attributes': {
+                'virtWhoType': self.virtWhoType,
+                'active': 1 if self.state == self.STATE_RUNNING else 0
+            },
+            'state': self.state
         }
-        if domain.isActive():
-            self['attributes']['active'] = 1
-        try:
-            self['state'] = domain.state(0)[0]
-        except AttributeError:
-            # Some versions of libvirt doesn't have domain.state() method,
-            # use first value from info instead
-            self['state'] = domain.info()[0]
+
+        if self.hypervisorType is not None:
+            d['attributes']['hypervisorType'] = self.hypervisorType
+        return d
+
 
 class AbstractVirtReport(object):
     '''
@@ -56,11 +88,13 @@ class AbstractVirtReport(object):
     def config(self):
         return self._config
 
+
 class ErrorReport(AbstractVirtReport):
     '''
     Report that virt backend fails. Used in oneshot mode to inform
     main process that now data are coming.
     '''
+
 
 class DomainListReport(AbstractVirtReport):
     '''
@@ -73,6 +107,7 @@ class DomainListReport(AbstractVirtReport):
     @property
     def guests(self):
         return self._guests
+
 
 class HostGuestAssociationReport(AbstractVirtReport):
     '''
@@ -96,6 +131,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
                 continue
             assoc[host] = guests
         return assoc
+
 
 class HypervisorInfoReport(AbstractVirtReport):
     '''
@@ -147,7 +183,7 @@ class Virt(Process):
                 return subcls(logger, config)
         raise KeyError("Invalid config type: %s" % config.type)
 
-    def start(self, queue, terminate_event, interval=None, oneshot=False): # pylint: disable=W0221
+    def start(self, queue, terminate_event, interval=None, oneshot=False):  # pylint: disable=W0221
         '''
         Start obtaining data from the hypervisor/host system. The data will
         be fetched (as instances of AbstracVirtReport subclasses) to the
@@ -231,7 +267,7 @@ class Virt(Process):
                 if self.is_terminated():
                     return
 
-                self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
+                self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
                 self.wait(self._interval)
         except KeyboardInterrupt:
             sys.exit(1)

@@ -597,7 +597,7 @@ def _main(virtWho):
                 for hypervisor, guests in report.association.items():
                     h = {
                         'uuid': hypervisor,
-                        'guests': guests
+                        'guests': [guest.toDict() for guest in guests]
                     }
                     hypervisors.append(h)
         data = json.dumps({

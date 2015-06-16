@@ -21,13 +21,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from threading import Event
 from Queue import Queue
 from base import TestBase
-from mock import patch, Mock, ANY
-import logging
+from mock import patch, ANY
 
 from config import Config
-from virt import Virt, Domain, VirtError
-from virt.libvirtd.libvirtd import VirEventLoopThread
-import virt.libvirtd.libvirtd
+from virt import Virt, VirtError
 
 
 def raiseLibvirtError(*args, **kwargs):
@@ -36,6 +33,7 @@ def raiseLibvirtError(*args, **kwargs):
 
 
 LIBVIRT_CAPABILITIES_XML = '<capabilities><host><uuid>this-is-uuid</uuid></host></capabilities>'
+
 
 class TestLibvirtd(TestBase):
     def setUp(self):

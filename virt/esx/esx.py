@@ -33,7 +33,7 @@ import virt
 
 class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
-    MAX_WAIT_TIME = 1800 # 30 minutes
+    MAX_WAIT_TIME = 1800  # 30 minutes
 
     def __init__(self, logger, config):
         super(Esx, self).__init__(logger, config)
@@ -81,7 +81,9 @@ class Esx(virt.Virt):
                 if delta - self._interval > 2.0:
                     # The update took longer than it should, don't wait so long next time
                     max_wait_seconds = max(self._interval - int(delta - self._interval), 0)
-                    self.logger.debug("Getting the host/guests association took too long, interval waiting is shortened to %s", max_wait_seconds)
+                    self.logger.debug(
+                        "Getting the host/guests association took too long,"
+                        "interval waiting is shortened to %s", max_wait_seconds)
                 else:
                     max_wait_seconds = self._interval
 
@@ -92,7 +94,10 @@ class Esx(virt.Virt):
 
             start_time = time()
             try:
-                updateSet = self.client.service.WaitForUpdatesEx(_this=self.sc.propertyCollector, version=version, options={'maxWaitSeconds': max_wait_seconds})
+                updateSet = self.client.service.WaitForUpdatesEx(
+                    _this=self.sc.propertyCollector,
+                    version=version,
+                    options={'maxWaitSeconds': max_wait_seconds})
                 initial = False
             except (socket.error, URLError):
                 self.logger.debug("Wait for ESX event finished, timeout")
@@ -159,7 +164,9 @@ class Esx(virt.Virt):
                 elif self.config.hypervisor_id == 'hostname':
                     uuid = host['name']
                 else:
-                    raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (self.config.hypervisor_id, self.CONFIG_TYPE))
+                    raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (
+                        self.config.hypervisor_id,
+                        self.CONFIG_TYPE))
             except KeyError:
                 self.logger.debug("Host '%s' doesn't have hypervisor_id property" % host_id)
                 continue
@@ -174,7 +181,18 @@ class Esx(virt.Virt):
                 if 'config.uuid' not in vm:
                     self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
                     continue
-                guests.append(vm['config.uuid'])
+
+                state = virt.Guest.STATE_UNKNOWN
+                try:
+                    if vm['runtime.powerState'] == 'poweredOn':
+                        state = virt.Guest.STATE_RUNNING
+                    elif vm['runtime.powerState'] == 'suspended':
+                        state = virt.Guest.STATE_PAUSED
+                    elif vm['runtime.powerState'] == 'poweredOff':
+                        state = virt.Guest.STATE_SHUTOFF
+                except KeyError:
+                    self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
+                guests.append(virt.Guest(vm['config.uuid'], self, state))
             mapping[uuid] = guests
         return mapping
 
@@ -206,7 +224,7 @@ class Esx(virt.Virt):
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
         self.moRef = suds.sudsobject.Property('ServiceInstance')
-        self.moRef._type = 'ServiceInstance' # pylint: disable=W0212
+        self.moRef._type = 'ServiceInstance'  # pylint: disable=W0212
 
         # Service Content object defines properties of the ServiceInstance object
         self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
@@ -229,9 +247,8 @@ class Esx(virt.Virt):
         pfs = self.propertyFilterSpec()
         pfs.objectSet = [oSpec]
         pfs.propSet = [
-            #self.propertySpec("ManagedEntity", ["name"]),
-            self.createPropertySpec("VirtualMachine", ["config.uuid"]), #"config.guestFullName", "config.guestId", "config.instanceUuid"]),
-            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent"]) #, "hardware.systemInfo.vendor", "hardware.systemInfo.model"])
+            self.createPropertySpec("VirtualMachine", ["config.uuid", "runtime.powerState"]),
+            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent"])
         ]
 
         return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)
@@ -240,7 +257,7 @@ class Esx(virt.Virt):
         for filterSet in updateSet.filterSet:
             for objectSet in filterSet.objectSet:
                 if objectSet.kind in ['enter', 'modify']:
-                    if objectSet.obj._type == 'VirtualMachine': # pylint: disable=W0212
+                    if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
                         vm = self.vms[objectSet.obj.value]
                         for change in objectSet.changeSet:
                             if change.op == 'assign':
@@ -254,7 +271,7 @@ class Esx(virt.Virt):
                                 vm[change.name].append(change.val)
                             else:
                                 self.logger.error("Unknown change operation: %s" % change.op)
-                    elif objectSet.obj._type == 'HostSystem': # pylint: disable=W0212
+                    elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
                         host = self.hosts[objectSet.obj.value]
                         for change in objectSet.changeSet:
                             if change.op == 'indirectRemove':
@@ -264,9 +281,9 @@ class Esx(virt.Virt):
                             elif change.op == 'assign':
                                 host[change.name] = change.val
                 elif objectSet.kind == 'leave':
-                    if objectSet.obj._type == 'VirtualMachine': # pylint: disable=W0212
+                    if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
                         del self.vms[objectSet.obj.value]
-                    elif objectSet.obj._type == 'HostSystem': # pylint: disable=W0212
+                    elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
                         del self.hosts[objectSet.obj.value]
                 else:
                     self.logger.error("Unkown update objectSet type: %s" % objectSet.kind)
@@ -291,8 +308,8 @@ class Esx(virt.Virt):
         dcToHf = self.createTraversalSpec("dcToHf", "Datacenter", "hostFolder", ["visitFolders"])
         dcToVmf = self.createTraversalSpec("dcToVmf", "Datacenter", "vmFolder", ["visitFolders"])
         hToVm = self.createTraversalSpec("HToVm", "HostSystem", "vm", ["visitFolders"])
-        visitFolders = self.createTraversalSpec("visitFolders", "Folder", "childEntity",
-                ["visitFolders", "dcToHf", "dcToVmf", "crToH", "crToRp", "HToVm", "rpToVm"])
+        visitFolders = self.createTraversalSpec("visitFolders", "Folder", "childEntity", [
+            "visitFolders", "dcToHf", "dcToVmf", "crToH", "crToRp", "HToVm", "rpToVm"])
         return [visitFolders, dcToVmf, dcToHf, crToH, crToRp, rpToRp, hToVm, rpToVm]
 
     def createPropertySpec(self, type, pathSet, all=False):
@@ -341,11 +358,11 @@ if __name__ == '__main__':
     logger = log.getLogger(True, False)
     from config import Config
     config = Config('esx', 'esx', sys.argv[1], sys.argv[2], sys.argv[3])
-    #config.esx_simplified_vim = False
     vsphere = Esx(logger, config)
     from Queue import Queue
     from threading import Event, Thread
     q = Queue()
+
     class Printer(Thread):
         def run(self):
             while True:

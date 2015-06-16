@@ -22,6 +22,7 @@ import xmlrpclib
 import pickle
 
 from manager import Manager, ManagerError
+from virt import Guest
 
 
 class SatelliteError(ManagerError):
@@ -30,6 +31,17 @@ class SatelliteError(ManagerError):
 
     def __str__(self):
         return self.message
+
+
+GUEST_STATE_TO_SATELLITE = {
+    Guest.STATE_RUNNING: 'running',
+    Guest.STATE_BLOCKED: 'blocked',
+    Guest.STATE_PAUSED: 'paused',
+    Guest.STATE_SHUTINGDOWN: 'shutdown',
+    Guest.STATE_SHUTOFF: 'shutoff',
+    Guest.STATE_CRASHED: 'crashed',
+    Guest.STATE_UNKNOWN: 'nostate'
+}
 
 
 class Satellite(Manager):
@@ -107,7 +119,7 @@ class Satellite(Manager):
         """
         pass
 
-    def _assemble_plan(self, hypervisor_mapping, hypervisor_uuid, type):
+    def _assemble_plan(self, guests, hypervisor_uuid, type):
 
         events = []
 
@@ -116,22 +128,17 @@ class Satellite(Manager):
         stub_instance_info = {
             'vcpus': 1,
             'memory_size': 0,
-            'virt_type': 'fully_virtualized',
-            'state': 'running',
+            'virt_type': 'fully_virtualized'
         }
-
-        # again, remove dashes
-        guest_uuids = []
-        for g_uuid in hypervisor_mapping:
-            guest_uuids.append(str(g_uuid).replace("-", ""))
 
         # TODO: spacewalk wants all zeroes for the hypervisor uuid??
         events.append([0, 'exists', 'system', {'identity': 'host', 'uuid': '0000000000000000'}])
 
         events.append([0, 'crawl_began', 'system', {}])
-        for guest_uuid in guest_uuids:
-            stub_instance_info['uuid'] = guest_uuid
+        for guest in guests:
+            stub_instance_info['uuid'] = guest.uuid.replace("-", "")
             stub_instance_info['name'] = "VM from %s hypervisor %s" % (type, hypervisor_uuid)
+            stub_instance_info['running'] = GUEST_STATE_TO_SATELLITE.get(guest.state, "nostate")
             events.append([0, 'exists', 'domain', stub_instance_info.copy()])
 
         events.append([0, 'crawl_ended', 'system', {}])
@@ -139,7 +146,8 @@ class Satellite(Manager):
         return events
 
     def sendVirtGuests(self, domains):
-        raise SatelliteError("virt-who does not support sending local hypervisor data to satellite; use rhn-virtualization-host instead")
+        raise SatelliteError("virt-who does not support sending local hypervisor "
+                             "data to satellite; use rhn-virtualization-host instead")
 
     def hypervisorCheckIn(self, config, mapping, type=None):
         self._connect()
@@ -148,12 +156,12 @@ class Satellite(Manager):
         if len(mapping) == 0:
             self.logger.info("no hypervisors found, not sending data to satellite")
 
-        for hypervisor_uuid, guest_uuids in mapping.items():
+        for hypervisor_uuid, guests in mapping.items():
             self.logger.debug("Loading systemid for %s" % hypervisor_uuid)
             hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type)
 
-            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, guest_uuids))
-            plan = self._assemble_plan(guest_uuids, hypervisor_uuid, type=type)
+            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, guests))
+            plan = self._assemble_plan(guests, hypervisor_uuid, type=type)
 
             try:
                 self.logger.debug("Sending plan: %s" % plan)
@@ -172,4 +180,3 @@ class Satellite(Manager):
     def uuid(self):
         """ not implemented """
         return '0000000000000000'
-

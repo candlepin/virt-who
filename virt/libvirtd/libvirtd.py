@@ -230,28 +230,3 @@ class Libvirtd(virt.Virt):
             self._remote_host_uuid(): self._listDomains()
         }
         return mapping
-
-
-def eventToString(event):
-    eventStrings = ("Defined", "Undefined", "Started", "Suspended", "Resumed",
-                    "Stopped", "Shutdown")
-    try:
-        return eventStrings[event]
-    except IndexError:
-        return "Unknown (%d)" % event
-
-
-def detailToString(event, detail):
-    eventStrings = (
-        ("Added", "Updated"), # Defined
-        ("Removed", ), # Undefined
-        ("Booted", "Migrated", "Restored", "Snapshot", "Wakeup"), # Started
-        ("Paused", "Migrated", "IOError", "Watchdog", "Restored", "Snapshot"), # Suspended
-        ("Unpaused", "Migrated", "Snapshot"), # Resumed
-        ("Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot"), # Stopped
-        ("Finished",), # Shutdown
-    )
-    try:
-        return eventStrings[event][detail]
-    except IndexError:
-        return "Unknown (%d)" % detail

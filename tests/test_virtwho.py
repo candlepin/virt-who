@@ -163,7 +163,8 @@ class TestOptions(TestBase):
         virtwho = VirtWho(self.logger, options)
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
-        virtwho.queue.put(HostGuestAssociationReport(config, {'a': ['b']}))
+        virtwho.queue.put(HostGuestAssociationReport(config, {'a1': ['b1']}))
+        virtwho.queue.put(HostGuestAssociationReport(config, {'a2': ['b2']}))
         virtwho.run()
 
         fromConfig.assert_called_with(self.logger, config)

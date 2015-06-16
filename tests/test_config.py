@@ -49,6 +49,14 @@ owner=root
 env=staging
 rhsm_username=admin
 rhsm_password=password
+rhsm_host=host
+rhsm_ssl_port=1234
+rhsm_prefix=prefix
+rhsm_proxy_hostname=proxy host
+rhsm_proxy_port=4321
+rhsm_proxy_user=proxyuser
+rhsm_proxy_password=proxypass
+rhsm_insecure=1
 """)
 
         manager = ConfigManager(self.config_dir)
@@ -63,6 +71,14 @@ rhsm_password=password
         self.assertEqual(config.env, "staging")
         self.assertEqual(config.rhsm_username, 'admin')
         self.assertEqual(config.rhsm_password, 'password')
+        self.assertEqual(config.rhsm_host, 'host')
+        self.assertEqual(config.rhsm_ssl_port, '1234')
+        self.assertEqual(config.rhsm_prefix, 'prefix')
+        self.assertEqual(config.rhsm_proxy_hostname, 'proxy host')
+        self.assertEqual(config.rhsm_proxy_port, '4321')
+        self.assertEqual(config.rhsm_proxy_user, 'proxyuser')
+        self.assertEqual(config.rhsm_proxy_password, 'proxypass')
+        self.assertEqual(config.rhsm_insecure, '1')
         self.assertEqual(config.esx_simplified_vim, True)
 
     def testInvalidConfig(self):
@@ -140,16 +156,36 @@ type=esx
 server=1.2.3.4
 username=admin
 password=password
-owner=root
-env=staging
+owner=root1
+env=staging1
+rhsm_username=rhsm_admin1
+rhsm_password=rhsm_password1
+rhsm_host=host1
+rhsm_ssl_port=12341
+rhsm_prefix=prefix1
+rhsm_proxy_hostname=proxyhost1
+rhsm_proxy_port=43211
+rhsm_proxy_user=proxyuser1
+rhsm_proxy_password=proxypass1
+rhsm_insecure=1
 
 [test2]
 type=hyperv
 server=1.2.3.5
 username=admin
 password=password
-owner=root
-env=staging
+owner=root2
+env=staging2
+rhsm_username=rhsm_admin2
+rhsm_password=rhsm_password2
+rhsm_host=host2
+rhsm_ssl_port=12342
+rhsm_prefix=prefix2
+rhsm_proxy_hostname=proxyhost2
+rhsm_proxy_port=43212
+rhsm_proxy_user=proxyuser2
+rhsm_proxy_password=proxypass2
+rhsm_insecure=2
 """)
 
         manager = ConfigManager(self.config_dir)
@@ -160,16 +196,36 @@ env=staging
         self.assertEqual(config.server, "1.2.3.4")
         self.assertEqual(config.username, "admin")
         self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root")
-        self.assertEqual(config.env, "staging")
+        self.assertEqual(config.owner, "root1")
+        self.assertEqual(config.env, "staging1")
+        self.assertEqual(config.rhsm_username, 'rhsm_admin1')
+        self.assertEqual(config.rhsm_password, 'rhsm_password1')
+        self.assertEqual(config.rhsm_host, 'host1')
+        self.assertEqual(config.rhsm_ssl_port, '12341')
+        self.assertEqual(config.rhsm_prefix, 'prefix1')
+        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost1')
+        self.assertEqual(config.rhsm_proxy_port, '43211')
+        self.assertEqual(config.rhsm_proxy_user, 'proxyuser1')
+        self.assertEqual(config.rhsm_proxy_password, 'proxypass1')
+        self.assertEqual(config.rhsm_insecure, '1')
         config = manager.configs[1]
         self.assertEqual(config.name, "test2")
         self.assertEqual(config.type, "hyperv")
         self.assertEqual(config.username, "admin")
         self.assertEqual(config.server, "1.2.3.5")
         self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root")
-        self.assertEqual(config.env, "staging")
+        self.assertEqual(config.owner, "root2")
+        self.assertEqual(config.env, "staging2")
+        self.assertEqual(config.rhsm_username, 'rhsm_admin2')
+        self.assertEqual(config.rhsm_password, 'rhsm_password2')
+        self.assertEqual(config.rhsm_host, 'host2')
+        self.assertEqual(config.rhsm_ssl_port, '12342')
+        self.assertEqual(config.rhsm_prefix, 'prefix2')
+        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost2')
+        self.assertEqual(config.rhsm_proxy_port, '43212')
+        self.assertEqual(config.rhsm_proxy_user, 'proxyuser2')
+        self.assertEqual(config.rhsm_proxy_password, 'proxypass2')
+        self.assertEqual(config.rhsm_insecure, '2')
 
     def testMultipleConfigFiles(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -181,6 +237,16 @@ username=admin
 password=password
 owner=root
 env=staging
+rhsm_username=rhsm_admin1
+rhsm_password=rhsm_password1
+rhsm_host=host1
+rhsm_ssl_port=12341
+rhsm_prefix=prefix1
+rhsm_proxy_hostname=proxyhost1
+rhsm_proxy_port=43211
+rhsm_proxy_user=proxyuser1
+rhsm_proxy_password=proxypass1
+rhsm_insecure=1
 """)
         with open(os.path.join(self.config_dir, "test2.conf"), "w") as f:
             f.write("""
@@ -191,6 +257,16 @@ username=admin
 password=password
 owner=root
 env=staging
+rhsm_username=rhsm_admin2
+rhsm_password=rhsm_password2
+rhsm_host=host2
+rhsm_ssl_port=12342
+rhsm_prefix=prefix2
+rhsm_proxy_hostname=proxyhost2
+rhsm_proxy_port=43212
+rhsm_proxy_user=proxyuser2
+rhsm_proxy_password=proxypass2
+rhsm_insecure=2
 """)
 
         manager = ConfigManager(self.config_dir)
@@ -209,6 +285,16 @@ env=staging
         self.assertEqual(config1.password, "password")
         self.assertEqual(config1.owner, "root")
         self.assertEqual(config1.env, "staging")
+        self.assertEqual(config1.rhsm_username, 'rhsm_admin1')
+        self.assertEqual(config1.rhsm_password, 'rhsm_password1')
+        self.assertEqual(config1.rhsm_host, 'host1')
+        self.assertEqual(config1.rhsm_ssl_port, '12341')
+        self.assertEqual(config1.rhsm_prefix, 'prefix1')
+        self.assertEqual(config1.rhsm_proxy_hostname, 'proxyhost1')
+        self.assertEqual(config1.rhsm_proxy_port, '43211')
+        self.assertEqual(config1.rhsm_proxy_user, 'proxyuser1')
+        self.assertEqual(config1.rhsm_proxy_password, 'proxypass1')
+        self.assertEqual(config1.rhsm_insecure, '1')
 
         self.assertEqual(config2.name, "test2")
         self.assertEqual(config2.type, "hyperv")
@@ -217,6 +303,16 @@ env=staging
         self.assertEqual(config2.password, "password")
         self.assertEqual(config2.owner, "root")
         self.assertEqual(config2.env, "staging")
+        self.assertEqual(config2.rhsm_username, 'rhsm_admin2')
+        self.assertEqual(config2.rhsm_password, 'rhsm_password2')
+        self.assertEqual(config2.rhsm_host, 'host2')
+        self.assertEqual(config2.rhsm_ssl_port, '12342')
+        self.assertEqual(config2.rhsm_prefix, 'prefix2')
+        self.assertEqual(config2.rhsm_proxy_hostname, 'proxyhost2')
+        self.assertEqual(config2.rhsm_proxy_port, '43212')
+        self.assertEqual(config2.rhsm_proxy_user, 'proxyuser2')
+        self.assertEqual(config2.rhsm_proxy_password, 'proxypass2')
+        self.assertEqual(config2.rhsm_insecure, '2')
 
     def testLibvirtConfig(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:

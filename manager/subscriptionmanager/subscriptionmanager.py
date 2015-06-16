@@ -56,8 +56,11 @@ class SubscriptionManager(Manager):
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
 
-    def _connect(self, rhsm_username=None, rhsm_password=None):
+    def _connect(self, config = None):
         """ Connect to the subscription-manager. """
+
+        # Do we want to treat the rhsm_config as the default, and everything else as overrides, or
+        # should we only take from one set of configuration?
         kwargs = {
             'host': self.rhsm_config.get('server', 'hostname'),
             'ssl_port': int(self.rhsm_config.get('server', 'port')),
@@ -65,8 +68,26 @@ class SubscriptionManager(Manager):
             'proxy_hostname': self.rhsm_config.get('server', 'proxy_hostname'),
             'proxy_port': self.rhsm_config.get('server', 'proxy_port'),
             'proxy_user': self.rhsm_config.get('server', 'proxy_user'),
-            'proxy_password': self.rhsm_config.get('server', 'proxy_password')
+            'proxy_password': self.rhsm_config.get('server', 'proxy_password'),
+            'insecure': self.rhsm_config.get('server', 'insecure')
         }
+
+        rhsm_username = None
+        rhsm_password = None
+
+        if config:
+            rhsm_username = config.rhsm_username
+            rhsm_password = config.rhsm_password
+
+            if config.rhsm_host:
+                kwargs['host'] = config.rhsm_host
+                kwargs['ssl_port'] = int(config.rhsm_ssl_port)
+                kwargs['handler'] = config.rhsm_prefix
+                kwargs['proxy_hostname'] = config.rhsm_proxy_hostname
+                kwargs['proxy_port'] = config.rhsm_proxy_port
+                kwargs['proxy_user'] = config.rhsm_proxy_user
+                kwargs['proxy_password'] = config.rhsm_proxy_password
+                kwargs['insecure'] = config.rhsm_insecure
 
         if rhsm_username and rhsm_password:
             self.logger.debug("Authenticating with RHSM username %s" % rhsm_username)
@@ -123,11 +144,7 @@ class SubscriptionManager(Manager):
         """ Send hosts to guests mapping to subscription manager. """
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
-        kwargs = {}
-        if config.rhsm_username and config.rhsm_password:
-            kwargs['rhsm_username'] = config.rhsm_username
-            kwargs['rhsm_password'] = config.rhsm_password
-        self._connect(**kwargs)
+        self._connect(config)
 
         # Send the mapping
         return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)

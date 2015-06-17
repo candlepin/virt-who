@@ -126,7 +126,7 @@ class ManagerProcess(Process):
             try:
                 nextJob = self.queue.get()
             except Empty:
-                print('test')
+                continue
             # TODO Modify to check if the ID passed in is in the dictionary
             if nextJob:
                 if (not isinstance(nextJob, Job)):

@@ -81,14 +81,28 @@ class SubscriptionManager(Manager):
             rhsm_username = config.rhsm_username
             rhsm_password = config.rhsm_password
 
-            if config.rhsm_host:
-                kwargs['host'] = config.rhsm_host
+            if config.rhsm_hostname:
+                kwargs['host'] = config.rhsm_hostname
+
+            if config.rhsm_ssl_port:
                 kwargs['ssl_port'] = int(config.rhsm_ssl_port)
+
+            if config.rhsm_prefix:
                 kwargs['handler'] = config.rhsm_prefix
+
+            if config.rhsm_proxy_hostname:
                 kwargs['proxy_hostname'] = config.rhsm_proxy_hostname
+
+            if config.rhsm_proxy_port:
                 kwargs['proxy_port'] = config.rhsm_proxy_port
+
+            if config.rhsm_proxy_user:
                 kwargs['proxy_user'] = config.rhsm_proxy_user
+
+            if config.rhsm_proxy_password:
                 kwargs['proxy_password'] = config.rhsm_proxy_password
+
+            if config.rhsm_insecure:
                 kwargs['insecure'] = config.rhsm_insecure
 
         if rhsm_username and rhsm_password:

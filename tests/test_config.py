@@ -49,7 +49,7 @@ owner=root
 env=staging
 rhsm_username=admin
 rhsm_password=password
-rhsm_host=host
+rhsm_hostname=host
 rhsm_ssl_port=1234
 rhsm_prefix=prefix
 rhsm_proxy_hostname=proxy host
@@ -71,7 +71,7 @@ rhsm_insecure=1
         self.assertEqual(config.env, "staging")
         self.assertEqual(config.rhsm_username, 'admin')
         self.assertEqual(config.rhsm_password, 'password')
-        self.assertEqual(config.rhsm_host, 'host')
+        self.assertEqual(config.rhsm_hostname, 'host')
         self.assertEqual(config.rhsm_ssl_port, '1234')
         self.assertEqual(config.rhsm_prefix, 'prefix')
         self.assertEqual(config.rhsm_proxy_hostname, 'proxy host')
@@ -167,7 +167,7 @@ owner=root1
 env=staging1
 rhsm_username=rhsm_admin1
 rhsm_password=rhsm_password1
-rhsm_host=host1
+rhsm_hostname=host1
 rhsm_ssl_port=12341
 rhsm_prefix=prefix1
 rhsm_proxy_hostname=proxyhost1
@@ -185,7 +185,7 @@ owner=root2
 env=staging2
 rhsm_username=rhsm_admin2
 rhsm_password=rhsm_password2
-rhsm_host=host2
+rhsm_hostname=host2
 rhsm_ssl_port=12342
 rhsm_prefix=prefix2
 rhsm_proxy_hostname=proxyhost2
@@ -207,7 +207,7 @@ rhsm_insecure=2
         self.assertEqual(config.env, "staging1")
         self.assertEqual(config.rhsm_username, 'rhsm_admin1')
         self.assertEqual(config.rhsm_password, 'rhsm_password1')
-        self.assertEqual(config.rhsm_host, 'host1')
+        self.assertEqual(config.rhsm_hostname, 'host1')
         self.assertEqual(config.rhsm_ssl_port, '12341')
         self.assertEqual(config.rhsm_prefix, 'prefix1')
         self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost1')
@@ -225,7 +225,7 @@ rhsm_insecure=2
         self.assertEqual(config.env, "staging2")
         self.assertEqual(config.rhsm_username, 'rhsm_admin2')
         self.assertEqual(config.rhsm_password, 'rhsm_password2')
-        self.assertEqual(config.rhsm_host, 'host2')
+        self.assertEqual(config.rhsm_hostname, 'host2')
         self.assertEqual(config.rhsm_ssl_port, '12342')
         self.assertEqual(config.rhsm_prefix, 'prefix2')
         self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost2')
@@ -246,7 +246,7 @@ owner=root
 env=staging
 rhsm_username=rhsm_admin1
 rhsm_password=rhsm_password1
-rhsm_host=host1
+rhsm_hostname=host1
 rhsm_ssl_port=12341
 rhsm_prefix=prefix1
 rhsm_proxy_hostname=proxyhost1
@@ -266,7 +266,7 @@ owner=root
 env=staging
 rhsm_username=rhsm_admin2
 rhsm_password=rhsm_password2
-rhsm_host=host2
+rhsm_hostname=host2
 rhsm_ssl_port=12342
 rhsm_prefix=prefix2
 rhsm_proxy_hostname=proxyhost2
@@ -294,7 +294,7 @@ rhsm_insecure=2
         self.assertEqual(config1.env, "staging")
         self.assertEqual(config1.rhsm_username, 'rhsm_admin1')
         self.assertEqual(config1.rhsm_password, 'rhsm_password1')
-        self.assertEqual(config1.rhsm_host, 'host1')
+        self.assertEqual(config1.rhsm_hostname, 'host1')
         self.assertEqual(config1.rhsm_ssl_port, '12341')
         self.assertEqual(config1.rhsm_prefix, 'prefix1')
         self.assertEqual(config1.rhsm_proxy_hostname, 'proxyhost1')
@@ -312,7 +312,7 @@ rhsm_insecure=2
         self.assertEqual(config2.env, "staging")
         self.assertEqual(config2.rhsm_username, 'rhsm_admin2')
         self.assertEqual(config2.rhsm_password, 'rhsm_password2')
-        self.assertEqual(config2.rhsm_host, 'host2')
+        self.assertEqual(config2.rhsm_hostname, 'host2')
         self.assertEqual(config2.rhsm_ssl_port, '12342')
         self.assertEqual(config2.rhsm_prefix, 'prefix2')
         self.assertEqual(config2.rhsm_proxy_hostname, 'proxyhost2')

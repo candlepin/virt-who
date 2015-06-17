@@ -47,7 +47,7 @@ def parse_list(s):
 # dictionary-like class that provides a __missing__ implementation or "safe" getter.
 class Config(object):
     def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None,
-        rhsm_username=None, rhsm_password=None, rhsm_host = None, rhsm_ssl_port = None,
+        rhsm_username=None, rhsm_password=None, rhsm_hostname = None, rhsm_ssl_port = None,
         rhsm_prefix = None, rhsm_proxy_hostname = None, rhsm_proxy_port = None,
         rhsm_proxy_user = None, rhsm_proxy_password = None, rhsm_insecure = None):
 
@@ -65,7 +65,7 @@ class Config(object):
         self._env = env
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
-        self._rhsm_host = rhsm_host
+        self._rhsm_hostname = rhsm_hostname
         self._rhsm_ssl_port = rhsm_ssl_port
         self._rhsm_prefix = rhsm_prefix
         self._rhsm_proxy_hostname = rhsm_proxy_hostname
@@ -135,9 +135,9 @@ class Config(object):
             rhsm_password = None
 
         try:
-            rhsm_host = parser.get(name, "rhsm_host")
+            rhsm_hostname = parser.get(name, "rhsm_hostname")
         except NoOptionError:
-            rhsm_host = None
+            rhsm_hostname = None
 
         try:
             rhsm_ssl_port = parser.get(name, "rhsm_ssl_port")
@@ -184,7 +184,7 @@ class Config(object):
                 rhsm_password = None
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username,
-            rhsm_password, rhsm_host, rhsm_ssl_port, rhsm_prefix, rhsm_proxy_hostname,
+            rhsm_password, rhsm_hostname, rhsm_ssl_port, rhsm_prefix, rhsm_proxy_hostname,
             rhsm_proxy_port, rhsm_proxy_user, rhsm_proxy_password, rhsm_insecure)
 
         try:
@@ -262,8 +262,8 @@ class Config(object):
         return self._rhsm_password
 
     @property
-    def rhsm_host(self):
-        return self._rhsm_host
+    def rhsm_hostname(self):
+        return self._rhsm_hostname
 
     @property
     def rhsm_ssl_port(self):

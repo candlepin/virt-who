@@ -162,10 +162,10 @@ class VirtWho(object):
                 else:
                     self.send(report)
 
-            if self.options.oneshot:
-                oneshot_remaining -= 1
-                if oneshot_remaining == 0:
-                    break
+                if self.options.oneshot:
+                    oneshot_remaining -= 1
+                    if oneshot_remaining == 0:
+                        break
             try:
                 managerJob = self.manager_in_queue.get_nowait()
                 method, args = managerJob

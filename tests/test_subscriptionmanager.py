@@ -10,14 +10,26 @@ from base import TestBase
 
 from config import Config
 from manager.subscriptionmanager import SubscriptionManager
-from virt import Virt
+from virt import Guest
 
 import rhsm.config
 import rhsm.certificate
 import rhsm.connection
 
 
+xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
+
+
 class TestSubscriptionManager(TestBase):
+    guestList = [
+        Guest('222', xvirt, Guest.STATE_RUNNING),
+        Guest('111', xvirt, Guest.STATE_RUNNING),
+        Guest('333', xvirt, Guest.STATE_RUNNING),
+    ]
+    mapping = {
+        '123': guestList
+    }
+
     @classmethod
     @patch('rhsm.config.initConfig')
     @patch('rhsm.certificate.create_from_file')
@@ -38,45 +50,17 @@ class TestSubscriptionManager(TestBase):
         shutil.rmtree(cls.tempdir)
 
     @patch('rhsm.connection.UEPConnection')
-    def test_sendVirtGuestsList(self, rhsmconnection):
-        guestList = ['222', '111', '333']
-        self.sm.sendVirtGuests(guestList)
-        self.sm.connection.updateConsumer.assert_called_with(123, guest_uuids=guestList)
-
-    @patch('rhsm.connection.UEPConnection')
-    def test_sendVirtGuestsDict(self, rhsmconnection):
-        guestList = [
-            {
-                'guestId': '222',
-                'attributes': {
-                    'hypervisorType': 'qemu',
-                    'virtWhoType': 'libvirt',
-                    'active': 1
-                }
-            }, {
-                'guestId': '111',
-                'attributes': {
-                    'hypervisorType': 'qemu',
-                    'virtWhoType': 'libvirt',
-                    'active': 1
-                }
-            }, {
-                'guestId': '333',
-                'attributes': {
-                    'hypervisorType': 'qemu',
-                    'virtWhoType': 'libvirt',
-                    'active': 1
-                }
-            }
-        ]
-        self.sm.sendVirtGuests(guestList)
-        self.sm.connection.updateConsumer.assert_called_with(123, guest_uuids=guestList)
+    def test_sendVirtGuests(self, rhsmconnection):
+        self.sm.sendVirtGuests(self.guestList)
+        self.sm.connection.updateConsumer.assert_called_with(123, guest_uuids=[g.toDict() for g in self.guestList])
 
     @patch('rhsm.connection.UEPConnection')
     def test_hypervisorCheckIn(self, rhsmconnection):
         owner = "owner"
         env = "env"
         config = Config("test", "esx", owner=owner, env=env)
-        mapping = {'ABC': ['222', '111', '333'], 'BCD': []}
-        self.sm.hypervisorCheckIn(config, mapping)
-        self.sm.connection.hypervisorCheckIn.assert_called_with(owner, env, mapping)
+        self.sm.hypervisorCheckIn(config, self.mapping)
+        self.sm.connection.hypervisorCheckIn.assert_called_with(
+            owner,
+            env,
+            dict((host, [g.toDict() for g in guests]) for host, guests in self.mapping.items()))

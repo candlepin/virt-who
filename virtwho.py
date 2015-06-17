@@ -25,18 +25,24 @@ import errno
 import time
 from multiprocessing import Event, Queue
 import json
+
+import atexit
 from Queue import Empty
 
 from daemon import daemon
-from virt import Virt, DomainListReport, HostGuestAssociationReport
-from manager import Manager, ManagerError
+from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
+from manager import Manager, ManagerError, ManagerFatalError
 from manager.managerprocess import ManagerProcess
 from manager.subscriptionmanager import SubscriptionManager
-from config import Config, ConfigManager
+from config import Config, ConfigManager, InvalidPasswordFormat
+from password import InvalidKeyFile
 
 import log
 
-from optparse import OptionParser, OptionGroup
+from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
+
+class ReloadRequest(Exception):
+    ''' Reload of virt-who was requested by sending SIGHUP signal. '''
 
 
 class OptionParserEpilog(OptionParser):
@@ -63,10 +69,12 @@ RetryInterval = 60 # One minute
 DefaultInterval = 3600 # Once per hour
 
 PIDFILE = "/var/run/virt-who.pid"
+SAT5 = "satellite"
+SAT6 = "sam"
 
 
 class VirtWho(object):
-    def __init__(self, logger, options):
+    def __init__(self, logger, options, config_dir=None):
         """
         VirtWho class provides bridge between virtualization supervisor and
         Subscription Manager.
@@ -77,13 +85,14 @@ class VirtWho(object):
         self.logger = logger
         self.options = options
         self.terminate_event = Event()
+
         # Queue for getting events from virt backends
-        self.queue = Queue()
+        self.queue = None
         self.manager_in_queue = Queue()
         self.to_manager_queue = Queue()
         self.manager_process = ManagerProcess(self.logger, self.options)
 
-        self.configManager = ConfigManager()
+        self.configManager = ConfigManager(config_dir)
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 
@@ -106,6 +115,17 @@ class VirtWho(object):
                 self.logger.warn("Unable to handle report of type: %s", type(report))
         except ManagerError as e:
             self.logger.error("Unable to send data: %s" % str(e))
+        except ManagerFatalError as e:
+            # Something really bad happened (system is not register), stop the backends
+            self.logger.exception("Error in communication with subscription manager:")
+            raise
+        except IOError as e:
+            if e.errno == errno.EINTR:
+                self.logger.debug("Communication with subscription manager interrupted")
+                return False
+            exceptionCheck(e)
+            self.logger.exception("Error in communication with subscription manager:")
+            return False
         except Exception as e:
             exceptionCheck(e)
             self.logger.exception("Error in communication with subscription manager:")
@@ -115,6 +135,7 @@ class VirtWho(object):
     def _sendGuestList(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
         manager.sendVirtGuests(report.guests)
+        self.logger.info("virt-who guest list update successful")
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
@@ -125,14 +146,25 @@ class VirtWho(object):
         manager = SubscriptionManager(self.logger, self.options, self.to_manager_queue)
         manager.checkJobStatus(config, job_id)
 
+        if not result['failedUpdate']:
+            self.logger.info("virt-who host/guest association update successful")
+
     def run(self):
         if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
 
+        # Queue for getting events from virt backends
+        if self.queue is None:
+            self.queue = Queue(len(self.configManager.configs))
+
         # Run the virtualization backends
         self.virts = []
         for config in self.configManager.configs:
-            virt = Virt.fromConfig(self.logger, config)
+            try:
+                virt = Virt.fromConfig(self.logger, config)
+            except Exception as e:
+                self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
+                continue
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
@@ -141,7 +173,11 @@ class VirtWho(object):
                                    self.terminate_event,
                                    self.options.oneshot)
         if self.options.oneshot:
-            oneshot_remaining = len(self.virts)
+            oneshot_remaining = set(virt.config.name for virt in self.virts)
+
+        if len(self.virts) == 0:
+            self.logger.error("No suitable virt backend found")
+            return
 
         result = {}
         report = None
@@ -152,20 +188,9 @@ class VirtWho(object):
             except Empty:
                 report = None
                 pass
+            except IOError:
+                continue
 
-            if report is not None:
-                # None means that there was some error in the backend
-
-                # Send the report
-                if self.options.print_:
-                    result[report.config] = report
-                else:
-                    self.send(report)
-
-                if self.options.oneshot:
-                    oneshot_remaining -= 1
-                    if oneshot_remaining == 0:
-                        break
             try:
                 managerJob = self.manager_in_queue.get_nowait()
                 method, args = managerJob
@@ -173,19 +198,86 @@ class VirtWho(object):
             except Empty:
                 # We don't care if the managerprocess has nothing for us to do
                 pass
+            except IOError:
+                pass
 
+            if report is not None:
+                if report == "exit":
+                    break
+                if report == "reload":
+                    for virt in self.virts:
+                        virt.terminate()
+                    self.virts = []
+                    raise ReloadRequest()
+
+                # Send the report
+                if not self.options.print_ and not isinstance(report, ErrorReport):
+                    try:
+                        self.send(report)
+                    except ManagerFatalError:
+                        # System not register (probably), stop the backends
+                        for virt in self.virts:
+                            virt.terminate()
+                        self.virts = []
+                        self.manager_process.terminate()
+
+                if self.options.oneshot:
+                    try:
+                        oneshot_remaining.remove(report.config.name)
+                        if not isinstance(report, ErrorReport):
+                            if self.options.print_:
+                                result[report.config] = report
+                            self.logger.debug("Association for config %s gathered" % report.config.name)
+                        for virt in self.virts:
+                            if virt.config.name == report.config.name:
+                                virt.stop()
+                    except KeyError:
+                        self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
+                    if not oneshot_remaining:
+                        break
+
+        self.queue = None
         for virt in self.virts:
             virt.terminate()
+
         self.virt = []
         self.manager_process.terminate()
         if self.options.print_:
             return result
 
-    def reload(self):
-        self.warn("virt-who reload")
+    def terminate(self):
+        self.logger.debug("virt-who shut down started")
+        # Terminate the backends before clearing the queue, the queue must be empty
+        # to end a child process, otherwise it will be stuck in queue.put()
         self.terminate_event.set()
-        time.sleep(2)
-        self.run()
+        # Give backends some time to terminate properly
+        time.sleep(0.5)
+
+        if self.queue:
+            # clear the queue and put "exit" there
+            try:
+                while True:
+                    self.queue.get(False)
+            except Empty:
+                pass
+            self.queue.put("exit")
+
+        # Give backends some more time to terminate properly
+        time.sleep(0.5)
+
+        for virt in self.virts:
+            virt.terminate()
+        self.virt = []
+
+    def reload(self):
+        self.logger.warn("virt-who reload")
+        # clear the queue and put "reload" there
+        try:
+            while True:
+                self.queue.get(False)
+        except Empty:
+            pass
+        self.queue.put("reload")
 
     def getMapping(self):
         mapping = {}
@@ -208,9 +300,9 @@ class OptionError(Exception):
     pass
 
 def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
-                                epilog="virt-who also reads enviromental variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
+                                epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
@@ -227,11 +319,13 @@ def parseOptions():
     parser.add_option_group(virtGroup)
 
     managerGroup = OptionGroup(parser, "Subscription manager", "Choose where the host/guest associations should be reported")
-    managerGroup.add_option("--sam", action="store_const", dest="smType", const="sam", default="sam", help="Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]")
-    managerGroup.add_option("--satellite", action="store_const", dest="smType", const="satellite", help="Report host/guest associations to the Satellite 5")
+    managerGroup.add_option("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6, help="Report host/guest associations to the Subscription Asset Manager [default]")
+    managerGroup.add_option("--satellite6", action="store_const", dest="smType", const=SAT6, help="Report host/guest associations to the Satellite 6 server")
+    managerGroup.add_option("--satellite5", action="store_const", dest="smType", const=SAT5, help="Report host/guest associations to the Satellite 5 server")
+    managerGroup.add_option("--satellite", action="store_const", dest="smType", const=SAT5, help=SUPPRESS_HELP)
     parser.add_option_group(managerGroup)
 
-    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use this options with --libvirt")
+    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use these options with --libvirt")
     libvirtGroup.add_option("--libvirt-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products, default is owner of current system")
     libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to, default is environment of current system")
     libvirtGroup.add_option("--libvirt-server", action="store", dest="server", default="", help="URL of the libvirt server to connect to, default is empty for libvirt on local computer")
@@ -239,7 +333,7 @@ def parseOptions():
     libvirtGroup.add_option("--libvirt-password", action="store", dest="password", default="", help="Password for connecting to the libvirt daemon")
     parser.add_option_group(libvirtGroup)
 
-    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use this options with --esx")
+    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use these options with --esx")
     esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     esxGroup.add_option("--esx-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to")
     esxGroup.add_option("--esx-server", action="store", dest="server", default="", help="URL of the vCenter server to connect to")
@@ -247,7 +341,7 @@ def parseOptions():
     esxGroup.add_option("--esx-password", action="store", dest="password", default="", help="Password for connecting to vCenter")
     parser.add_option_group(esxGroup)
 
-    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use this options with --rhevm")
+    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use these options with --rhevm")
     rhevmGroup.add_option("--rhevm-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     rhevmGroup.add_option("--rhevm-env", action="store", dest="env", default="", help="Environment where the RHEV-M belongs to")
     rhevmGroup.add_option("--rhevm-server", action="store", dest="server", default="", help="URL of the RHEV-M server to connect to (preferable use secure connection - https://<ip or domain name>:<secure port, usually 8443>)")
@@ -255,7 +349,7 @@ def parseOptions():
     rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
     parser.add_option_group(rhevmGroup)
 
-    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use this options with --hyperv")
+    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use these options with --hyperv")
     hypervGroup.add_option("--hyperv-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
     hypervGroup.add_option("--hyperv-env", action="store", dest="env", default="", help="Environment where the Hyper-V belongs to")
     hypervGroup.add_option("--hyperv-server", action="store", dest="server", default="", help="URL of the Hyper-V server to connect to")
@@ -263,7 +357,7 @@ def parseOptions():
     hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
     parser.add_option_group(hypervGroup)
 
-    satelliteGroup = OptionGroup(parser, "Satellite options", "Use this options with --satellite")
+    satelliteGroup = OptionGroup(parser, "Satellite 5 options", "Use these options with --satellite5")
     satelliteGroup.add_option("--satellite-server", action="store", dest="sat_server", default="", help="Satellite server URL")
     satelliteGroup.add_option("--satellite-username", action="store", dest="sat_username", default="", help="Username for connecting to Satellite server")
     satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
@@ -271,7 +365,7 @@ def parseOptions():
 
     (options, args) = parser.parse_args()
 
-    # Handle enviromental variables
+    # Handle enviroment variables
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
@@ -299,11 +393,19 @@ def parseOptions():
 
     env = os.getenv("VIRTWHO_SAM", "0").strip().lower()
     if env in ["1", "true"]:
-        options.smType = "sam"
+        options.smType = SAT6
+
+    env = os.getenv("VIRTWHO_SATELLITE6", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = SAT6
+
+    env = os.getenv("VIRTWHO_SATELLITE5", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.smType = SAT5
 
     env = os.getenv("VIRTWHO_SATELLITE", "0").strip().lower()
     if env in ["1", "true"]:
-        options.smType = "satellite"
+        options.smType = SAT5
 
     env = os.getenv("VIRTWHO_LIBVIRT", "0").strip().lower()
     if env in ["1", "true"]:
@@ -327,16 +429,16 @@ def parseOptions():
 
     def checkEnv(variable, option, name, required=True):
         """
-        If `option` is empty, check enviromental `variable` and return its value.
+        If `option` is empty, check enviroment `variable` and return its value.
         Exit if it's still empty
         """
         if len(option) == 0:
             option = os.getenv(variable, "").strip()
         if required and len(option) == 0:
-            raise OptionError("Required parameter '%s' is not set, exitting" % name)
+            raise OptionError("Required parameter '%s' is not set, exiting" % name)
         return option
 
-    if options.smType == "satellite":
+    if options.smType == SAT5:
         options.sat_server = checkEnv("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
         options.sat_username = checkEnv("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
         if len(options.sat_password) == 0:
@@ -376,9 +478,9 @@ def parseOptions():
 
     if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv'):
         if not options.owner:
-            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
         if not options.env:
-            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV envirmental variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
     if options.interval < 0:
         logger.warning("Interval is not positive number, ignoring")
@@ -433,40 +535,52 @@ class PIDLock(object):
         except Exception:
             pass
 
+virtWho = None
 
 def main():
-    lock = PIDLock(PIDFILE)
-    if lock.is_locked():
-        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-        sys.exit(1)
-
     try:
         logger, options = parseOptions()
     except OptionError as e:
         print >>sys.stderr, str(e)
         sys.exit(1)
 
-    if options.background:
-        # Do a daemon initialization
-        with daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream]):
-            _main(logger, options)
-    else:
-        with lock:
-            _main(logger, options)
+    lock = PIDLock(PIDFILE)
+    if lock.is_locked():
+        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
+        sys.exit(1)
 
+    def atexit_fn():
+        global virtWho
+        if virtWho:
+            virtWho.terminate()
+    atexit.register(atexit_fn)
 
-def _main(logger, options):
+    def reload(signal, stackframe):
+        global virtWho
+        virtWho.reload()
+
+    signal.signal(signal.SIGHUP, reload)
+
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
 
-    virtWho = VirtWho(logger, options)
+    global virtWho
+    try:
+        virtWho = VirtWho(logger, options)
+    except (InvalidKeyFile, InvalidPasswordFormat) as e:
+        logger.error(str(e))
+        sys.exit(1)
+
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
                         options.username, options.password, options.owner, options.env)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:
-        virtWho.configManager.readFile(conffile)
+        try:
+            virtWho.configManager.readFile(conffile)
+        except Exception as e:
+            logger.error('Config file "%s" skipped because of an error: %s' % (conffile, str(e)))
     if len(virtWho.configManager.configs) == 0:
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
@@ -479,14 +593,22 @@ def _main(logger, options):
         else:
             logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
-    def reload(signal, stackframe):
-        virtWho.reload()
-    signal.signal(signal.SIGHUP, reload)
+    if options.background:
+        locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
+    else:
+        locker = lambda: lock
 
-    try:
-        result = virtWho.run()
-    except KeyboardInterrupt:
-        sys.exit(1)
+    with locker():
+        while True:
+            try:
+                _main(virtWho)
+                break
+            except ReloadRequest:
+                logger.info("Reloading")
+                continue
+
+def _main(virtWho):
+    result = virtWho.run()
 
     if virtWho.options.print_:
         hypervisors = []
@@ -499,17 +621,21 @@ def _main(logger, options):
                 for hypervisor, guests in report.association.items():
                     h = {
                         'uuid': hypervisor,
-                        'guests': guests
+                        'guests': [guest.toDict() for guest in guests]
                     }
                     hypervisors.append(h)
-        print json.dumps({
+        data = json.dumps({
             'hypervisors': hypervisors
         })
+        virtWho.logger.debug("Associations found: %s" % data)
+        print data
 
 
 if __name__ == '__main__':
     try:
         main()
+    except KeyboardInterrupt:
+        sys.exit(1)
     except Exception as e:
         print >>sys.stderr, e
         logger = log.getLogger(False, False)

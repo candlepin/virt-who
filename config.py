@@ -34,6 +34,9 @@ class InvalidOption(Error):
     pass
 
 
+class InvalidPasswordFormat(Exception):
+    pass
+
 def parse_list(s):
     '''
     Parse comma-separated list of items that might be in double-quotes to the list of strings
@@ -41,7 +44,10 @@ def parse_list(s):
     return reader([s]).next()
 
 class Config(object):
-    def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None, rhsm_username=None, rhsm_password=None):
+    def __init__(self, name, type, server=None, username=None,
+                 password=None, owner=None, env=None,
+                 rhsm_username=None, rhsm_password=None):
+
         self._name = name
         self._type = type
         if self._type not in VIRTWHO_TYPES:
@@ -57,12 +63,14 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
 
-        self.filter_host_uuids = []
-        self.exclude_host_uuids = []
+        self.filter_host_uuids = None
+        self.exclude_host_uuids = None
+
+        self.hypervisor_id = 'uuid'
 
         # Optional options for backends
-        self.filter_host_parents = []
-        self.exclude_host_parents = []
+        self.filter_host_parents = None
+        self.exclude_host_parents = None
         self.esx_simplified_vim = True
         self.fake_is_hypervisor = True
         self.fake_file = None
@@ -88,11 +96,11 @@ class Config(object):
         try:
             password = parser.get(name, "password")
         except NoOptionError:
-            password = None
-        if password is None:
             try:
-                crypted = parser.get(name, "encrypted_password")
-                password = Password.decrypt(unhexlify(crypted))
+                encrypted_password = parser.get(name, "encrypted_password")
+                password = Password.decrypt(unhexlify(encrypted_password))
+            except TypeError:
+                raise InvalidPasswordFormat("Password can't be decrypted, possibly corrupted")
             except NoOptionError:
                 password = None
 
@@ -113,27 +121,31 @@ class Config(object):
         try:
             rhsm_password = parser.get(name, "rhsm_password")
         except NoOptionError:
-            rhsm_password = None
-
-        # Only attempt to get the encrypted rhsm password if we have a username:
-        if rhsm_username is not None and rhsm_password is None:
             try:
-                crypted = parser.get(name, "rhsm_encrypted_password")
-                rhsm_password = Password.decrypt(unhexlify(crypted))
+                encrypted_rhsm_password = parser.get(name, "rhsm_encrypted_password")
+                rhsm_password = Password.decrypt(unhexlify(encrypted_rhsm_password))
             except NoOptionError:
                 rhsm_password = None
 
-        config = Config(name, type, server, username, password, owner, env, rhsm_username, rhsm_password)
+        config = Config(name=name, type=type, server=server, username=username,
+                        password=password, owner=owner, env=env,
+                        rhsm_username=rhsm_username,
+                        rhsm_password=rhsm_password)
+
+        try:
+            config.hypervisor_id = parser.get(name, "hypervisor_id")
+        except NoOptionError:
+            config.hypervisor_id = "uuid"
 
         try:
             config.filter_host_uuids = parse_list(parser.get(name, "filter_host_uuids"))
         except NoOptionError:
-            config.filter_host_uuids = []
+            config.filter_host_uuids = None
 
         try:
             config.exclude_host_uuids = parse_list(parser.get(name, "exclude_host_uuids"))
         except NoOptionError:
-            config.exclude_host_uuids = []
+            config.exclude_host_uuids = None
 
         if type == 'esx':
             try:
@@ -143,12 +155,12 @@ class Config(object):
             try:
                 config.filter_host_parents = parse_list(parser.get(name, "filter_host_parents"))
             except NoOptionError:
-                config.filter_host_parents = []
+                config.filter_host_parents = None
 
             try:
                 config.exclude_host_parents = parse_list(parser.get(name, "exclude_host_parents"))
             except NoOptionError:
-                config.exclude_host_parents = []
+                config.exclude_host_parents = None
         elif type == 'fake':
             try:
                 config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")
@@ -196,7 +208,9 @@ class Config(object):
 
 
 class ConfigManager(object):
-    def __init__(self, config_dir=VIRTWHO_CONF_DIR):
+    def __init__(self, config_dir=None):
+        if config_dir is None:
+            config_dir = VIRTWHO_CONF_DIR
         parser = SafeConfigParser()
         self._configs = []
         try:

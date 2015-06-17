@@ -4,10 +4,11 @@ version = 0.12
 
 .PHONY: pack check install srpm rpm rpmlint upload
 
-$(name)-$(version).tar.gz:
-	git archive --format=tar --prefix=$(name)-$(version)/ master | gzip > $(name)-$(version).tar.gz
+release:
+	tito tag
 
-pack: $(name)-$(version).tar.gz
+pack:
+	tito build --tgz -o .
 
 check:
 	pyflakes *.py
@@ -32,14 +33,18 @@ install:
 	gzip -c virt-who-config.5 > virt-who-config.5.gz
 	install -pm 0644 virt-who-config.5.gz $(DESTDIR)/usr/share/man/man5/
 
-srpm: pack
-	rpmbuild --define "_sourcedir $(PWD)" --define "_specdir $(PWD)" --define "_srcrpmdir $(PWD)" -bs $(name).spec
+srpm:
+	tito build --srpm --test
 
-rpm: pack
-	rpmbuild --define "_sourcedir $(PWD)" --define "_specdir $(PWD)" --define "_srcrpmdir $(PWD)" --define "_rpmdir $(PWD)" -bb $(name).spec
+rpm:
+	tito build --rpm --test
 
-rpmlint: srpm rpm
-	rpmlint $(name).spec $(shell rpmspec -q $(name).spec | sed 's/.noarch//').src.rpm noarch/$(shell rpmspec -q $(name).spec).rpm
+rpmlint:
+	$(eval tmpdir := $(shell mktemp -d))
+	tito build --srpm --test -o $(tmpdir)
+	tito build --rpm --test -o $(tmpdir)
+	rpmlint $(name).spec $(tmpdir)/*
+	rm -rf $(tmpdir)
 
 upload: pack
 	scp $(name)-$(version).tar.gz fedorahosted.org:$(name)

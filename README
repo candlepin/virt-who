@@ -27,7 +27,11 @@ SAM and Satellite 6:
     It uses rhsm configuration (usually in /etc/rhsm/rhsm.conf). The system
     needs to be registered in subscription-manager server before running
     the agent.
-Satellite 5:
+
+Satellite6:
+    It will behave in the same manner as SAM.
+
+Satellite5:
     Configuration is stored in virt-who configuration file:
     /etc/sysconfig/virt-who
 

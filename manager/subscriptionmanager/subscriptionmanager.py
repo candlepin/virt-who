@@ -19,20 +19,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
+import json
+from httplib import BadStatusLine
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
-from ..manager import Manager
+from ..manager import Manager, ManagerError, ManagerFatalError
 
 
-class SubscriptionManagerError(Exception):
-    def __init__(self, message):
-        self.message = message
+class SubscriptionManagerError(ManagerError):
+    pass
 
-    def __str__(self):
-        return self.message
+
+class SubscriptionManagerUnregisteredError(ManagerFatalError):
+    pass
 
 
 class SubscriptionManager(Manager):
@@ -76,7 +78,8 @@ class SubscriptionManager(Manager):
         else:
             self.logger.debug("Authenticating with certificate: %s" % self.cert_file)
             if not os.access(self.cert_file, os.R_OK):
-                raise SubscriptionManagerError("Unable to read certificate, system is not registered or you are not root")
+                raise SubscriptionManagerUnregisteredError(
+                    "Unable to read certificate, system is not registered or you are not root")
             kwargs['cert_file'] = self.cert_file
             kwargs['key_file'] = self.key_file
 
@@ -84,44 +87,30 @@ class SubscriptionManager(Manager):
         if not self.connection.ping()['result']:
             raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
 
-    def sendVirtGuests(self, domains):
+    def sendVirtGuests(self, guests):
         """
         Update consumer facts with info about virtual guests.
 
-        :param domain: List of guest UUIDs for current machine or list of
-            dictionaries in the format: [
-                {
-                    'guestId': <uuid of guest>,
-                    'attributes': { # supplemental list a attributes, supported are following:
-                        'hypervisorType': <type of hypervisor, e.g. QEMU>,
-                        'virtWhoType': <virtwho type of operation, e.g. libvirt>,
-                        'active': <1 if guest is active, 0 otherwise, -1 on error>
-                    },
-                },
-                ...
-            ]
-        :type domain: list of str or list of dict domains
+        `guests` is a list of `Guest` instances (or it children).
         """
 
         self._connect()
 
         # Sort the list
-        key = None
-        if len(domains) > 0:
-            if not isinstance(domains[0], basestring):
-                key = "guestId"
-            if key is None:
-                domains.sort()
-            else:
-                domains.sort(key=lambda item: item[key])
+        guests.sort(key=lambda item: item.uuid)
 
-        self.logger.info("Sending domain info: %s" % domains)
+        serialized_guests = [guest.toDict() for guest in guests]
+        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4, sort_keys=True))
 
         # Send list of guest uuids to the server
-        self.connection.updateConsumer(self.uuid(), guest_uuids=domains)
+        self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
 
     def hypervisorCheckIn(self, config, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
+        serialized_mapping = {}
+        for host, guests in mapping.items():
+            serialized_mapping[host] = [guest.toDict() for guest in guests]
+
         kwargs = {}
         if config.rhsm_username and config.rhsm_password:
             kwargs['rhsm_username'] = config.rhsm_username
@@ -135,17 +124,20 @@ class SubscriptionManager(Manager):
             # Transform the mapping into the async version
             # FIXME: Should this be here or as part of one of the reports
             new_mapping = {'hypervisors':[]}
-            for k,v in mapping.iteritems():
-                new_mapping['hypervisors'].append({'hypervisorId':k, 'guestIds':v})
-            mapping = new_mapping
+            for host, guests in serialized_mapping.iteritems():
+                new_mapping['hypervisors'].append({'hypervisorId':host, 'guestIds':guests})
+            serialized_mapping = new_mapping
         else:
             self.logger.debug("Server does not have 'hypervisors_async' capability")
             # Do nothing else as the data we have already is in the form that we need
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
+        try:
+            result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
 
-        result = self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
-        if (is_async):
+        if (is_async and self.manager_queue is not None):
             self.manager_queue.put(('newJobStatus', [config, result['id']]))
         return result
 
@@ -188,4 +180,3 @@ class SubscriptionManager(Manager):
             except Exception as e:
                 raise SubscriptionManagerError("Unable to open certificate %s (%s):" % (self.cert_file, str(e)))
         return self.cert_uuid
-

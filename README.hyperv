@@ -26,3 +26,5 @@ In order to make virt-who connection to Hyper-V work, some steps needs to be don
     Verify that at least one of methods Basic or Negotiate is enabled (True)
 
         winrm get winrm/config/service/auth
+
+5. Make sure that you're using administrator account in virt-who.

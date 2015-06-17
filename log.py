@@ -40,7 +40,7 @@ def getLogger(debug, background):
 
     # Try to write to /var/log, fallback on console logging:
     try:
-        fileHandler = logging.handlers.RotatingFileHandler(path, maxBytes=0x100000, backupCount=5)
+        fileHandler = logging.handlers.WatchedFileHandler(path)
         fileHandler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s'))
         if debug:
             fileHandler.setLevel(logging.DEBUG)

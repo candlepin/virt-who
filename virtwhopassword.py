@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 from getpass import getpass
-from password import Password, UnwrittableKeyFile, InvalidKeyFile
+from password import Password, UnwritableKeyFile, InvalidKeyFile
 from binascii import hexlify
 
 if __name__ == '__main__':
@@ -50,7 +50,7 @@ WARNING: root user can still decrypt encrypted passwords!
         sys.exit(1)
     try:
         enc = Password.encrypt(pwd)
-    except UnwrittableKeyFile:
+    except UnwritableKeyFile:
         print >>sys.stderr, "Keyfile %s doesn't exist and can't be created, rerun as root" % Password.KEYFILE
         sys.exit(1)
     except InvalidKeyFile:

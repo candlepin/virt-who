@@ -42,6 +42,9 @@ Only hosts which uuid is specified in comma-separated list in this option will b
 .TP
 \fBexclude_host_uuids\fR
 Hosts which uuid is specified in comma-separated list in this option will \fBNOT\fR be reported. Put the uuid into the double-quotes if it contains special characters (like comma).
+.TP
+\fBhypervisor_id\fR
+Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. Applicable to esx, hyperv and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
 
 .SH EXAMPLE
 [test-esx]
@@ -76,6 +79,14 @@ Hosts which parent (usually ComputeResource) name is specified in comma-separate
 \fBsimplified_vim\fR
 virt-who by default uses stripped-down version of vimService.wsdl file that contains vSphere SOAP API definition. Set this option to \fBfalse\fR to use server provided wsdl file that will be retrieved automatically.
 
+.SS RHEV-M BACKEND
+
+.TP
+\fBserver\fR
+The default port number is 8443 (that was used the default in RHEV-M <= 3.0). Newer RHEV-M installations uses port 443 by default. Use correct value for your server in format:
+
+server=<HOSTNAME_OR_IP_ADDRESS>:<PORT_NUMBER>
+
 .SS FAKE BACKEND
 
 Fake backend reads host/guests associations from the file on disk, for example:
@@ -99,7 +110,7 @@ If \fbtrue\fR (default), the option determines that the fake data are fetched fr
 
 .TP
 \fBfile\fR
-Absolete path to the JSON file that has the same structure as file returned from \fBvirt-who --print\fR command, for example:
+Absolute path to the JSON file that has the same structure as file returned from \fBvirt-who --print\fR command, for example:
 .br
 {
     "hypervisors": [

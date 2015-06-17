@@ -1,4 +1,4 @@
 
-from subscriptionmanager import SubscriptionManager
+from subscriptionmanager import SubscriptionManager, SubscriptionManagerError, SubscriptionManagerUnregisteredError
 
-__all__ = ['SubscriptionManager']
+__all__ = ['SubscriptionManager', 'SubscriptionManagerError', 'SubscriptionManagerUnregisteredError']

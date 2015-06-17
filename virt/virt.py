@@ -22,28 +22,60 @@ import sys
 import time
 import logging
 from datetime import datetime
-from multiprocessing import Process
+from multiprocessing import Process, Event
+
 
 class VirtError(Exception):
     pass
 
 
-class Domain(dict):
-    def __init__(self, virt, domain):
-        self['guestId'] = domain.UUIDString()
-        self['attributes'] = {
-            'hypervisorType': virt.getType(),
-            'virtWhoType': "libvirt",
-            'active': 0
+class Guest(object):
+    """
+    This class represents one virtualization guest running on some
+    host/hypervisor.
+    """
+
+    STATE_UNKNOWN = 0      # unknown state
+    STATE_RUNNING = 1      # running
+    STATE_BLOCKED = 2      # blocked on resource
+    STATE_PAUSED = 3       # paused by user
+    STATE_SHUTINGDOWN = 4  # guest is being shut down
+    STATE_SHUTOFF = 5      # shut off
+    STATE_CRASHED = 6      # crashed
+    STATE_PMSUSPENDED = 7  # suspended by guest power management
+
+    def __init__(self, uuid, virt, state, hypervisorType=None):
+        """
+        Create new guest instance that will be sent to the subscription manager.
+
+        `uuid` is unique identification of the guest.
+
+        `virt` is a `Virt` class instance that represents virtualization hypervisor
+        that owns the guest.
+
+        `hypervisorType` is additional type of the virtualization, used in libvirt.
+
+        `state` is a number that represents the state of the guest (stopped, running, ...)
+        """
+        self.uuid = uuid
+        self.virtWhoType = virt.CONFIG_TYPE
+        self.hypervisorType = hypervisorType
+        self.state = state
+
+    def toDict(self):
+        d = {
+            'guestId': self.uuid,
+            'attributes': {
+                'virtWhoType': self.virtWhoType,
+                'active': 1 if self.state == self.STATE_RUNNING else 0
+            },
+            'state': self.state
         }
-        if domain.isActive():
-            self['attributes']['active'] = 1
-        try:
-            self['state'] = domain.state(0)[0]
-        except AttributeError:
-            # Some versions of libvirt doesn't have domain.state() method,
-            # use first value from info instead
-            self['state'] = domain.info()[0]
+
+        if self.hypervisorType is not None:
+            d['attributes']['hypervisorType'] = self.hypervisorType
+        return d
+
 
 class AbstractVirtReport(object):
     '''
@@ -56,6 +88,14 @@ class AbstractVirtReport(object):
     def config(self):
         return self._config
 
+
+class ErrorReport(AbstractVirtReport):
+    '''
+    Report that virt backend fails. Used in oneshot mode to inform
+    main process that now data are coming.
+    '''
+
+
 class DomainListReport(AbstractVirtReport):
     '''
     Report from virt backend about list of virtual guests on given system.
@@ -67,6 +107,7 @@ class DomainListReport(AbstractVirtReport):
     @property
     def guests(self):
         return self._guests
+
 
 class HostGuestAssociationReport(AbstractVirtReport):
     '''
@@ -82,14 +123,15 @@ class HostGuestAssociationReport(AbstractVirtReport):
         assoc = {}
         logger = logging.getLogger("rhsm-app")
         for host, guests in self._assoc.items():
-            if host in self._config.exclude_host_uuids:
+            if self._config.exclude_host_uuids is not None and host in self._config.exclude_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is excluded" % host)
                 continue
-            if len(self._config.filter_host_uuids) > 0 and host not in self._config.filter_host_uuids:
+            if self._config.filter_host_uuids is not None and host not in self._config.filter_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is not included" % host)
                 continue
             assoc[host] = guests
         return assoc
+
 
 class HypervisorInfoReport(AbstractVirtReport):
     '''
@@ -118,7 +160,9 @@ class Virt(Process):
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
-        super(Virt, self).__init__()
+        self._internal_terminate_event = Event()
+        super(Virt, self).__init__(name=config.name)
+        self.daemon = True
 
     @classmethod
     def fromConfig(cls, logger, config):
@@ -139,7 +183,7 @@ class Virt(Process):
                 return subcls(logger, config)
         raise KeyError("Invalid config type: %s" % config.type)
 
-    def start(self, queue, terminate_event, interval=None, oneshot=False): # pylint: disable=W0221
+    def start(self, queue, terminate_event, interval=None, oneshot=False):  # pylint: disable=W0221
         '''
         Start obtaining data from the hypervisor/host system. The data will
         be fetched (as instances of AbstracVirtReport subclasses) to the
@@ -153,8 +197,7 @@ class Virt(Process):
         be less often.
 
         If `oneshot` parameter is True, the data will be reported only once
-        and the process will be terminated after that. `interval` and
-        `terminate_event` parameters won't be used in that case.
+        and the process will be terminated after that.
         '''
         self._queue = queue
         self._terminate_event = terminate_event
@@ -191,19 +234,25 @@ class Virt(Process):
 
     def wait(self, wait_time):
         '''
-        Wait `wait_time` seconds, could be interrupted by setting _terminate_event.
+        Wait `wait_time` seconds, could be interrupted by setting _terminate_event or _internal_terminate_event.
         '''
         for i in range(wait_time):
-            if self._terminate_event.is_set():
+            if self.is_terminated():
                 break
             time.sleep(1)
+
+    def stop(self):
+        self._internal_terminate_event.set()
+
+    def is_terminated(self):
+        return self._internal_terminate_event.is_set() or self._terminate_event.is_set()
 
     def run(self):
         '''
         Wrapper around `_run` method that just catches the error messages.
         '''
         try:
-            while self._oneshot or not self._terminate_event.is_set():
+            while not self.is_terminated():
                 try:
                     self._run()
                 except VirtError as e:
@@ -212,13 +261,13 @@ class Virt(Process):
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
 
                 if self._oneshot:
-                    self._queue.put(None)
+                    self._queue.put(ErrorReport(self.config))
                     return
 
-                if self._terminate_event.is_set():
+                if self.is_terminated():
                     return
 
-                self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
+                self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
                 self.wait(self._interval)
         except KeyboardInterrupt:
             sys.exit(1)
@@ -231,7 +280,7 @@ class Virt(Process):
         it's own way of waiting for changes (like event monitoring)
         '''
         self.prepare()
-        while self._oneshot or not self._terminate_event.is_set():
+        while not self.is_terminated():
             start_time = datetime.now()
             report = self._get_report()
             self._queue.put(report)
@@ -243,7 +292,7 @@ class Virt(Process):
 
             wait_time = self._interval - int(delta_seconds)
 
-            if wait_time <= 0:
+            if wait_time < 0:
                 self.logger.debug("Getting the host/guests association took too long, interval waiting is skipped")
                 continue
 

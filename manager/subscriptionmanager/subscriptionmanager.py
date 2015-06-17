@@ -168,8 +168,10 @@ class SubscriptionManager(Manager):
                 for created in result['created']:
                     guests = [x['guestId'] for x in created['guestIds']]
                     self.logger.info("Created host: %s with guests: [%s]",
-                                    created['uuid'],
-                                    ", ".join(guests))
+                                     created['uuid'],
+                                     ", ".join(guests))
+            result = resultData
+        return result
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

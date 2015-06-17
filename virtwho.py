@@ -144,7 +144,7 @@ class VirtWho(object):
 
     def checkJobStatus(self, config, job_id):
         manager = SubscriptionManager(self.logger, self.options, self.to_manager_queue)
-        manager.checkJobStatus(config, job_id)
+        result = manager.checkJobStatus(config, job_id)
 
         if not result['failedUpdate']:
             self.logger.info("virt-who host/guest association update successful")

@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.12
+Version:        0.13
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -80,6 +80,9 @@ fi
 
 
 %changelog
+* Tue Mar 17 2015 Radek Novacek <rnovacek@redhat.com> 0.13-1
+- new package built with tito
+
 * Fri Feb 27 2015 Radek Novacek <rnovacek@redhat.com> 0.12-1
 - Version 0.12
 

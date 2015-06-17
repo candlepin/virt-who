@@ -32,6 +32,22 @@ except ImportError:
     from xml.etree import ElementTree
 
 
+class LibvirtdGuest(virt.Guest):
+    def __init__(self, libvirtd, domain):
+        try:
+            state = domain.state(0)[0]
+        except AttributeError:
+            # Some versions of libvirt doesn't have domain.state() method,
+            # use first value from info instead
+            state = domain.info()[0]
+
+        super(LibvirtdGuest, self).__init__(
+            uuid=domain.UUIDString(),
+            virt=libvirtd,
+            state=state,
+            hypervisorType=libvirtd.virt.getType())
+
+
 class VirEventLoopThread(threading.Thread):
     def __init__(self, logger, *args, **kwargs):
         self._terminated = threading.Event()
@@ -146,7 +162,7 @@ class Libvirtd(virt.Virt):
 
         self.virt = None
 
-        while not self._terminate_event.is_set():
+        while not self.is_terminated():
             if self.virt is None:
                 self.virt = self._connect()
 
@@ -162,9 +178,12 @@ class Libvirtd(virt.Virt):
                 return
 
             while self.time_since_update < self._interval and self.virt.isAlive() == 1:
+                if self.is_terminated():
+                    self._disconnect()
+                    return
                 self.time_since_update += 1
                 time.sleep(1)
-
+        self._disconnect()
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()
@@ -186,18 +205,18 @@ class Libvirtd(virt.Virt):
                 if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
                     # Don't send Domain-0 on xen (zeroed uuid)
                     continue
-                domains.append(virt.Domain(self.virt, domain))
+                domains.append(LibvirtdGuest(self, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domain.name(), domain.UUIDString()))
 
             # Non active domains
             for domainName in self.virt.listDefinedDomains():
                 domain = self.virt.lookupByName(domainName)
-                domains.append(virt.Domain(self.virt, domain))
+                domains.append(LibvirtdGuest(self, domain))
                 self.logger.debug("Virtual machine found: %s: %s" % (domainName, domain.UUIDString()))
         except libvirt.libvirtError as e:
             self.virt.close()
             raise virt.VirtError(str(e))
-        self.logger.debug("Libvirt domains found: %s" % domains)
+        self.logger.debug("Libvirt domains found: %s" % [guest.uuid for guest in domains])
         return domains
 
     def _remote_host_uuid(self):
@@ -211,28 +230,3 @@ class Libvirtd(virt.Virt):
             self._remote_host_uuid(): self._listDomains()
         }
         return mapping
-
-
-def eventToString(event):
-    eventStrings = ("Defined", "Undefined", "Started", "Suspended", "Resumed",
-                    "Stopped", "Shutdown")
-    try:
-        return eventStrings[event]
-    except IndexError:
-        return "Unknown (%d)" % event
-
-
-def detailToString(event, detail):
-    eventStrings = (
-        ("Added", "Updated"), # Defined
-        ("Removed", ), # Undefined
-        ("Booted", "Migrated", "Restored", "Snapshot", "Wakeup"), # Started
-        ("Paused", "Migrated", "IOError", "Watchdog", "Restored", "Snapshot"), # Suspended
-        ("Unpaused", "Migrated", "Snapshot"), # Resumed
-        ("Shutdown", "Destroyed", "Crashed", "Migrated", "Saved", "Failed", "Snapshot"), # Stopped
-        ("Finished",), # Shutdown
-    )
-    try:
-        return eventStrings[event][detail]
-    except IndexError:
-        return "Unknown (%d)" % detail

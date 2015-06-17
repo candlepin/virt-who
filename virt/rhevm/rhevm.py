@@ -25,11 +25,35 @@ import base64
 
 import virt
 
+from config import Config
+
 # Import XML parser
 try:
     from elementtree import ElementTree
 except ImportError:
     from xml.etree import ElementTree
+
+
+RHEVM_STATE_TO_GUEST_STATE = {
+    'unassigned': virt.Guest.STATE_UNKNOWN,
+    'down': virt.Guest.STATE_SHUTOFF,
+    'up': virt.Guest.STATE_RUNNING,
+    'powering_up': virt.Guest.STATE_SHUTOFF,
+    'powered_down': virt.Guest.STATE_SHUTINGDOWN,
+    'paused': virt.Guest.STATE_PAUSED,
+    'migrating_from': virt.Guest.STATE_SHUTOFF,
+    'migrating_to': virt.Guest.STATE_SHUTOFF,
+    'unknown': virt.Guest.STATE_UNKNOWN,
+    'not_responding': virt.Guest.STATE_BLOCKED,
+    'wait_for_launch': virt.Guest.STATE_BLOCKED,
+    'reboot_in_progress': virt.Guest.STATE_SHUTOFF,
+    'saving_state': virt.Guest.STATE_SHUTINGDOWN,
+    'restoring_state': virt.Guest.STATE_SHUTOFF,
+    'suspended': virt.Guest.STATE_PMSUSPENDED,
+    'image_illegal': virt.Guest.STATE_CRASHED,
+    'image_locked': virt.Guest.STATE_CRASHED,
+    'powering_down': virt.Guest.STATE_SHUTINGDOWN
+}
 
 
 class RhevM(virt.Virt):
@@ -72,12 +96,27 @@ class RhevM(virt.Virt):
         }
         """
         mapping = {}
+        host_ids = {}
 
         hosts_xml = ElementTree.parse(self.get(self.hosts_url))
         vms_xml = ElementTree.parse(self.get(self.vms_url))
 
         for host in hosts_xml.findall('host'):
             id = host.get('id')
+            if self.config.hypervisor_id == 'uuid':
+                host_ids[id] = id
+            elif self.config.hypervisor_id == 'hwuuid':
+                try:
+                    host_ids[id] = host.find('hardware_information').find('uuid').text
+                except AttributeError:
+                    self.logger.warn("Host %s doesn't have hardware uuid", id)
+                    continue
+            elif self.config.hypervisor_id == 'hostname':
+                host_ids[id] = host.find('name').text
+            else:
+                raise virt.VirtError(
+                    'Reporting of hypervisor %s is not implemented in %s backend',
+                    self.config.hypervisor_id, self.CONFIG_TYPE)
             mapping[id] = []
 
         for vm in vms_xml.findall('vm'):
@@ -89,11 +128,26 @@ class RhevM(virt.Virt):
 
             host_id = host.get('id')
             if host_id not in mapping.keys():
-                self.logger.warning("Guest %s claims that it belongs to host %s which doen't exist" % (guest_id, host_id))
-            else:
-                mapping[host_id].append(guest_id)
+                self.logger.warning(
+                    "Guest %s claims that it belongs to host %s which doesn't exist",
+                    guest_id, host_id)
+                continue
+            try:
+                state = RHEVM_STATE_TO_GUEST_STATE.get(
+                    vm.find('status').find('state').text.lower(),
+                    virt.Guest.STATE_UNKNOWN)
+            except AttributeError:
+                self.logger.warning(
+                    "Guest %s doesn't report any status",
+                    guest_id)
+                state = virt.Guest.STATE_UNKNOWN
 
-        return mapping
+            mapping[host_id].append(virt.Guest(guest_id, self, state))
+
+        mapping_with_ids = {}
+        for host_id, vms in mapping.items():
+            mapping_with_ids[host_ids[host_id]] = vms
+        return mapping_with_ids
 
     def ping(self):
         return True
@@ -101,10 +155,11 @@ class RhevM(virt.Virt):
 if __name__ == '__main__':
     # TODO: read from config
     if len(sys.argv) < 4:
-        print "Usage: %s url username password"
+        print("Usage: %s url username password" % sys.argv[0])
         sys.exit(0)
 
     import logging
     logger = logging.Logger("")
-    rhevm = RhevM(logger, sys.argv[1], sys.argv[2], sys.argv[3])
+    config = Config('rhevm', 'rhevm', sys.argv[1], sys.argv[2], sys.argv[3])
+    rhevm = RhevM(logger, config)
     rhevm.getHostGuestMapping()

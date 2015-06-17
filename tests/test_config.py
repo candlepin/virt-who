@@ -139,6 +139,54 @@ env=staging
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].password, passwd)
 
+    @patch('password.Password._read_key_iv')
+    def testCryptedRHSMPassword(self, password):
+        from password import Password
+        password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
+        passwd = "TestSecretPassword!"
+        crypted = hexlify(Password.encrypt(passwd))
+
+        filename = os.path.join(self.config_dir, "test.conf")
+        with open(filename, "w") as f:
+            f.write("""
+[test]
+type=esx
+server=1.2.3.4
+username=admin
+password=bacon
+rhsm_username=admin
+rhsm_encrypted_password=%s
+owner=root
+env=staging
+""" % crypted)
+        manager = ConfigManager(self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0].rhsm_password, passwd)
+
+
+    @patch('password.Password._read_key_iv')
+    def testCryptedRHSMProxyPassword(self, password):
+        from password import Password
+        password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
+        passwd = "TestSecretPassword!"
+        crypted = hexlify(Password.encrypt(passwd))
+
+        filename = os.path.join(self.config_dir, "test.conf")
+        with open(filename, "w") as f:
+            f.write("""
+[test]
+type=esx
+server=1.2.3.4
+username=admin
+password=bacon
+rhsm_encrypted_proxy_password=%s
+owner=root
+env=staging
+""" % crypted)
+        manager = ConfigManager(self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0].rhsm_proxy_password, passwd)
+
     def testCryptedPasswordWithoutKey(self):
         from password import Password, InvalidKeyFile
         Password.KEYFILE = "/some/nonexistant/file"

@@ -134,6 +134,14 @@ class Config(object):
         except NoOptionError:
             rhsm_password = None
 
+        # Only attempt to get the encrypted rhsm password if we have a username:
+        if rhsm_username is not None and rhsm_password is None:
+            try:
+                encrypted_rhsm_password = parser.get(name, "rhsm_encrypted_password")
+                rhsm_password = Password.decrypt(unhexlify(encrypted_rhsm_password))
+            except NoOptionError:
+                rhsm_password = None
+
         try:
             rhsm_hostname = parser.get(name, "rhsm_hostname")
         except NoOptionError:
@@ -167,21 +175,19 @@ class Config(object):
         try:
             rhsm_proxy_password = parser.get(name, "rhsm_proxy_password")
         except NoOptionError:
-            rhsm_proxy_password = None
+            try:
+                encrypted_password = parser.get(name, "rhsm_encrypted_proxy_password")
+                rhsm_proxy_password = Password.decrypt(unhexlify(encrypted_password))
+            except TypeError:
+                raise InvalidPasswordFormat("RHSM proxy password can't be decrypted, possibly corrupted")
+            except NoOptionError:
+                rhsm_proxy_password = None
 
         try:
             rhsm_insecure = parser.get(name, "rhsm_insecure")
         except NoOptionError:
             rhsm_insecure = None
 
-
-        # Only attempt to get the encrypted rhsm password if we have a username:
-        if rhsm_username is not None and rhsm_password is None:
-            try:
-                encrypted_rhsm_password = parser.get(name, "rhsm_encrypted_password")
-                rhsm_password = Password.decrypt(unhexlify(encrypted_rhsm_password))
-            except NoOptionError:
-                rhsm_password = None
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username,
             rhsm_password, rhsm_hostname, rhsm_ssl_port, rhsm_prefix, rhsm_proxy_hostname,

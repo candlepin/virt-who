@@ -122,7 +122,6 @@ class VirtWho(object):
         result = manager.hypervisorCheckIn(report.config, report.association, report.config.type)
 
     def checkJobStatus(self, config, job_id):
-        print('VIRTWHO - CHECKJOBSTATUS')
         manager = SubscriptionManager(self.logger, self.options, self.to_manager_queue)
         manager.checkJobStatus(config, job_id)
 
@@ -170,7 +169,6 @@ class VirtWho(object):
             try:
                 managerJob = self.manager_in_queue.get_nowait()
                 method, args = managerJob
-                print("VIRTWHO CONTENTS OF MANAGERJOB: %s" % method)
                 getattr(self, method)(*args)
             except Empty:
                 # We don't care if the managerprocess has nothing for us to do

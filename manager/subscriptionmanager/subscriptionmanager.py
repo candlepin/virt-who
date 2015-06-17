@@ -146,25 +146,21 @@ class SubscriptionManager(Manager):
 
         result = self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
         if (is_async):
-            print("SUBMAN ADDING JOB FROM ")
-            print(config)
             self.manager_queue.put(('newJobStatus', [config, result['id']]))
         return result
 
     def checkJobStatus(self, config, job_id):
-        print('SUBMAN CHECKJOBSTATUS')
         kwargs = {}
         if config.rhsm_username and config.rhsm_password:
             kwargs['rhsm_username'] = config.rhsm_username
             kwargs['rhsm_password'] = config.rhsm_password
         self._connect(**kwargs)
-        print("Checking job status")
+        self.logger.debug('checking job status\nJob ID: %s' % job_id)
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':
             # This will cause the managerprocess to do this again in 10 seconds
             self.manager_queue.put(('newJobStatus', [config, result['id']]))
         else:
-            print(result)
             # log completed job status
             # TODO Make this its own method inside a class
             # representing a status object

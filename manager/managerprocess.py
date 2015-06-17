@@ -107,11 +107,7 @@ class ManagerProcess(Process):
 
     def checkJobStatus(self, config, job_id):
         # This method checks the status of the job using the given path
-        # TODO Create a more solid way of telling different processes to do
-        # certain things
-        print ('MANAGERPROCESS - CHECKJOBSTATUS')
-        #self._out_queue.put(('checkJobStatus', [config, job_id]))
-        print(config.rhsm_username)
+        # TODO Create a more well-defined way of interprocess communication
         self._out_queue.put(('checkJobStatus', [config, job_id]))
 
     def newJobStatus(self, config, job_id, interval=10):
@@ -132,8 +128,6 @@ class ManagerProcess(Process):
             except Empty:
                 print('test')
             # TODO Modify to check if the ID passed in is in the dictionary
-            #target, args = nextJob
-            #getattr(self, target)(*args)
             if nextJob:
                 if (not isinstance(nextJob, Job)):
                     nextJob = Job(*nextJob)
@@ -142,7 +136,10 @@ class ManagerProcess(Process):
                 if (not nextJob.lastChecked or
                    (datetime.now() - nextJob.lastChecked).seconds >
                    nextJob.interval):
-                    print("Running method %s with args '%s'" % (nextJob.target, nextJob.args))
+                    self.logger.debug(
+                        "Running method %s with args '%s'" %
+                        (nextJob.target, nextJob.args)
+                    )
                     nextJob._result = getattr(self, nextJob.target)(*nextJob.args)
                     #del self.jobs[nextJob.args[1]]
                 else:

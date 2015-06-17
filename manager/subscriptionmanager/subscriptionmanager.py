@@ -39,10 +39,11 @@ class SubscriptionManager(Manager):
     smType = "sam"
 
     """ Class for interacting subscription-manager. """
-    def __init__(self, logger, options):
+    def __init__(self, logger, options, manager_queue=None):
         self.logger = logger
         self.options = options
         self.cert_uuid = None
+        self.manager_queue = manager_queue
 
         self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
@@ -126,12 +127,13 @@ class SubscriptionManager(Manager):
             kwargs['rhsm_username'] = config.rhsm_username
             kwargs['rhsm_password'] = config.rhsm_password
         self._connect(**kwargs)
-
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
-        if (self.connection.has_capability('hypervisors_async')):
+        is_async = self.connection.has_capability('hypervisors_async')
+
+        if (is_async):
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
-            # GOLDFISH
+            # FIXME: Should this be here or as part of one of the reports
             new_mapping = {'hypervisors':[]}
             for k,v in mapping.iteritems():
                 new_mapping['hypervisors'].append({'hypervisorId':k, 'guestIds':v})
@@ -142,8 +144,44 @@ class SubscriptionManager(Manager):
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
 
-        # Send the mapping
-        return self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
+        result = self.connection.hypervisorCheckIn(config.owner, config.env, mapping)
+        if (is_async):
+            print("SUBMAN ADDING JOB FROM ")
+            print(config)
+            self.manager_queue.put(('newJobStatus', [config, result['id']]))
+        return result
+
+    def checkJobStatus(self, config, job_id):
+        print('SUBMAN CHECKJOBSTATUS')
+        kwargs = {}
+        if config.rhsm_username and config.rhsm_password:
+            kwargs['rhsm_username'] = config.rhsm_username
+            kwargs['rhsm_password'] = config.rhsm_password
+        self._connect(**kwargs)
+        print("Checking job status")
+        result = self.connection.getJob(job_id)
+        if result['state'] != 'FINISHED':
+            # This will cause the managerprocess to do this again in 10 seconds
+            self.manager_queue.put(('newJobStatus', [config, result['id']]))
+        else:
+            print(result)
+            # log completed job status
+            # TODO Make this its own method inside a class
+            # representing a status object
+            resultData = result['resultData']
+            for fail in resultData['failedUpdate']:
+                self.logger.error("Error during update list of guests: %s", str(fail))
+            for updated in resultData['updated']:
+                guests = [x['guestId'] for x in updated['guestIds']]
+                self.logger.info("Updated host %s with guests: [%s]",
+                                 updated['uuid'],
+                                 ", ".join(guests))
+            if (isinstance(result['created'], list)):
+                for created in result['created']:
+                    guests = [x['guestId'] for x in created['guestIds']]
+                    self.logger.info("Created host: %s with guests: [%s]",
+                                    created['uuid'],
+                                    ", ".join(guests))
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

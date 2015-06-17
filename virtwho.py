@@ -25,10 +25,13 @@ import errno
 import time
 from multiprocessing import Event, Queue
 import json
+from Queue import Empty
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport
 from manager import Manager, ManagerError
+from manager.managerprocess import ManagerProcess
+from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager
 
 import log
@@ -76,6 +79,9 @@ class VirtWho(object):
         self.terminate_event = Event()
         # Queue for getting events from virt backends
         self.queue = Queue()
+        self.manager_in_queue = Queue()
+        self.to_manager_queue = Queue()
+        self.manager_process = ManagerProcess(self.logger, self.options)
 
         self.configManager = ConfigManager()
         for config in self.configManager.configs:
@@ -112,17 +118,13 @@ class VirtWho(object):
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
+        manager.manager_queue = self.to_manager_queue
         result = manager.hypervisorCheckIn(report.config, report.association, report.config.type)
 
-        # Show the result of hypervisorCheckIn
-        for fail in result['failedUpdate']:
-            self.logger.error("Error during update list of guests: %s", str(fail))
-        for updated in result['updated']:
-            guests = [x['guestId'] for x in updated['guestIds']]
-            self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
-        for created in result['created']:
-            guests = [x['guestId'] for x in created['guestIds']]
-            self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+    def checkJobStatus(self, config, job_id):
+        print('VIRTWHO - CHECKJOBSTATUS')
+        manager = SubscriptionManager(self.logger, self.options, self.to_manager_queue)
+        manager.checkJobStatus(config, job_id)
 
     def run(self):
         if not self.options.oneshot:
@@ -135,14 +137,22 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-
+        self.manager_process.start(self.to_manager_queue,
+                                   self.manager_in_queue,
+                                   self.terminate_event,
+                                   self.options.oneshot)
         if self.options.oneshot:
             oneshot_remaining = len(self.virts)
 
         result = {}
+        report = None
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
-            report = self.queue.get(block=True, timeout=None)
+            try:
+                report = self.queue.get_nowait()
+            except Empty:
+                report = None
+                pass
 
             if report is not None:
                 # None means that there was some error in the backend
@@ -157,10 +167,19 @@ class VirtWho(object):
                 oneshot_remaining -= 1
                 if oneshot_remaining == 0:
                     break
+            try:
+                managerJob = self.manager_in_queue.get_nowait()
+                method, args = managerJob
+                print("VIRTWHO CONTENTS OF MANAGERJOB: %s" % method)
+                getattr(self, method)(*args)
+            except Empty:
+                # We don't care if the managerprocess has nothing for us to do
+                pass
 
         for virt in self.virts:
             virt.terminate()
         self.virt = []
+        self.manager_process.terminate()
         if self.options.print_:
             return result
 

@@ -47,7 +47,7 @@ def parse_list(s):
 # dictionary-like class that provides a __missing__ implementation or "safe" getter.
 class Config(object):
     def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None,
-        rhsm_username=None, rhsm_password=None, rhsm_hostname = None, rhsm_ssl_port = None,
+        rhsm_username=None, rhsm_password=None, rhsm_hostname = None, rhsm_port = None,
         rhsm_prefix = None, rhsm_proxy_hostname = None, rhsm_proxy_port = None,
         rhsm_proxy_user = None, rhsm_proxy_password = None, rhsm_insecure = None):
 
@@ -66,7 +66,7 @@ class Config(object):
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
         self._rhsm_hostname = rhsm_hostname
-        self._rhsm_ssl_port = rhsm_ssl_port
+        self._rhsm_port = rhsm_port
         self._rhsm_prefix = rhsm_prefix
         self._rhsm_proxy_hostname = rhsm_proxy_hostname
         self._rhsm_proxy_port = rhsm_proxy_port
@@ -148,9 +148,9 @@ class Config(object):
             rhsm_hostname = None
 
         try:
-            rhsm_ssl_port = parser.get(name, "rhsm_ssl_port")
+            rhsm_port = parser.get(name, "rhsm_port")
         except NoOptionError:
-            rhsm_ssl_port = None
+            rhsm_port = None
 
         try:
             rhsm_prefix = parser.get(name, "rhsm_prefix")
@@ -190,7 +190,7 @@ class Config(object):
 
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username,
-            rhsm_password, rhsm_hostname, rhsm_ssl_port, rhsm_prefix, rhsm_proxy_hostname,
+            rhsm_password, rhsm_hostname, rhsm_port, rhsm_prefix, rhsm_proxy_hostname,
             rhsm_proxy_port, rhsm_proxy_user, rhsm_proxy_password, rhsm_insecure)
 
         try:
@@ -272,8 +272,8 @@ class Config(object):
         return self._rhsm_hostname
 
     @property
-    def rhsm_ssl_port(self):
-        return self._rhsm_ssl_port
+    def rhsm_port(self):
+        return self._rhsm_port
 
     @property
     def rhsm_prefix(self):

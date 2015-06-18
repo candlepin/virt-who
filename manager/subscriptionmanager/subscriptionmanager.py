@@ -61,8 +61,6 @@ class SubscriptionManager(Manager):
     def _connect(self, config = None):
         """ Connect to the subscription-manager. """
 
-        # Do we want to treat the rhsm_config as the default, and everything else as overrides, or
-        # should we only take from one set of configuration?
         kwargs = {
             'host': self.rhsm_config.get('server', 'hostname'),
             'ssl_port': int(self.rhsm_config.get('server', 'port')),
@@ -84,8 +82,8 @@ class SubscriptionManager(Manager):
             if config.rhsm_hostname:
                 kwargs['host'] = config.rhsm_hostname
 
-            if config.rhsm_ssl_port:
-                kwargs['ssl_port'] = int(config.rhsm_ssl_port)
+            if config.rhsm_port:
+                kwargs['ssl_port'] = int(config.rhsm_port)
 
             if config.rhsm_prefix:
                 kwargs['handler'] = config.rhsm_prefix

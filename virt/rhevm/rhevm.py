@@ -74,6 +74,7 @@ class RhevM(virt.Virt):
         self.username = self.config.username
         self.password = self.config.password
 
+        self.clusters_url = urlparse.urljoin(self.url, "/api/clusters")
         self.hosts_url = urlparse.urljoin(self.url, "/api/hosts")
         self.vms_url = urlparse.urljoin(self.url, "/api/vms")
 
@@ -97,12 +98,30 @@ class RhevM(virt.Virt):
         """
         mapping = {}
         host_ids = {}
+        clusters = set()
 
+        clusters_xml = ElementTree.parse(self.get(self.clusters_url))
         hosts_xml = ElementTree.parse(self.get(self.hosts_url))
         vms_xml = ElementTree.parse(self.get(self.vms_url))
 
+        # Save ids of clusters that are "virt_service"
+        for cluster in clusters_xml.findall('cluster'):
+            cluster_id = cluster.get('id')
+            virt_service = cluster.find('virt_service').text
+            if virt_service.lower() == 'true':
+                clusters.add(cluster_id)
+
         for host in hosts_xml.findall('host'):
             id = host.get('id')
+
+            # Check if host is in cluster that is "virt_service"
+            host_cluster = host.find('cluster')
+            host_cluster_id = host_cluster.get('id')
+            if host_cluster_id not in clusters:
+                # Skip the host if it's cluster is not "virt_service"
+                self.logger.debug('Cluster of host %s is not virt_service, skipped', id)
+                continue
+
             if self.config.hypervisor_id == 'uuid':
                 host_ids[id] = id
             elif self.config.hypervisor_id == 'hwuuid':
@@ -162,4 +181,4 @@ if __name__ == '__main__':
     logger = logging.Logger("")
     config = Config('rhevm', 'rhevm', sys.argv[1], sys.argv[2], sys.argv[3])
     rhevm = RhevM(logger, config)
-    rhevm.getHostGuestMapping()
+    print dict((host, [guest.toDict() for guest in guests]) for host, guests in rhevm.getHostGuestMapping().items())

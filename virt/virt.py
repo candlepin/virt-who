@@ -203,7 +203,8 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         self._internal_terminate_event = Event()
-        super(Virt, self).__init__(name=config.name)
+        #super(Virt, self).__init__(name=config.name)
+        super(Virt, self).__init__()
         self.daemon = True
 
     @classmethod

@@ -48,14 +48,17 @@ class TestEsx(TestBase):
             },
             'vmList': [
                 {
-                    'vmId': '1'
+                    'vmId': '1',
+                    'status': 'Down'
                 }, {
-                    'vmId': '2'
+                    'vmId': '2',
+                    'status': 'Up'
                 }, {
-                    'vmId': '3'
+                    'vmId': '3',
+                    'status': 'Up'
                 }
             ]
         }
         domains = self.vdsm.listDomains()
-        self.assertEquals(domains, ['1', '2', '3'])
+        self.assertEquals([d.uuid for d in domains], ['1', '2', '3'])
         self.vdsm.server.list.assert_called_once()

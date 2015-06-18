@@ -24,14 +24,22 @@ import logging.handlers
 import os
 import sys
 
+FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
+STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
 
+
+DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
+                "%(processName)s(%(process)d):%(threadName)s " \
+                "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
+
+DEFAULT_FORMAT = DEBUG_FORMAT
 def getLogger(debug, background):
-    logger = logging.getLogger("rhsm-app")
+    logger = logging.getLogger("virtwho")
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
 
     logdir = '/var/log/rhsm'
-    path = os.path.join(logdir, 'rhsm.log')
+    path = os.path.join(logdir, 'virtwho.log')
     try:
         if not os.path.isdir(logdir):
             os.mkdir(logdir)
@@ -41,7 +49,7 @@ def getLogger(debug, background):
     # Try to write to /var/log, fallback on console logging:
     try:
         fileHandler = logging.handlers.WatchedFileHandler(path)
-        fileHandler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s'))
+        fileHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
         if debug:
             fileHandler.setLevel(logging.DEBUG)
         else:
@@ -52,9 +60,10 @@ def getLogger(debug, background):
 
     if not background:
         streamHandler = logging.StreamHandler()
-        streamHandler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+        streamHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
         if debug:
             streamHandler.setLevel(logging.DEBUG)
+            streamHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
         else:
             streamHandler.setLevel(logging.INFO)
 

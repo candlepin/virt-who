@@ -598,6 +598,7 @@ class PIDLock(object):
 
 virtWho = None
 
+
 def main():
     try:
         logger, options = parseOptions()

@@ -43,10 +43,13 @@ def parse_list(s):
     '''
     return reader([s]).next()
 
+# TODO: Not a huge fan of this. This whole class should be replaced by a dictionary or
+# dictionary-like class that provides a __missing__ implementation or "safe" getter.
 class Config(object):
-    def __init__(self, name, type, server=None, username=None,
-                 password=None, owner=None, env=None,
-                 rhsm_username=None, rhsm_password=None):
+    def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None,
+        rhsm_username=None, rhsm_password=None, rhsm_hostname = None, rhsm_port = None,
+        rhsm_prefix = None, rhsm_proxy_hostname = None, rhsm_proxy_port = None,
+        rhsm_proxy_user = None, rhsm_proxy_password = None, rhsm_insecure = None):
 
         self._name = name
         self._type = type
@@ -62,6 +65,14 @@ class Config(object):
         self._env = env
         self._rhsm_username = rhsm_username
         self._rhsm_password = rhsm_password
+        self._rhsm_hostname = rhsm_hostname
+        self._rhsm_port = rhsm_port
+        self._rhsm_prefix = rhsm_prefix
+        self._rhsm_proxy_hostname = rhsm_proxy_hostname
+        self._rhsm_proxy_port = rhsm_proxy_port
+        self._rhsm_proxy_user = rhsm_proxy_user
+        self._rhsm_proxy_password = rhsm_proxy_password
+        self._rhsm_insecure = rhsm_insecure
 
         self.filter_host_uuids = None
         self.exclude_host_uuids = None
@@ -121,16 +132,66 @@ class Config(object):
         try:
             rhsm_password = parser.get(name, "rhsm_password")
         except NoOptionError:
+            rhsm_password = None
+
+        # Only attempt to get the encrypted rhsm password if we have a username:
+        if rhsm_username is not None and rhsm_password is None:
             try:
                 encrypted_rhsm_password = parser.get(name, "rhsm_encrypted_password")
                 rhsm_password = Password.decrypt(unhexlify(encrypted_rhsm_password))
             except NoOptionError:
                 rhsm_password = None
 
-        config = Config(name=name, type=type, server=server, username=username,
-                        password=password, owner=owner, env=env,
-                        rhsm_username=rhsm_username,
-                        rhsm_password=rhsm_password)
+        try:
+            rhsm_hostname = parser.get(name, "rhsm_hostname")
+        except NoOptionError:
+            rhsm_hostname = None
+
+        try:
+            rhsm_port = parser.get(name, "rhsm_port")
+        except NoOptionError:
+            rhsm_port = None
+
+        try:
+            rhsm_prefix = parser.get(name, "rhsm_prefix")
+        except NoOptionError:
+            rhsm_prefix = None
+
+        try:
+            rhsm_proxy_hostname = parser.get(name, "rhsm_proxy_hostname")
+        except NoOptionError:
+            rhsm_proxy_hostname = None
+
+        try:
+            rhsm_proxy_port = parser.get(name, "rhsm_proxy_port")
+        except NoOptionError:
+            rhsm_proxy_port = None
+
+        try:
+            rhsm_proxy_user = parser.get(name, "rhsm_proxy_user")
+        except NoOptionError:
+            rhsm_proxy_user = None
+
+        try:
+            rhsm_proxy_password = parser.get(name, "rhsm_proxy_password")
+        except NoOptionError:
+            try:
+                encrypted_password = parser.get(name, "rhsm_encrypted_proxy_password")
+                rhsm_proxy_password = Password.decrypt(unhexlify(encrypted_password))
+            except TypeError:
+                raise InvalidPasswordFormat("RHSM proxy password can't be decrypted, possibly corrupted")
+            except NoOptionError:
+                rhsm_proxy_password = None
+
+        try:
+            rhsm_insecure = parser.get(name, "rhsm_insecure")
+        except NoOptionError:
+            rhsm_insecure = None
+
+
+        config = Config(name, type, server, username, password, owner, env, rhsm_username,
+            rhsm_password, rhsm_hostname, rhsm_port, rhsm_prefix, rhsm_proxy_hostname,
+            rhsm_proxy_port, rhsm_proxy_user, rhsm_proxy_password, rhsm_insecure)
 
         try:
             config.hypervisor_id = parser.get(name, "hypervisor_id")
@@ -206,6 +267,37 @@ class Config(object):
     def rhsm_password(self):
         return self._rhsm_password
 
+    @property
+    def rhsm_hostname(self):
+        return self._rhsm_hostname
+
+    @property
+    def rhsm_port(self):
+        return self._rhsm_port
+
+    @property
+    def rhsm_prefix(self):
+        return self._rhsm_prefix
+
+    @property
+    def rhsm_proxy_hostname(self):
+        return self._rhsm_proxy_hostname
+
+    @property
+    def rhsm_proxy_port(self):
+        return self._rhsm_proxy_port
+
+    @property
+    def rhsm_proxy_user(self):
+        return self._rhsm_proxy_user
+
+    @property
+    def rhsm_proxy_password(self):
+        return self._rhsm_proxy_password
+
+    @property
+    def rhsm_insecure(self):
+        return self._rhsm_insecure
 
 class ConfigManager(object):
     def __init__(self, config_dir=None):

@@ -58,8 +58,9 @@ class SubscriptionManager(Manager):
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
 
-    def _connect(self, rhsm_username=None, rhsm_password=None):
+    def _connect(self, config = None):
         """ Connect to the subscription-manager. """
+
         kwargs = {
             'host': self.rhsm_config.get('server', 'hostname'),
             'ssl_port': int(self.rhsm_config.get('server', 'port')),
@@ -67,8 +68,40 @@ class SubscriptionManager(Manager):
             'proxy_hostname': self.rhsm_config.get('server', 'proxy_hostname'),
             'proxy_port': self.rhsm_config.get('server', 'proxy_port'),
             'proxy_user': self.rhsm_config.get('server', 'proxy_user'),
-            'proxy_password': self.rhsm_config.get('server', 'proxy_password')
+            'proxy_password': self.rhsm_config.get('server', 'proxy_password'),
+            'insecure': self.rhsm_config.get('server', 'insecure')
         }
+
+        rhsm_username = None
+        rhsm_password = None
+
+        if config:
+            rhsm_username = config.rhsm_username
+            rhsm_password = config.rhsm_password
+
+            if config.rhsm_hostname:
+                kwargs['host'] = config.rhsm_hostname
+
+            if config.rhsm_port:
+                kwargs['ssl_port'] = int(config.rhsm_port)
+
+            if config.rhsm_prefix:
+                kwargs['handler'] = config.rhsm_prefix
+
+            if config.rhsm_proxy_hostname:
+                kwargs['proxy_hostname'] = config.rhsm_proxy_hostname
+
+            if config.rhsm_proxy_port:
+                kwargs['proxy_port'] = config.rhsm_proxy_port
+
+            if config.rhsm_proxy_user:
+                kwargs['proxy_user'] = config.rhsm_proxy_user
+
+            if config.rhsm_proxy_password:
+                kwargs['proxy_password'] = config.rhsm_proxy_password
+
+            if config.rhsm_insecure:
+                kwargs['insecure'] = config.rhsm_insecure
 
         if rhsm_username and rhsm_password:
             self.logger.debug("Authenticating with RHSM username %s" % rhsm_username)
@@ -112,11 +145,7 @@ class SubscriptionManager(Manager):
             serialized_mapping[host] = [guest.toDict() for guest in guests]
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
 
-        kwargs = {}
-        if config.rhsm_username and config.rhsm_password:
-            kwargs['rhsm_username'] = config.rhsm_username
-            kwargs['rhsm_password'] = config.rhsm_password
-        self._connect(**kwargs)
+        self._connect(config)
 
         # Send the mapping
         try:

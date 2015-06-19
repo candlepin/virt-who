@@ -59,8 +59,32 @@ class TestSubscriptionManager(TestBase):
         owner = "owner"
         env = "env"
         config = Config("test", "esx", owner=owner, env=env)
+        # Ensure the data takes the proper for for the old API
+        rhsmconnection.return_value.has_capability.return_value = False
         self.sm.hypervisorCheckIn(config, self.mapping)
+
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
             dict((host, [g.toDict() for g in guests]) for host, guests in self.mapping.items()))
+
+    @patch('rhsm.connection.UEPConnection')
+    def test_hypervisorCheckInAsync(self, rhsmconnection):
+        owner = 'owner'
+        env = 'env'
+        config = Config("test", "esx", owner=owner, env=env)
+        # Ensure we try out the new API
+        rhsmconnection.return_value.has_capability.return_value = True
+        self.sm.hypervisorCheckIn(config, self.mapping)
+        expected = {'hypervisors':[]}
+        for host, guests in self.mapping.items():
+            expected['hypervisors'].append(
+                {'hypervisorId':host,
+                 'guestIds':list(g.toDict() for g in guests)
+                 }
+            )
+        self.sm.connection.hypervisorCheckIn.assert_called_with(
+            owner,
+            env,
+            expected
+        )

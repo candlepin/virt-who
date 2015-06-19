@@ -148,10 +148,11 @@ class SubscriptionManager(Manager):
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
         is_async = self.connection.has_capability('hypervisors_async')
 
-        if (is_async):
+        if (is_async is True):
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
             # FIXME: Should this be here or as part of one of the reports
+
             new_mapping = {'hypervisors':[]}
             for host, guests in serialized_mapping.iteritems():
                 new_mapping['hypervisors'].append({'hypervisorId':host, 'guestIds':guests})
@@ -165,17 +166,12 @@ class SubscriptionManager(Manager):
             result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
-
-        if (is_async and self.manager_queue is not None):
+        if (is_async is True and self.manager_queue is not None):
             self.manager_queue.put(('newJobStatus', [config, result['id']]))
         return result
 
     def checkJobStatus(self, config, job_id):
-        kwargs = {}
-        if config.rhsm_username and config.rhsm_password:
-            kwargs['rhsm_username'] = config.rhsm_username
-            kwargs['rhsm_password'] = config.rhsm_password
-        self._connect(**kwargs)
+        self._connect(config)
         self.logger.debug('checking job status\nJob ID: %s' % job_id)
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':

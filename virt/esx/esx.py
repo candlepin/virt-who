@@ -30,6 +30,8 @@ from httplib import HTTPException
 
 import virt
 
+from virt import Hypervisor, Guest
+
 
 class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
@@ -145,7 +147,7 @@ class Esx(virt.Virt):
             self.client.service.DestroyPropertyFilter(self.filter)
 
     def getHostGuestMapping(self):
-        mapping = {}
+        mapping = {'hypervisors': []}
         for host_id, host in self.hosts.items():
             parent = host['parent'].value
             if self.config.exclude_host_parents is not None and parent in self.config.exclude_host_parents:
@@ -170,7 +172,6 @@ class Esx(virt.Virt):
             except KeyError:
                 self.logger.debug("Host '%s' doesn't have hypervisor_id property" % host_id)
                 continue
-            mapping[uuid] = guests
             if not host['vm']:
                 continue
             for vm_id in host['vm'].ManagedObjectReference:
@@ -193,7 +194,7 @@ class Esx(virt.Virt):
                 except KeyError:
                     self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
                 guests.append(virt.Guest(vm['config.uuid'], self, state))
-            mapping[uuid] = guests
+            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host['name']))
         return mapping
 
     def login(self):

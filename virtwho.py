@@ -30,7 +30,7 @@ import atexit
 from Queue import Empty
 
 from daemon import daemon
-from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
+from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport, Hypervisor
 from manager import Manager, ManagerError, ManagerFatalError
 from manager.managerprocess import ManagerProcess
 from manager.subscriptionmanager import SubscriptionManager

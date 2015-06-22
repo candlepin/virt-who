@@ -141,8 +141,6 @@ class SubscriptionManager(Manager):
     def hypervisorCheckIn(self, config, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
         serialized_mapping = {}
-        for host, guests in mapping.items():
-            serialized_mapping[host] = [guest.toDict() for guest in guests]
 
         self._connect(config)
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
@@ -151,15 +149,15 @@ class SubscriptionManager(Manager):
         if (is_async is True):
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
-            # FIXME: Should this be here or as part of one of the reports
+            serialized_mapping = {'hypervisors':[h.toDict() for h in mapping['hypervisors']]}
 
-            new_mapping = {'hypervisors':[]}
-            for host, guests in serialized_mapping.iteritems():
-                new_mapping['hypervisors'].append({'hypervisorId':host, 'guestIds':guests})
-            serialized_mapping = new_mapping
         else:
             self.logger.debug("Server does not have 'hypervisors_async' capability")
-            # Do nothing else as the data we have already is in the form that we need
+            # Reformat the data from the mapping to make it fit with
+            # the old api.
+            for hypervisor in mapping['hypervisors']:
+                guests = [g.toDict() for g in hypervisor.guestIds]
+                serialized_mapping[hypervisor.hypervisorId] = guests
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
         try:

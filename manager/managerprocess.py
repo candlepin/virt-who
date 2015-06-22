@@ -121,7 +121,6 @@ class ManagerProcess(Process):
                 nextJob = self.queue.get()
             except Empty:
                 continue
-            # TODO Modify to check if the ID passed in is in the dictionary
             if nextJob:
                 if (not isinstance(nextJob, Job)):
                     nextJob = Job(*nextJob)
@@ -133,7 +132,6 @@ class ManagerProcess(Process):
                         (nextJob.target, nextJob.args)
                     )
                     nextJob._result = getattr(self, nextJob.target)(*nextJob.args)
-                    #del self.jobs[nextJob.args[1]]
                 else:
                     self.queue.put(nextJob)
 

@@ -26,7 +26,7 @@ from mock import patch, MagicMock, ANY
 from base import TestBase
 from manager import Manager, ManagerError
 
-from virt import Guest, Virt
+from virt import Guest, Virt, Hypervisor
 
 import rhsm.config as rhsm_config
 import rhsm.certificate
@@ -45,11 +45,10 @@ class TestManager(TestBase):
     guestInfo = [guest1]
 
     mapping = {
-        '9c927368-e888-43b4-9cdb-91b10431b258': [],
-        'ad58b739-5288-4cbc-a984-bd771612d670': [
-            guest1,
-            guest2
-        ]
+        'hypervisors':{
+            Hypervisor('9c927368-e888-43b4-9cdb-91b10431b258', []),
+            Hypervisor('ad58b739-5288-4cbc-a984-bd771612d670', [guest1,guest2])
+        }
     }
 
 
@@ -97,7 +96,7 @@ class TestSubscriptionManager(TestManager):
         manager.connection.hypervisorCheckIn.assert_called_with(
                 self.options.owner,
                 self.options.env,
-                dict((host, [guest.toDict() for guest in guests]) for host, guests in self.mapping.items()))
+                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.mapping['hypervisors']))
 
 
 class TestSatellite(TestManager):

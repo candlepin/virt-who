@@ -10,7 +10,7 @@ from base import TestBase
 
 from config import Config
 from manager.subscriptionmanager import SubscriptionManager
-from virt import Guest
+from virt import Guest, Hypervisor
 
 import rhsm.config
 import rhsm.certificate
@@ -27,7 +27,7 @@ class TestSubscriptionManager(TestBase):
         Guest('333', xvirt, Guest.STATE_RUNNING),
     ]
     mapping = {
-        '123': guestList
+        'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR')]
     }
 
     @classmethod
@@ -66,7 +66,7 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
-            dict((host, [g.toDict() for g in guests]) for host, guests in self.mapping.items()))
+            dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']))
 
     @patch('rhsm.connection.UEPConnection')
     def test_hypervisorCheckInAsync(self, rhsmconnection):
@@ -76,13 +76,7 @@ class TestSubscriptionManager(TestBase):
         # Ensure we try out the new API
         rhsmconnection.return_value.has_capability.return_value = True
         self.sm.hypervisorCheckIn(config, self.mapping)
-        expected = {'hypervisors':[]}
-        for host, guests in self.mapping.items():
-            expected['hypervisors'].append(
-                {'hypervisorId':host,
-                 'guestIds':list(g.toDict() for g in guests)
-                 }
-            )
+        expected = {'hypervisors': [h.toDict() for h in self.mapping['hypervisors']]}
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,

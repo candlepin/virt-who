@@ -32,7 +32,7 @@ def raiseLibvirtError(*args, **kwargs):
     raise libvirt.libvirtError('')
 
 
-LIBVIRT_CAPABILITIES_XML = '<capabilities><host><uuid>this-is-uuid</uuid></host></capabilities>'
+LIBVIRT_CAPABILITIES_XML = '<capabilities><host><name>this-my-name</name><uuid>this-is-uuid</uuid></host></capabilities>'
 
 
 class TestLibvirtd(TestBase):

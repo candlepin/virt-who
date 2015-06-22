@@ -26,7 +26,7 @@ from mock import MagicMock
 from base import TestBase
 from config import Config
 from virt.vdsm import Vdsm
-from virt import VirtError
+from virt import VirtError, Guest
 import xmlrpclib
 
 
@@ -48,14 +48,21 @@ class TestEsx(TestBase):
             },
             'vmList': [
                 {
-                    'vmId': '1'
+                    'vmId': '1',
+                    'status': 0
                 }, {
-                    'vmId': '2'
+                    'vmId': '2',
+                    'status': 0
                 }, {
-                    'vmId': '3'
+                    'vmId': '3',
+                    'status': 0
                 }
             ]
         }
         domains = self.vdsm.listDomains()
-        self.assertEquals(domains, ['1', '2', '3'])
+        expectedDomains = [Guest('1', self.vdsm, 0).toDict(),
+                           Guest('2', self.vdsm, 0).toDict(),
+                           Guest('3', self.vdsm, 0).toDict()
+                           ]
+        self.assertEquals([g.toDict() for g in domains], expectedDomains)
         self.vdsm.server.list.assert_called_once()

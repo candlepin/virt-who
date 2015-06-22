@@ -77,6 +77,37 @@ class Guest(object):
         return d
 
 
+class Hypervisor(object):
+    """
+    A model for information about a hypervisor
+    """
+    def __init__(self, hypervisorId,  guestIds=[], name=None):
+        """
+        Create a new Hypervisor that will be sent to subscription manager
+
+        'hypervisorId': the unique identifier for this hypervisor
+
+        'guestIds': a list of Guests
+
+        'name': the hostname, if available
+        """
+        self.hypervisorId = hypervisorId
+        self.guestIds = guestIds
+        self.name = name
+
+    def toDict(self):
+        d = {
+            'hypervisorId': self.hypervisorId,
+            'guestIds': [g.toDict() for g in self.guestIds]
+        }
+        if self.name is not None:
+            d['name'] = self.name
+        return d
+
+    def __str__(self):
+        return str(self.toDict())
+
+
 class AbstractVirtReport(object):
     '''
     An abstract report from virt backend.
@@ -120,6 +151,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
     @property
     def association(self):
         # Apply filter
+        # TODO fix the filtering to work with the new hypervisor class
         assoc = {}
         logger = logging.getLogger("rhsm-app")
         for host, guests in self._assoc.items():

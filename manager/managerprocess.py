@@ -72,8 +72,6 @@ class ManagerProcess(Process):
         super(ManagerProcess, self).__init__()
         self.logger = logger
         self.options = options
-        # this is a map of job_id -> job object
-        self.jobs = {}
 
     def start(self, in_queue, out_queue, terminate_event, oneshot=False):
         """
@@ -111,11 +109,7 @@ class ManagerProcess(Process):
         self._out_queue.put(('checkJobStatus', [config, job_id]))
 
     def newJobStatus(self, config, job_id, interval=10):
-        self.jobs[job_id] = Job('checkJobStatus', [config, job_id], interval)
-        self.queue.put(self.jobs[job_id])
-
-    def removeJob(self, job_id):
-        del self.jobs[job_id]
+        self.queue.put(Job('checkJobStatus', [config, job_id], interval))
 
     def run(self):
         """
@@ -131,8 +125,6 @@ class ManagerProcess(Process):
             if nextJob:
                 if (not isinstance(nextJob, Job)):
                     nextJob = Job(*nextJob)
-                # TODO: Implement the logic for checking if a job is ready to be
-                # done
                 if (not nextJob.lastChecked or
                    (datetime.now() - nextJob.lastChecked).seconds >
                    nextJob.interval):

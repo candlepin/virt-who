@@ -605,7 +605,9 @@ def _main(virtWho):
         data = json.dumps({
             'hypervisors': hypervisors
         })
-        virtWho.logger.debug("Associations found: %s" % data)
+        virtWho.logger.debug("Associations found: %s" % json.dumps({
+            'hypervisors': hypervisors
+        }, indent=4, sort_keys=True))
         print data
 
 

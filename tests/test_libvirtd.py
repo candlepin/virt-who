@@ -33,15 +33,15 @@ def raiseLibvirtError(*args, **kwargs):
 
 
 LIBVIRT_CAPABILITIES_XML = '<capabilities><host><name>this-my-name</name><uuid>this-is-uuid</uuid></host></capabilities>'
-
+LIBVIRT_CAPABILITIES_NO_HOSTNAME_XML = '<capabilities><host><uuid>this-is-uuid</uuid></host></capabilities>'
 
 class TestLibvirtd(TestBase):
     def setUp(self):
         pass
 
-    def run_virt(self, config):
+    def run_virt(self, config, in_queue=None):
         v = Virt.fromConfig(self.logger, config)
-        v._queue = Queue()
+        v._queue = in_queue or Queue()
         v._terminate_event = Event()
         v._interval = 3600
         v._oneshot = True
@@ -101,3 +101,24 @@ class TestLibvirtd(TestBase):
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('abc://user@server/test?no_tty=1', ANY, ANY)
+
+    @patch('libvirt.openReadOnly')
+    def test_mapping_has_hostname_when_availible(self, virt):
+        config = Config('test', 'libvirt', 'abc://server/test')
+        queue = Queue()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        self.run_virt(config, queue)
+        result = queue.get(True)
+        for host in result.association['hypervisors']:
+            self.assertTrue(host.name is not None)
+
+    @patch('libvirt.openReadOnly')
+    def test_mapping_has_no_hostname_when_unavailible(self, virt):
+        config = Config('test', 'libvirt', 'abc://server/test')
+        queue = Queue()
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_NO_HOSTNAME_XML
+        self.run_virt(config, queue)
+        result = queue.get(True)
+        for host in result.association['hypervisors']:
+            self.assertTrue(host.name is None)
+

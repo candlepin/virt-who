@@ -229,7 +229,8 @@ class Libvirtd(virt.Virt):
     def _remote_host_name(self):
         if self._host_name is None:
             xml = ElementTree.fromstring(self.virt.getCapabilities())
-            self._host_name = xml.find('host/name').text
+            if (xml.find('host/name') is not None):
+                self._host_name = xml.find('host/name').text
         return self._host_name
 
     def _getHostGuestMapping(self):

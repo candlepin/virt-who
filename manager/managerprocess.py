@@ -12,7 +12,6 @@ class Job(object):
     """
     This class represents a job to be completed possibly within an interval
     Parameters:
-        'owner': this is the instance of the class that has the method 'target'
         'target': this is the method to be executed with 'args' arguments
         'args': OPTIONAL the arguements in a list [] to be passed to 'target'
         'interval': OPTIONAL the interval in seconds to wait until execution
@@ -20,6 +19,8 @@ class Job(object):
        Set 'firstRun'=True if you want this job to run the first time it is
        attempted regardless of any set interval
     """
+    # TODO refactor / abstract this class so it is useful as more than a data
+    # model (as that is what it is currently being used as
     def __init__(self, target,
                  args=None, interval=None, firstRun=False):
         self.target = target
@@ -38,20 +39,6 @@ class Job(object):
         if not firstRun:
             self.lastChecked = datetime.now()
 
-    # Returns True if the job ran, false if not
-    def run(self):
-        if (self.lastChecked is None or
-           (datetime.now() - self.lastChecked).seconds > self._interval):
-            self._result = self._method(*self._args)
-            self.lastChecked = datetime.now()
-            return True
-        return False
-
-    # we might want to change the way we get the result
-    @property
-    def result(self):
-        return self._result
-
 class ManagerProcess(Process):
     """
     Manager backend class.
@@ -68,7 +55,7 @@ class ManagerProcess(Process):
 
     # For now we will use a logger that is passed in
     # FIXME: Make sure we actually want multiple processes using the same logger
-    def __init__(self, logger, options):
+    def __init__(self, logger, options=None):
         super(ManagerProcess, self).__init__()
         self.logger = logger
         self.options = options
@@ -101,25 +88,43 @@ class ManagerProcess(Process):
         self._out_queue = out_queue
         self._terminate_event = terminate_event
         self._oneshot = oneshot
+        self._internal_terminate_event = False
         super(ManagerProcess, self).start()
 
     def checkJobStatus(self, config, job_id):
         # This method checks the status of the job using the given path
         # TODO Create a more well-defined way of interprocess communication
-        self._out_queue.put(('checkJobStatus', [config, job_id]))
+        self.putOnOutQueue(('checkJobStatus', [config, job_id]))
 
-    def newJobStatus(self, config, job_id, interval=10):
-        self.queue.put(Job('checkJobStatus', [config, job_id], interval))
+    def newJobStatus(self, config, job_id, interval=60):
+        self.putOnInQueue(Job('checkJobStatus', [config, job_id], interval))
+
+    def putOnOutQueue(self, item):
+        self._out_queue.put(item)
+        self.logger.debug('"%s" placed on outgoing queue.' % item)
+        self.logger.debug('There are now %s tasks in the out going queue.'
+                          % self._out_queue.qsize())
+
+    def putOnInQueue(self, item):
+        self.queue.put(item)
+        self.logger.debug('"%s" placed on incoming queue.' % item)
+        self.logger.debug('There are now %s tasks in the incoming queue.'
+                          % self.queue.qsize())
+
+    def quit(self):
+        self.logger.debug('Terminating process')
+        self._internal_terminate_event = True
 
     def run(self):
         """
         Run an interuptable loop to read off the queue -> do the job repeat
         """
-        while self._oneshot or not self._terminate_event.is_set():
+        while self._oneshot or (not self._terminate_event.is_set() and not self._internal_terminate_event):
             nextJob = None
             try:
                 nextJob = self.queue.get()
             except Empty:
+                # In this case we really don't care if the queue is empty
                 continue
             if nextJob:
                 if (not isinstance(nextJob, Job)):
@@ -134,4 +139,3 @@ class ManagerProcess(Process):
                     nextJob._result = getattr(self, nextJob.target)(*nextJob.args)
                 else:
                     self.queue.put(nextJob)
-

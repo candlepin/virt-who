@@ -58,7 +58,7 @@ class SubscriptionManager(Manager):
         self.cert_file = os.path.join(consumerCertDir, cert)
         self.key_file = os.path.join(consumerCertDir, key)
 
-    def _connect(self, config = None):
+    def _connect(self, config=None):
         """ Connect to the subscription-manager. """
 
         kwargs = {

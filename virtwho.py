@@ -28,6 +28,7 @@ import json
 
 import atexit
 from Queue import Empty
+from httplib import BadStatusLine
 
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport, Hypervisor
@@ -91,6 +92,7 @@ class VirtWho(object):
         self.manager_in_queue = Queue()
         self.to_manager_queue = Queue()
         self.manager_process = ManagerProcess(self.logger, self.options)
+        self.reloading = False
 
         self.configManager = ConfigManager(config_dir)
         for config in self.configManager.configs:
@@ -119,14 +121,12 @@ class VirtWho(object):
             # Something really bad happened (system is not register), stop the backends
             self.logger.exception("Error in communication with subscription manager:")
             raise
-        except IOError as e:
-            if e.errno == errno.EINTR:
+        except Exception as e:
+            if self.reloading:
+                # We want to skip error reporting when reloading,
+                # it is caused by interrupted syscall
                 self.logger.debug("Communication with subscription manager interrupted")
                 return False
-            exceptionCheck(e)
-            self.logger.exception("Error in communication with subscription manager:")
-            return False
-        except Exception as e:
             exceptionCheck(e)
             self.logger.exception("Error in communication with subscription manager:")
             return False
@@ -150,6 +150,7 @@ class VirtWho(object):
             self.logger.info("virt-who host/guest association update successful")
 
     def run(self):
+        self.reloading = False
         if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
 
@@ -277,6 +278,7 @@ class VirtWho(object):
                 self.queue.get(False)
         except Empty:
             pass
+        self.reloading = True
         self.queue.put("reload")
 
     def getMapping(self):

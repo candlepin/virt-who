@@ -49,20 +49,16 @@ class TestEsx(TestBase):
             'vmList': [
                 {
                     'vmId': '1',
-                    'status': 0
+                    'status': 'Down'
                 }, {
                     'vmId': '2',
-                    'status': 0
+                    'status': 'Up'
                 }, {
                     'vmId': '3',
-                    'status': 0
+                    'status': 'Up'
                 }
             ]
         }
         domains = self.vdsm.listDomains()
-        expectedDomains = [Guest('1', self.vdsm, 0).toDict(),
-                           Guest('2', self.vdsm, 0).toDict(),
-                           Guest('3', self.vdsm, 0).toDict()
-                           ]
-        self.assertEquals([g.toDict() for g in domains], expectedDomains)
+        self.assertEquals([d.uuid for d in domains], ['1', '2', '3'])
         self.vdsm.server.list.assert_called_once()

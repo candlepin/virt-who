@@ -156,8 +156,8 @@ class Esx(virt.Virt):
             if self.config.filter_host_parents is not None and parent not in self.config.filter_host_parents:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is not included" % (host_id, parent))
                 continue
-
             guests = []
+
             try:
                 if self.config.hypervisor_id == 'uuid':
                     uuid = host['hardware.systemInfo.uuid']
@@ -182,7 +182,6 @@ class Esx(virt.Virt):
                 if 'config.uuid' not in vm:
                     self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
                     continue
-
                 state = virt.Guest.STATE_UNKNOWN
                 try:
                     if vm['runtime.powerState'] == 'poweredOn':
@@ -194,7 +193,7 @@ class Esx(virt.Virt):
                 except KeyError:
                     self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
                 guests.append(virt.Guest(vm['config.uuid'], self, state))
-            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host['name']))
+            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host.get('name', None)))
         return mapping
 
     def login(self):

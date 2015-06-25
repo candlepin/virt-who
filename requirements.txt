@@ -1,2 +1,2 @@
 suds>=0.4.0
--e git+https://github.com/candlepin/python-rhsm#egg=rhsm
+git+https://github.com/candlepin/python-rhsm#egg=rhsm

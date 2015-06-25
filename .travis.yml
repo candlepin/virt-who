@@ -1,7 +1,7 @@
 language: python
 python:
-  - "2.6"
-  - "2.7"
+  - "2.7_with_system_site_packages"
+  - "2.6_with_system_site_packages"
 env:
   - PYTHONPATH=.
 sudo: required

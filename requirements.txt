@@ -1,3 +1,2 @@
 suds>=0.4.0
-M2Crypto
 -e git+https://github.com/candlepin/python-rhsm#egg=rhsm

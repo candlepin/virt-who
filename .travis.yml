@@ -4,5 +4,9 @@ python:
   - "2.7"
 env:
   - PYTHONPATH=.
+sudo: required
 install: "pip install -r requirements.txt"
 script: py.test
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y python-libvirt

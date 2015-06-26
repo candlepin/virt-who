@@ -37,10 +37,49 @@ from manager.managerprocess import ManagerProcess
 from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
+from datetime import datetime, timedelta
+from heapq import *
 
 import log
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
+
+# Default interval for jobs to be delayed
+DefaultJobInterval = 60
+
+class Job(object):
+    """
+    This class represents a job to be run after a set time
+    Parameters:
+        'target': this is the method to be executed with 'args' arguments
+        'args': OPTIONAL the arguments list to be passed to 'target'
+        'executeInSeconds': OPTIONAL the number of seconds to wait after
+                            job initialization to execute the job
+                            NOTE: if unspecified it will default to 60 seconds
+        'executeAfter': OPTIONAL a 'datetime.datetime' object specifying the
+                        time after which it is ok to execute the job.
+    """
+    def __init__(self,
+                 target,
+                 args=None,
+                 executeInSeconds=None,
+                 executeAfter=None):
+        self.target = target
+
+        if args is None:
+            self.args = []
+        else:
+            self.args = args
+
+        if executeInSeconds is None:
+            self.executeInSeconds = DefaultJobInterval
+        else:
+            self.executeInSeconds = executeInSeconds
+
+        if executeAfter is None:
+            self.executeAfter = datetime.now() + timedelta(seconds=self.executeInSeconds)
+        else:
+            self.executeAfter = executeAfter
 
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
@@ -65,9 +104,9 @@ class OptionParserEpilog(OptionParser):
             return ""
 
 # Default interval to retry after unsuccessful run
-RetryInterval = 60 # One minute
+RetryInterval = 60  # One minute
 # Default interval for sending list of UUIDs
-DefaultInterval = 3600 # Once per hour
+DefaultInterval = 3600  # Once per hour
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -90,8 +129,8 @@ class VirtWho(object):
         # Queue for getting events from virt backends
         self.queue = None
         self.manager_in_queue = Queue()
-        self.to_manager_queue = Queue()
-        self.manager_process = ManagerProcess(self.logger, self.options)
+        # a heap to manage the jobs we have incoming
+        self.jobs = []
         self.reloading = False
 
         self.configManager = ConfigManager(config_dir)
@@ -101,6 +140,28 @@ class VirtWho(object):
         self.unableToRecoverStr = "Unable to recover"
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
+
+    def addJob(self, job):
+        # NOTE: there is guarantee of the order in which jobs with the same
+        # datetime will be executed
+        if (not isinstance(job, Job)):
+            job = Job(*job)
+        heappush(self.jobs, (job.executeAfter, job))
+
+    def runNextJob(self):
+        if (len(self.jobs)):
+            # checking the time this way avoids popping off the heap
+            # and then pushing back onto the heap if the item is not ready
+            timeToExecuteAfter, job = self.jobs[0]
+            if (datetime.now() >= timeToExecuteAfter):
+                # Remove the job we are about to do from the heap
+                heappop(self.jobs)
+                # avoid trying to execute methods we don't have
+                if hasattr(self, job.target):
+                    self.logger.debug('Running method "%s"' % job.target)
+                    getattr(self, job.target)(*job.args)
+                else:
+                    self.logger.debug('VirtWho has no method "%s"' % job.target)
 
     def send(self, report):
         """
@@ -139,11 +200,13 @@ class VirtWho(object):
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
-        manager.manager_queue = self.to_manager_queue
-        result = manager.hypervisorCheckIn(report.config, report.association, report.config.type)
+        manager.addJob = self.addJob
+        result = manager.hypervisorCheckIn(report.config,
+                                           report.association,
+                                           report.config.type)
 
     def checkJobStatus(self, config, job_id):
-        manager = SubscriptionManager(self.logger, self.options, self.to_manager_queue)
+        manager = SubscriptionManager(self.logger, self.options, self.addJob)
         result = manager.checkJobStatus(config, job_id)
 
         if not result['failedUpdate']:
@@ -169,10 +232,6 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-        self.manager_process.start(self.to_manager_queue,
-                                   self.manager_in_queue,
-                                   self.terminate_event,
-                                   self.options.oneshot)
         if self.options.oneshot:
             oneshot_remaining = set(virt.config.name for virt in self.virts)
 
@@ -193,15 +252,15 @@ class VirtWho(object):
                 continue
 
             try:
-                managerJob = self.manager_in_queue.get_nowait()
-                method, args = managerJob
-                getattr(self, method)(*args)
+                self.runNextJob()
             except Empty:
                 # We don't care if the managerprocess has nothing for us to do
                 pass
             except IOError:
                 pass
 
+            # FIXME Not sure about how to integrate this into the new jobs
+            # scheme of things
             if report is not None:
                 if report == "exit":
                     break
@@ -220,7 +279,6 @@ class VirtWho(object):
                         for virt in self.virts:
                             virt.terminate()
                         self.virts = []
-                        self.manager_process.terminate()
 
                 if self.options.oneshot:
                     try:
@@ -238,11 +296,11 @@ class VirtWho(object):
                         break
 
         self.queue = None
+        self.jobs = None
         for virt in self.virts:
             virt.terminate()
 
         self.virt = []
-        self.manager_process.terminate()
         if self.options.print_:
             return result
 

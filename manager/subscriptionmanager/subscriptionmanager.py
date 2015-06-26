@@ -41,11 +41,11 @@ class SubscriptionManager(Manager):
     smType = "sam"
 
     """ Class for interacting subscription-manager. """
-    def __init__(self, logger, options, manager_queue=None):
+    def __init__(self, logger, options, addJob=None):
         self.logger = logger
         self.options = options
         self.cert_uuid = None
-        self.manager_queue = manager_queue
+        self.addJob = addJob
 
         self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
@@ -164,8 +164,8 @@ class SubscriptionManager(Manager):
             result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
-        if (is_async is True and self.manager_queue is not None):
-            self.manager_queue.put(('newJobStatus', [config, result['id']]))
+        if (is_async is True and self.addJob is not None):
+            self.addJob(('checkJobStatus', [config, result['id']]))
         return result
 
     def checkJobStatus(self, config, job_id):
@@ -174,7 +174,7 @@ class SubscriptionManager(Manager):
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':
             # This will cause the managerprocess to do this again in 10 seconds
-            self.manager_queue.put(('newJobStatus', [config, result['id']]))
+            self.addJob(('checkJobStatus', [config, result['id']]))
         else:
             # log completed job status
             # TODO Make this its own method inside a class

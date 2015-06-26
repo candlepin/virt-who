@@ -97,7 +97,7 @@ class Hypervisor(object):
 
     def toDict(self):
         d = {
-            'hypervisorId': self.hypervisorId,
+            'hypervisorId': {'hypervisorId': self.hypervisorId},
             'guestIds': [g.toDict() for g in self.guestIds]
         }
         if self.name is not None:
@@ -151,7 +151,6 @@ class HostGuestAssociationReport(AbstractVirtReport):
     @property
     def association(self):
         # Apply filter
-        # TODO fix the filtering to work with the new hypervisor class
         assoc = {}
         logger = logging.getLogger("rhsm-app")
         for host, guests in self._assoc.items():

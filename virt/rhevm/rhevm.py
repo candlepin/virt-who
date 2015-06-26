@@ -167,7 +167,7 @@ class RhevM(virt.Virt):
 
             hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state))
 
-        return {'hypervisors': [h for id, h in hosts.items]}
+        return {'hypervisors': hosts.values()}
 
     def ping(self):
         return True

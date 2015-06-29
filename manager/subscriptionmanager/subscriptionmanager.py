@@ -144,7 +144,7 @@ class SubscriptionManager(Manager):
 
         self._connect(config)
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
-        is_async = self.connection.has_capability('hypervisors_async')
+        is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
 
         if (is_async is True):
             self.logger.debug("Server has capability 'hypervisors_async'")
@@ -173,7 +173,7 @@ class SubscriptionManager(Manager):
         self.logger.debug('checking job status\nJob ID: %s' % job_id)
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':
-            # This will cause the managerprocess to do this again in 10 seconds
+            # This will cause virtwho to do this again in 10 seconds
             self.addJob(('checkJobStatus', [config, result['id']]))
         else:
             # log completed job status

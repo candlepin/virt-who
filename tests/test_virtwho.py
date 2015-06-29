@@ -25,11 +25,12 @@ import logging
 
 from mock import patch, Mock
 
-from virtwho import parseOptions, VirtWho, OptionError, Queue
+from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
 from virt import VirtError, HostGuestAssociationReport
 from manager import ManagerError
-
+from multiprocessing import Process
+from threading import Timer
 
 class TestOptions(TestBase):
     def setUp(self):
@@ -171,3 +172,108 @@ class TestOptions(TestBase):
         fromConfig.assert_called_with(self.logger, config)
         self.assertTrue(fromConfig.return_value.start.called)
         fromOptions.assert_called_with(self.logger, options)
+
+class TestJobs(TestBase):
+    def setupVirtWho(self, oneshot=True):
+        options = Mock()
+        options.oneshot = oneshot
+        options.interval = 0
+        options.print_ = False
+        virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
+        config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
+        virtwho.configManager.addConfig(config)
+        return virtwho
+
+    def test_adding_job(self):
+        virtwho = self.setupVirtWho()
+        # Mock out a method we want to call
+        virtwho.send = Mock()
+        fake_report = 'fake_report'
+        # Add an actual job to be executed immediately
+        test_job = Job('send', [fake_report], executeInSeconds=0)
+        virtwho.addJob(test_job)
+        virtwho.run()
+        virtwho.send.assert_called_with(fake_report)
+
+    def test_adding_tuple_of_job(self):
+        # We should be able to pass in tuples like below and achieve the same
+        # result as if we passed in a Job object
+
+        # (target, [args], executeInSeconds, executeAfter)
+        fake_report = 'fakereport'
+        test_job_tuple = ('send', [fake_report], 0)
+        virtwho = self.setupVirtWho()
+        virtwho.send = Mock()
+        virtwho.addJob(test_job_tuple)
+        virtwho.run()
+        virtwho.send.assert_called_with(fake_report)
+
+    def test_adding_multiple_jobs(self):
+        virtwho = self.setupVirtWho()
+        virtwho.send = Mock()
+        # We should be able to add multiple jobs that should be executed in
+        # order by the requested times. There presently is no guarantee of which
+        # job will be executed first if they have the same execution time
+        fake_report = 'fake_report_%s'
+
+        # Add them out of chronological order
+        for index, delay in enumerate([2, 0]):
+            virtwho.addJob(Job('send', [fake_report % index], executeInSeconds=delay))
+
+        virtwho.run()
+
+        # Since we are running in oneshot mode we expect only job with delay=0
+        # to have been executed
+        virtwho.send.assert_called_with(fake_report % 1)
+
+    def is_terminate_set(self, virtwho):
+            if (not virtwho.terminate_event.is_set()):
+                self.success = True
+                virtwho.terminate_event.set()
+            self.exit = True
+
+    def test_execute_job_after_delay(self):
+        # This test ensure's that jobs are actually be executed no sooner than
+        # the requested time
+        self.exit = False
+        self.success = False
+        virtwho = self.setupVirtWho(oneshot=False)
+        virtwho.addJob(Job('terminate', executeInSeconds=1))
+        # Wait three seconds for the process to run
+        # If all is well with our job the process should have terminated in less
+        # than 3 seconds
+        def timeout(virtwho, self):
+            if (virtwho.terminate_event.is_set()):
+                self.success = True
+            else:
+                virtwho.terminate_event.set()
+            self.exit = True
+
+        test_timer = Timer(3, timeout, [virtwho, self])
+        test_timer.start()
+        virtwho.run()
+        while not self.exit:
+            pass
+        if not self.success:
+            self.fail('VirtWho did not terminate in less than the given time (3 seconds')
+
+    def test_job_not_executed_before_delay(self):
+        # Tell virtwho to terminate after a long delay
+        self.exit = False
+        self.success = False
+        virtwho = self.setupVirtWho(oneshot=False)
+        virtwho.addJob(Job('terminate', executeInSeconds=5))
+        def timeout(virtwho, self):
+            if (not virtwho.terminate_event.is_set()):
+                self.success = True
+                virtwho.terminate_event.set()
+            self.exit = True
+        test_timer = Timer(1, timeout, [virtwho, self])
+        test_timer.start()
+        virtwho.run()
+        # busy wait for virtwho to be terminated
+        while not virtwho.terminate_event.is_set() or not self.exit:
+            pass
+        if not self.success:
+            self.fail('VirtWho exited sooner than 20 seconds')
+

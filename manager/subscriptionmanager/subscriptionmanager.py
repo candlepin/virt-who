@@ -193,6 +193,7 @@ class SubscriptionManager(Manager):
                     self.logger.info("Created host: %s with guests: [%s]",
                                      created['uuid'],
                                      ", ".join(guests))
+            self.logger.info("Number of mappings unchanged: %s" % len(resultData['unchanged']))
             result = resultData
         return result
 

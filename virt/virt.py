@@ -81,7 +81,7 @@ class Hypervisor(object):
     """
     A model for information about a hypervisor
     """
-    def __init__(self, hypervisorId,  guestIds=[], name=None):
+    def __init__(self, hypervisorId,  guestIds=[], name=None, facts=None):
         """
         Create a new Hypervisor that will be sent to subscription manager
 
@@ -94,6 +94,8 @@ class Hypervisor(object):
         self.hypervisorId = hypervisorId
         self.guestIds = guestIds
         self.name = name
+        self.facts = facts
+
 
     def toDict(self):
         d = {
@@ -102,6 +104,8 @@ class Hypervisor(object):
         }
         if self.name is not None:
             d['name'] = self.name
+        if self.facts is not None:
+            d['facts'] = self.facts
         return d
 
     def __str__(self):

@@ -7,7 +7,7 @@ env:
 sudo: required
 install:
   - pip install -r requirements.txt
-  - pip install iniparse python-dateutil M2Crypto
+  - pip install iniparse python-dateutil M2Crypto libvirt-python
 script: py.test
 before_install:
   - sudo apt-get update -qq

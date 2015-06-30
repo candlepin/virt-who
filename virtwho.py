@@ -38,7 +38,7 @@ from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
 from datetime import datetime, timedelta
-from heapq import *
+from heapq import heappush, heappop
 
 import log
 
@@ -128,7 +128,6 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         self.queue = None
-        self.manager_in_queue = Queue()
         # a heap to manage the jobs we have incoming
         self.jobs = []
         self.reloading = False

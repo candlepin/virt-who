@@ -148,7 +148,7 @@ class VirtWho(object):
         heappush(self.jobs, (job.executeAfter, job))
 
     def runNextJob(self):
-        if (len(self.jobs)):
+        if self.jobs:
             # checking the time this way avoids popping off the heap
             # and then pushing back onto the heap if the item is not ready
             timeToExecuteAfter, job = self.jobs[0]
@@ -243,7 +243,7 @@ class VirtWho(object):
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             try:
-                report = self.queue.get_nowait()
+                report = self.queue.get(block=True, timeout=1)
             except Empty:
                 report = None
                 pass

@@ -10,5 +10,6 @@ install:
   - pip install iniparse python-dateutil M2Crypto libvirt-python
 script: py.test
 before_install:
+  - sudo add-apt-repository cloud-archive:icehouse
   - sudo apt-get update -qq
   - sudo apt-get install -y libvirt0 swig libvirt-dev

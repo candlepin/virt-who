@@ -11,4 +11,4 @@ install:
 script: py.test
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y libvirt0 swig
+  - sudo apt-get install -y libvirt0 swig libvirt-dev

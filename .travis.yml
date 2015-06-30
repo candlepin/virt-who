@@ -1,12 +1,14 @@
 language: python
 python:
-  - "2.7_with_system_site_packages"
-  - "2.6_with_system_site_packages"
+  - "2.7"
+  - "2.6"
 env:
   - PYTHONPATH=.
 sudo: required
-install: "pip install -r requirements.txt"
+install:
+  - pip install -r requirements.txt
+  - pip install iniparse python-dateutil M2Crypto
 script: py.test
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y python-libvirt python-m2crypto python-iniparse python-dateutil
+  - sudo apt-get install -y libvirt0 swig

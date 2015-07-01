@@ -31,55 +31,33 @@ from Queue import Empty
 from httplib import BadStatusLine
 
 from daemon import daemon
-from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport, Hypervisor
+from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
-from manager.managerprocess import ManagerProcess
 from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
-from datetime import datetime, timedelta
-from heapq import heappush, heappop
 
 import log
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
-# Default interval for jobs to be delayed
-DefaultJobInterval = 60
 
 class Job(object):
     """
-    This class represents a job to be run after a set time
+    This class represents a job to be run
     Parameters:
         'target': this is the method to be executed with 'args' arguments
         'args': OPTIONAL the arguments list to be passed to 'target'
-        'executeInSeconds': OPTIONAL the number of seconds to wait after
-                            job initialization to execute the job
-                            NOTE: if unspecified it will default to 60 seconds
-        'executeAfter': OPTIONAL a 'datetime.datetime' object specifying the
-                        time after which it is ok to execute the job.
     """
     def __init__(self,
                  target,
-                 args=None,
-                 executeInSeconds=None,
-                 executeAfter=None):
+                 args=None):
         self.target = target
 
         if args is None:
             self.args = []
         else:
             self.args = args
-
-        if executeInSeconds is None:
-            self.executeInSeconds = DefaultJobInterval
-        else:
-            self.executeInSeconds = executeInSeconds
-
-        if executeAfter is None:
-            self.executeAfter = datetime.now() + timedelta(seconds=self.executeInSeconds)
-        else:
-            self.executeAfter = executeAfter
 
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
@@ -141,26 +119,20 @@ class VirtWho(object):
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
 
     def addJob(self, job):
-        # NOTE: there is guarantee of the order in which jobs with the same
-        # datetime will be executed
+        # Add a job to be executed next time we have a report to send
         if (not isinstance(job, Job)):
             job = Job(*job)
-        heappush(self.jobs, (job.executeAfter, job))
+        self.jobs.append(job)
 
-    def runNextJob(self):
-        if self.jobs:
-            # checking the time this way avoids popping off the heap
-            # and then pushing back onto the heap if the item is not ready
-            timeToExecuteAfter, job = self.jobs[0]
-            if (datetime.now() >= timeToExecuteAfter):
-                # Remove the job we are about to do from the heap
-                heappop(self.jobs)
-                # avoid trying to execute methods we don't have
-                if hasattr(self, job.target):
-                    self.logger.debug('Running method "%s"' % job.target)
-                    getattr(self, job.target)(*job.args)
-                else:
-                    self.logger.debug('VirtWho has no method "%s"' % job.target)
+    def runJobs(self):
+        if not self.jobs:
+            return
+        for job in self.jobs:
+            if hasattr(self, job.target):
+                self.logger.debug('Running method "%s" % job.target')
+                getattr(self, job.target)(*job.args)
+            else:
+                self.logger.debug('VirtWho has no method "%s"' % job.target)
 
     def send(self, report):
         """
@@ -243,7 +215,7 @@ class VirtWho(object):
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             try:
-                report = self.queue.get(block=True, timeout=1)
+                report = self.queue.get(block=True, timeout=None)
             except Empty:
                 report = None
                 pass
@@ -251,9 +223,10 @@ class VirtWho(object):
                 continue
 
             try:
-                self.runNextJob()
+                # Run all jobs that have been queued as a result of sending last
+                # time
+                self.runJobs()
             except Empty:
-                # We don't care if the managerprocess has nothing for us to do
                 pass
             except IOError:
                 pass

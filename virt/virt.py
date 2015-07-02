@@ -81,7 +81,7 @@ class Hypervisor(object):
     """
     A model for information about a hypervisor
     """
-    def __init__(self, hypervisorId,  guestIds=[], name=None, facts=None):
+    def __init__(self, hypervisorId,  guestIds=None, name=None, facts=None):
         """
         Create a new Hypervisor that will be sent to subscription manager
 
@@ -92,7 +92,7 @@ class Hypervisor(object):
         'name': the hostname, if available
         """
         self.hypervisorId = hypervisorId
-        self.guestIds = guestIds
+        self.guestIds = guestIds or []
         self.name = name
         self.facts = facts
 

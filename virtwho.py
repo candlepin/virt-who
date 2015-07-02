@@ -82,9 +82,12 @@ class OptionParserEpilog(OptionParser):
             return ""
 
 # Default interval to retry after unsuccessful run
-RetryInterval = 60  # One minute
-# Default interval for sending list of UUIDs
-DefaultInterval = 3600  # Once per hour
+RetryInterval = 60 # One minute
+
+# Default interval for compiling list of UUIDs.
+# It will not be posible to set the interval less than this value
+# Change detection will limit the sending if no changes exist
+DefaultInterval = 600  # Every ten minutes
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -343,7 +346,7 @@ def parseOptions():
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
-    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
+    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
 
@@ -519,21 +522,21 @@ def parseOptions():
         if not options.env:
             raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
-    if options.interval < 0:
-        logger.warning("Interval is not positive number, ignoring")
-        options.interval = 0
-
     if options.background and options.oneshot:
         logger.error("Background and oneshot can't be used together, using background mode")
         options.oneshot = False
 
-    if options.oneshot and options.interval > 0:
-        logger.error("Interval doesn't make sense in oneshot mode, ignoring")
+    if options.oneshot:
+        if options.interval > 0:
+            logger.error("Interval doesn't make sense in oneshot mode, ignoring")
 
-    if not options.oneshot and options.interval == 0:
-        # Interval is still used in background mode, because events can get lost
-        # (e.g. libvirtd restart)
-        options.interval = DefaultInterval
+    else:
+        if options.interval < DefaultInterval:
+            if options.interval == 0:
+                logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
+            else:
+                logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(DefaultInterval))
+            options.interval = DefaultInterval
 
     return (logger, options)
 
@@ -601,6 +604,7 @@ def main():
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
+
 
     global virtWho
     try:

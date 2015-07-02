@@ -47,9 +47,14 @@ class TestOptions(TestBase):
         self.assertFalse(options.debug)
         self.assertFalse(options.background)
         self.assertFalse(options.oneshot)
-        self.assertEqual(options.interval, 3600)
+        self.assertEqual(options.interval, 600)
         self.assertEqual(options.smType, 'sam')
         self.assertEqual(options.virtType, None)
+
+    def test_minimum_interval_options(self):
+        sys.argv = ["virtwho.py", "--interval=5"]
+        _, options = parseOptions()
+        self.assertEqual(options.interval, 600)
 
     def test_options_debug(self):
         sys.argv = ["virtwho.py", "-d"]

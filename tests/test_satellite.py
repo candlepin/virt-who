@@ -32,7 +32,7 @@ from mock import MagicMock
 
 from manager.satellite import Satellite, SatelliteError
 
-from virt import Guest
+from virt import Guest, Hypervisor
 
 TEST_SYSTEM_ID = 'test-system-id'
 TEST_PORT = 8090
@@ -95,13 +95,17 @@ xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 
 class TestSatellite(TestBase):
     mapping = {
-        'host-1': [
-            Guest('guest1-1', xvirt, Guest.STATE_RUNNING),
-            Guest('guest1-2', xvirt, Guest.STATE_SHUTOFF)],
-        'host-2': [
-            Guest('guest2-1', xvirt, Guest.STATE_RUNNING),
-            Guest('guest2-2', xvirt, Guest.STATE_SHUTOFF),
-            Guest('guest2-3', xvirt, Guest.STATE_RUNNING)]
+        'hypervisors': [
+            Hypervisor('host-1', [
+                Guest('guest1-1', xvirt, Guest.STATE_RUNNING),
+                Guest('guest1-2', xvirt, Guest.STATE_SHUTOFF)
+            ]),
+            Hypervisor('host-2', [
+                Guest('guest2-1', xvirt, Guest.STATE_RUNNING),
+                Guest('guest2-2', xvirt, Guest.STATE_SHUTOFF),
+                Guest('guest2-3', xvirt, Guest.STATE_RUNNING)
+            ])
+        ]
     }
 
     @classmethod
@@ -122,7 +126,7 @@ class TestSatellite(TestBase):
         options.env = "ENV"
         options.owner = "OWNER"
 
-        s.hypervisorCheckIn(options, {}, "test")
+        s.hypervisorCheckIn(options, {'hypervisors': []}, "test")
         #self.assertRaises(SatelliteError, s.connect, "localhost", "abc", "def")
 
     def test_new_system(self):

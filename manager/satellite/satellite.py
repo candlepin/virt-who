@@ -156,12 +156,12 @@ class Satellite(Manager):
         if len(mapping) == 0:
             self.logger.info("no hypervisors found, not sending data to satellite")
 
-        for hypervisor_uuid, guests in mapping.items():
-            self.logger.debug("Loading systemid for %s" % hypervisor_uuid)
-            hypervisor_systemid = self._load_hypervisor(hypervisor_uuid, type=type)
+        for hypervisor in mapping['hypervisors']:
+            self.logger.debug("Loading systemid for %s" % hypervisor.hypervisorId)
+            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=type)
 
-            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor_uuid, guests))
-            plan = self._assemble_plan(guests, hypervisor_uuid, type=type)
+            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor.hypervisorId, hypervisor.guestIds))
+            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=type)
 
             try:
                 self.logger.debug("Sending plan: %s" % plan)

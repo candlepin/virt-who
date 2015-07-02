@@ -45,10 +45,10 @@ class TestManager(TestBase):
     guestInfo = [guest1]
 
     mapping = {
-        'hypervisors':{
+        'hypervisors': [
             Hypervisor('9c927368-e888-43b4-9cdb-91b10431b258', []),
             Hypervisor('ad58b739-5288-4cbc-a984-bd771612d670', [guest1,guest2])
-        }
+        ]
     }
 
 

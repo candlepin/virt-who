@@ -190,7 +190,7 @@ class TestJobs(TestBase):
         virtwho.send = Mock()
         fake_report = 'fake_report'
         # Add an actual job to be executed immediately
-        test_job = Job('send', [fake_report], executeInSeconds=0)
+        test_job = Job('send', [fake_report])
         virtwho.addJob(test_job)
         virtwho.run()
         virtwho.send.assert_called_with(fake_report)
@@ -201,7 +201,7 @@ class TestJobs(TestBase):
 
         # (target, [args], executeInSeconds, executeAfter)
         fake_report = 'fakereport'
-        test_job_tuple = ('send', [fake_report], 0)
+        test_job_tuple = ('send', [fake_report])
         virtwho = self.setupVirtWho()
         virtwho.send = Mock()
         virtwho.addJob(test_job_tuple)

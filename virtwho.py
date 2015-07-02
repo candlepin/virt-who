@@ -127,9 +127,13 @@ class VirtWho(object):
     def runJobs(self):
         if not self.jobs:
             return
-        for job in self.jobs:
+
+        jobsToRun = self.jobs
+        self.jobs = []
+        while jobsToRun:
+            job = jobsToRun.pop(0)
             if hasattr(self, job.target):
-                self.logger.debug('Running method "%s" % job.target')
+                self.logger.debug('Running method "%s"' % job.target)
                 getattr(self, job.target)(*job.args)
             else:
                 self.logger.debug('VirtWho has no method "%s"' % job.target)

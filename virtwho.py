@@ -650,10 +650,10 @@ def _main(virtWho):
                     'guests': report.guests
                 })
             elif isinstance(report, HostGuestAssociationReport):
-                for hypervisor, guests in report.association.items():
+                for hypervisor in report.association['hypervisors']:
                     h = {
-                        'uuid': hypervisor,
-                        'guests': [guest.toDict() for guest in guests]
+                        'uuid': hypervisor.hypervisorId,
+                        'guests': [guest.toDict() for guest in hypervisor.guestIds]
                     }
                     hypervisors.append(h)
         data = json.dumps({

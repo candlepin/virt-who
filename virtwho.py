@@ -25,6 +25,7 @@ import errno
 import time
 from multiprocessing import Event, Queue
 import json
+
 import atexit
 from Queue import Empty
 from httplib import BadStatusLine
@@ -32,12 +33,31 @@ from httplib import BadStatusLine
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
+from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
 
 import log
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
+
+
+class Job(object):
+    """
+    This class represents a job to be run
+    Parameters:
+        'target': this is the method to be executed with 'args' arguments
+        'args': OPTIONAL the arguments list to be passed to 'target'
+    """
+    def __init__(self,
+                 target,
+                 args=None):
+        self.target = target
+
+        if args is None:
+            self.args = []
+        else:
+            self.args = args
 
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
@@ -62,9 +82,9 @@ class OptionParserEpilog(OptionParser):
             return ""
 
 # Default interval to retry after unsuccessful run
-RetryInterval = 60 # One minute
+RetryInterval = 60  # One minute
 # Default interval for sending list of UUIDs
-DefaultInterval = 3600 # Once per hour
+DefaultInterval = 3600  # Once per hour
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -83,7 +103,11 @@ class VirtWho(object):
         self.logger = logger
         self.options = options
         self.terminate_event = Event()
+
+        # Queue for getting events from virt backends
         self.queue = None
+        # a heap to manage the jobs we have incoming
+        self.jobs = []
         self.reloading = False
 
         self.configManager = ConfigManager(config_dir)
@@ -93,6 +117,22 @@ class VirtWho(object):
         self.unableToRecoverStr = "Unable to recover"
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
+
+    def addJob(self, job):
+        # Add a job to be executed next time we have a report to send
+        if (not isinstance(job, Job)):
+            job = Job(*job)
+        self.jobs.append(job)
+
+    def runJobs(self):
+        if not self.jobs:
+            return
+        for job in self.jobs:
+            if hasattr(self, job.target):
+                self.logger.debug('Running method "%s" % job.target')
+                getattr(self, job.target)(*job.args)
+            else:
+                self.logger.debug('VirtWho has no method "%s"' % job.target)
 
     def send(self, report):
         """
@@ -131,17 +171,14 @@ class VirtWho(object):
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
-        result = manager.hypervisorCheckIn(report.config, report.association, report.config.type)
+        manager.addJob = self.addJob
+        result = manager.hypervisorCheckIn(report.config,
+                                           report.association,
+                                           report.config.type)
 
-        # Show the result of hypervisorCheckIn
-        for fail in result['failedUpdate']:
-            self.logger.error("Error during update list of guests: %s", str(fail))
-        for updated in result['updated']:
-            guests = [x['guestId'] for x in updated['guestIds']]
-            self.logger.info("Updated host: %s with guests: [%s]", updated['uuid'], ", ".join(guests))
-        for created in result['created']:
-            guests = [x['guestId'] for x in created['guestIds']]
-            self.logger.info("Created host: %s with guests: [%s]", created['uuid'], ", ".join(guests))
+    def checkJobStatus(self, config, job_id):
+        manager = SubscriptionManager(self.logger, self.options, self.addJob)
+        result = manager.checkJobStatus(config, job_id)
 
         if not result['failedUpdate']:
             self.logger.info("virt-who host/guest association update successful")
@@ -166,7 +203,6 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-
         if self.options.oneshot:
             oneshot_remaining = set(virt.config.name for virt in self.virts)
 
@@ -175,50 +211,68 @@ class VirtWho(object):
             return
 
         result = {}
+        report = None
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             try:
                 report = self.queue.get(block=True, timeout=None)
+            except Empty:
+                report = None
+                pass
             except IOError:
                 continue
 
-            if report == "exit":
-                break
-            if report == "reload":
-                for virt in self.virts:
-                    virt.terminate()
-                self.virts = []
-                raise ReloadRequest()
+            try:
+                # Run all jobs that have been queued as a result of sending last
+                # time
+                self.runJobs()
+            except Empty:
+                pass
+            except IOError:
+                pass
 
-            # Send the report
-            if not self.options.print_ and not isinstance(report, ErrorReport):
-                try:
-                    self.send(report)
-                except ManagerFatalError:
-                    # System not register (probably), stop the backends
+            # FIXME Not sure about how to integrate this into the new jobs
+            # scheme of things
+            if report is not None:
+                if report == "exit":
+                    break
+                if report == "reload":
                     for virt in self.virts:
                         virt.terminate()
                     self.virts = []
+                    raise ReloadRequest()
 
-            if self.options.oneshot:
-                try:
-                    oneshot_remaining.remove(report.config.name)
-                    if not isinstance(report, ErrorReport):
-                        if self.options.print_:
-                            result[report.config] = report
-                        self.logger.debug("Association for config %s gathered" % report.config.name)
-                    for virt in self.virts:
-                        if virt.config.name == report.config.name:
-                            virt.stop()
-                except KeyError:
-                    self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
-                if not oneshot_remaining:
-                    break
+                # Send the report
+                if not self.options.print_ and not isinstance(report, ErrorReport):
+                    try:
+                        self.send(report)
+                    except ManagerFatalError:
+                        # System not register (probably), stop the backends
+                        for virt in self.virts:
+                            virt.terminate()
+                        self.virts = []
+
+                if self.options.oneshot:
+                    try:
+                        oneshot_remaining.remove(report.config.name)
+                        if not isinstance(report, ErrorReport):
+                            if self.options.print_:
+                                result[report.config] = report
+                            self.logger.debug("Association for config %s gathered" % report.config.name)
+                        for virt in self.virts:
+                            if virt.config.name == report.config.name:
+                                virt.stop()
+                    except KeyError:
+                        self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
+                    if not oneshot_remaining:
+                        break
 
         self.queue = None
+        self.jobs = None
         for virt in self.virts:
             virt.terminate()
-        self.virts = []
+
+        self.virt = []
         if self.options.print_:
             return result
 

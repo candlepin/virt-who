@@ -41,10 +41,11 @@ class SubscriptionManager(Manager):
     smType = "sam"
 
     """ Class for interacting subscription-manager. """
-    def __init__(self, logger, options):
+    def __init__(self, logger, options, addJob=None):
         self.logger = logger
         self.options = options
         self.cert_uuid = None
+        self.addJob = addJob
 
         self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
@@ -139,19 +140,62 @@ class SubscriptionManager(Manager):
 
     def hypervisorCheckIn(self, config, mapping, type=None):
         """ Send hosts to guests mapping to subscription manager. """
-
         serialized_mapping = {}
-        for host, guests in mapping.items():
-            serialized_mapping[host] = [guest.toDict() for guest in guests]
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
 
         self._connect(config)
+        self.logger.debug("Checking if server has capability 'hypervisor_async'")
+        is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
 
-        # Send the mapping
+        if (is_async is True):
+            self.logger.debug("Server has capability 'hypervisors_async'")
+            # Transform the mapping into the async version
+            serialized_mapping = {'hypervisors':[h.toDict() for h in mapping['hypervisors']]}
+
+        else:
+            self.logger.debug("Server does not have 'hypervisors_async' capability")
+            # Reformat the data from the mapping to make it fit with
+            # the old api.
+            for hypervisor in mapping['hypervisors']:
+                guests = [g.toDict() for g in hypervisor.guestIds]
+                serialized_mapping[hypervisor.hypervisorId] = guests
+
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
         try:
-            return self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
+            result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        if (is_async is True and self.addJob is not None):
+            self.addJob(('checkJobStatus', [config, result['id']]))
+        return result
+
+    def checkJobStatus(self, config, job_id):
+        self._connect(config)
+        self.logger.debug('checking job status\nJob ID: %s' % job_id)
+        result = self.connection.getJob(job_id)
+        if result['state'] != 'FINISHED':
+            # This will cause virtwho to do this again in 10 seconds
+            self.addJob(('checkJobStatus', [config, result['id']]))
+        else:
+            # log completed job status
+            # TODO Make this its own method inside a class
+            # representing a status object
+            resultData = result['resultData']
+            for fail in resultData['failedUpdate']:
+                self.logger.error("Error during update list of guests: %s", str(fail))
+            for updated in resultData['updated']:
+                guests = [x['guestId'] for x in updated['guestIds']]
+                self.logger.info("Updated host %s with guests: [%s]",
+                                 updated['uuid'],
+                                 ", ".join(guests))
+            if (isinstance(result['created'], list)):
+                for created in result['created']:
+                    guests = [x['guestId'] for x in created['guestIds']]
+                    self.logger.info("Created host: %s with guests: [%s]",
+                                     created['uuid'],
+                                     ", ".join(guests))
+            self.logger.info("Number of mappings unchanged: %s" % len(resultData['unchanged']))
+            result = resultData
+        return result
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

@@ -90,14 +90,15 @@ class RhevM(virt.Virt):
 
     def getHostGuestMapping(self):
         """
-        Returns dictionary with host to guest mapping, e.g.:
+        Returns dictionary containing a list of virt.Hypervisors
+        Each virt.Hypervisor contains the hypervisor ID as well as a list of
+        virt.Guest
 
-        { 'host_id_1': ['guest1', 'guest2'],
-          'host_id_2': ['guest3', 'guest4'],
+        {'hypervisors': [Hypervisor1, ...]
         }
         """
         mapping = {}
-        host_ids = {}
+        hosts = {}
         clusters = set()
 
         clusters_xml = ElementTree.parse(self.get(self.clusters_url))
@@ -123,21 +124,24 @@ class RhevM(virt.Virt):
                 continue
 
             if self.config.hypervisor_id == 'uuid':
-                host_ids[id] = id
+                hosts[id] = virt.Hypervisor(id)
             elif self.config.hypervisor_id == 'hwuuid':
                 try:
-                    host_ids[id] = host.find('hardware_information').find('uuid').text
+                    hosts[id] = virt.Hypervisor(
+                        host.find('hardware_information').find('uuid').text
+                    )
                 except AttributeError:
                     self.logger.warn("Host %s doesn't have hardware uuid", id)
                     continue
             elif self.config.hypervisor_id == 'hostname':
-                host_ids[id] = host.find('name').text
+                hosts[id] = virt.Hypervisor(host.find('name').text)
             else:
                 raise virt.VirtError(
                     'Reporting of hypervisor %s is not implemented in %s backend',
                     self.config.hypervisor_id, self.CONFIG_TYPE)
             mapping[id] = []
-
+            # BZ 1065465 Add hostname to hypervisor profile
+            hosts[id].name = host.find('name').text
         for vm in vms_xml.findall('vm'):
             guest_id = vm.get('id')
             host = vm.find('host')
@@ -161,12 +165,9 @@ class RhevM(virt.Virt):
                     guest_id)
                 state = virt.Guest.STATE_UNKNOWN
 
-            mapping[host_id].append(virt.Guest(guest_id, self, state))
+            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state))
 
-        mapping_with_ids = {}
-        for host_id, vms in mapping.items():
-            mapping_with_ids[host_ids[host_id]] = vms
-        return mapping_with_ids
+        return {'hypervisors': hosts.values()}
 
     def ping(self):
         return True

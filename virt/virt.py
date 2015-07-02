@@ -77,6 +77,41 @@ class Guest(object):
         return d
 
 
+class Hypervisor(object):
+    """
+    A model for information about a hypervisor
+    """
+    def __init__(self, hypervisorId,  guestIds=[], name=None, facts=None):
+        """
+        Create a new Hypervisor that will be sent to subscription manager
+
+        'hypervisorId': the unique identifier for this hypervisor
+
+        'guestIds': a list of Guests
+
+        'name': the hostname, if available
+        """
+        self.hypervisorId = hypervisorId
+        self.guestIds = guestIds
+        self.name = name
+        self.facts = facts
+
+
+    def toDict(self):
+        d = {
+            'hypervisorId': {'hypervisorId': self.hypervisorId},
+            'guestIds': [g.toDict() for g in self.guestIds]
+        }
+        if self.name is not None:
+            d['name'] = self.name
+        if self.facts is not None:
+            d['facts'] = self.facts
+        return d
+
+    def __str__(self):
+        return str(self.toDict())
+
+
 class AbstractVirtReport(object):
     '''
     An abstract report from virt backend.
@@ -123,10 +158,10 @@ class HostGuestAssociationReport(AbstractVirtReport):
         assoc = {}
         logger = logging.getLogger("rhsm-app")
         for host, guests in self._assoc.items():
-            if self._config.exclude_host_uuids is not None and host in self._config.exclude_host_uuids:
+            if self._config.exclude_host_uuids is not None and host.hypervisorId in self._config.exclude_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is excluded" % host)
                 continue
-            if self._config.filter_host_uuids is not None and host not in self._config.filter_host_uuids:
+            if self._config.filter_host_uuids is not None and host.hypervisorId not in self._config.filter_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is not included" % host)
                 continue
             assoc[host] = guests

@@ -26,7 +26,7 @@ from mock import MagicMock
 from base import TestBase
 from config import Config
 from virt.vdsm import Vdsm
-from virt import VirtError
+from virt import VirtError, Guest
 import xmlrpclib
 
 

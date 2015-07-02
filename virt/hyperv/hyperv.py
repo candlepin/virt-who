@@ -472,8 +472,9 @@ class HyperV(virt.Virt):
         else:
             raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
                                  (self.config.hypervisor_id, self.CONFIG_TYPE))
-
-        return {host: guests}
+        # TODO Add the hostname to the Hypervisor we are sending back
+        hypervisor = virt.Hypervisor(hypervisorId=host, guestIds=guests)
+        return {'hypervisors': [hypervisor]}
 
     def ping(self):
         return True

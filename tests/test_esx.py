@@ -21,13 +21,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import logging
 import urllib2
 import suds
-from mock import patch, ANY
+from mock import patch, ANY, MagicMock, Mock
 from multiprocessing import Queue, Event
 
 from base import TestBase
 from config import Config
 from virt.esx import Esx
-from virt import VirtError
+from virt import VirtError, Guest, Hypervisor
 
 
 class TestEsx(TestBase):
@@ -75,3 +75,77 @@ class TestEsx(TestBase):
         mock_client.assert_called_with(ANY, location="https://localhost/sdk")
         mock_client.service.RetrieveServiceContent.assert_called_once()
         mock_client.service.Login.assert_called_once()
+
+    @patch('suds.client.Client')
+    def test_getHostGuestMapping(self, mock_client):
+        expected_hostname = 'Fake_hostname'
+        expected_hypervisorId = 'Fake_uuid'
+        expected_guestId = 'guest1UUID'
+        expected_guest_state = Guest.STATE_RUNNING
+
+        fake_parent = MagicMock()
+        fake_parent.value = 'Fake_parent'
+
+        fake_vm_id = MagicMock()
+        fake_vm_id.value = 'guest1'
+
+        fake_vm = MagicMock()
+        fake_vm.ManagedObjectReference = [fake_vm_id]
+        fake_vms = {'guest1': {'runtime.powerState': 'poweredOn',
+                               'config.uuid': expected_guestId}}
+        self.esx.vms = fake_vms
+
+        fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
+                     'name': expected_hostname,
+                     'parent': fake_parent,
+                     'vm': fake_vm
+                     }
+        fake_hosts = {'random-host-id': fake_host}
+        self.esx.hosts = fake_hosts
+
+        expected_result = Hypervisor(hypervisorId=expected_hypervisorId,
+                                     name=expected_hostname,
+                                     guestIds=[Guest(expected_guestId,
+                                                     self.esx,
+                                                     expected_guest_state)
+                                              ]
+                                    )
+        result = self.esx.getHostGuestMapping()['hypervisors'][0]
+        self.assertTrue(expected_result.toDict() == result.toDict())
+
+    @patch('suds.client.Client')
+    def test_getHostGuestMapping_incomplete_data(self, mock_client):
+        expected_hostname = None
+        expected_hypervisorId = 'Fake_uuid'
+        expected_guestId = 'guest1UUID'
+        expected_guest_state = Guest.STATE_UNKNOWN
+
+        fake_parent = MagicMock()
+        fake_parent.value = 'Fake_parent'
+
+        fake_vm_id = MagicMock()
+        fake_vm_id.value = 'guest1'
+
+        fake_vm = MagicMock()
+        fake_vm.ManagedObjectReference = [fake_vm_id]
+        fake_vms = {'guest1': {'runtime.powerState': 'BOGUS_STATE',
+                               'config.uuid': expected_guestId}}
+        self.esx.vms = fake_vms
+
+        fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
+                     'parent': fake_parent,
+                     'vm': fake_vm
+                     }
+        fake_hosts = {'random-host-id': fake_host}
+        self.esx.hosts = fake_hosts
+
+        expected_result = Hypervisor(hypervisorId=expected_hypervisorId,
+                                     name=expected_hostname,
+                                     guestIds=[Guest(expected_guestId,
+                                                     self.esx,
+                                                     expected_guest_state)
+                                              ]
+                                    )
+        result = self.esx.getHostGuestMapping()['hypervisors'][0]
+        self.assertTrue(expected_result.toDict() == result.toDict())
+

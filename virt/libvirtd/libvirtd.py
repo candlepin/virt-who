@@ -82,6 +82,7 @@ class Libvirtd(virt.Virt):
         self.changedCallback = None
         self.registerEvents = registerEvents
         self._host_uuid = None
+        self._host_name = None
         self.eventLoopThread = None
         libvirt.registerErrorHandler(lambda ctx, error: None, None)
 
@@ -225,8 +226,17 @@ class Libvirtd(virt.Virt):
             self._host_uuid = xml.find('host/uuid').text
         return self._host_uuid
 
+    def _remote_host_name(self):
+        if self._host_name is None:
+            xml = ElementTree.fromstring(self.virt.getCapabilities())
+            if (xml.find('host/name') is not None):
+                self._host_name = xml.find('host/name').text
+        return self._host_name
+
     def _getHostGuestMapping(self):
-        mapping = {
-            self._remote_host_uuid(): self._listDomains()
-        }
+        mapping = {'hypervisors': []}
+        host = virt.Hypervisor(hypervisorId=self._remote_host_uuid(),
+                               guestIds=self._listDomains(),
+                               name=self._remote_host_name())
+        mapping['hypervisors'].append(host)
         return mapping

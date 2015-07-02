@@ -1,5 +1,5 @@
 
-from virt import Virt, VirtError
+from virt import Virt, VirtError, Guest, Hypervisor
 
 import json
 
@@ -34,17 +34,21 @@ class FakeVirt(Virt):
         return self.config.fake_is_hypervisor
 
     def getHostGuestMapping(self):
-        assoc = {}
+        assoc = {'hypervisors': []}
         try:
             for hypervisor in self._get_data()['hypervisors']:
                 guests = []
-                assoc[hypervisor['uuid']] = guests
-                for guest in hypervisor['guests']:
-                    guests.append(guest)
+                for guest in hypervisor['guestIds']:
+                    guests.append(Guest(guest['guestId'], self, guest['state']))
+                new_host = Hypervisor(hypervisor['hypervisorId'],
+                                      guests,
+                                      hypervisor.get('name')
+                                      )
+                assoc['hypervisors'].append(new_host)
         except KeyError as e:
             raise VirtError("Fake virt file '%s' is not properly formed: %s" % (self.config.fake_file, str(e)))
         return assoc
 
     def listDomains(self):
         hypervisor = self._get_data()['hypervisors'][0]
-        return hypervisor['guests']
+        return hypervisor['guestIds']

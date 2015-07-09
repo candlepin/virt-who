@@ -459,6 +459,11 @@ class HyperV(virt.Virt):
                     HyperV.decodeWinUUID(uuid),
                     self,
                     state))
+        # Get the hostname
+        hostname = None
+        data = hypervsoap.Enumerate("select DNSHostName from Win32_ComputerSystem", "root/cimv2")
+        for instance in hypervsoap.Pull(data, "root/cimv2"):
+            hostname = instance["DNSHostName"]
 
         if self.config.hypervisor_id == 'uuid':
             uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
@@ -466,14 +471,11 @@ class HyperV(virt.Virt):
             for instance in hypervsoap.Pull(uuid, "root/cimv2"):
                 host = HyperV.decodeWinUUID(instance["UUID"])
         elif self.config.hypervisor_id == 'hostname':
-            data = hypervsoap.Enumerate("select DNSHostName from Win32_ComputerSystem", "root/cimv2")
-            for instance in hypervsoap.Pull(data, "root/cimv2"):
-                host = instance["DNSHostName"]
+            host = hostname
         else:
             raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
                                  (self.config.hypervisor_id, self.CONFIG_TYPE))
-        # TODO Add the hostname to the Hypervisor we are sending back
-        hypervisor = virt.Hypervisor(hypervisorId=host, guestIds=guests)
+        hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests)
         return {'hypervisors': [hypervisor]}
 
     def ping(self):

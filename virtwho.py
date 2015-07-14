@@ -106,6 +106,9 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         self.queue = None
+        # How long should we wait for new item in queue, it depends on
+        # jobs we have and how long we have them
+        self.queue_timeout = None
         # a heap to manage the jobs we have incoming
         self.jobs = []
         self.reloading = False
@@ -135,7 +138,10 @@ class VirtWho(object):
         for job in jobsToRun:
             if hasattr(self, job.target):
                 self.logger.debug('Running method "%s"' % job.target)
-                getattr(self, job.target)(*job.args)
+                try:
+                    getattr(self, job.target)(*job.args)
+                except Exception:
+                    self.logger.exception("Job %s failed:")
             else:
                 self.logger.debug('VirtWho has no method "%s"' % job.target)
 
@@ -220,7 +226,7 @@ class VirtWho(object):
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             try:
-                report = self.queue.get(block=True, timeout=None)
+                report = self.queue.get(block=True, timeout=self.queue_timeout)
             except Empty:
                 report = None
                 pass
@@ -231,14 +237,24 @@ class VirtWho(object):
                 # Run all jobs that have been queued as a result of sending last
                 # time
                 self.runJobs()
+                if self.jobs:
+                    # We have jobs, check them after some timeout,
+                    # increase the timeout each time
+                    self.queue_timeout *= 2
+                else:
+                    # Wait indefinetly long for new item in the queue
+                    self.queue_timeout = None
+
+                if self.options.oneshot and not oneshot_remaining:
+                    break
             except Empty:
                 pass
             except IOError:
                 pass
 
-            # FIXME Not sure about how to integrate this into the new jobs
-            # scheme of things
             if report is not None:
+                # We got new item in the queue, reset timeout for checking job status
+                self.queue_timeout = 1
                 if report == "exit":
                     break
                 if report == "reload":
@@ -269,7 +285,7 @@ class VirtWho(object):
                                 virt.stop()
                     except KeyError:
                         self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
-                    if not oneshot_remaining:
+                    if not oneshot_remaining and not self.jobs:
                         break
 
         self.queue = None

@@ -176,8 +176,9 @@ class SubscriptionManager(Manager):
         self.logger.debug('Checking status of job %s' % job_id)
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':
-            # This will cause virtwho to do this again in 10 seconds
+            # This will cause virtwho to do this again later
             self.addJob(('checkJobStatus', [config, result['id']]))
+            self.logger.debug('Job %s not finished, rescheduling' % job_id)
         else:
             # log completed job status
             # TODO Make this its own method inside a class

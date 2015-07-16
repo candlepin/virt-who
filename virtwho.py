@@ -141,7 +141,7 @@ class VirtWho(object):
                 try:
                     getattr(self, job.target)(*job.args)
                 except Exception:
-                    self.logger.exception("Job %s failed:")
+                    self.logger.exception("Job failed:")
             else:
                 self.logger.debug('VirtWho has no method "%s"' % job.target)
 
@@ -285,6 +285,7 @@ class VirtWho(object):
                                 virt.stop()
                     except KeyError:
                         self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
+
                     if not oneshot_remaining and not self.jobs:
                         break
 

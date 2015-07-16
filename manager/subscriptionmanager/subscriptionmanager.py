@@ -184,8 +184,9 @@ class SubscriptionManager(Manager):
             # TODO Make this its own method inside a class
             # representing a status object
             resultData = result['resultData']
-            for fail in resultData['failedUpdate']:
-                self.logger.error("Error during update list of guests: %s", str(fail))
+            if 'failedUpdate' in resultData:
+                for fail in resultData['failedUpdate']:
+                    self.logger.error("Error during update list of guests: %s", str(fail))
             for updated in resultData['updated']:
                 guests = [x['guestId'] for x in updated['guestIds']]
                 self.logger.info("Updated host %s with guests: [%s]",

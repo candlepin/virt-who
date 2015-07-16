@@ -245,7 +245,7 @@ class VirtWho(object):
                     # Wait indefinetly long for new item in the queue
                     self.queue_timeout = None
 
-                if self.options.oneshot and not oneshot_remaining:
+                if self.options.oneshot and not oneshot_remaining and not self.jobs:
                     break
             except Empty:
                 pass

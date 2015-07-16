@@ -669,7 +669,7 @@ def _main(virtWho):
         for config, report in result.items():
             if isinstance(report, DomainListReport):
                 hypervisors.append({
-                    'guests': report.guests
+                    'guests': [guest.toDict() for guest in report.guests]
                 })
             elif isinstance(report, HostGuestAssociationReport):
                 for hypervisor in report.association['hypervisors']:

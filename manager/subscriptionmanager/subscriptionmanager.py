@@ -167,6 +167,11 @@ class SubscriptionManager(Manager):
             result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.ConnectionException as e:
+            self.logger.exception("Communication with server failed:")
+            if hasattr(e, 'code') and e.code >= 500:
+                raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
+            raise ManagerError("Communication with subscription manager failed: %s" % str(e))
         if (is_async is True and self.addJob is not None):
             self.addJob(('checkJobStatus', [config, result['id']]))
         return result

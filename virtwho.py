@@ -85,6 +85,8 @@ class OptionParserEpilog(OptionParser):
 RetryInterval = 60  # One minute
 # Default interval for sending list of UUIDs
 DefaultInterval = 3600  # Once per hour
+# How many times it should try to report association to the server
+RetrySendCount = 5
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -160,6 +162,7 @@ class VirtWho(object):
                 self.logger.warn("Unable to handle report of type: %s", type(report))
         except ManagerError as e:
             self.logger.error("Unable to send data: %s" % str(e))
+            return False
         except ManagerFatalError as e:
             # Something really bad happened (system is not register), stop the backends
             self.logger.exception("Error in communication with subscription manager:")
@@ -265,13 +268,17 @@ class VirtWho(object):
 
                 # Send the report
                 if not self.options.print_ and not isinstance(report, ErrorReport):
-                    try:
-                        self.send(report)
-                    except ManagerFatalError:
-                        # System not register (probably), stop the backends
-                        for virt in self.virts:
-                            virt.terminate()
-                        self.virts = []
+                    for i in range(RetrySendCount):
+                        try:
+                            if self.send(report):
+                                break
+                        except ManagerFatalError:
+                            # System not register (probably), stop the backends
+                            for virt in self.virts:
+                                virt.terminate()
+                            self.virts = []
+                    else:
+                        self.logger.error("Sending data failed %d times, report skipped", RetrySendCount)
 
                 if self.options.oneshot:
                     try:

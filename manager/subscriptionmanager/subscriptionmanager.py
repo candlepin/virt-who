@@ -145,8 +145,11 @@ class SubscriptionManager(Manager):
         self._connect(config)
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
         is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
+        if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
+            self.logger.info("Async reports are supported but explicitly disabled")
+            is_async = False
 
-        if (is_async is True):
+        if is_async:
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
             serialized_mapping = {'hypervisors':[h.toDict() for h in mapping['hypervisors']]}

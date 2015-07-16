@@ -74,9 +74,10 @@ class TestSubscriptionManager(TestManager):
 
         create_from_file.return_value.cert_uuid = {'CN': 'Test'}
         connection.return_value = MagicMock()
+        connection.return_value.has_capability = MagicMock(return_value=False)
 
-    @patch("rhsm.certificate.create_from_file")
     @patch("rhsm.connection.UEPConnection")
+    @patch("rhsm.certificate.create_from_file")
     def test_sendVirtGuests(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
         manager = Manager.fromOptions(self.logger, self.options)
@@ -85,8 +86,8 @@ class TestSubscriptionManager(TestManager):
                 ANY,
                 guest_uuids=[guest.toDict() for guest in self.guestInfo])
 
-    @patch("rhsm.certificate.create_from_file")
     @patch("rhsm.connection.UEPConnection")
+    @patch("rhsm.certificate.create_from_file")
     def test_hypervisorCheckIn(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
         manager = Manager.fromOptions(self.logger, self.options)

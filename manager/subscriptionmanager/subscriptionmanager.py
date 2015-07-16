@@ -133,7 +133,7 @@ class SubscriptionManager(Manager):
         guests.sort(key=lambda item: item.uuid)
 
         serialized_guests = [guest.toDict() for guest in guests]
-        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4, sort_keys=True))
+        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4))
 
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
@@ -162,7 +162,7 @@ class SubscriptionManager(Manager):
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4))
         try:
             result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:

@@ -68,6 +68,7 @@ class Esx(virt.Virt):
         self._prepare()
 
         version = ''
+        last_version = 'last_version'  # Bogus value so version != last_version from the start
         self.hosts = defaultdict(Host)
         self.vms = defaultdict(VM)
         start_time = end_time = time()
@@ -131,8 +132,10 @@ class Esx(virt.Virt):
             if hasattr(updateSet, 'truncated') and updateSet.truncated:
                 continue
 
-            assoc = self.getHostGuestMapping()
-            self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
+            if last_version != version:
+                assoc = self.getHostGuestMapping()
+                self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
+                last_version = version
 
             end_time = time()
 

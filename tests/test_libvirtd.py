@@ -121,4 +121,3 @@ class TestLibvirtd(TestBase):
         result = queue.get(True)
         for host in result.association['hypervisors']:
             self.assertTrue(host.name is None)
-

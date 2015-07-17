@@ -214,14 +214,13 @@ class TestJobs(TestBase):
 
 
 class TestSend(TestBase):
-    def test_send_same_twice(self):
+    @patch('manager.Manager.fromOptions')
+    def test_send_same_twice(self, fromOptions):
         options = Mock()
         options.interval = 0
         options.oneshot = True
         options._print = False
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
-        virtwho._sendGuestList = Mock()
-        virtwho._sendGuestAssociation = Mock()
 
         config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner','env')
         config2 = Config('test2', 'esx', 'localhost', 'username', 'password', 'owner', 'env')

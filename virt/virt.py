@@ -23,6 +23,8 @@ import time
 import logging
 from datetime import datetime
 from multiprocessing import Process, Event
+import json
+import hashlib
 
 
 class VirtError(Exception):
@@ -110,6 +112,10 @@ class Hypervisor(object):
 
     def __str__(self):
         return str(self.toDict())
+
+    def getHash(self):
+        sortedRepresentation = json.dumps(self.toDict(), sort_keys=True)
+        return hashlib.md5(sortedRepresentation).hexdigest()
 
 
 class AbstractVirtReport(object):

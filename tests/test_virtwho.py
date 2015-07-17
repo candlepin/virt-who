@@ -212,3 +212,28 @@ class TestJobs(TestBase):
         virtwho.addJob(test_job_tuple)
         virtwho.run()
         virtwho.send.assert_called_with(fake_report)
+
+
+class TestSend(TestBase):
+    def test_send_same_twice(self):
+        options = Mock()
+        options.interval = 0
+        options.oneshot = True
+        options._print = False
+        virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
+        virtwho._sendGuestList = Mock()
+        virtwho._sendGuestAssociation = Mock()
+
+        config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner','env')
+        config2 = Config('test2', 'esx', 'localhost', 'username', 'password', 'owner', 'env')
+        fake_virt = Mock()
+        fake_virt.CONFIG_TYPE = 'esx'
+        test_hypervisor = Hypervisor('test', guestIds=[Guest('guest1', fake_virt, 1)])
+        assoc = {'hypervisors': [test_hypervisor]}
+        fake_report = HostGuestAssociationReport(config, assoc)
+        virtwho.configManager.addConfig(config)
+        virtwho.configManager.addConfig(config2)
+
+        self.assertTrue(virtwho.send(fake_report))
+        # if the report is the same we should not send it
+        self.assertFalse(virtwho.send(fake_report))

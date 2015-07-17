@@ -111,6 +111,8 @@ class VirtWho(object):
         self.queue = None
         # a heap to manage the jobs we have incoming
         self.jobs = []
+        # A dictionary of reports previously sent
+        self.reports = {}
         self.reloading = False
 
         self.configManager = ConfigManager(config_dir)
@@ -148,6 +150,10 @@ class VirtWho(object):
 
         return - True if sending is successful, False otherwise
         """
+        self.logger.debug('REPORTS GET: %s' % self.reports)
+        if (hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash)):
+            self.logger.debug('Got a duplicate report, refusing to send')
+            return False
         try:
             if isinstance(report, DomainListReport):
                 self._sendGuestList(report)
@@ -176,6 +182,7 @@ class VirtWho(object):
         manager = Manager.fromOptions(self.logger, self.options)
         manager.sendVirtGuests(report.guests)
         self.logger.info("virt-who guest list update successful")
+        self.reports[report.config.hash] = report.hash
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
@@ -183,13 +190,15 @@ class VirtWho(object):
         result = manager.hypervisorCheckIn(report.config,
                                            report.association,
                                            report.config.type)
+        self.reports[report.config.hash] = report.hash
 
     def checkJobStatus(self, config, job_id):
         manager = SubscriptionManager(self.logger, self.options, self.addJob)
         result = manager.checkJobStatus(config, job_id)
 
-        if not result['failedUpdate']:
+        if not result.get('failedUpdate'):
             self.logger.info("virt-who host/guest association update successful")
+
 
     def run(self):
         self.reloading = False

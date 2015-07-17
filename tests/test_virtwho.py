@@ -27,10 +27,8 @@ from mock import patch, Mock
 
 from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
-from virt import VirtError, HostGuestAssociationReport
-from manager import ManagerError
-from multiprocessing import Process
-from threading import Timer
+from virt import HostGuestAssociationReport, Hypervisor, Guest
+
 
 class TestOptions(TestBase):
     def setUp(self):
@@ -177,6 +175,7 @@ class TestOptions(TestBase):
         fromConfig.assert_called_with(self.logger, config)
         self.assertTrue(fromConfig.return_value.start.called)
         fromOptions.assert_called_with(self.logger, options)
+
 
 class TestJobs(TestBase):
     def setupVirtWho(self, oneshot=True):

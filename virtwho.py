@@ -150,7 +150,6 @@ class VirtWho(object):
 
         return - True if sending is successful, False otherwise
         """
-        self.logger.debug('REPORTS GET: %s' % self.reports)
         if (hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash)):
             self.logger.debug('Got a duplicate report, refusing to send')
             return False

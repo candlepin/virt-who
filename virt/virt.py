@@ -149,6 +149,10 @@ class DomainListReport(AbstractVirtReport):
     def guests(self):
         return self._guests
 
+    @property
+    def hash(self):
+        return hashlib.md5(json.dumps([g.toDict() for g in self.guests], sort_keys=True)).hexdigest()
+
 
 class HostGuestAssociationReport(AbstractVirtReport):
     '''
@@ -172,6 +176,14 @@ class HostGuestAssociationReport(AbstractVirtReport):
                 continue
             assoc[host] = guests
         return assoc
+
+    @property
+    def serializedAssociation(self):
+        return {'hypervisors':[h.toDict() for h in self.association['hypervisors']]}
+
+    @property
+    def hash(self):
+        return hashlib.md5(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
 
 
 class HypervisorInfoReport(AbstractVirtReport):

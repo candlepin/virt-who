@@ -26,6 +26,12 @@ from multiprocessing import Process, Event
 import json
 import hashlib
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6 doesn't have OrderedDict, we need to have our own
+    from util import OrderedDict
+
 
 class VirtError(Exception):
     pass
@@ -65,14 +71,14 @@ class Guest(object):
         self.state = state
 
     def toDict(self):
-        d = {
-            'guestId': self.uuid,
-            'attributes': {
+        d = OrderedDict((
+            ('guestId', self.uuid),
+            ('state', self.state),
+            ('attributes', {
                 'virtWhoType': self.virtWhoType,
                 'active': 1 if self.state == self.STATE_RUNNING else 0
-            },
-            'state': self.state
-        }
+            }),
+        ))
 
         if self.hypervisorType is not None:
             d['attributes']['hypervisorType'] = self.hypervisorType
@@ -100,12 +106,13 @@ class Hypervisor(object):
 
 
     def toDict(self):
-        d = {
-            'hypervisorId': {'hypervisorId': self.hypervisorId},
-            'guestIds': [g.toDict() for g in self.guestIds]
-        }
-        if self.name is not None:
-            d['name'] = self.name
+        d = OrderedDict((
+            ('hypervisorId', {'hypervisorId': self.hypervisorId}),
+            ('name', self.name),
+            ('guestIds', [g.toDict() for g in self.guestIds])
+        ))
+        if self.name is None:
+            del d['name']
         if self.facts is not None:
             d['facts'] = self.facts
         return d

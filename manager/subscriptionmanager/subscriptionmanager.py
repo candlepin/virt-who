@@ -133,7 +133,7 @@ class SubscriptionManager(Manager):
         guests.sort(key=lambda item: item.uuid)
 
         serialized_guests = [guest.toDict() for guest in guests]
-        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4, sort_keys=True))
+        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4))
 
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
@@ -145,8 +145,11 @@ class SubscriptionManager(Manager):
         self._connect(config)
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
         is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
+        if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
+            self.logger.info("Async reports are supported but explicitly disabled")
+            is_async = False
 
-        if (is_async is True):
+        if is_async:
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
             serialized_mapping = {'hypervisors':[h.toDict() for h in mapping['hypervisors']]}
@@ -159,29 +162,36 @@ class SubscriptionManager(Manager):
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4, sort_keys=True))
+        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4))
         try:
             result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.ConnectionException as e:
+            self.logger.exception("Communication with server failed:")
+            if hasattr(e, 'code') and e.code >= 500:
+                raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
+            raise ManagerError("Communication with subscription manager failed: %s" % str(e))
         if (is_async is True and self.addJob is not None):
             self.addJob(('checkJobStatus', [config, result['id']]))
         return result
 
     def checkJobStatus(self, config, job_id):
         self._connect(config)
-        self.logger.debug('checking job status\nJob ID: %s' % job_id)
+        self.logger.debug('Checking status of job %s' % job_id)
         result = self.connection.getJob(job_id)
         if result['state'] != 'FINISHED':
-            # This will cause virtwho to do this again in 10 seconds
+            # This will cause virtwho to do this again later
             self.addJob(('checkJobStatus', [config, result['id']]))
+            self.logger.debug('Job %s not finished, rescheduling' % job_id)
         else:
             # log completed job status
             # TODO Make this its own method inside a class
             # representing a status object
             resultData = result['resultData']
-            for fail in resultData['failedUpdate']:
-                self.logger.error("Error during update list of guests: %s", str(fail))
+            if 'failedUpdate' in resultData:
+                for fail in resultData['failedUpdate']:
+                    self.logger.error("Error during update list of guests: %s", str(fail))
             for updated in resultData['updated']:
                 guests = [x['guestId'] for x in updated['guestIds']]
                 self.logger.info("Updated host %s with guests: [%s]",

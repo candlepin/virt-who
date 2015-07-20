@@ -175,27 +175,26 @@ class Esx(virt.Virt):
             except KeyError:
                 self.logger.debug("Host '%s' doesn't have hypervisor_id property" % host_id)
                 continue
-            if not host['vm']:
-                continue
-            for vm_id in host['vm'].ManagedObjectReference:
-                if vm_id.value not in self.vms:
-                    self.logger.debug("Host '%s' references non-existing guest '%s'" % (host_id, vm_id.value))
-                    continue
-                vm = self.vms[vm_id.value]
-                if 'config.uuid' not in vm:
-                    self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
-                    continue
-                state = virt.Guest.STATE_UNKNOWN
-                try:
-                    if vm['runtime.powerState'] == 'poweredOn':
-                        state = virt.Guest.STATE_RUNNING
-                    elif vm['runtime.powerState'] == 'suspended':
-                        state = virt.Guest.STATE_PAUSED
-                    elif vm['runtime.powerState'] == 'poweredOff':
-                        state = virt.Guest.STATE_SHUTOFF
-                except KeyError:
-                    self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
-                guests.append(virt.Guest(vm['config.uuid'], self, state))
+            if host['vm']:
+                for vm_id in host['vm'].ManagedObjectReference:
+                    if vm_id.value not in self.vms:
+                        self.logger.debug("Host '%s' references non-existing guest '%s'" % (host_id, vm_id.value))
+                        continue
+                    vm = self.vms[vm_id.value]
+                    if 'config.uuid' not in vm:
+                        self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
+                        continue
+                    state = virt.Guest.STATE_UNKNOWN
+                    try:
+                        if vm['runtime.powerState'] == 'poweredOn':
+                            state = virt.Guest.STATE_RUNNING
+                        elif vm['runtime.powerState'] == 'suspended':
+                            state = virt.Guest.STATE_PAUSED
+                        elif vm['runtime.powerState'] == 'poweredOff':
+                            state = virt.Guest.STATE_SHUTOFF
+                    except KeyError:
+                        self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
+                    guests.append(virt.Guest(vm['config.uuid'], self, state))
             mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host.get('name', None)))
         return mapping
 

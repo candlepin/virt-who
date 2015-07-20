@@ -81,13 +81,13 @@ class OptionParserEpilog(OptionParser):
         else:
             return ""
 
-# Default interval to retry after unsuccessful run
-RetryInterval = 60 # One minute
-
-# Default interval for compiling list of UUIDs.
-# It will not be posible to set the interval less than this value
 # Change detection will limit the sending if no changes exist
-DefaultInterval = 600  # Every ten minutes
+RetryInterval = 60  # One minute
+# Default interval for sending list of UUIDs
+DefaultInterval = 3600  # Once per hour
+MinimumSendInterval = 600  # Ten minutes
+# How many times it should try to report association to the server
+RetrySendCount = 5
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -109,6 +109,9 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         self.queue = None
+        # How long should we wait for new item in queue, it depends on
+        # jobs we have and how long we have them
+        self.queue_timeout = None
         # a heap to manage the jobs we have incoming
         self.jobs = []
         # A dictionary of reports previously sent
@@ -140,7 +143,10 @@ class VirtWho(object):
         for job in jobsToRun:
             if hasattr(self, job.target):
                 self.logger.debug('Running method "%s"' % job.target)
-                getattr(self, job.target)(*job.args)
+                try:
+                    getattr(self, job.target)(*job.args)
+                except Exception:
+                    self.logger.exception("Job failed:")
             else:
                 self.logger.debug('VirtWho has no method "%s"' % job.target)
 
@@ -150,9 +156,6 @@ class VirtWho(object):
 
         return - True if sending is successful, False otherwise
         """
-        if (hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash)):
-            self.logger.debug('Got a duplicate report, refusing to send')
-            return False
         try:
             if isinstance(report, DomainListReport):
                 self._sendGuestList(report)
@@ -162,6 +165,7 @@ class VirtWho(object):
                 self.logger.warn("Unable to handle report of type: %s", type(report))
         except ManagerError as e:
             self.logger.error("Unable to send data: %s" % str(e))
+            return False
         except ManagerFatalError as e:
             # Something really bad happened (system is not register), stop the backends
             self.logger.exception("Error in communication with subscription manager:")
@@ -195,9 +199,8 @@ class VirtWho(object):
         manager = SubscriptionManager(self.logger, self.options, self.addJob)
         result = manager.checkJobStatus(config, job_id)
 
-        if not result.get('failedUpdate'):
+        if 'failedUpdate' in result and not result['failedUpdate']:
             self.logger.info("virt-who host/guest association update successful")
-
 
     def run(self):
         self.reloading = False
@@ -231,7 +234,7 @@ class VirtWho(object):
         while not self.terminate_event.is_set():
             # Wait for incoming report from virt backend
             try:
-                report = self.queue.get(block=True, timeout=None)
+                report = self.queue.get(block=True, timeout=self.queue_timeout)
             except Empty:
                 report = None
                 pass
@@ -242,14 +245,24 @@ class VirtWho(object):
                 # Run all jobs that have been queued as a result of sending last
                 # time
                 self.runJobs()
+                if self.jobs:
+                    # We have jobs, check them after some timeout,
+                    # increase the timeout each time
+                    self.queue_timeout *= 2
+                else:
+                    # Wait indefinetly long for new item in the queue
+                    self.queue_timeout = None
+
+                if self.options.oneshot and not oneshot_remaining and not self.jobs:
+                    break
             except Empty:
                 pass
             except IOError:
                 pass
 
-            # FIXME Not sure about how to integrate this into the new jobs
-            # scheme of things
             if report is not None:
+                # We got new item in the queue, reset timeout for checking job status
+                self.queue_timeout = 1
                 if report == "exit":
                     break
                 if report == "reload":
@@ -260,13 +273,22 @@ class VirtWho(object):
 
                 # Send the report
                 if not self.options.print_ and not isinstance(report, ErrorReport):
-                    try:
-                        self.send(report)
-                    except ManagerFatalError:
-                        # System not register (probably), stop the backends
-                        for virt in self.virts:
-                            virt.terminate()
-                        self.virts = []
+                    for i in range(RetrySendCount):
+                        try:
+                            # Do not send if the report hash is already in the
+                            # list of reports sent
+                            if hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash):
+                                self.logger.info('No changes detected, report not sent.')
+                                break
+                            if self.send(report):
+                                break
+                        except ManagerFatalError:
+                            # System not register (probably), stop the backends
+                            for virt in self.virts:
+                                virt.terminate()
+                            self.virts = []
+                    else:
+                        self.logger.error("Sending data failed %d times, report skipped", RetrySendCount)
 
                 if self.options.oneshot:
                     try:
@@ -280,7 +302,8 @@ class VirtWho(object):
                                 virt.stop()
                     except KeyError:
                         self.logger.debug("Association for config %s already gathered, ignoring" % report.config.name)
-                    if not oneshot_remaining:
+
+                    if not oneshot_remaining and not self.jobs:
                         break
 
         self.queue = None
@@ -539,12 +562,12 @@ def parseOptions():
             logger.error("Interval doesn't make sense in oneshot mode, ignoring")
 
     else:
-        if options.interval < DefaultInterval:
+        if options.interval < MinimumSendInterval:
             if options.interval == 0:
                 logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
             else:
-                logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(DefaultInterval))
-            options.interval = DefaultInterval
+                logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))
+            options.interval = MinimumSendInterval
 
     return (logger, options)
 
@@ -664,7 +687,7 @@ def _main(virtWho):
         for config, report in result.items():
             if isinstance(report, DomainListReport):
                 hypervisors.append({
-                    'guests': report.guests
+                    'guests': [guest.toDict() for guest in report.guests]
                 })
             elif isinstance(report, HostGuestAssociationReport):
                 for hypervisor in report.association['hypervisors']:

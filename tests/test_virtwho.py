@@ -27,7 +27,8 @@ from mock import patch, Mock
 
 from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
-from virt import HostGuestAssociationReport, Hypervisor, Guest
+from virt import HostGuestAssociationReport, Hypervisor, Guest, DomainListReport
+from multiprocessing import Queue
 
 
 class TestOptions(TestBase):
@@ -214,24 +215,86 @@ class TestJobs(TestBase):
 
 
 class TestSend(TestBase):
+    def setUp(self):
+        self.config = Config('config', 'esx', 'localhost', 'username', 'password', 'owner','env')
+        self.second_config = Config('second_config', 'esx', 'localhost', 'username', 'password', 'owner','env')
+        fake_virt = Mock()
+        fake_virt.CONFIG_TYPE = 'esx'
+        guests = [Guest('guest1', fake_virt, 1)]
+        test_hypervisor = Hypervisor('test', guestIds=[Guest('guest1', fake_virt, 1)])
+        assoc = {'hypervisors': [test_hypervisor]}
+        self.fake_domain_list = DomainListReport(self.second_config, guests)
+        self.fake_report = HostGuestAssociationReport(self.config, assoc)
+
     @patch('manager.Manager.fromOptions')
-    def test_send_same_twice(self, fromOptions):
+    @patch('virt.Virt.fromConfig')
+    def test_report_hash_added_after_send(self, fromConfig, fromOptions):
+        # Side effect for fromConfig
+        def fake_virts(logger, config):
+            new_fake_virt = Mock()
+            new_fake_virt.config.name = config.name
+            return new_fake_virt
+
+        fromConfig.side_effect = fake_virts
         options = Mock()
         options.interval = 0
         options.oneshot = True
-        options._print = False
+        options.print_ = False
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
+        virtwho.send = Mock(wraps=virtwho.send)
+        queue = Queue()
+        virtwho.queue = queue
+        virtwho.configManager.addConfig(self.config)
+        virtwho.configManager.addConfig(self.second_config)
+        queue.put(self.fake_report)
+        queue.put(self.fake_domain_list)
+        virtwho.run()
 
-        config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner','env')
-        config2 = Config('test2', 'esx', 'localhost', 'username', 'password', 'owner', 'env')
-        fake_virt = Mock()
-        fake_virt.CONFIG_TYPE = 'esx'
-        test_hypervisor = Hypervisor('test', guestIds=[Guest('guest1', fake_virt, 1)])
-        assoc = {'hypervisors': [test_hypervisor]}
-        fake_report = HostGuestAssociationReport(config, assoc)
-        virtwho.configManager.addConfig(config)
-        virtwho.configManager.addConfig(config2)
+        self.assertEquals(virtwho.send.call_count, 2)
+        self.assertTrue(virtwho.reports[self.config.hash] == self.fake_report.hash)
+        self.assertTrue(virtwho.reports[self.second_config.hash] == self.fake_domain_list.hash)
 
-        self.assertTrue(virtwho.send(fake_report))
-        # if the report is the same we should not send it
-        self.assertFalse(virtwho.send(fake_report))
+    @patch('manager.Manager.fromOptions')
+    @patch('virt.Virt.fromConfig')
+    def test_refusal_to_send_same_hash(self, fromConfig, fromOptions):
+        options = Mock()
+        options.interval = 0
+        options.oneshot = True
+        options.print_ = False
+        virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
+        virtwho.send = Mock(wraps=virtwho.send)
+        queue = Queue()
+        virtwho.queue = queue
+        virtwho.configManager.addConfig(self.config)
+        fromConfig.return_value.config.name = self.config.name
+        virtwho.reports[self.config.hash] = self.fake_report.hash
+        queue.put(self.fake_report)
+        virtwho.run()
+        # if we already have sent the report we should not try to send it again
+        self.assertEquals(virtwho.send.call_count, 0)
+
+    @patch('manager.Manager.fromOptions')
+    @patch('virt.Virt.fromConfig')
+    def test_reports_unchanged_on_exception(self, fromConfig, fromOptions):
+        options = Mock()
+        options.interval = 0
+        options.oneshot = True
+        options.print_ = False
+        def raiseException():
+            raise Exception
+
+        virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
+        virtwho.send = Mock(wraps=virtwho.send)
+        virtwho._sendGuestAssociation = Mock(wraps=virtwho._sendGuestAssociation,
+                                             side_effect=raiseException)
+        virtwho._sendGuestList = Mock(wraps=virtwho._sendGuestList,
+                                      side_effect=raiseException)
+        queue = Queue()
+        virtwho.queue = queue
+        queue.put(self.fake_report)
+        virtwho.configManager.addConfig(self.config)
+        fromConfig.return_value.config.name = self.config.name
+        virtwho.run()
+        self.assertFalse(virtwho.reports)
+
+

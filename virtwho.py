@@ -341,6 +341,7 @@ class VirtWho(object):
 
     def reload(self):
         self.logger.warn("virt-who reload")
+        self.reports = {}
         # clear the queue and put "reload" there
         try:
             while True:

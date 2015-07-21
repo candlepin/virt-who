@@ -278,7 +278,7 @@ class VirtWho(object):
                             # Do not send if the report hash is already in the
                             # list of reports sent
                             if hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash):
-                                self.logger.info('No changes detected, report not sent.')
+                                self.logger.info('No change in report gathered using config: "%s", report not sent.', report.config.name)
                                 break
                             if self.send(report):
                                 break

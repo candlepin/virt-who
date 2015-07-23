@@ -23,6 +23,11 @@ import logging
 import logging.handlers
 import os
 import sys
+import json
+from Queue import Empty
+from multiprocessing import Queue
+from threading import Thread, Event
+from util import decode
 
 FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
 STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
@@ -33,6 +38,65 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                 "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
+
+
+class QueueHandler(logging.Handler):
+    """
+    A handler that will write logrecords to a queue (Queue or multiprocessing.Queue)
+    For use in logging in situations involving multiple processes
+    """
+    def __init__(self, queue, level=logging.NOTSET):
+        super(QueueHandler, self).__init__(level)
+        self._queue = queue
+
+    def prepare(self, record):
+        """
+        Prepares the record to be placed on the queue
+        """
+        return json.dumps(record.__dict__)
+
+    def emit(self, record):
+        self._queue.put_nowait(self.prepare(record))
+
+
+class QueueLogger(object):
+    """
+    A threaded logger reading objects off a queue
+    """
+    def __init__(self, logger, queue=None):
+        self.logger = logger
+        self.queue = queue or Queue()
+        self.terminate_event = Event()
+        self._logging_thread = Thread(target=QueueLogger._log,
+                                      args=(self.logger,
+                                            self.queue))
+
+    @staticmethod
+    def _log(logger, queue):
+        exit = False
+        while not exit:
+            record = None
+            try:
+                record = queue.get()
+            except Empty:
+                return
+            if record:
+                logger.handle(QueueLogger.prepare(record))
+            else:
+                exit = True
+
+    def start_logging(self):
+        self._logging_thread.start()
+
+    def terminate(self):
+        self.queue.put_nowait(None)
+        self._logging_thread.join()
+        self._logging_thread = None
+
+    @staticmethod
+    def prepare(record):
+        return logging.makeLogRecord(json.loads(record, object_hook=decode))
+
 def getLogger(debug, background):
     logger = logging.getLogger("virtwho")
     logger.propagate = False
@@ -49,7 +113,8 @@ def getLogger(debug, background):
     # Try to write to /var/log, fallback on console logging:
     try:
         fileHandler = logging.handlers.WatchedFileHandler(path)
-        fileHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
+        fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT))
+        fileHandler.addFilter(logging.Filter('virtwho'))
         if debug:
             fileHandler.setLevel(logging.DEBUG)
         else:

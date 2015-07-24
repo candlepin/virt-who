@@ -23,6 +23,7 @@ import logging
 import logging.handlers
 import os
 import sys
+import util
 
 FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
 STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
@@ -33,23 +34,35 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                 "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
-LOG_DIR = '/var/log/virtwho'
+DEFAULT_LOG_DIR = '/var/log/virtwho'
 
-def getLogger(debug=False, background=False, name=None):
-    if name:
-        logger = logging.getLogger("virtwho." + ''.join(name.split('.')))
-        path = os.path.join(LOG_DIR, 'virtwho-%s.log')
+def getLogger(debug=False, background=False, config=None):
+    log_file = 'virtwho.log'
+    log_dir = DEFAULT_LOG_DIR
+    # if we have a config we will create a logger for that virt backend
+    if config:
+        logger = logging.getLogger("virtwho." + ''.join(config.name.split('.')))
+        if config.log_file:
+            log_file = config.log_file
+        elif not config.log_dir:
+            log_file = 'virtwho_%s.log' % util.clean_filename(config.name)
+        else:
+            log_file = '%s.log' % util.clean_filename(config.name)
+
+        if config.log_dir:
+            log_dir = config.log_dir
     else:
         logger = logging.getLogger("virtwho")
-        path = os.path.join(LOG_DIR, 'virtwho.log')
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
 
+    path = os.path.join(log_dir, log_file)
+
     try:
-        if not os.path.isdir(LOG_DIR):
-            os.mkdir(LOG_DIR)
+        if not os.path.isdir(log_dir):
+            os.mkdir(log_dir)
     except Exception as e:
-        sys.stderr.write("Unable to create %s directory: %s" % (LOG_DIR, str(e)))
+        sys.stderr.write("Unable to create %s directory: %s" % (log_dir, str(e)))
 
     # Try to write to /var/log, fallback on console logging:
     try:

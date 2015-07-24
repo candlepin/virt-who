@@ -210,7 +210,10 @@ class VirtWho(object):
         self.virts = []
         for config in self.configManager.configs:
             try:
-                virt = Virt.fromConfig(self.logger, config)
+                logger = log.getLogger(self.options.debug,
+                                       self.options.background,
+                                       config)
+                virt = Virt.fromConfig(logger, config)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
                 continue
@@ -343,7 +346,8 @@ class VirtWho(object):
     def getMapping(self):
         mapping = {}
         for config in self.configManager.configs:
-            virt = Virt.fromConfig(self.logger, config)
+            logger = log.getLogger(options.debug, options.background, config)
+            virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping
 

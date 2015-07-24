@@ -33,18 +33,23 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                 "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
-def getLogger(debug, background):
-    logger = logging.getLogger("virtwho")
+LOG_DIR = '/var/log/virtwho'
+
+def getLogger(debug=False, background=False, name=None):
+    if name:
+        logger = logging.getLogger("virtwho." + ''.join(name.split('.')))
+        path = os.path.join(LOG_DIR, 'virtwho-%s.log')
+    else:
+        logger = logging.getLogger("virtwho")
+        path = os.path.join(LOG_DIR, 'virtwho.log')
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
 
-    logdir = '/var/log/rhsm'
-    path = os.path.join(logdir, 'virtwho.log')
     try:
-        if not os.path.isdir(logdir):
-            os.mkdir(logdir)
+        if not os.path.isdir(LOG_DIR):
+            os.mkdir(LOG_DIR)
     except Exception as e:
-        sys.stderr.write("Unable to create %s directory: %s" % (logdir, str(e)))
+        sys.stderr.write("Unable to create %s directory: %s" % (LOG_DIR, str(e)))
 
     # Try to write to /var/log, fallback on console logging:
     try:

@@ -174,7 +174,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
     def association(self):
         # Apply filter
         assoc = {}
-        logger = logging.getLogger("rhsm-app")
+        logger = logging.getLogger("virtwho")
         for host, guests in self._assoc.items():
             if self._config.exclude_host_uuids is not None and host.hypervisorId in self._config.exclude_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is excluded" % host)

@@ -487,7 +487,7 @@ if __name__ == '__main__':
         sys.exit(0)
 
     import logging
-    logger = logging.Logger("")
+    logger = logging.Logger("virtwho.hyperv.main")
     logger.addHandler(logging.StreamHandler())
     from config import Config
     config = Config('test', 'hyperv', sys.argv[1], sys.argv[2], sys.argv[3])

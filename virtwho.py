@@ -38,6 +38,8 @@ from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
 
 import log
+from log import QueueLogger, QueueHandler
+import logging
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
@@ -125,6 +127,9 @@ class VirtWho(object):
         self.unableToRecoverStr = "Unable to recover"
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
+
+        self.queue_logger = QueueLogger(self.logger)
+        self.queue_logger.start_logging()
 
     def addJob(self, job):
         # Add a job to be executed next time we have a report to send
@@ -215,7 +220,11 @@ class VirtWho(object):
         self.virts = []
         for config in self.configManager.configs:
             try:
-                virt = Virt.fromConfig(self.logger, config)
+                logger = logging.getLogger('virtwho.' + config.name)
+                queueHandler = QueueHandler(self.queue_logger.queue, self.logger.getEffectiveLevel())
+                logger.addHandler(queueHandler)
+                logger.propagate = False
+                virt = Virt.fromConfig(logger, config)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
                 continue
@@ -338,6 +347,7 @@ class VirtWho(object):
         for virt in self.virts:
             virt.terminate()
         self.virt = []
+        self.queue_logger = None
 
     def reload(self):
         self.logger.warn("virt-who reload")
@@ -354,7 +364,8 @@ class VirtWho(object):
     def getMapping(self):
         mapping = {}
         for config in self.configManager.configs:
-            virt = Virt.fromConfig(self.logger, config)
+            logger = logging.getLogger('virtwho.' + config.name)
+            virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping
 
@@ -609,6 +620,7 @@ class PIDLock(object):
 
 virtWho = None
 
+
 def main():
     try:
         logger, options = parseOptions()
@@ -710,6 +722,10 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
+        # Kill logging thread first
+        global virtWho
+        if virtWho:
+            virtWho.queue_logger.terminate()
         sys.exit(1)
     except Exception as e:
         print >>sys.stderr, e

@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import time
 import logging
+import log
 from datetime import datetime
 from multiprocessing import Process, Event
 import json
@@ -221,7 +222,8 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         self._internal_terminate_event = Event()
-        super(Virt, self).__init__(name=config.name)
+        #super(Virt, self).__init__(name=config.name)
+        super(Virt, self).__init__()
         self.daemon = True
 
     @classmethod

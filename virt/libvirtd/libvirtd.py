@@ -162,6 +162,7 @@ class Libvirtd(virt.Virt):
         self._createEventLoop()
 
         self.virt = None
+        initial = True
 
         while not self.is_terminated():
             if self.virt is None:
@@ -171,25 +172,20 @@ class Libvirtd(virt.Virt):
                 self._disconnect()
                 self.virt = self._connect()
 
-            report = self._get_report()
-            self._queue.put(report)
-            self.time_since_update = 0
+            if initial:
+                report = self._get_report()
+                self._queue.put(report)
+                initial = False
 
             if self._oneshot:
                 return
 
-            while self.time_since_update < self._interval and self.virt.isAlive() == 1:
-                if self.is_terminated():
-                    self._disconnect()
-                    return
-                self.time_since_update += 1
-                time.sleep(1)
+            time.sleep(1)
         self._disconnect()
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()
         self._queue.put(report)
-        self.time_since_update = 0
 
     def _get_report(self):
         if self.isHypervisor():

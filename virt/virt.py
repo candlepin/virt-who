@@ -23,6 +23,8 @@ import time
 import logging
 from datetime import datetime
 from multiprocessing import Process, Event
+import json
+import hashlib
 
 try:
     from collections import OrderedDict
@@ -118,6 +120,10 @@ class Hypervisor(object):
     def __str__(self):
         return str(self.toDict())
 
+    def getHash(self):
+        sortedRepresentation = json.dumps(self.toDict(), sort_keys=True)
+        return hashlib.md5(sortedRepresentation).hexdigest()
+
 
 class AbstractVirtReport(object):
     '''
@@ -150,6 +156,10 @@ class DomainListReport(AbstractVirtReport):
     def guests(self):
         return self._guests
 
+    @property
+    def hash(self):
+        return hashlib.md5(json.dumps([g.toDict() for g in self.guests], sort_keys=True)).hexdigest()
+
 
 class HostGuestAssociationReport(AbstractVirtReport):
     '''
@@ -173,6 +183,14 @@ class HostGuestAssociationReport(AbstractVirtReport):
                 continue
             assoc[host] = guests
         return assoc
+
+    @property
+    def serializedAssociation(self):
+        return {'hypervisors':[h.toDict() for h in self.association['hypervisors']]}
+
+    @property
+    def hash(self):
+        return hashlib.md5(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
 
 
 class HypervisorInfoReport(AbstractVirtReport):

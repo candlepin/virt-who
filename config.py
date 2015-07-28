@@ -25,6 +25,8 @@ from csv import reader
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from password import Password
 from binascii import unhexlify
+import hashlib
+import json
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
@@ -298,6 +300,10 @@ class Config(object):
     @property
     def rhsm_insecure(self):
         return self._rhsm_insecure
+
+    @property
+    def hash(self):
+        return hashlib.md5(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
 
 class ConfigManager(object):
     def __init__(self, config_dir=None):

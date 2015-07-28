@@ -81,10 +81,11 @@ class OptionParserEpilog(OptionParser):
         else:
             return ""
 
-# Default interval to retry after unsuccessful run
+# Change detection will limit the sending if no changes exist
 RetryInterval = 60  # One minute
 # Default interval for sending list of UUIDs
 DefaultInterval = 3600  # Once per hour
+MinimumSendInterval = 600  # Ten minutes
 # How many times it should try to report association to the server
 RetrySendCount = 5
 
@@ -113,6 +114,8 @@ class VirtWho(object):
         self.queue_timeout = None
         # a heap to manage the jobs we have incoming
         self.jobs = []
+        # A dictionary of reports previously sent
+        self.reports = {}
         self.reloading = False
 
         self.configManager = ConfigManager(config_dir)
@@ -182,6 +185,7 @@ class VirtWho(object):
         manager = Manager.fromOptions(self.logger, self.options)
         manager.sendVirtGuests(report.guests)
         self.logger.info("virt-who guest list update successful")
+        self.reports[report.config.hash] = report.hash
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options)
@@ -189,6 +193,7 @@ class VirtWho(object):
         result = manager.hypervisorCheckIn(report.config,
                                            report.association,
                                            report.config.type)
+        self.reports[report.config.hash] = report.hash
 
     def checkJobStatus(self, config, job_id):
         manager = SubscriptionManager(self.logger, self.options, self.addJob)
@@ -270,6 +275,11 @@ class VirtWho(object):
                 if not self.options.print_ and not isinstance(report, ErrorReport):
                     for i in range(RetrySendCount):
                         try:
+                            # Do not send if the report hash is already in the
+                            # list of reports sent
+                            if hasattr(report, 'hash') and report.hash == self.reports.get(report.config.hash):
+                                self.logger.info('No change in report gathered using config: "%s", report not sent.', report.config.name)
+                                break
                             if self.send(report):
                                 break
                         except ManagerFatalError:
@@ -331,6 +341,7 @@ class VirtWho(object):
 
     def reload(self):
         self.logger.warn("virt-who reload")
+        self.reports = {}
         # clear the queue and put "reload" there
         try:
             while True:
@@ -367,7 +378,7 @@ def parseOptions():
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
-    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire and send list of virtual guest each N seconds")
+    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
 
@@ -543,21 +554,21 @@ def parseOptions():
         if not options.env:
             raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
-    if options.interval < 0:
-        logger.warning("Interval is not positive number, ignoring")
-        options.interval = 0
-
     if options.background and options.oneshot:
         logger.error("Background and oneshot can't be used together, using background mode")
         options.oneshot = False
 
-    if options.oneshot and options.interval > 0:
-        logger.error("Interval doesn't make sense in oneshot mode, ignoring")
+    if options.oneshot:
+        if options.interval > 0:
+            logger.error("Interval doesn't make sense in oneshot mode, ignoring")
 
-    if not options.oneshot and options.interval == 0:
-        # Interval is still used in background mode, because events can get lost
-        # (e.g. libvirtd restart)
-        options.interval = DefaultInterval
+    else:
+        if options.interval < MinimumSendInterval:
+            if options.interval == 0:
+                logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
+            else:
+                logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))
+            options.interval = MinimumSendInterval
 
     return (logger, options)
 
@@ -625,6 +636,7 @@ def main():
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
+
 
     global virtWho
     try:

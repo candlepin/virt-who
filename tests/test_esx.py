@@ -27,7 +27,7 @@ from multiprocessing import Queue, Event
 from base import TestBase
 from config import Config
 from virt.esx import Esx
-from virt import VirtError, Guest, Hypervisor
+from virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
 
 
 class TestEsx(TestBase):
@@ -35,10 +35,10 @@ class TestEsx(TestBase):
         config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner', 'env')
         self.esx = Esx(self.logger, config)
 
-    def run_once(self):
+    def run_once(self, queue=None):
         ''' Run ESX in oneshot mode '''
         self.esx._oneshot = True
-        self.esx._queue = Queue()
+        self.esx._queue = queue or Queue()
         self.esx._terminate_event = Event()
         self.esx._oneshot = True
         self.esx._interval = 0
@@ -148,4 +148,23 @@ class TestEsx(TestBase):
                                     )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertTrue(expected_result.toDict() == result.toDict())
+
+    @patch('suds.client.Client')
+    def test_oneshot(self, mock_client):
+        expected_assoc = '"well formed HostGuestMapping"'
+        expected_report = HostGuestAssociationReport(self.esx.config, expected_assoc)
+        updateSet = Mock()
+        updateSet.version = 'some_new_version_string'
+        updateSet.truncated = False
+        mock_client.return_value.service.WaitForUpdatesEx.return_value = updateSet
+        queue = Queue()
+        self.esx.applyUpdates = Mock()
+        getHostGuestMappingMock = Mock()
+        getHostGuestMappingMock.return_value = expected_assoc
+        self.esx.getHostGuestMapping = getHostGuestMappingMock
+        self.run_once(queue)
+        self.assertTrue(queue.qsize() == 1)
+        result_report = queue.get(block=True, timeout=1)
+        self.assertTrue(expected_report.config.hash == result_report.config.hash)
+        self.assertTrue(expected_report._assoc == result_report._assoc)
 

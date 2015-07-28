@@ -220,10 +220,10 @@ class VirtWho(object):
         self.virts = []
         for config in self.configManager.configs:
             try:
-                logger = logging.getLogger('virtwho.' + config.name)
-                queueHandler = QueueHandler(self.queue_logger.queue, self.logger.getEffectiveLevel())
-                logger.addHandler(queueHandler)
-                logger.propagate = False
+                logger = log.getLogger(self.options.debug,
+                                       self.options.background,
+                                       config, self.queue_logger.queue,
+                                       self.logger.getEffectiveLevel())
                 virt = Virt.fromConfig(logger, config)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
@@ -364,7 +364,7 @@ class VirtWho(object):
     def getMapping(self):
         mapping = {}
         for config in self.configManager.configs:
-            logger = logging.getLogger('virtwho.' + config.name)
+            logger = log.getLogger(self.options.debug, self.options.background, config)
             virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping

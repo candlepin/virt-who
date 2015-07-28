@@ -27,7 +27,7 @@ import json
 from Queue import Empty
 from multiprocessing import Queue
 from threading import Thread, Event
-from util import decode
+import util
 
 FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
 STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
@@ -38,7 +38,7 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                 "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
-
+DEFAULT_LOG_DIR = '/var/log/virtwho'
 
 class QueueHandler(logging.Handler):
     """
@@ -95,31 +95,56 @@ class QueueLogger(object):
 
     @staticmethod
     def prepare(record):
-        return logging.makeLogRecord(json.loads(record, object_hook=decode))
+        return logging.makeLogRecord(json.loads(record, object_hook=util.decode))
 
-def getLogger(debug, background):
-    logger = logging.getLogger("virtwho")
+def getLogger(debug=False, background=False, config=None, queue=None, level=None):
+    log_file = 'virtwho.log'
+    log_dir = DEFAULT_LOG_DIR
+    # if we have a config we will create a logger for that virt backend
+    if config:
+        logger = logging.getLogger("virtwho." + ''.join(config.name.split('.')))
+        if config.log_file:
+            log_file = config.log_file
+        elif not config.log_dir:
+            log_file = 'virtwho_%s.log' % util.clean_filename(config.name)
+        else:
+            log_file = '%s.log' % util.clean_filename(config.name)
+
+        if config.log_dir:
+            log_dir = config.log_dir
+    else:
+        logger = logging.getLogger("virtwho")
+
     logger.propagate = False
     logger.setLevel(logging.DEBUG)
 
-    logdir = '/var/log/rhsm'
-    path = os.path.join(logdir, 'virtwho.log')
+    path = os.path.join(log_dir, log_file)
+
     try:
-        if not os.path.isdir(logdir):
-            os.mkdir(logdir)
+        if not os.path.isdir(log_dir):
+            os.mkdir(log_dir)
     except Exception as e:
-        sys.stderr.write("Unable to create %s directory: %s" % (logdir, str(e)))
+        sys.stderr.write("Unable to create %s directory: %s" % (log_dir, str(e)))
 
     # Try to write to /var/log, fallback on console logging:
     try:
         fileHandler = logging.handlers.WatchedFileHandler(path)
-        fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT))
-        fileHandler.addFilter(logging.Filter('virtwho'))
+        fileHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
         if debug:
             fileHandler.setLevel(logging.DEBUG)
         else:
             fileHandler.setLevel(logging.INFO)
-        logger.addHandler(fileHandler)
+        if queue:
+            # add a the file handler to the 'virtwho' logger with a filter for
+            # the name of the logger we are creating and add a queueHandler to
+            # the current logger instead
+            fileHandler.addFilter(logging.Filter(logger.name))
+            logging.getLogger("virtwho").addHandler(fileHandler)
+            queueHandler = QueueHandler(queue, level) if level else QueueHandler(queue)
+            logger.addHandler(queueHandler)
+        else:
+            logger.addHandler(fileHandler)
+
     except Exception as e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
 

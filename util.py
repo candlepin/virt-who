@@ -25,7 +25,10 @@ try:
     from _abcoll import KeysView, ValuesView, ItemsView
 except ImportError:
     pass
+from string import letters, digits
 
+# A list of desired characters allowed in filenames
+VALID_FILENAME_CHARS = set([char for char in letters + digits + '_-'])
 
 class OrderedDict(dict):
     'Dictionary that remembers insertion order'
@@ -271,3 +274,6 @@ class OrderedDict(dict):
     def viewitems(self):
         "od.viewitems() -> a set-like object providing a view on od's items"
         return ItemsView(self)
+
+def clean_filename(name):
+    return ''.join([char for char in name if char in VALID_FILENAME_CHARS])

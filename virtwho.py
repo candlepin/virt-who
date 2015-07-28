@@ -30,6 +30,12 @@ import atexit
 from Queue import Empty
 from httplib import BadStatusLine
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6 doesn't have OrderedDict, we need to have our own
+    from util import OrderedDict
+
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
@@ -692,17 +698,17 @@ def _main(virtWho):
                 })
             elif isinstance(report, HostGuestAssociationReport):
                 for hypervisor in report.association['hypervisors']:
-                    h = {
-                        'uuid': hypervisor.hypervisorId,
-                        'guests': [guest.toDict() for guest in hypervisor.guestIds]
-                    }
+                    h = OrderedDict((
+                        ('uuid', hypervisor.hypervisorId),
+                        ('guests', [guest.toDict() for guest in hypervisor.guestIds])
+                    ))
                     hypervisors.append(h)
         data = json.dumps({
             'hypervisors': hypervisors
         })
         virtWho.logger.debug("Associations found: %s" % json.dumps({
             'hypervisors': hypervisors
-        }, indent=4, sort_keys=True))
+        }, indent=4))
         print data
 
 

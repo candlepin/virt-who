@@ -1,6 +1,16 @@
 
 __all__ = ('OrderedDict',)
 
+def decode(input):
+    if isinstance(input, dict):
+        return dict((decode(key), decode(value)) for key, value in input.iteritems())
+    elif isinstance(input, list):
+        return [decode(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
+
 # Taken from http://code.activestate.com/recipes/576693/
 
 # Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.

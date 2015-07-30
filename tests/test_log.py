@@ -53,7 +53,6 @@ class TestLog(TestBase):
         self.assertTrue(isinstance(main_logger.handlers[0], log.QueueHandler))
         mockQueueLogger.getHandler.assert_called_with(logging.INFO)
         queue_handlers = queueLogger.logger.handlers
-        print(queue_handlers)
         self.assertTrue(len(queue_handlers) == 1)
         self.assertTrue(queue_handlers[0].baseFilename == '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 

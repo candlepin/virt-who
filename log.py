@@ -174,7 +174,6 @@ def getLogger(options, config=None):
     fileHandler.setLevel(level)
     queueLogger = getDefaultQueueLogger()
     queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
-    queueLogger.addHandler(fileHandler)  # add the filehandler for this logger to the queuelogger
 
     if not options.background:
         # set up a streamhandler if we are not running in the background

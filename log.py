@@ -39,6 +39,8 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
 
 DEFAULT_FORMAT = DEBUG_FORMAT
 DEFAULT_LOG_DIR = '/var/log/virtwho'
+DEFAULT_LOG_FILE = 'virtwho.log'
+DEFAULT_NAME = 'virtwho'
 
 class QueueHandler(logging.Handler):
     """

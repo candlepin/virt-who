@@ -53,10 +53,21 @@ class QueueHandler(logging.Handler):
         """
         Prepares the record to be placed on the queue
         """
-        return json.dumps(record.__dict__)
+        if record.exc_info:
+            record.exc_text = self.formatter.formatException(record.exc_info)
+            record.exc_info = None
+        try:
+            serialized_record = json.dumps(record.__dict__)
+        except Exception as e:
+            logging.error(str(e))
+            serialized_record = None
+        return serialized_record
 
     def emit(self, record):
-        self._queue.put_nowait(self.prepare(record))
+        try:
+            self._queue.put_nowait(self.prepare(record))
+        except Exception:
+            self.handleError(record)
 
 
 class QueueLogger(object):

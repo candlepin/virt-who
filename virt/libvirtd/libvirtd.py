@@ -216,10 +216,16 @@ class Libvirtd(virt.Virt):
         self.logger.debug("Libvirt domains found: %s" % [guest.uuid for guest in domains])
         return domains
 
-    def _remote_host_uuid(self):
+    def _remote_host_id(self):
         if self._host_uuid is None:
-            xml = ElementTree.fromstring(self.virt.getCapabilities())
-            self._host_uuid = xml.find('host/uuid').text
+            if self.config.hypervisor_id == 'uuid':
+                xml = ElementTree.fromstring(self.virt.getCapabilities())
+                self._host_uuid = xml.find('host/uuid').text
+            elif self.config.hypervisor_id == 'hostname':
+                self._host_uuid = self.virt.getHostname()
+            else:
+                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
+                                     (self.config.hypervisor_id, self.CONFIG_TYPE))
         return self._host_uuid
 
     def _remote_host_name(self):
@@ -231,7 +237,7 @@ class Libvirtd(virt.Virt):
 
     def _getHostGuestMapping(self):
         mapping = {'hypervisors': []}
-        host = virt.Hypervisor(hypervisorId=self._remote_host_uuid(),
+        host = virt.Hypervisor(hypervisorId=self._remote_host_id(),
                                guestIds=self._listDomains(),
                                name=self._remote_host_name())
         mapping['hypervisors'].append(host)

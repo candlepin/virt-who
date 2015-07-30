@@ -209,12 +209,7 @@ def getFileHandler(filtername, log_file=None, log_dir=None):
     log_file = log_file or DEFAULT_LOG_FILE
     log_dir = log_dir or DEFAULT_LOG_DIR
     path = os.path.join(log_dir, log_file)
-
-    try:
-        if not os.path.isdir(log_dir):
-            os.mkdir(log_dir)
-    except Exception as e:
-        sys.stderr.write("Unable to create %s directory: %s" % (log_dir, str(e)))
+    checkDir(log_dir)
     fileHandler = None
     try:
         fileHandler = logging.handlers.WatchedFileHandler(path)

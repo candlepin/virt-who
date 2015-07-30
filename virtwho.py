@@ -389,6 +389,8 @@ def parseOptions():
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
     parser.add_option("-s", "--single-log-file", action="store_true", dest="single_log_file", default=False, help="Write all log messages to the main log file. (Default behavior is to write one log per configured virtualization backend.")
+    parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default="", help="The absolute path of the directory to log to. (Default '/var/log/virtwho/')")
+    parser.add_option("-f", "--log-file", action="store", dest="log_file", default="", help="The file name to write logs to. (Default 'virtwho.log')")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")

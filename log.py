@@ -166,6 +166,12 @@ def getLogger(options, config=None):
     the main logger instance used from virtwho as well as loggers for
     all the connected virt backends
     """
+    # Set defaults if necessary
+    if options.log_dir:
+        setDefaultLogDir(options.log_dir)
+
+    if options.log_file:
+        setDefaultLogFile(options.log_file)
     # Remove the periods in the config.name (as that could mess logging up
     name = (''.join(config.name.split('.'))) if config else 'main'
     logger_name = 'virtwho.' + name  # The name of the logger instance

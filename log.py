@@ -147,6 +147,15 @@ def setDefaultLogFile(log_file):
     global DEFAULT_LOG_FILE
     DEFAULT_LOG_FILE = log_file
 
+def checkDir(directory):
+    try:
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
+    except Exception as e:
+        sys.stderr.write("Unable to create %s directory: %s" % (directory, str(e)))
+        return False
+    return True
+
 
 def getLogger(options, config=None):
     """

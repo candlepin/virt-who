@@ -74,8 +74,9 @@ class QueueLogger(object):
     """
     A threaded logger reading objects off a queue
     """
-    def __init__(self, logger, queue=None):
-        self.logger = logger
+    def __init__(self, name, queue=None):
+        self.name = name
+        self.logger = logging.getLogger(self.name)
         self.queue = queue or Queue()
         self.terminate_event = Event()
         self._logging_thread = Thread(target=QueueLogger._log,

@@ -293,6 +293,7 @@ class VirtWho(object):
                             for virt in self.virts:
                                 virt.terminate()
                             self.virts = []
+                            break
                     else:
                         self.logger.error("Sending data failed %d times, report skipped", RetrySendCount)
 

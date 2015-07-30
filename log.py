@@ -137,7 +137,10 @@ def setDefaultLogDir(log_dir):
     A method to change the default log directory
     """
     global DEFAULT_LOG_DIR
-    DEFAULT_LOG_DIR = log_dir
+    if not checkDir(log_dir):
+        sys.stderr.write("Default Log Directory not changed")
+    else:
+        DEFAULT_LOG_DIR = log_dir
 
 
 def setDefaultLogFile(log_file):

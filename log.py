@@ -80,7 +80,6 @@ class QueueLogger(object):
         self.name = name
         self.logger = logging.getLogger(self.name)
         self.queue = queue or Queue()
-        self.terminate_event = Event()
         self._logging_thread = Thread(target=QueueLogger._log,
                                       args=(self.logger,
                                             self.queue))

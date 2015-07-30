@@ -111,27 +111,93 @@ class QueueLogger(object):
     def prepare(record):
         return logging.makeLogRecord(json.loads(record, object_hook=util.decode))
 
-def getLogger(debug=False, background=False, config=None, queue=None, level=None):
-    log_file = 'virtwho.log'
-    log_dir = DEFAULT_LOG_DIR
-    # if we have a config we will create a logger for that virt backend
-    if config:
-        logger = logging.getLogger("virtwho." + ''.join(config.name.split('.')))
-        if config.log_file:
-            log_file = config.log_file
-        elif not config.log_dir:
-            log_file = 'virtwho_%s.log' % util.clean_filename(config.name)
-        else:
-            log_file = '%s.log' % util.clean_filename(config.name)
+    def getHandler(self, level=logging.NOTSET):
+        # Return a queue handler that will write to this queue logger
+        return QueueHandler(self.queue, level)
 
-        if config.log_dir:
-            log_dir = config.log_dir
-    else:
-        logger = logging.getLogger("virtwho")
+    def addHandler(self, handler):
+        self.logger.addHandler(handler)
 
-    logger.propagate = False
+__DEFAULT_QUEUE_LOGGER = None
+
+
+def getDefaultQueueLogger():
+    """
+    This method returns a default logger instance at the module level
+    if it does not exist it creates it
+    """
+    global __DEFAULT_QUEUE_LOGGER
+    if not __DEFAULT_QUEUE_LOGGER:
+        __DEFAULT_QUEUE_LOGGER = QueueLogger(DEFAULT_NAME)
+        __DEFAULT_QUEUE_LOGGER.start_logging()
+    return __DEFAULT_QUEUE_LOGGER
+
+
+def setDefaultLogDir(log_dir):
+    """
+    A method to change the default log directory
+    """
+    global DEFAULT_LOG_DIR
+    DEFAULT_LOG_DIR = log_dir
+
+
+def setDefaultLogFile(log_file):
+    """
+    Sets the default log file
+    """
+    global DEFAULT_LOG_FILE
+    DEFAULT_LOG_FILE = log_file
+
+
+def getLogger(options, config=None):
+    """
+    This method does the setup necessary to create and connect both
+    the main logger instance used from virtwho as well as loggers for
+    all the connected virt backends
+    """
+    # Remove the periods in the config.name (as that could mess logging up
+    name = (''.join(config.name.split('.'))) if config else 'main'
+    logger_name = 'virtwho.' + name  # The name of the logger instance
+    logger = logging.getLogger(logger_name)
+    logger.propagate = False  # Because we are using or own queue logger we don't want any of the loggers to propagate
     logger.setLevel(logging.DEBUG)
+    level = logging.DEBUG if options.debug else logging.INFO
 
+    if not getattr(options, 'single_log_file', False):
+        log_file = getattr(config, 'log_file', None) or (name + '.log')
+    else:
+        log_file = DEFAULT_LOG_FILE
+    # Add a FileHandler to the queue logger that filters on the name of the
+    # newly created logger
+    fileHandler = getFileHandler(logger_name,
+                                 log_file,
+                                 getattr(config, 'log_dir', None))
+    fileHandler.setLevel(level)
+    queueLogger = getDefaultQueueLogger()
+    queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
+    queueLogger.addHandler(fileHandler)  # add the filehandler for this logger to the queuelogger
+
+    if not options.background:
+        # set up a streamhandler if we are not running in the background
+        streamHandler = logging.StreamHandler()
+        streamHandler.setLevel(level)
+        streamHandler.addFilter(logging.Filter(logger_name))
+        streamHandler.setFormatter(logging.Formatter(STREAM_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
+        f = logging.Filter()
+        f.filter = lambda record: record.exc_info is None
+        streamHandler.addFilter(f)
+        queueLogger.addHandler(streamHandler)
+
+    fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
+    queueHandler.setFormatter(fileHandler.formatter)
+    queueLogger.addHandler(fileHandler)
+    logger.addHandler(queueHandler)
+
+    return logger
+
+def getFileHandler(filtername, log_file=None, log_dir=None):
+    log_file = log_file or DEFAULT_LOG_FILE
+    log_dir = log_dir or DEFAULT_LOG_DIR
     path = os.path.join(log_dir, log_file)
 
     try:
@@ -139,43 +205,11 @@ def getLogger(debug=False, background=False, config=None, queue=None, level=None
             os.mkdir(log_dir)
     except Exception as e:
         sys.stderr.write("Unable to create %s directory: %s" % (log_dir, str(e)))
-
-    # Try to write to /var/log, fallback on console logging:
+    fileHandler = None
     try:
         fileHandler = logging.handlers.WatchedFileHandler(path)
         fileHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
-        if debug:
-            fileHandler.setLevel(logging.DEBUG)
-        else:
-            fileHandler.setLevel(logging.INFO)
-        if queue:
-            # add a the file handler to the 'virtwho' logger with a filter for
-            # the name of the logger we are creating and add a queueHandler to
-            # the current logger instead
-            fileHandler.addFilter(logging.Filter(logger.name))
-            logging.getLogger("virtwho").addHandler(fileHandler)
-            queueHandler = QueueHandler(queue, level) if level else QueueHandler(queue)
-            logger.addHandler(queueHandler)
-        else:
-            logger.addHandler(fileHandler)
-
+        fileHandler.addFilter(logging.Filter(filtername))
     except Exception as e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
-
-    if not background:
-        streamHandler = logging.StreamHandler()
-        streamHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
-        if debug:
-            streamHandler.setLevel(logging.DEBUG)
-            streamHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
-        else:
-            streamHandler.setLevel(logging.INFO)
-
-            # Don't print exceptions to stdout in non-debug mode
-            f = logging.Filter()
-            f.filter = lambda record: record.exc_info is None
-            streamHandler.addFilter(f)
-
-        logger.addHandler(streamHandler)
-
-    return logger
+    return fileHandler

@@ -449,6 +449,18 @@ def parseOptions():
 
     # Handle enviroment variables
 
+    env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()
+    if env != log.DEFAULT_LOG_DIR:
+        options.log_dir = env
+
+    env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_DIR).strip()
+    if env != log.DEFAULT_LOG_DIR:
+        options.log_file = env
+
+    env = os.getenv("VIRTWHO_SINGLE_LOG_FILE", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.single_log_file = True
+
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
         options.debug = True

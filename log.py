@@ -181,14 +181,14 @@ def getLogger(options, config=None):
     level = logging.DEBUG if options.debug else logging.INFO
 
     if not options.single_log_file:
-        log_file = config.log_file or (name + '.log')
+        log_file = getattr(config, 'log_file', None) or (name + '.log')
     else:
         log_file = DEFAULT_LOG_FILE
     # Add a FileHandler to the queue logger that filters on the name of the
     # newly created logger
     fileHandler = getFileHandler(logger_name,
                                  log_file,
-                                 config.log_dir)
+                                 getattr(config, 'log_dir', None))
     fileHandler.setLevel(level)
     queueLogger = getDefaultQueueLogger()
     queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger

@@ -47,6 +47,8 @@ class TestLog(TestBase):
         options = Mock()
         options.debug = False
         options.background = True
+        options.log_dir = ""
+        options.log_file = ""
         main_logger = log.getLogger(options)
         self.assertTrue(main_logger.name == 'virtwho.main')
         self.assertTrue(len(main_logger.handlers) == 1)
@@ -54,6 +56,7 @@ class TestLog(TestBase):
         mockQueueLogger.getHandler.assert_called_with(logging.INFO)
         queue_handlers = queueLogger.logger.handlers
         self.assertTrue(len(queue_handlers) == 1)
+        print(queue_handlers[0].baseFilename)
         self.assertTrue(queue_handlers[0].baseFilename == '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 
     @patch('log.getDefaultQueueLogger')
@@ -73,6 +76,8 @@ class TestLog(TestBase):
         options.debug = False
         options.background = True
         options.single_log_file = False
+        options.log_dir = ''
+        options.log_file = ''
         test_logger = log.getLogger(options, config)
 
         self.assertTrue(test_logger.name == 'virtwho.test')

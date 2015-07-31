@@ -92,7 +92,9 @@ class QueueLogger(object):
             except Empty:
                 return
             if record:
-                logger.handle(QueueLogger.prepare(record))
+                to_log = QueueLogger.prepare(record)
+                if to_log:
+                    logger.handle(to_log)
             else:
                 exit = True
 
@@ -106,7 +108,14 @@ class QueueLogger(object):
 
     @staticmethod
     def prepare(record):
-        return logging.makeLogRecord(json.loads(record, object_hook=util.decode))
+        prepared_record = None
+        try:
+            deserialized_record = json.loads(record, object_hook=util.decode)
+            prepared_record = logging.makeLogRecord(deserialized_record)
+        except Exception:
+            # Swallow exceptions
+            pass
+        return prepared_record
 
     def getHandler(self, level=logging.NOTSET):
         # Return a queue handler that will write to this queue logger

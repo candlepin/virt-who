@@ -23,7 +23,7 @@ import os
 from base import TestBase, unittest
 import logging
 
-from mock import patch, Mock
+from mock import patch, Mock, sentinel
 
 from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
@@ -158,13 +158,17 @@ class TestOptions(TestBase):
                         print(smType, virt, missing)
                         self.assertRaises(OptionError, parseOptions)
 
+    @patch('log.getLogger')
     @patch('virt.Virt.fromConfig')
     @patch('manager.Manager.fromOptions')
-    def test_sending_guests(self, fromOptions, fromConfig):
+    def test_sending_guests(self, fromOptions, fromConfig, getLogger):
         options = Mock()
         options.oneshot = True
         options.interval = 0
         options.print_ = False
+        options.log_dir = ''
+        options.log_file = ''
+        getLogger.return_value = sentinel.logger
         fromConfig.return_value.config.name = 'test'
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
@@ -173,7 +177,7 @@ class TestOptions(TestBase):
         virtwho.queue.put(HostGuestAssociationReport(config, {'a': ['b']}))
         virtwho.run()
 
-        fromConfig.assert_called_with(self.logger, config)
+        fromConfig.assert_called_with(sentinel.logger, config)
         self.assertTrue(fromConfig.return_value.start.called)
         fromOptions.assert_called_with(self.logger, options)
 
@@ -184,12 +188,15 @@ class TestJobs(TestBase):
         options.oneshot = oneshot
         options.interval = 0
         options.print_ = False
+        options.log_dir = ''
+        options.log_file = ''
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
         virtwho.configManager.addConfig(config)
         return virtwho
 
-    def test_adding_job(self):
+    @patch('log.getLogger')
+    def test_adding_job(self, getLogger):
         virtwho = self.setupVirtWho()
         # Mock out a method we want to call
         virtwho.send = Mock()
@@ -200,7 +207,8 @@ class TestJobs(TestBase):
         virtwho.run()
         virtwho.send.assert_called_with(fake_report)
 
-    def test_adding_tuple_of_job(self):
+    @patch('log.getLogger')
+    def test_adding_tuple_of_job(self, getLogger):
         # We should be able to pass in tuples like below and achieve the same
         # result as if we passed in a Job object
 
@@ -216,8 +224,8 @@ class TestJobs(TestBase):
 
 class TestSend(TestBase):
     def setUp(self):
-        self.config = Config('config', 'esx', 'localhost', 'username', 'password', 'owner','env')
-        self.second_config = Config('second_config', 'esx', 'localhost', 'username', 'password', 'owner','env')
+        self.config = Config('config', 'esx', 'localhost', 'username', 'password', 'owner','env', log_dir='', log_file='')
+        self.second_config = Config('second_config', 'esx', 'localhost', 'username', 'password', 'owner','env', log_dir='', log_file='')
         fake_virt = Mock()
         fake_virt.CONFIG_TYPE = 'esx'
         guests = [Guest('guest1', fake_virt, 1)]
@@ -226,9 +234,10 @@ class TestSend(TestBase):
         self.fake_domain_list = DomainListReport(self.second_config, guests)
         self.fake_report = HostGuestAssociationReport(self.config, assoc)
 
+    @patch('log.getLogger')
     @patch('manager.Manager.fromOptions')
     @patch('virt.Virt.fromConfig')
-    def test_report_hash_added_after_send(self, fromConfig, fromOptions):
+    def test_report_hash_added_after_send(self, fromConfig, fromOptions, getLogger):
         # Side effect for fromConfig
         def fake_virts(logger, config):
             new_fake_virt = Mock()
@@ -240,6 +249,8 @@ class TestSend(TestBase):
         options.interval = 0
         options.oneshot = True
         options.print_ = False
+        options.log_file = ''
+        options.log_dir = ''
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         virtwho.send = Mock(wraps=virtwho.send)
         queue = Queue()
@@ -254,13 +265,16 @@ class TestSend(TestBase):
         self.assertTrue(virtwho.reports[self.config.hash] == self.fake_report.hash)
         self.assertTrue(virtwho.reports[self.second_config.hash] == self.fake_domain_list.hash)
 
+    @patch('log.getLogger')
     @patch('manager.Manager.fromOptions')
     @patch('virt.Virt.fromConfig')
-    def test_refusal_to_send_same_hash(self, fromConfig, fromOptions):
+    def test_refusal_to_send_same_hash(self, fromConfig, fromOptions, getLogger):
         options = Mock()
         options.interval = 0
         options.oneshot = True
         options.print_ = False
+        options.log_dir = ''
+        options.log_file = ''
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
         virtwho.send = Mock(wraps=virtwho.send)
         queue = Queue()
@@ -273,13 +287,16 @@ class TestSend(TestBase):
         # if we already have sent the report we should not try to send it again
         self.assertEquals(virtwho.send.call_count, 0)
 
+    @patch('log.getLogger')
     @patch('manager.Manager.fromOptions')
     @patch('virt.Virt.fromConfig')
-    def test_reports_unchanged_on_exception(self, fromConfig, fromOptions):
+    def test_reports_unchanged_on_exception(self, fromConfig, fromOptions, getLogger):
         options = Mock()
         options.interval = 0
         options.oneshot = True
         options.print_ = False
+        options.log_dir = ''
+        options.log_file = ''
         def raiseException():
             raise Exception
 

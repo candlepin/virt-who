@@ -56,7 +56,6 @@ class TestLog(TestBase):
         mockQueueLogger.getHandler.assert_called_with(logging.INFO)
         queue_handlers = queueLogger.logger.handlers
         self.assertTrue(len(queue_handlers) == 1)
-        print(queue_handlers[0].baseFilename)
         self.assertTrue(queue_handlers[0].baseFilename == '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 
     @patch('log.getDefaultQueueLogger')

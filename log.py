@@ -187,6 +187,11 @@ def getLogger(options, config=None):
     fileHandler = getFileHandler(logger_name,
                                  log_file,
                                  getattr(config, 'log_dir', None))
+    if not fileHandler:
+        # Likely unable to write to that path
+        # use a default fileHandler instead
+        fileHandler = getFileHandler(logger_name)
+
     fileHandler.setLevel(level)
     queueLogger = getDefaultQueueLogger()
     queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
@@ -208,6 +213,7 @@ def getLogger(options, config=None):
     logger.addHandler(queueHandler)
 
     return logger
+
 
 def getFileHandler(filtername, log_file=None, log_dir=None):
     log_file = log_file or DEFAULT_LOG_FILE

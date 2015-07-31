@@ -42,6 +42,7 @@ DEFAULT_LOG_DIR = '/var/log/virtwho'
 DEFAULT_LOG_FILE = 'virtwho.log'
 DEFAULT_NAME = 'virtwho'
 
+
 class QueueHandler(logging.Handler):
     """
     A handler that will write logrecords to a queue (Queue or multiprocessing.Queue)
@@ -58,11 +59,8 @@ class QueueHandler(logging.Handler):
         if record.exc_info:
             record.exc_text = self.formatter.formatException(record.exc_info)
             record.exc_info = None
-        try:
-            serialized_record = json.dumps(record.__dict__)
-        except Exception as e:
-            logging.error(str(e))
-            serialized_record = None
+
+        serialized_record = json.dumps(record.__dict__)
         return serialized_record
 
     def emit(self, record):

@@ -721,7 +721,9 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        # Kill logging thread first
+        global virtWho
+        if virtWho:
+            virtWho.terminate()
         log.getDefaultQueueLogger().terminate()
         sys.exit(1)
     except Exception as e:

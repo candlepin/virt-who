@@ -194,7 +194,7 @@ class Esx(virt.Virt):
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
-                    guests.append(virt.Guest(vm['config.uuid'], self, state))
+                    guests.append(virt.Guest(vm['config.uuid'], self, state, hypervisorType='vmware'))
             mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host.get('name', None)))
         return mapping
 

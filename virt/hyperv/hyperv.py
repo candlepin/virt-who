@@ -458,7 +458,8 @@ class HyperV(virt.Virt):
                 virt.Guest(
                     HyperV.decodeWinUUID(uuid),
                     self,
-                    state))
+                    state,
+                    hypervisorType='hyperv'))
         # Get the hostname
         hostname = None
         data = hypervsoap.Enumerate("select DNSHostName from Win32_ComputerSystem", "root/cimv2")

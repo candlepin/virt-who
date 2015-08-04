@@ -30,6 +30,12 @@ import atexit
 from Queue import Empty
 from httplib import BadStatusLine
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6 doesn't have OrderedDict, we need to have our own
+    from util import OrderedDict
+
 from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
@@ -292,6 +298,7 @@ class VirtWho(object):
                             for virt in self.virts:
                                 virt.terminate()
                             self.virts = []
+                            break
                     else:
                         self.logger.error("Sending data failed %d times, report skipped" % RetrySendCount)
 
@@ -379,11 +386,11 @@ class OptionError(Exception):
     pass
 
 def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-b] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
-    parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help="Run in the background and monitor virtual guests")
+    parser.add_option("-b", "--background", action="store_true", dest="background", default=False, help=SUPPRESS_HELP)
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
@@ -717,17 +724,17 @@ def _main(virtWho):
                 })
             elif isinstance(report, HostGuestAssociationReport):
                 for hypervisor in report.association['hypervisors']:
-                    h = {
-                        'uuid': hypervisor.hypervisorId,
-                        'guests': [guest.toDict() for guest in hypervisor.guestIds]
-                    }
+                    h = OrderedDict((
+                        ('uuid', hypervisor.hypervisorId),
+                        ('guests', [guest.toDict() for guest in hypervisor.guestIds])
+                    ))
                     hypervisors.append(h)
         data = json.dumps({
             'hypervisors': hypervisors
         })
         virtWho.logger.debug("Associations found: %s" % json.dumps({
             'hypervisors': hypervisors
-        }, indent=4, sort_keys=True))
+        }, indent=4))
         print data
 
 

@@ -30,12 +30,11 @@ class FakeVirt(Virt):
         try:
             for hypervisor in self._get_data()['hypervisors']:
                 guests = []
-                for guest in hypervisor['guestIds']:
+                for guest in hypervisor['guests']:
                     guests.append(Guest(guest['guestId'], self, guest['state']))
-                new_host = Hypervisor(hypervisor['hypervisorId'],
+                new_host = Hypervisor(hypervisor['uuid'],
                                       guests,
-                                      hypervisor.get('name')
-                                      )
+                                      hypervisor.get('name'))
                 assoc['hypervisors'].append(new_host)
         except KeyError as e:
             raise VirtError("Fake virt file '%s' is not properly formed: %s" % (self.config.fake_file, str(e)))

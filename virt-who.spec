@@ -65,7 +65,7 @@ fi
 
 
 %files
-%doc README LICENSE
+%doc README.md LICENSE
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
 %{_datadir}/virt-who/

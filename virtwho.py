@@ -735,7 +735,6 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        global virtWho
         if virtWho:
             virtWho.terminate()
         log.getDefaultQueueLogger().terminate()

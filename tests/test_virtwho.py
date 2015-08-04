@@ -40,7 +40,8 @@ class TestOptions(TestBase):
             if key.startswith("VIRTWHO"):
                 del os.environ[key]
 
-    def test_default_cmdline_options(self):
+    @patch('log.getLogger')
+    def test_default_cmdline_options(self, getLogger):
         sys.argv = ["virtwho.py"]
         _, options = parseOptions()
         self.assertFalse(options.debug)
@@ -50,12 +51,14 @@ class TestOptions(TestBase):
         self.assertEqual(options.smType, 'sam')
         self.assertEqual(options.virtType, None)
 
-    def test_minimum_interval_options(self):
+    @patch('log.getLogger')
+    def test_minimum_interval_options(self, getLogger):
         sys.argv = ["virtwho.py", "--interval=5"]
         _, options = parseOptions()
         self.assertEqual(options.interval, 600)
 
-    def test_options_debug(self):
+    @patch('log.getLogger')
+    def test_options_debug(self, getLogger):
         sys.argv = ["virtwho.py", "-d"]
         _, options = parseOptions()
         self.assertTrue(options.debug)
@@ -65,7 +68,8 @@ class TestOptions(TestBase):
         _, options = parseOptions()
         self.assertTrue(options.debug)
 
-    def test_options_virt(self):
+    @patch('log.getLogger')
+    def test_options_virt(self, getLogger):
         for virt in ['esx', 'hyperv', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py", "--%s" % virt, "--%s-owner=owner" % virt,
@@ -96,7 +100,8 @@ class TestOptions(TestBase):
             self.assertEqual(options.username, 'xusername')
             self.assertEqual(options.password, 'xpassword')
 
-    def test_options_virt_satellite(self):
+    @patch('log.getLogger')
+    def test_options_virt_satellite(self, getLogger):
         for virt in ['esx', 'hyperv', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py",
@@ -134,7 +139,8 @@ class TestOptions(TestBase):
             self.assertEqual(options.username, 'xusername')
             self.assertEqual(options.password, 'xpassword')
 
-    def test_missing_option(self):
+    @patch('log.getLogger')
+    def test_missing_option(self, getLogger):
         for smType in ['satellite', 'sam']:
             for virt in ['libvirt', 'vdsm', 'esx', 'hyperv', 'rhevm']:
                 for missing in ['server', 'username', 'password', 'env', 'owner']:

@@ -165,7 +165,7 @@ class RhevM(virt.Virt):
                     guest_id)
                 state = virt.Guest.STATE_UNKNOWN
 
-            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state))
+            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state, hypervisorType='qemu'))
 
         return {'hypervisors': hosts.values()}
 

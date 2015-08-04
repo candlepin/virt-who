@@ -107,11 +107,12 @@ class TestEsx(TestBase):
                                      name=expected_hostname,
                                      guestIds=[Guest(expected_guestId,
                                                      self.esx,
-                                                     expected_guest_state)
+                                                     expected_guest_state,
+                                                     hypervisorType='vmware')
                                               ]
                                     )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
-        self.assertTrue(expected_result.toDict() == result.toDict())
+        self.assertEqual(expected_result.toDict(), result.toDict())
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping_incomplete_data(self, mock_client):
@@ -143,11 +144,12 @@ class TestEsx(TestBase):
                                      name=expected_hostname,
                                      guestIds=[Guest(expected_guestId,
                                                      self.esx,
-                                                     expected_guest_state)
+                                                     expected_guest_state,
+                                                     hypervisorType='vmware')
                                               ]
                                     )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
-        self.assertTrue(expected_result.toDict() == result.toDict())
+        self.assertEqual(expected_result.toDict(), result.toDict())
 
     @patch('suds.client.Client')
     def test_oneshot(self, mock_client):
@@ -163,8 +165,7 @@ class TestEsx(TestBase):
         getHostGuestMappingMock.return_value = expected_assoc
         self.esx.getHostGuestMapping = getHostGuestMappingMock
         self.run_once(queue)
-        self.assertTrue(queue.qsize() == 1)
+        self.assertEqual(queue.qsize(), 1)
         result_report = queue.get(block=True, timeout=1)
-        self.assertTrue(expected_report.config.hash == result_report.config.hash)
-        self.assertTrue(expected_report._assoc == result_report._assoc)
-
+        self.assertEqual(expected_report.config.hash, result_report.config.hash)
+        self.assertEqual(expected_report._assoc, result_report._assoc)

@@ -38,8 +38,8 @@ DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                 "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
-DEFAULT_LOG_DIR = '/var/log/virtwho'
-DEFAULT_LOG_FILE = 'virtwho.log'
+DEFAULT_LOG_DIR = '/var/log/rhsm'
+DEFAULT_LOG_FILE = 'rhsm.log'
 DEFAULT_NAME = 'virtwho'
 
 

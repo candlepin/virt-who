@@ -187,7 +187,7 @@ def getLogger(options, config=None):
     logger.setLevel(logging.DEBUG)
     level = logging.DEBUG if options.debug else logging.INFO
 
-    if not options.single_log_file:
+    if options.log_per_config:
         log_file = getattr(config, 'log_file', None) or (name + '.log')
     else:
         log_file = DEFAULT_LOG_FILE

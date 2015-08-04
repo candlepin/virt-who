@@ -388,9 +388,9 @@ def parseOptions():
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
-    parser.add_option("-s", "--single-log-file", action="store_true", dest="single_log_file", default=False, help="Write all log messages to the main log file. (Default behavior is to write one log per configured virtualization backend.")
-    parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default="", help="The absolute path of the directory to log to. (Default '/var/log/virtwho/')")
-    parser.add_option("-f", "--log-file", action="store", dest="log_file", default="", help="The file name to write logs to. (Default 'virtwho.log')")
+    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=False, help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -449,17 +449,19 @@ def parseOptions():
 
     # Handle enviroment variables
 
+    env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.log_per_config = True
+
     env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()
     if env != log.DEFAULT_LOG_DIR:
         options.log_dir = env
+    elif options.log_per_config:
+        options.log_dir = os.path.join(log.DEFAULT_LOG_DIR, 'virtwho')
 
-    env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_DIR).strip()
-    if env != log.DEFAULT_LOG_DIR:
+    env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_FILE).strip()
+    if env != log.DEFAULT_LOG_FILE:
         options.log_file = env
-
-    env = os.getenv("VIRTWHO_SINGLE_LOG_FILE", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.single_log_file = True
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:

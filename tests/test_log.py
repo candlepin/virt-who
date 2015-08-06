@@ -40,7 +40,9 @@ class TestLog(TestBase):
 
     @patch('os.path.isdir')
     @patch('log.getDefaultQueueLogger')
-    def test_get_logger_no_config(self, getDefaultQueueLogger, isdir):
+    @patch('logging.FileHandler._open')
+    def test_get_logger_no_config(self, open, getDefaultQueueLogger, isdir):
+        open.return_value = None
         isdir.return_value = True
         queueLogger = log.QueueLogger('virtwho')
         queueLogger.logger.handlers = []
@@ -88,7 +90,9 @@ class TestLog(TestBase):
         getFileHandler.assert_called_with(test_logger.name, config.log_file, config.log_dir)
 
     @patch('os.path.isdir')
-    def test_get_file_handler_defaults(self, isdir):
+    @patch('logging.FileHandler._open')
+    def test_get_file_handler_defaults(self, open, isdir):
+        open.return_value = None  # Ensure we don't actually try to open a file
         isdir.return_value = True
         filtername = 'virtwho.test'
         fileHandler = log.getFileHandler(filtername)
@@ -98,12 +102,9 @@ class TestLog(TestBase):
 
 
     @patch('os.path.isdir')
-    def test_get_file_handler(self, isdir):
-        # Monkey patching the _open function to ensure we don't try to access a
-        # fake file
-        real_open = logging.FileHandler._open
-        logging.FileHandler._open = Mock()
-        logging.FileHandler._open.return_value = None
+    @patch('logging.FileHandler._open')
+    def test_get_file_handler(self, open, isdir):
+        open.return_value = None  # Ensure we don't actually try to open a file
 
         # Ensure we don't try to make a directory
         isdir.return_value  = True
@@ -115,8 +116,6 @@ class TestLog(TestBase):
                                          log_file,
                                          log_dir)
         self.assertTrue(fileHandler.baseFilename == log_dir + log_file)
-
-        logging.FileHandler._open = real_open
 
 
 class TestQueueLogger(TestBase):

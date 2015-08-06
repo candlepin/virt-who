@@ -44,6 +44,8 @@ from config import Config, ConfigManager, InvalidPasswordFormat
 from password import InvalidKeyFile
 
 import log
+from log import QueueLogger, QueueHandler
+import logging
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
@@ -131,6 +133,8 @@ class VirtWho(object):
         self.unableToRecoverStr = "Unable to recover"
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
+
+        self.queue_logger = log.getDefaultQueueLogger()
 
     def addJob(self, job):
         # Add a job to be executed next time we have a report to send
@@ -221,7 +225,8 @@ class VirtWho(object):
         self.virts = []
         for config in self.configManager.configs:
             try:
-                virt = Virt.fromConfig(self.logger, config)
+                logger = log.getLogger(self.options, config)
+                virt = Virt.fromConfig(logger, config)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
                 continue
@@ -295,7 +300,7 @@ class VirtWho(object):
                             self.virts = []
                             break
                     else:
-                        self.logger.error("Sending data failed %d times, report skipped", RetrySendCount)
+                        self.logger.error("Sending data failed %d times, report skipped" % RetrySendCount)
 
                 if self.options.oneshot:
                     try:
@@ -345,6 +350,7 @@ class VirtWho(object):
         for virt in self.virts:
             virt.terminate()
         self.virt = []
+        self.queue_logger = None
 
     def reload(self):
         self.logger.warn("virt-who reload")
@@ -361,7 +367,8 @@ class VirtWho(object):
     def getMapping(self):
         mapping = {}
         for config in self.configManager.configs:
-            virt = Virt.fromConfig(self.logger, config)
+            logger = log.getLogger(self.options, config)
+            virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping
 
@@ -388,6 +395,9 @@ def parseOptions():
     parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
+    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=False, help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -446,6 +456,20 @@ def parseOptions():
 
     # Handle enviroment variables
 
+    env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.log_per_config = True
+
+    env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()
+    if env != log.DEFAULT_LOG_DIR:
+        options.log_dir = env
+    elif options.log_per_config:
+        options.log_dir = os.path.join(log.DEFAULT_LOG_DIR, 'virtwho')
+
+    env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_FILE).strip()
+    if env != log.DEFAULT_LOG_FILE:
+        options.log_file = env
+
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
         options.debug = True
@@ -454,7 +478,7 @@ def parseOptions():
     if env in ["1", "true"]:
         options.background = True
 
-    logger = log.getLogger(options.debug, options.background)
+    logger = log.getLogger(options)
 
     env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
     if env in ["1", "true"]:
@@ -616,6 +640,7 @@ class PIDLock(object):
 
 virtWho = None
 
+
 def main():
     try:
         logger, options = parseOptions()
@@ -671,7 +696,7 @@ def main():
         if config.name is None:
             logger.info('Using commandline or sysconfig configuration ("%s" mode)', config.type)
         else:
-            logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
+            logger.info('Using configuration "%s" ("%s" mode)' % (config.name, config.type))
 
     if options.background:
         locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
@@ -717,9 +742,12 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
+        if virtWho:
+            virtWho.terminate()
+        log.getDefaultQueueLogger().terminate()
         sys.exit(1)
     except Exception as e:
         print >>sys.stderr, e
-        logger = log.getLogger(False, False)
+        logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
         sys.exit(1)

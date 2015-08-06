@@ -356,8 +356,8 @@ if __name__ == '__main__':
         print("Usage: %s url username password" % sys.argv[0])
         sys.exit(0)
 
-    import log
-    logger = log.getLogger(True, False)
+    logger = logging.getLogger('virtwho.esx')
+    logger.addHandler(logging.StreamHandler())
     from config import Config
     config = Config('esx', 'esx', sys.argv[1], sys.argv[2], sys.argv[3])
     vsphere = Esx(logger, config)

@@ -51,7 +51,8 @@ class Config(object):
     def __init__(self, name, type, server=None, username=None, password=None, owner=None, env=None,
         rhsm_username=None, rhsm_password=None, rhsm_hostname = None, rhsm_port = None,
         rhsm_prefix = None, rhsm_proxy_hostname = None, rhsm_proxy_port = None,
-        rhsm_proxy_user = None, rhsm_proxy_password = None, rhsm_insecure = None):
+        rhsm_proxy_user = None, rhsm_proxy_password = None, rhsm_insecure = None,
+        log_file=None, log_dir=None):
 
         self._name = name
         self._type = type
@@ -75,6 +76,8 @@ class Config(object):
         self._rhsm_proxy_user = rhsm_proxy_user
         self._rhsm_proxy_password = rhsm_proxy_password
         self._rhsm_insecure = rhsm_insecure
+        self._log_file = log_file
+        self._log_dir = log_dir
 
         self.filter_host_uuids = None
         self.exclude_host_uuids = None
@@ -190,10 +193,21 @@ class Config(object):
         except NoOptionError:
             rhsm_insecure = None
 
+        try:
+            log_file = parser.get(name, "log_file")
+        except NoOptionError:
+            log_file = None
+
+        try:
+            log_dir = parser.get(name, "log_dir")
+        except NoOptionError:
+            log_dir = None
+
 
         config = Config(name, type, server, username, password, owner, env, rhsm_username,
             rhsm_password, rhsm_hostname, rhsm_port, rhsm_prefix, rhsm_proxy_hostname,
-            rhsm_proxy_port, rhsm_proxy_user, rhsm_proxy_password, rhsm_insecure)
+            rhsm_proxy_port, rhsm_proxy_user, rhsm_proxy_password, rhsm_insecure,
+            log_file, log_dir)
 
         try:
             config.hypervisor_id = parser.get(name, "hypervisor_id")
@@ -304,6 +318,14 @@ class Config(object):
     @property
     def hash(self):
         return hashlib.md5(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
+
+    @property
+    def log_file(self):
+        return self._log_file
+
+    @property
+    def log_dir(self):
+        return self._log_dir
 
 class ConfigManager(object):
     def __init__(self, config_dir=None):

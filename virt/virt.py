@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import time
 import logging
+import log
 from datetime import datetime
 from multiprocessing import Process, Event
 import json
@@ -172,8 +173,8 @@ class HostGuestAssociationReport(AbstractVirtReport):
     @property
     def association(self):
         # Apply filter
+        logger = logging.getLogger("virtwho")
         assoc = []
-        logger = logging.getLogger("rhsm-app")
         for host in self._assoc['hypervisors']:
             if self._config.exclude_host_uuids is not None and host.hypervisorId in self._config.exclude_host_uuids:
                 logger.debug("Skipping host '%s' because its uuid is excluded" % host.hypervisorId)
@@ -222,7 +223,8 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         self._internal_terminate_event = Event()
-        super(Virt, self).__init__(name=config.name)
+        #super(Virt, self).__init__(name=config.name)
+        super(Virt, self).__init__()
         self.daemon = True
 
     @classmethod

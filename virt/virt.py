@@ -323,12 +323,13 @@ class Virt(Process):
                 except Exception:
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
 
+                if self.is_terminated():
+                    return
+
                 if self._oneshot:
                     self._queue.put(ErrorReport(self.config))
                     return
 
-                if self.is_terminated():
-                    return
 
                 self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
                 self.wait(self._interval)

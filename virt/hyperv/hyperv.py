@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import sys
+import os
 import httplib
 import urlparse
 import base64
@@ -316,10 +317,26 @@ class HyperV(virt.Virt):
             self.type1_flags = ntlm.NTLM_TYPE1_FLAGS
 
     def connect(self):
+        host = self.host
+        proxy = False
+        for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
+            if env in os.environ:
+                host = os.environ[env]
+                proxy = True
+                break
+
         if self.url.startswith("https"):
-            connection = httplib.HTTPSConnection(self.host)
+            connection = httplib.HTTPSConnection(host)
         else:
-            connection = httplib.HTTPConnection(self.host)
+            connection = httplib.HTTPConnection(host)
+
+        if proxy:
+            host, port = self.host.split(':')
+            try:
+                connection.set_tunnel(host, int(port))
+            except AttributeError:
+                # set_tunnel method is private in python 2.6
+                connection._set_tunnel(host, int(port))
 
         headers = {}
         headers["Connection"] = "Keep-Alive"

@@ -77,7 +77,7 @@ class Guest(object):
             ('state', self.state),
             ('attributes', {
                 'virtWhoType': self.virtWhoType,
-                'active': 1 if self.state == self.STATE_RUNNING else 0
+                'active': 1 if self.state in (self.STATE_RUNNING, self.STATE_PAUSED) else 0
             }),
         ))
 

@@ -144,6 +144,7 @@ ENABLED_STATE_TO_GUEST_STATE = {
     '2': virt.Guest.STATE_RUNNING,
     '3': virt.Guest.STATE_SHUTOFF,
     '4': virt.Guest.STATE_SHUTINGDOWN,
+    '9': virt.Guest.STATE_PAUSED,
     '32768': virt.Guest.STATE_PAUSED,
     '32769': virt.Guest.STATE_PMSUSPENDED
 }

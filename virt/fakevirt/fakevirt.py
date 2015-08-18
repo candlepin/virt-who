@@ -25,21 +25,32 @@ class FakeVirt(Virt):
     def isHypervisor(self):
         return self.config.fake_is_hypervisor
 
+    def _process_guest(self, guest):
+        attributes = guest.get('attributes', {})
+        self.CONFIG_TYPE = attributes.get('virtWhoType', 'fake')
+        hypervisorType = attributes.get('hypervisorType', None)
+        return Guest(guest['guestId'], self, guest['state'], hypervisorType=hypervisorType)
+
+    def _process_hypervisor(self, hypervisor):
+        guests = []
+        for guest in hypervisor['guests']:
+            guests.append(self._process_guest(guest))
+        return Hypervisor(hypervisor['uuid'],
+                          guests,
+                          hypervisor.get('name'))
+
     def getHostGuestMapping(self):
         assoc = {'hypervisors': []}
         try:
             for hypervisor in self._get_data()['hypervisors']:
-                guests = []
-                for guest in hypervisor['guests']:
-                    guests.append(Guest(guest['guestId'], self, guest['state']))
-                new_host = Hypervisor(hypervisor['uuid'],
-                                      guests,
-                                      hypervisor.get('name'))
-                assoc['hypervisors'].append(new_host)
+                assoc['hypervisors'].append(self._process_hypervisor(hypervisor))
         except KeyError as e:
             raise VirtError("Fake virt file '%s' is not properly formed: %s" % (self.config.fake_file, str(e)))
         return assoc
 
     def listDomains(self):
         hypervisor = self._get_data()['hypervisors'][0]
-        return hypervisor['guestIds']
+        guests = []
+        for guest in hypervisor['guests']:
+            guests.append(self._process_guest(guest))
+        return guests

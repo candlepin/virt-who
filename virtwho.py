@@ -377,7 +377,7 @@ def exceptionCheck(e):
     try:
         # This happens when connection to server is interrupted (CTRL+C or signal)
         if e.args[0] == errno.EALREADY:
-            sys.exit(0)
+            exit(0)
     except Exception:
         pass
 
@@ -645,12 +645,12 @@ def main():
         logger, options = parseOptions()
     except OptionError as e:
         print >>sys.stderr, str(e)
-        sys.exit(1)
+        exit(1)
 
     lock = PIDLock(PIDFILE)
     if lock.is_locked():
         print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-        sys.exit(1)
+        exit(1)
 
     def atexit_fn():
         global virtWho
@@ -674,7 +674,7 @@ def main():
         virtWho = VirtWho(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
-        sys.exit(1)
+        exit(1)
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
@@ -737,16 +737,25 @@ def _main(virtWho):
         print data
 
 
+def exit(code):
+    """
+    exits with the code provided, properly disposing of resources
+    """
+    if virtWho:
+        virtWho.terminate()
+    queueLogger = log.getDefaultQueueLogger()
+    if queueLogger:
+        queueLogger.terminate()
+    sys.exit(code)
+
 if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        if virtWho:
-            virtWho.terminate()
-        log.getDefaultQueueLogger().terminate()
-        sys.exit(1)
+        exit(1)
     except Exception as e:
         print >>sys.stderr, e
         logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
-        sys.exit(1)
+        exit(1)
+    exit(0)

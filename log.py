@@ -49,7 +49,7 @@ class QueueHandler(logging.Handler):
     For use in logging in situations involving multiple processes
     """
     def __init__(self, queue, level=logging.NOTSET):
-        super(QueueHandler, self).__init__(level)
+        logging.Handler.__init__(self, level)
         self._queue = queue
 
     def prepare(self, record):

@@ -50,6 +50,12 @@ import logging
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
 
+try:
+    from systemd.daemon import notify as sd_notify
+except ImportError:
+    def sd_notify(status, unset_environment=False):
+        pass
+
 
 class Job(object):
     """
@@ -699,12 +705,13 @@ def main():
         logger, options = parseOptions()
     except OptionError as e:
         print >>sys.stderr, str(e)
-        exit(1)
+        exit(1, status="virt-who can't be started: %s" % str(e))
 
     lock = PIDLock(PIDFILE)
     if lock.is_locked():
-        print >>sys.stderr, "virt-who seems to be already running. If not, remove %s" % PIDFILE
-        exit(1)
+        msg = "virt-who seems to be already running. If not, remove %s" % PIDFILE
+        print >>sys.stderr, msg
+        exit(1, status=msg)
 
     def atexit_fn():
         global virtWho
@@ -728,7 +735,7 @@ def main():
         virtWho = VirtWho(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
-        exit(1)
+        exit(1, "virt-who can't be started: %s" % str(e))
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
@@ -757,6 +764,7 @@ def main():
         locker = lambda: lock
 
     with locker():
+        sd_notify("READY=1\nMAINPID=%d" % os.getpid())
         while True:
             try:
                 _main(virtWho)
@@ -791,10 +799,15 @@ def _main(virtWho):
         print data
 
 
-def exit(code):
+def exit(code, status=None):
     """
     exits with the code provided, properly disposing of resources
+
+    If status is not None, use sd_notify to report the status to systemd
     """
+    if status is not None:
+        sd_notify("STATUS=%s" % status)
+
     if virtWho:
         virtWho.terminate()
     queueLogger = log.getDefaultQueueLogger()
@@ -811,5 +824,5 @@ if __name__ == '__main__':
         print >>sys.stderr, e
         logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
-        exit(1)
+        exit(1, "virt-who failed: %s" % str(e))
     exit(0)

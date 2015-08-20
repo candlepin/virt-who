@@ -77,6 +77,7 @@ fi
 %{_mandir}/man5/virt-who-config.5.gz
 %attr(600, root, root) %{_sharedstatedir}/%{name}
 %ghost %{_sharedstatedir}/%{name}/key
+%{_sysconfdir}/virt-who.d/template.conf
 
 
 %changelog

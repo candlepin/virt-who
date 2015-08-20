@@ -21,7 +21,7 @@ install:
 	done
 	install -pm 0644 virt/esx/vimServiceMinimal.wsdl $(DESTDIR)/usr/share/$(name)/virt/esx/
 	install -pm 0644 *.py $(DESTDIR)/usr/share/$(name)/
-	install -d $(DESTDIR)/usr/bin $(DESTDIR)/etc/rc.d/init.d $(DESTDIR)/etc/sysconfig $(DESTDIR)/usr/share/man/man8/ $(DESTDIR)/usr/share/man/man5/ $(DESTDIR)/var/lib/virt-who/
+	install -d $(DESTDIR)/usr/bin $(DESTDIR)/etc/rc.d/init.d $(DESTDIR)/etc/sysconfig $(DESTDIR)/usr/share/man/man8/ $(DESTDIR)/usr/share/man/man5/ $(DESTDIR)/var/lib/virt-who/ $(DESTDIR)/etc/virt-who.d/
 	install virt-who $(DESTDIR)/usr/bin/
 	install virt-who-password $(DESTDIR)/usr/bin/
 	install virt-who-initscript $(DESTDIR)/etc/rc.d/init.d/virt-who
@@ -32,6 +32,7 @@ install:
 	install -pm 0644 virt-who-password.8.gz $(DESTDIR)/usr/share/man/man8/
 	gzip -c virt-who-config.5 > virt-who-config.5.gz
 	install -pm 0644 virt-who-config.5.gz $(DESTDIR)/usr/share/man/man5/
+	install -pm 0644 template.conf $(DESTDIR)/etc/virt-who.d/
 
 srpm:
 	tito build --srpm --test

@@ -43,7 +43,11 @@ def parse_list(s):
     '''
     Parse comma-separated list of items that might be in double-quotes to the list of strings
     '''
-    return reader([s]).next()
+    def strip_quote(s):
+        if s[0] == s[-1] == "'":
+            return s[1:-1]
+        return s
+    return map(strip_quote, reader([s.strip(' ')], skipinitialspace=True).next())
 
 # TODO: Not a huge fan of this. This whole class should be replaced by a dictionary or
 # dictionary-like class that provides a __missing__ implementation or "safe" getter.

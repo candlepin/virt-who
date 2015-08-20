@@ -137,8 +137,8 @@ class RhevM(virt.Virt):
                 hosts[id] = virt.Hypervisor(host.find('name').text)
             else:
                 raise virt.VirtError(
-                    'Reporting of hypervisor %s is not implemented in %s backend',
-                    self.config.hypervisor_id, self.CONFIG_TYPE)
+                    'Reporting of hypervisor %s is not implemented in %s backend' %
+                    (self.config.hypervisor_id, self.CONFIG_TYPE))
             mapping[id] = []
             # BZ 1065465 Add hostname to hypervisor profile
             hosts[id].name = host.find('name').text
@@ -152,8 +152,8 @@ class RhevM(virt.Virt):
             host_id = host.get('id')
             if host_id not in mapping.keys():
                 self.logger.warning(
-                    "Guest %s claims that it belongs to host %s which doesn't exist",
-                    guest_id, host_id)
+                    "Guest %s claims that it belongs to host %s which doesn't exist" % (
+                    guest_id, host_id))
                 continue
             try:
                 state = RHEVM_STATE_TO_GUEST_STATE.get(

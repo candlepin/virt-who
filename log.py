@@ -103,8 +103,9 @@ class QueueLogger(object):
 
     def terminate(self):
         self.queue.put_nowait(None)
-        self._logging_thread.join()
-        self._logging_thread = None
+        if self._logging_thread:
+            self._logging_thread.join()
+            self._logging_thread = None
 
     @staticmethod
     def prepare(record):

@@ -121,6 +121,7 @@ class VirtWho(object):
         self.logger = logger
         self.options = options
         self.terminate_event = Event()
+        self.virts = []
 
         # Queue for getting events from virt backends
         self.queue = None

@@ -225,7 +225,7 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         if self.queue is None:
-            self.queue = Queue(len(self.configManager.configs))
+            self.queue = Queue()
 
         # Run the virtualization backends
         self.virts = []
@@ -254,9 +254,19 @@ class VirtWho(object):
                 report = self.queue.get(block=True, timeout=self.queue_timeout)
             except Empty:
                 report = None
-                pass
             except IOError:
                 continue
+
+            # Read all the reports from the queue in order to remove obsoleted
+            # reports from same virt
+            reports = [report]
+            while True:
+                try:
+                    report = self.queue.get(block=False)
+                    reports.append(report)
+                except Empty:
+                    break
+            reports = self._remove_obsolete(reports)
 
             try:
                 # Run all jobs that have been queued as a result of sending last
@@ -277,7 +287,7 @@ class VirtWho(object):
             except IOError:
                 pass
 
-            if report is not None:
+            for report in reports:
                 # We got new item in the queue, reset timeout for checking job status
                 self.queue_timeout = 1
                 if report == "exit":
@@ -377,6 +387,20 @@ class VirtWho(object):
             virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping
+
+    def _remove_obsolete(self, reports):
+        reports_dict = OrderedDict()
+        for report in reports:
+            if report is None:
+                continue
+
+            if report in ['exit', 'reload']:
+                # Throw away all other reports when report is 'exit' or 'reload'
+                return [report]
+
+            reports_dict[report.config.name] = report
+
+        return reports_dict.values()
 
 
 def exceptionCheck(e):

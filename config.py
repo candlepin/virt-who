@@ -95,6 +95,14 @@ class Config(object):
         self.fake_is_hypervisor = True
         self.fake_file = None
 
+    def checkOptions(self, smType):
+        # Check for env and owner options, it must be present for SAM
+        if smType is not None and smType == 'sam' and self.type in ('esx', 'rhevm', 'hyperv'):
+            if not self.env:
+                raise InvalidOption("Option `env` needs to be set in config `%s`" % (self.name))
+            elif not self.owner:
+                raise InvalidOption("Option `owner` needs to be set in config `%s`" % (self.name))
+
     @classmethod
     def fromParser(self, name, parser):
         type = parser.get(name, "type").lower()
@@ -332,9 +340,10 @@ class Config(object):
         return self._log_dir
 
 class ConfigManager(object):
-    def __init__(self, config_dir=None):
+    def __init__(self, config_dir=None, smType=None):
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
+        self.smType = smType
         parser = SafeConfigParser()
         self._configs = []
         try:
@@ -357,6 +366,7 @@ class ConfigManager(object):
         for section in parser.sections():
             try:
                 config = Config.fromParser(section, parser)
+                config.checkOptions(self.smType)
                 self._configs.append(config)
             except NoOptionError as e:
                 logging.error(str(e))

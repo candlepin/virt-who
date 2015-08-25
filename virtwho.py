@@ -139,7 +139,8 @@ class VirtWho(object):
         # received between successfully sent reports
         self._429_count = 0
         self.reloading = False
-        self.configManager = ConfigManager(config_dir)
+
+        self.configManager = ConfigManager(config_dir, smType=options.smType)
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 

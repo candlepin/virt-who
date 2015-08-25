@@ -407,3 +407,27 @@ simplified_vim=false
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0]
         self.assertFalse(config.esx_simplified_vim)
+
+    def testMissingEnvOption(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+""")
+        self.assertRaises(InvalidOption, ConfigManager, self.config_dir, 'sam')
+
+    def testMissingOwnerOption(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+env=env
+""")
+        self.assertRaises(InvalidOption, ConfigManager, self.config_dir, 'sam')

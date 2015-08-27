@@ -178,7 +178,7 @@ class Libvirtd(virt.Virt):
                 initial = False
 
             if self._oneshot:
-                return
+                break
 
             time.sleep(1)
         self._disconnect()

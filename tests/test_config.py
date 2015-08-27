@@ -26,15 +26,17 @@ from tempfile import mkdtemp
 from base import TestBase, unittest
 from binascii import hexlify, unhexlify
 from mock import patch
+import logging
 
 
 class TestReadingConfigs(TestBase):
     def setUp(self):
         self.config_dir = mkdtemp()
         self.addCleanup(shutil.rmtree, self.config_dir)
+        self.logger = logging.getLogger("virtwho.main")
 
     def testEmptyConfig(self):
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
     def testBasicConfig(self):
@@ -59,7 +61,7 @@ rhsm_proxy_password=proxypass
 rhsm_insecure=1
 """)
 
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0]
         self.assertEqual(config.name, "test")
@@ -86,7 +88,7 @@ rhsm_insecure=1
             f.write("""
 Malformed configuration file
 """)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
     def testInvalidType(self):
@@ -98,7 +100,7 @@ type=invalid
 server=1.2.3.4
 username=test
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.config_dir)
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
     @unittest.skipIf(os.getuid() == 0, "Can't create unreadable file when running as root")
     def testUnreadableConfig(self):
@@ -114,7 +116,7 @@ owner=root
 env=staging
 """)
         os.chmod(filename, 0)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
     @patch('password.Password._read_key_iv')
@@ -135,7 +137,7 @@ encrypted_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].password, passwd)
 
@@ -159,7 +161,7 @@ rhsm_encrypted_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].rhsm_password, passwd)
 
@@ -183,7 +185,7 @@ rhsm_encrypted_proxy_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].rhsm_proxy_password, passwd)
 
@@ -200,7 +202,7 @@ env=staging
 [test]
 type=esx
 """)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
     def testMultipleConfigsInFile(self):
@@ -243,7 +245,7 @@ rhsm_proxy_password=proxypass2
 rhsm_insecure=2
 """)
 
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 2)
         config = manager.configs[0]
         self.assertEqual(config.name, "test1")
@@ -324,7 +326,7 @@ rhsm_proxy_password=proxypass2
 rhsm_insecure=2
 """)
 
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 2)
 
         config2, config1 = manager.configs
@@ -380,7 +382,7 @@ password=password
 owner=root
 env=staging
 """)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0]
         self.assertEqual(config.name, "test1")
@@ -403,7 +405,7 @@ owner=root
 env=staging
 simplified_vim=false
 """)
-        manager = ConfigManager(self.config_dir)
+        manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0]
         self.assertFalse(config.esx_simplified_vim)
@@ -418,7 +420,7 @@ username=admin
 password=password
 owner=root
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.config_dir, 'sam')
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir, 'sam')
 
     def testMissingOwnerOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -430,4 +432,4 @@ username=admin
 password=password
 env=env
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.config_dir, 'sam')
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir, 'sam')

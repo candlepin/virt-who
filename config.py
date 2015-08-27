@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import logging
 from csv import reader
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
@@ -95,13 +94,23 @@ class Config(object):
         self.fake_is_hypervisor = True
         self.fake_file = None
 
-    def checkOptions(self, smType):
+    def checkOptions(self, smType, logger):
         # Check for env and owner options, it must be present for SAM
         if smType is not None and smType == 'sam' and self.type in ('esx', 'rhevm', 'hyperv'):
             if not self.env:
                 raise InvalidOption("Option `env` needs to be set in config `%s`" % (self.name))
             elif not self.owner:
                 raise InvalidOption("Option `owner` needs to be set in config `%s`" % (self.name))
+
+        if self.type != 'esx':
+            if self.filter_host_parents is not None:
+                logger.warn("filter_host_parents is not supported in %s mode, ignoring it", self.type)
+            if self.exclude_host_parents is not None:
+                logger.warn("exclude_host_parents is not supported in %s mode, ignoring it", self.type)
+
+        if self.type != 'fake':
+            if self.fake_is_hypervisor is not None:
+                logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
 
     @classmethod
     def fromParser(self, name, parser):
@@ -236,25 +245,25 @@ class Config(object):
         except NoOptionError:
             config.exclude_host_uuids = None
 
-        if type == 'esx':
-            try:
-                config.esx_simplified_vim = parser.get(name, "simplified_vim").lower() not in ("0", "false", "no")
-            except NoOptionError:
-                pass
-            try:
-                config.filter_host_parents = parse_list(parser.get(name, "filter_host_parents"))
-            except NoOptionError:
-                config.filter_host_parents = None
+        try:
+            config.esx_simplified_vim = parser.get(name, "simplified_vim").lower() not in ("0", "false", "no")
+        except NoOptionError:
+            pass
+        try:
+            config.filter_host_parents = parse_list(parser.get(name, "filter_host_parents"))
+        except NoOptionError:
+            config.filter_host_parents = None
+        try:
+            config.exclude_host_parents = parse_list(parser.get(name, "exclude_host_parents"))
+        except NoOptionError:
+            config.exclude_host_parents = None
 
-            try:
-                config.exclude_host_parents = parse_list(parser.get(name, "exclude_host_parents"))
-            except NoOptionError:
-                config.exclude_host_parents = None
-        elif type == 'fake':
-            try:
-                config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")
-            except NoOptionError:
-                pass
+        try:
+            config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")
+        except NoOptionError:
+            pass
+
+        if config.type == 'fake':
             config.fake_file = parser.get(name, "file")
 
         return config
@@ -340,24 +349,25 @@ class Config(object):
         return self._log_dir
 
 class ConfigManager(object):
-    def __init__(self, config_dir=None, smType=None):
+    def __init__(self, logger, config_dir=None, smType=None):
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
         self.smType = smType
         parser = SafeConfigParser()
         self._configs = []
+        self.logger = logger
         try:
             config_dir_content = os.listdir(config_dir)
         except OSError:
-            logging.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
+            self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
             return
         for conf in config_dir_content:
             try:
                 filename = parser.read(os.path.join(config_dir, conf))
                 if len(filename) == 0:
-                    logging.error("Unable to read configuration file %s", conf)
+                    self.logger.error("Unable to read configuration file %s", conf)
             except MissingSectionHeaderError:
-                logging.error("Configuration file %s contains no section headers", conf)
+                self.logger.error("Configuration file %s contains no section headers", conf)
 
         self._readConfig(parser)
 
@@ -366,16 +376,16 @@ class ConfigManager(object):
         for section in parser.sections():
             try:
                 config = Config.fromParser(section, parser)
-                config.checkOptions(self.smType)
+                config.checkOptions(self.smType, self.logger)
                 self._configs.append(config)
             except NoOptionError as e:
-                logging.error(str(e))
+                self.logger.error(str(e))
 
     def readFile(self, filename):
         parser = SafeConfigParser()
         fname = parser.read(filename)
         if len(fname) == 0:
-            logging.error("Unable to read configuration file %s", filename)
+            self.logger.error("Unable to read configuration file %s", filename)
         self._readConfig(parser)
 
     @property

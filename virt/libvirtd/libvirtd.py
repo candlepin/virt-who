@@ -177,6 +177,9 @@ class Libvirtd(virt.Virt):
                 self._queue.put(report)
                 initial = False
 
+            if self._oneshot:
+                break
+
             time.sleep(1)
         self._disconnect()
 

@@ -316,18 +316,22 @@ class Virt(Process):
         '''
         try:
             while not self.is_terminated():
+                has_error = False
                 try:
                     self._run()
                 except VirtError as e:
                     self.logger.error("Virt backend '%s' fails with error: %s" % (self.config.name, str(e)))
+                    has_error = True
                 except Exception:
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
+                    has_error = True
 
                 if self.is_terminated():
                     return
 
                 if self._oneshot:
-                    self._queue.put(ErrorReport(self.config))
+                    if has_error:
+                        self._queue.put(ErrorReport(self.config))
                     return
 
 

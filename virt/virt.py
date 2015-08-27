@@ -330,7 +330,7 @@ class Virt(Process):
                 if self.is_terminated():
                     return
 
-                self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
+                self.logger.info("Waiting %s seconds before retrying backend '%s'" % (self._interval, self.config.name))
                 self.wait(self._interval)
         except KeyboardInterrupt:
             sys.exit(1)

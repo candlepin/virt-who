@@ -60,6 +60,10 @@ class QueueHandler(logging.Handler):
             record.exc_text = self.formatter.formatException(record.exc_info)
             record.exc_info = None
 
+        # Apply string formatting to the message using args
+        record.msg = record.msg % record.args
+        del record.args
+
         serialized_record = json.dumps(record.__dict__)
         return serialized_record
 

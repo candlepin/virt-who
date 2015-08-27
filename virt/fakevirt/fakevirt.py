@@ -21,7 +21,6 @@ class FakeVirt(Virt):
         except (IOError, ValueError) as e:
             raise VirtError("Can't read fake '%s' virt data: %s" % (self.config.fake_file, str(e)))
 
-
     def isHypervisor(self):
         return self.config.fake_is_hypervisor
 
@@ -50,6 +49,10 @@ class FakeVirt(Virt):
 
     def listDomains(self):
         hypervisor = self._get_data()['hypervisors'][0]
+        if 'uuid' in hypervisor:
+            raise VirtError("Fake virt file '%s' is not properly formed: "
+                            "uuid key shouldn't be present, try to check is_hypervisor value" %
+                            self.config.fake_file)
         guests = []
         for guest in hypervisor['guests']:
             guests.append(self._process_guest(guest))

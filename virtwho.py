@@ -141,7 +141,7 @@ class VirtWho(object):
         self._429_count = 0
         self.reloading = False
 
-        self.configManager = ConfigManager(config_dir, smType=options.smType)
+        self.configManager = ConfigManager(self.logger, config_dir, smType=options.smType)
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 

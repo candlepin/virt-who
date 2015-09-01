@@ -22,6 +22,8 @@ class FakeVirt(Virt):
             raise VirtError("Can't read fake '%s' virt data: %s" % (self.config.fake_file, str(e)))
 
     def isHypervisor(self):
+        if self.config.fake_is_hypervisor is None:
+            return True
         return self.config.fake_is_hypervisor
 
     def _process_guest(self, guest):

@@ -91,7 +91,7 @@ class Config(object):
         self.filter_host_parents = None
         self.exclude_host_parents = None
         self.esx_simplified_vim = True
-        self.fake_is_hypervisor = True
+        self.fake_is_hypervisor = None
         self.fake_file = None
 
     def checkOptions(self, smType, logger):
@@ -111,6 +111,14 @@ class Config(object):
         if self.type != 'fake':
             if self.fake_is_hypervisor is not None:
                 logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
+
+        if self.type == 'libvirt':
+            if (self.server is not None and
+                    ('ssh://' in self.server or '://' not in self.server) and
+                    self.password is not None):
+
+                logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
+                            "copy your public ssh key to the remote machine")
 
     @classmethod
     def fromParser(self, name, parser):
@@ -261,7 +269,7 @@ class Config(object):
         try:
             config.fake_is_hypervisor = parser.get(name, "is_hypervisor").lower() not in ("0", "false", "no")
         except NoOptionError:
-            pass
+            config.fake_is_hypervisor = None
 
         if config.type == 'fake':
             config.fake_file = parser.get(name, "file")

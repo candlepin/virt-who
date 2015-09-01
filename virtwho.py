@@ -765,6 +765,7 @@ def main():
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, options.server,
                         options.username, options.password, options.owner, options.env)
+        config.checkOptions(options.smType, logger)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:
         try:

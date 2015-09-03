@@ -182,7 +182,8 @@ class TestOptions(TestBase):
         getLogger.return_value = sentinel.logger
         fromConfig.return_value.config.name = 'test'
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
-        config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
+        config = Config("test", "esx", server="localhost", username="username",
+                        password="password", owner="owner", env="env")
         virtwho.configManager.addConfig(config)
         virtwho.queue = Queue()
         virtwho.queue.put(HostGuestAssociationReport(config, association))
@@ -202,7 +203,8 @@ class TestJobs(TestBase):
         options.log_dir = ''
         options.log_file = ''
         virtwho = VirtWho(self.logger, options, config_dir="/nonexistant")
-        config = Config("test", "esx", "localhost", "username", "password", "owner", "env")
+        config = Config("test", "esx", server="localhost", username="username",
+                        password="password", owner="owner", env="env")
         virtwho.configManager.addConfig(config)
         return virtwho
 
@@ -235,8 +237,13 @@ class TestJobs(TestBase):
 
 class TestSend(TestBase):
     def setUp(self):
-        self.config = Config('config', 'esx', 'localhost', 'username', 'password', 'owner','env', log_dir='', log_file='')
-        self.second_config = Config('second_config', 'esx', 'localhost', 'username', 'password', 'owner','env', log_dir='', log_file='')
+        self.config = Config('config', 'esx', server='localhost',
+                             username='username', password='password',
+                             owner='owner', env='env', log_dir='', log_file='')
+        self.second_config = Config('second_config', 'esx', server='localhost',
+                                    username='username', password='password',
+                                    owner='owner', env='env', log_dir='',
+                                    log_file='')
         fake_virt = Mock()
         fake_virt.CONFIG_TYPE = 'esx'
         guests = [Guest('guest1', fake_virt, 1)]

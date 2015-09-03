@@ -211,7 +211,7 @@ class Esx(virt.Virt):
                 break
 
         # Connect to the vCenter server
-        if self.config.esx_simplified_vim:
+        if self.config.simplified_vim:
             wsdl = 'file://%s/vimServiceMinimal.wsdl' % os.path.dirname(os.path.abspath(__file__))
             kwargs['cache'] = None
         else:
@@ -359,7 +359,8 @@ if __name__ == '__main__':
     logger = logging.getLogger('virtwho.esx')
     logger.addHandler(logging.StreamHandler())
     from config import Config
-    config = Config('esx', 'esx', sys.argv[1], sys.argv[2], sys.argv[3])
+    config = Config('esx', 'esx', server=sys.argv[1], username=sys.argv[2],
+                    password=sys.argv[3])
     vsphere = Esx(logger, config)
     from Queue import Queue
     from threading import Event, Thread

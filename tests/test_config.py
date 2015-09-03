@@ -81,7 +81,7 @@ rhsm_insecure=1
         self.assertEqual(config.rhsm_proxy_user, 'proxyuser')
         self.assertEqual(config.rhsm_proxy_password, 'proxypass')
         self.assertEqual(config.rhsm_insecure, '1')
-        self.assertEqual(config.esx_simplified_vim, True)
+        self.assertEqual(config.simplified_vim, True)
 
     def testInvalidConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
@@ -202,8 +202,7 @@ env=staging
 [test]
 type=esx
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 0)
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
     def testMultipleConfigsInFile(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
@@ -408,7 +407,7 @@ simplified_vim=false
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0]
-        self.assertFalse(config.esx_simplified_vim)
+        self.assertFalse(config.simplified_vim)
 
     def testMissingEnvOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:

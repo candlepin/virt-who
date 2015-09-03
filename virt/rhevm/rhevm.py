@@ -180,6 +180,7 @@ if __name__ == '__main__':
 
     import logging
     logger = logging.Logger("")
-    config = Config('rhevm', 'rhevm', sys.argv[1], sys.argv[2], sys.argv[3])
+    config = Config('rhevm', 'rhevm', server=sys.argv[1], username=sys.argv[2],
+                    password=sys.argv[3])
     rhevm = RhevM(logger, config)
     print dict((host, [guest.toDict() for guest in guests]) for host, guests in rhevm.getHostGuestMapping().items())

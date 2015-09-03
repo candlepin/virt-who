@@ -62,49 +62,52 @@ class TestLibvirtd(TestBase):
 
     @patch('libvirt.openReadOnly')
     def test_remote_hostname(self, virt):
-        config = Config('test', 'libvirt', 'server')
+        config = Config('test', 'libvirt', server='server')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('qemu+ssh://server/system?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_url(self, virt):
-        config = Config('test', 'libvirt', 'abc://server/test')
+        config = Config('test', 'libvirt', server='abc://server/test')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('abc://server/test?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_hostname_with_username(self, virt):
-        config = Config('test', 'libvirt', 'server', 'user')
+        config = Config('test', 'libvirt', server='server', username='user')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1')
 
     @patch('libvirt.openReadOnly')
     def test_remote_url_with_username(self, virt):
-        config = Config('test', 'libvirt', 'abc://server/test', 'user')
+        config = Config('test', 'libvirt', server='abc://server/test',
+                        username='user')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('abc://user@server/test?no_tty=1')
 
     @patch('libvirt.openAuth')
     def test_remote_hostname_with_username_and_password(self, virt):
-        config = Config('test', 'libvirt', 'server', 'user', 'pass')
+        config = Config('test', 'libvirt', server='server',
+                        username='user', password='pass')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1', ANY, ANY)
 
     @patch('libvirt.openAuth')
     def test_remote_url_with_username_and_password(self, virt):
-        config = Config('test', 'libvirt', 'abc://server/test', 'user', 'pass')
+        config = Config('test', 'libvirt', server='abc://server/test',
+                        username='user', password='pass')
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         virt.assert_called_with('abc://user@server/test?no_tty=1', ANY, ANY)
 
     @patch('libvirt.openReadOnly')
     def test_mapping_has_hostname_when_availible(self, virt):
-        config = Config('test', 'libvirt', 'abc://server/test')
+        config = Config('test', 'libvirt', server='abc://server/test')
         queue = Queue()
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config, queue)
@@ -114,7 +117,7 @@ class TestLibvirtd(TestBase):
 
     @patch('libvirt.openReadOnly')
     def test_mapping_has_no_hostname_when_unavailible(self, virt):
-        config = Config('test', 'libvirt', 'abc://server/test')
+        config = Config('test', 'libvirt', server='abc://server/test')
         queue = Queue()
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_NO_HOSTNAME_XML
         self.run_virt(config, queue)

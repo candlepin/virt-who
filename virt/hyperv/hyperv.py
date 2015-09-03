@@ -509,6 +509,7 @@ if __name__ == '__main__':
     logger = logging.Logger("virtwho.hyperv.main")
     logger.addHandler(logging.StreamHandler())
     from config import Config
-    config = Config('test', 'hyperv', sys.argv[1], sys.argv[2], sys.argv[3])
+    config = Config('test', 'hyperv', server=sys.argv[1], username=sys.argv[2],
+                    password=sys.argv[3])
     hyperv = HyperV(logger, config)
     print dict((host, [guest.toDict() for guest in guests]) for host, guests in hyperv.getHostGuestMapping().items())

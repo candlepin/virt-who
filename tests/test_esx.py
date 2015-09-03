@@ -32,7 +32,8 @@ from virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
 
 class TestEsx(TestBase):
     def setUp(self):
-        config = Config('test', 'esx', 'localhost', 'username', 'password', 'owner', 'env')
+        config = Config('test', 'esx', server='localhost', username='username',
+                        password='password', owner='owner', env='env')
         self.esx = Esx(self.logger, config)
 
     def run_once(self, queue=None):
@@ -66,7 +67,7 @@ class TestEsx(TestBase):
 
     @patch('suds.client.Client')
     def test_disable_simplified_vim(self, mock_client):
-        self.esx.config.esx_simplified_vim = False
+        self.esx.config.simplified_vim = False
         mock_client.return_value.service.RetrievePropertiesEx.return_value = None
         mock_client.return_value.service.WaitForUpdatesEx.return_value.truncated = False
         self.run_once()

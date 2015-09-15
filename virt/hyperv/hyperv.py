@@ -320,10 +320,10 @@ class HyperV(virt.Virt):
     def connect(self):
         host, port = self.host.split(':')
         proxy = False
-        for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
+        protocol = self.url.partition("://")[0]
+        for env in ['%s_proxy' % protocol.lower(), '%s_PROXY' % protocol.upper()]:
             if env in os.environ:
                 proxy_url = os.environ[env]
-                protocol = env.lower().replace('_proxy', '')
                 if "://" not in proxy_url:
                     # Add http or https to proxy_url otherwise urlsplit
                     # won't parse it correctly
@@ -334,7 +334,7 @@ class HyperV(virt.Virt):
                 proxy = True
                 break
 
-        if self.url.startswith("https"):
+        if protocol == "https":
             connection = httplib.HTTPSConnection(host, int(port))
         else:
             connection = httplib.HTTPConnection(host, int(port))

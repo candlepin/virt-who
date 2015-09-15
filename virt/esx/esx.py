@@ -207,7 +207,7 @@ class Esx(virt.Virt):
         for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
             if env in os.environ:
                 self.logger.debug("ESX module using proxy: %s" % os.environ[env])
-                kwargs['proxy'] = {'https': os.environ[env]}
+                kwargs['proxy'] = {env.lower().replace('_proxy', ''): os.environ[env]}
                 break
 
         # Connect to the vCenter server

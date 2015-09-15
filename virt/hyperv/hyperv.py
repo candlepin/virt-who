@@ -318,18 +318,26 @@ class HyperV(virt.Virt):
             self.type1_flags = ntlm.NTLM_TYPE1_FLAGS
 
     def connect(self):
-        host = self.host
+        host, port = self.host.split(':')
         proxy = False
         for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
             if env in os.environ:
-                host = os.environ[env]
+                proxy_url = os.environ[env]
+                protocol = env.lower().replace('_proxy', '')
+                if "://" not in proxy_url:
+                    # Add http or https to proxy_url otherwise urlsplit
+                    # won't parse it correctly
+                    proxy_url = "%s://%s" % (protocol, proxy_url)
+                r = urlparse.urlsplit(proxy_url)
+                host = r.hostname
+                port = r.port or (80 if protocol == 'http' else 443)
                 proxy = True
                 break
 
         if self.url.startswith("https"):
-            connection = httplib.HTTPSConnection(host)
+            connection = httplib.HTTPSConnection(host, int(port))
         else:
-            connection = httplib.HTTPConnection(host)
+            connection = httplib.HTTPConnection(host, int(port))
 
         if proxy:
             host, port = self.host.split(':')
@@ -343,9 +351,19 @@ class HyperV(virt.Virt):
         headers["Connection"] = "Keep-Alive"
         headers["Content-Length"] = "0"
 
-        connection.request("POST", self.url, headers=headers)
+        connection.request("POST", '/wsman', headers=headers)
         response = connection.getresponse()
         response.read()
+
+        if proxy:
+            # Tunnel must be cleared after first request otherwise
+            # the CONNECT is send to the hyperv server in subsequent requests
+            try:
+                connection.set_tunnel(None, None)
+            except AttributeError:
+                # set_tunnel method is private in python 2.6
+                connection._set_tunnel(None, None)
+
         if response.status == 200:
             return connection, headers
         elif response.status == 404:
@@ -374,7 +392,7 @@ class HyperV(virt.Virt):
         # Use ntlm
         headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.username, self.type1_flags)
 
-        connection.request("POST", self.url, headers=headers)
+        connection.request("POST", '/wsman', headers=headers)
         response = connection.getresponse()
         response.read()
         if response.status != 401:
@@ -393,7 +411,7 @@ class HyperV(virt.Virt):
         headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(
                     nonce, self.username, self.domainname, self.password, flags)
 
-        connection.request("POST", self.url, headers=headers)
+        connection.request("POST", '/wsman', headers=headers)
         response = connection.getresponse()
         response.read()
         if response.status == 200:

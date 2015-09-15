@@ -326,12 +326,12 @@ class Virt(Process):
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
                     has_error = True
 
-                if self.is_terminated():
-                    return
-
                 if self._oneshot:
                     if has_error:
                         self._queue.put(ErrorReport(self.config))
+                    return
+
+                if self.is_terminated():
                     return
 
 

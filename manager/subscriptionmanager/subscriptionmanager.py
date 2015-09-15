@@ -180,7 +180,8 @@ class SubscriptionManager(Manager):
         self._connect(config)
         self.logger.debug('Checking status of job %s' % job_id)
         result = self.connection.getJob(job_id)
-        if result['state'] != 'FINISHED':
+        state = result['state']
+        if state not in ['FINISHED', 'CANCELED', 'FAILED']:
             # This will cause virtwho to do this again later
             self.addJob(('checkJobStatus', [config, result['id']]))
             self.logger.debug('Job %s not finished, rescheduling' % job_id)
@@ -205,7 +206,7 @@ class SubscriptionManager(Manager):
                                      ", ".join(guests))
             self.logger.info("Number of mappings unchanged: %s" % len(resultData['unchanged']))
             result = resultData
-        return result
+        return result, state
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

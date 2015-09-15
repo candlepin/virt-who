@@ -102,12 +102,17 @@ class Config(object):
                 logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
 
         if self.type == 'libvirt':
-            if (self.server is not None and
-                    ('ssh://' in self.server or '://' not in self.server) and
-                    self.password is not None):
+            if self.server is not None:
+                if (('ssh://' in self.server or '://' not in self.server) and
+                        self.password is not None):
 
-                logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
-                            "copy your public ssh key to the remote machine")
+                    logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
+                                "copy your public ssh key to the remote machine")
+            else:
+                if self.env:
+                    logger.warn("Option `env` is not used in non-remote libvirt connection")
+                if self.owner:
+                    logger.warn("Option `owner` is not used in non-remote libvirt connection")
 
     @classmethod
     def fromParser(self, name, parser):

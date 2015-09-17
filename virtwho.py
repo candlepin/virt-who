@@ -208,7 +208,7 @@ class VirtWho(object):
                 self.queue_timeout = (retry_after ** self._429_count)
                 self.logger.debug('429 received, waiting %s seconds until sending again' % self.queue_timeout)
             else:
-                self.queue_timeout = max(0,  self.options.interval - delta)
+                self.queue_timeout = max(0,  self.options.interval)
 
         if report_sent:
             self.logger.debug('Report for config "%s" sent' % config.name)

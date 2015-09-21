@@ -194,7 +194,12 @@ class Esx(virt.Virt):
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
-                    guests.append(virt.Guest(vm['config.uuid'], self, state, hypervisorType=host.get('config.product.fullName', 'vmware')))
+                    guests.append(virt.Guest(vm['config.uuid'],
+                                             self,
+                                             state,
+                                             hypervisorType=host.get('config.product.name', 'vmware'),
+                                             hypervisorVersion=host.get('config.product.version', None)
+                                             ))
             mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host.get('name', None)))
         return mapping
 
@@ -250,7 +255,7 @@ class Esx(virt.Virt):
         pfs.objectSet = [oSpec]
         pfs.propSet = [
             self.createPropertySpec("VirtualMachine", ["config.uuid", "runtime.powerState"]),
-            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent", "config.product.fullName"])
+            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent", "config.product.name", "config.product.version"])
         ]
 
         return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)

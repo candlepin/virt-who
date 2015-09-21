@@ -45,7 +45,8 @@ class LibvirtdGuest(virt.Guest):
             uuid=domain.UUIDString(),
             virt=libvirtd,
             state=state,
-            hypervisorType=libvirtd.getHypervisorType())
+            hypervisorType=libvirtd.getHypervisorType(),
+            hypervisorVersion=libvirtd.getVersion())
 
 
 class VirEventLoopThread(threading.Thread):
@@ -99,14 +100,12 @@ class Libvirtd(virt.Virt):
         version_num -= minor * 1000
 
         release = version_num
-        return {'major': major,
+        return "%(major)s.%(minor)s.%(release)s" % {'major': major,
                 'minor': minor,
                 'release': release}
 
     def getHypervisorType(self):
-        hypervisor_type_info = self.getVersion()
-        hypervisor_type_info['type'] = self.virt.getType()
-        return "%(type)s %(major)s.%(minor)s.%(release)s" % hypervisor_type_info
+        return self.virt.getType()
 
     def isHypervisor(self):
         return bool(self.config.server)

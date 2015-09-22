@@ -85,7 +85,11 @@ class Config(object):
                 raise InvalidOption("Option `server` needs to be set in config `%s`" % (self.name))
 
         # Check for env and owner options, it must be present for SAM
-        if smType is not None and smType == 'sam' and self.type in ('esx', 'rhevm', 'hyperv'):
+        if (smType is not None and smType == 'sam' and (
+                (self.type in ('esx', 'rhevm', 'hyperv')) or
+                (self.type == 'libvirt' and self.server) or
+                (self.type == 'fake' and self.fake_is_hypervisor))):
+
             if not self.env:
                 raise InvalidOption("Option `env` needs to be set in config `%s`" % (self.name))
             elif not self.owner:
@@ -100,12 +104,16 @@ class Config(object):
         if self.type != 'fake':
             if self.is_hypervisor is not None:
                 logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
+        else:
+            if not self.fake_is_hypervisor:
+                if self.env:
+                    logger.warn("Option `env` is not used in non-hypervisor fake mode")
+                if self.owner:
+                    logger.warn("Option `owner` is not used in non-hypervisor fake mode")
 
         if self.type == 'libvirt':
-            if self.server is not None:
-                if (('ssh://' in self.server or '://' not in self.server) and
-                        self.password is not None):
-
+            if self.server is not None and self.server != '':
+                if ('ssh://' in self.server or '://' not in self.server) and self.password:
                     logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
                                 "copy your public ssh key to the remote machine")
             else:

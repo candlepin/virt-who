@@ -339,30 +339,19 @@ class HyperV(virt.Virt):
         else:
             connection = httplib.HTTPConnection(host, int(port))
 
-        if proxy:
-            host, port = self.host.split(':')
-            try:
-                connection.set_tunnel(host, int(port))
-            except AttributeError:
-                # set_tunnel method is private in python 2.6
-                connection._set_tunnel(host, int(port))
+        if proxy and proxy_url.startswith('https'):
+            connection.request("CONNECT", self.host)
+            response = connection.getresponse()
 
         headers = {}
         headers["Connection"] = "Keep-Alive"
+        headers["Proxy-Connection"] = "Keep-Alive"
         headers["Content-Length"] = "0"
+        headers["Host"] = self.host
 
-        connection.request("POST", '/wsman', headers=headers)
+        connection.request("POST", self.url, headers=headers)
         response = connection.getresponse()
         response.read()
-
-        if proxy:
-            # Tunnel must be cleared after first request otherwise
-            # the CONNECT is send to the hyperv server in subsequent requests
-            try:
-                connection.set_tunnel(None, None)
-            except AttributeError:
-                # set_tunnel method is private in python 2.6
-                connection._set_tunnel(None, None)
 
         if response.status == 200:
             return connection, headers
@@ -392,7 +381,7 @@ class HyperV(virt.Virt):
         # Use ntlm
         headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.username, self.type1_flags)
 
-        connection.request("POST", '/wsman', headers=headers)
+        connection.request("POST", self.url, headers=headers)
         response = connection.getresponse()
         response.read()
         if response.status != 401:
@@ -411,7 +400,7 @@ class HyperV(virt.Virt):
         headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(
                     nonce, self.username, self.domainname, self.password, flags)
 
-        connection.request("POST", '/wsman', headers=headers)
+        connection.request("POST", self.url, headers=headers)
         response = connection.getresponse()
         response.read()
         if response.status == 200:

@@ -30,7 +30,9 @@ class FakeVirt(Virt):
         attributes = guest.get('attributes', {})
         self.CONFIG_TYPE = attributes.get('virtWhoType', 'fake')
         hypervisorType = attributes.get('hypervisorType', None)
-        return Guest(guest['guestId'], self, guest['state'], hypervisorType=hypervisorType)
+        hypervisorVersion = attributes.get('hypervisorVersion', None)
+        return Guest(guest['guestId'], self, guest['state'], hypervisorType=hypervisorType,
+                     hypervisorVersion=hypervisorVersion)
 
     def _process_hypervisor(self, hypervisor):
         guests = []

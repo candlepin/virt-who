@@ -53,7 +53,12 @@ class Guest(object):
     STATE_CRASHED = 6      # crashed
     STATE_PMSUSPENDED = 7  # suspended by guest power management
 
-    def __init__(self, uuid, virt, state, hypervisorType=None):
+    def __init__(self,
+                 uuid,
+                 virt,
+                 state,
+                 hypervisorType=None,
+                 hypervisorVersion=None):
         """
         Create new guest instance that will be sent to the subscription manager.
 
@@ -65,11 +70,18 @@ class Guest(object):
         `hypervisorType` is additional type of the virtualization, used in libvirt.
 
         `state` is a number that represents the state of the guest (stopped, running, ...)
+
+        `hypervisorVersion` is the version of the hypervisor software running on
+        the hypervisor, if available. If none is available then the value of
+        this attribute will be an empty string ""
+            - This attribute is only included in the dictionary representation
+              if the hypervisorType is not None.
         """
         self.uuid = uuid
         self.virtWhoType = virt.CONFIG_TYPE
         self.hypervisorType = hypervisorType
         self.state = state
+        self.hypervisorVersion = hypervisorVersion or ""
 
     def toDict(self):
         d = OrderedDict((
@@ -83,6 +95,9 @@ class Guest(object):
 
         if self.hypervisorType is not None:
             d['attributes']['hypervisorType'] = self.hypervisorType
+            if self.hypervisorVersion is not None or \
+               self.hypervisorVersion is not "":
+                d['attributes']['hypervisorVersion'] = self.hypervisorVersion
         return d
 
 

@@ -428,6 +428,20 @@ class HyperV(virt.Virt):
             s = uuid
         return s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
 
+    def getVmmsVersion(self, hypervsoap):
+        """
+        This method retrieves the version of the vmms executable as it is the authoritative
+        version of hyper-v running on the machine.
+
+        https://social.technet.microsoft.com/Forums/windowsserver/en-US/dce2a4ec-10de-4eba-a19d-ae5213a2382d/how-to-tell-version-of-hyperv-installed?forum=winserverhyperv
+        """
+        vmmsVersion = ""
+        data = hypervsoap.Enumerate("select * from CIM_Datafile where FileName='vmms'", "root/cimv2")
+        for instance in hypervsoap.Pull(data, "root/cimv2"):
+            if (instance['Path'] == '\\windows\\system32\\'):
+                vmmsVersion = instance['Version']
+        return vmmsVersion
+
     def getHostGuestMapping(self):
         guests = []
         connection, headers = self.connect()
@@ -459,7 +473,7 @@ class HyperV(virt.Virt):
         # Get guest states
         guest_states = hypervsoap.Invoke_GetSummaryInformation(
                 "root/virtualization/v2" if self.useNewApi else "root/virtualization")
-
+        vmmsVersion = self.getVmmsVersion(hypervsoap)
         for instance in hypervsoap.Pull(uuid):
             try:
                 uuid = instance["BIOSGUID"]
@@ -484,7 +498,8 @@ class HyperV(virt.Virt):
                     HyperV.decodeWinUUID(uuid),
                     self,
                     state,
-                    hypervisorType='hyperv'))
+                    hypervisorType='hyperv',
+                    hypervisorVersion=vmmsVersion))
         # Get the hostname
         hostname = None
         data = hypervsoap.Enumerate("select DNSHostName from Win32_ComputerSystem", "root/cimv2")

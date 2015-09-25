@@ -45,7 +45,8 @@ class LibvirtdGuest(virt.Guest):
             uuid=domain.UUIDString(),
             virt=libvirtd,
             state=state,
-            hypervisorType=libvirtd.virt.getType())
+            hypervisorType=libvirtd.getHypervisorType(),
+            hypervisorVersion=libvirtd.getVersion())
 
 
 class VirEventLoopThread(threading.Thread):
@@ -85,6 +86,26 @@ class Libvirtd(virt.Virt):
         self._host_name = None
         self.eventLoopThread = None
         libvirt.registerErrorHandler(lambda ctx, error: None, None)
+
+    def getVersion(self):
+        """
+        The constants used to extract the version numbers were found in
+        /lib64/python2.7/site-packages/libvirt.py
+        """
+        version_num = self.virt.getVersion()
+        major = version_num / 1000000
+        version_num -= major * 1000000
+
+        minor = version_num / 1000
+        version_num -= minor * 1000
+
+        release = version_num
+        return "%(major)s.%(minor)s.%(release)s" % {'major': major,
+                'minor': minor,
+                'release': release}
+
+    def getHypervisorType(self):
+        return self.virt.getType()
 
     def isHypervisor(self):
         return bool(self.config.server)

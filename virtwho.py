@@ -355,9 +355,7 @@ class VirtWho(object):
                 if report == "exit":
                     break
                 if report == "reload":
-                    for virt in self.virts:
-                        virt.terminate()
-                    self.virts = []
+                    self.stop_virts()
                     raise ReloadRequest()
                 if isinstance(report, ErrorReport):
                     if self.options.oneshot:
@@ -380,9 +378,7 @@ class VirtWho(object):
                     self.logger.debug('Waiting to send report')
             except ManagerFatalError:
                 # System not register (probably), stop the backends
-                for virt in self.virts:
-                    virt.terminate()
-                self.virts = []
+                self.stop_virts()
                 break
             if self.options.oneshot and report_sent:
                 oneshot_remaining.remove(report_sent.config.name)
@@ -396,12 +392,17 @@ class VirtWho(object):
                     break
         self.queue = None
         self.jobs = None
-        for virt in self.virts:
-            virt.terminate()
+        self.stop_virts()
 
         self.virt = []
         if self.options.print_:
             return result
+
+    def stop_virts(self):
+        for virt in self.virts:
+            virt.terminate()
+            virt.join()
+        self.virts = []
 
     def terminate(self):
         self.logger.debug("virt-who shut down started")
@@ -423,9 +424,7 @@ class VirtWho(object):
         # Give backends some more time to terminate properly
         time.sleep(0.5)
 
-        for virt in self.virts:
-            virt.terminate()
-        self.virt = []
+        self.stop_virts()
         self.queue_logger = None
 
     def reload(self):

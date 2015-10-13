@@ -137,7 +137,7 @@ class Satellite(Manager):
         events.append([0, 'crawl_began', 'system', {}])
         for guest in guests:
             stub_instance_info['uuid'] = guest.uuid.replace("-", "")
-            stub_instance_info['name'] = "VM from %s hypervisor %s" % (type, hypervisor_uuid)
+            stub_instance_info['name'] = "VM %s from %s hypervisor %s" % (guest.uuid, type, hypervisor_uuid)
             stub_instance_info['running'] = GUEST_STATE_TO_SATELLITE.get(guest.state, "nostate")
             events.append([0, 'exists', 'domain', stub_instance_info.copy()])
 

@@ -124,7 +124,7 @@ class TestSatellite(TestManager):
             [0, "crawl_began", "system", {}],
             [0, "exists", "domain", {
                 "memory_size": 0,
-                "name": "VM from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
+                "name": "VM 9c927368-e888-43b4-9cdb-91b10431b258 from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
                 "running": "running",
                 "uuid": "9c927368e88843b49cdb91b10431b258",
                 "vcpus": 1,
@@ -132,7 +132,7 @@ class TestSatellite(TestManager):
             }],
             [0, "exists", "domain", {
                 "memory_size": 0,
-                "name": "VM from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
+                "name": "VM d5ffceb5-f79d-41be-a4c1-204f836e144a from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
                 "running": "shutoff",
                 "uuid": "d5ffceb5f79d41bea4c1204f836e144a",
                 "vcpus": 1,

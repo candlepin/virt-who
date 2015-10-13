@@ -405,7 +405,8 @@ class VirtWho(object):
         self.virts = []
 
     def terminate(self):
-        self.logger.debug("virt-who shut down started")
+        self.logger.debug("virt-who is shutting down")
+
         # Terminate the backends before clearing the queue, the queue must be empty
         # to end a child process, otherwise it will be stuck in queue.put()
         self.terminate_event.set()
@@ -429,6 +430,9 @@ class VirtWho(object):
 
     def reload(self):
         self.logger.warn("virt-who reload")
+        # Set the terminate event in all the virts
+        for virt in self.virts:
+            virt.stop()
         self.reports = {}
         # clear the queue and put "reload" there
         try:

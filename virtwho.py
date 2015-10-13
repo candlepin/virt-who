@@ -74,6 +74,7 @@ class Job(object):
         else:
             self.args = args
 
+
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
 
@@ -379,8 +380,12 @@ class VirtWho(object):
             except ManagerFatalError:
                 # System not register (probably), stop the backends
                 self.stop_virts()
-                break
-            if self.options.oneshot and report_sent:
+                continue
+
+            if self.options.print_:
+                report_sent = report
+
+            if (self.options.oneshot and report_sent) or self.options.print_:
                 oneshot_remaining.remove(report_sent.config.name)
                 if not isinstance(report_sent, ErrorReport):
                     if self.options.print_:
@@ -824,7 +829,7 @@ def _main(virtWho):
         virtWho.logger.debug("Associations found: %s" % json.dumps({
             'hypervisors': hypervisors
         }, indent=4))
-        print data
+        print(data)
 
 
 def exit(code, status=None):

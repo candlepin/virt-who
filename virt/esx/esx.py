@@ -134,7 +134,7 @@ class Esx(virt.Virt):
 
             if last_version != version:
                 assoc = self.getHostGuestMapping()
-                self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
+                self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
                 last_version = version
 
             end_time = time()

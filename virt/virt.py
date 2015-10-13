@@ -325,6 +325,12 @@ class Virt(Process):
     def is_terminated(self):
         return self._internal_terminate_event.is_set() or self._terminate_event.is_set()
 
+    def enqueue(self, report):
+        if self.is_terminated():
+            sys.exit(0)
+            return
+        self._queue.put(report)
+
     def run(self):
         '''
         Wrapper around `_run` method that just catches the error messages.
@@ -343,12 +349,11 @@ class Virt(Process):
 
                 if self._oneshot:
                     if has_error:
-                        self._queue.put(ErrorReport(self.config))
+                        self.enqueue(ErrorReport(self.config))
                     return
 
                 if self.is_terminated():
                     return
-
 
                 self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
                 self.wait(self._interval)
@@ -366,7 +371,7 @@ class Virt(Process):
         while not self.is_terminated():
             start_time = datetime.now()
             report = self._get_report()
-            self._queue.put(report)
+            self.enqueue(report)
             end_time = datetime.now()
 
             delta = end_time - start_time

@@ -195,7 +195,7 @@ class Libvirtd(virt.Virt):
 
             if initial:
                 report = self._get_report()
-                self._queue.put(report)
+                self.enqueue(report)
                 initial = False
 
             if self._oneshot:
@@ -206,7 +206,7 @@ class Libvirtd(virt.Virt):
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()
-        self._queue.put(report)
+        self.enqueue(report)
 
     def _get_report(self):
         if self.isHypervisor():

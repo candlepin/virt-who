@@ -513,7 +513,7 @@ def parseOptions():
 
     libvirtGroup = OptionGroup(parser, "Libvirt options", "Use these options with --libvirt")
     libvirtGroup.add_option("--libvirt-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products, default is owner of current system")
-    libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to, default is environment of current system")
+    libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the server belongs to, default is environment of current system")
     libvirtGroup.add_option("--libvirt-server", action="store", dest="server", default="", help="URL of the libvirt server to connect to, default is empty for libvirt on local computer")
     libvirtGroup.add_option("--libvirt-username", action="store", dest="username", default="", help="Username for connecting to the libvirt daemon")
     libvirtGroup.add_option("--libvirt-password", action="store", dest="password", default="", help="Password for connecting to the libvirt daemon")

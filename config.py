@@ -67,10 +67,12 @@ class Config(object):
         'simplified_vim',
     )
 
-    def __init__(self, name, type, **kwargs):
+    def __init__(self, name, type, defaults=None, **kwargs):
         self._name = name
         self._type = type
-        self._options = self.DEFAULTS.copy()
+        self._defaults = self.DEFAULTS.copy()
+        self._defaults.update(defaults or {})
+        self._options = self._defaults.copy()
         self._options.update(kwargs)
 
         if self._type not in VIRTWHO_TYPES:
@@ -124,12 +126,12 @@ class Config(object):
                     logger.warn("Option `owner` is not used in non-remote libvirt connection")
 
     @classmethod
-    def fromParser(self, name, parser):
+    def fromParser(self, name, parser, defaults=None):
         options = {}
         for option in parser.options(name):
             options[option] = parser.get(name, option)
         type = options.pop('type').lower()
-        config = Config(name, type, **options)
+        config = Config(name, type, defaults, **options)
         return config
 
     @property

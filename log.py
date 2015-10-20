@@ -34,8 +34,8 @@ STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
 
 
 DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
-                "%(processName)s(%(process)d):%(threadName)s " \
-                "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
+               "%(processName)s(%(process)d):%(threadName)s " \
+               "@%(filename)s:%(funcName)s:%(lineno)d - %(message)s"
 
 DEFAULT_FORMAT = DEBUG_FORMAT
 DEFAULT_LOG_DIR = '/var/log/rhsm'
@@ -63,7 +63,7 @@ class QueueHandler(logging.Handler):
         # Apply string formatting to the message using args
         if hasattr(record, 'args'):
             record.msg = record.msg % record.args
-            del record.args
+            record.args = []
 
         serialized_record = json.dumps(record.__dict__)
         return serialized_record

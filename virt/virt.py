@@ -329,6 +329,7 @@ class Virt(Process):
         if self.is_terminated():
             sys.exit(0)
             return
+        self.logger.debug("Report gathered, putting to queue for sending")
         self._queue.put(report)
 
     def run(self):

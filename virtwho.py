@@ -26,7 +26,6 @@ import time
 from multiprocessing import Event, Queue
 import json
 
-import atexit
 from Queue import Empty
 from httplib import BadStatusLine
 from rhsm.connection import RestlibException
@@ -735,6 +734,18 @@ class PIDLock(object):
 virtWho = None
 
 
+def atexit_fn(*args, **kwargs):
+    global virtWho
+    if virtWho:
+        virtWho.terminate()
+    virtWho = None
+
+
+def reload(signal, stackframe):
+    global virtWho
+    virtWho.reload()
+
+
 def main():
     try:
         logger, options = parseOptions()
@@ -748,22 +759,9 @@ def main():
         print >>sys.stderr, msg
         exit(1, status=msg)
 
-    def atexit_fn():
-        global virtWho
-        if virtWho:
-            virtWho.terminate()
-    atexit.register(atexit_fn)
-
-    def reload(signal, stackframe):
-        global virtWho
-        virtWho.reload()
-
-    signal.signal(signal.SIGHUP, reload)
-
     global RetryInterval
     if options.interval < RetryInterval:
         RetryInterval = options.interval
-
 
     global virtWho
     try:
@@ -800,6 +798,9 @@ def main():
         locker = lambda: lock
 
     with locker():
+        signal.signal(signal.SIGHUP, reload)
+        signal.signal(signal.SIGTERM, atexit_fn)
+
         virtWho.logger = logger = log.getLogger(options, queue=True)
 
         sd_notify("READY=1\nMAINPID=%d" % os.getpid())
@@ -864,4 +865,6 @@ if __name__ == '__main__':
         logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
         exit(1, "virt-who failed: %s" % str(e))
+    logger = logging.getLogger("virtwho.main")
+    logger.debug("virt-who terminated")
     exit(0)

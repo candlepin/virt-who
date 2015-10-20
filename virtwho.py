@@ -143,6 +143,11 @@ class VirtWho(object):
         self.reloading = False
 
         self.configManager = ConfigManager(self.logger, config_dir, smType=options.smType)
+        for name in self.configManager._globals:
+            if name in vars(self.options):
+                continue
+            self.options.__dict__[name] = self.configManager._globals[name]
+
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 

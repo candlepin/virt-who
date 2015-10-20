@@ -151,8 +151,6 @@ class VirtWho(object):
         if not options.oneshot:
             self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
 
-        self.queue_logger = log.getDefaultQueueLogger()
-
     def addJob(self, job):
         # Add a job to be executed next time we have a report to send
         if (not isinstance(job, Job)):
@@ -290,6 +288,8 @@ class VirtWho(object):
             self.logger.info("virt-who host/guest association update successful")
 
     def run(self):
+        self.queue_logger = log.getDefaultQueueLogger()
+
         self.reloading = False
         if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
@@ -483,6 +483,7 @@ def exceptionCheck(e):
 class OptionError(Exception):
     pass
 
+
 def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
@@ -575,7 +576,7 @@ def parseOptions():
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     options.background = env in ["1", "true"]
 
-    logger = log.getLogger(options)
+    logger = log.getLogger(options, queue=False)
 
     env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
     if env in ["1", "true"]:
@@ -730,6 +731,7 @@ class PIDLock(object):
         except Exception:
             pass
 
+
 virtWho = None
 
 
@@ -791,12 +793,15 @@ def main():
         else:
             logger.info('Using configuration "%s" ("%s" mode)' % (config.name, config.type))
 
+    log.closeLogger(logger)
     if options.background:
-        locker = lambda: daemon.DaemonContext(pidfile=lock, files_preserve=[logger.handlers[0].stream])
+        locker = lambda: daemon.DaemonContext(pidfile=lock)
     else:
         locker = lambda: lock
 
     with locker():
+        virtWho.logger = logger = log.getLogger(options, queue=True)
+
         sd_notify("READY=1\nMAINPID=%d" % os.getpid())
         while True:
             try:
@@ -805,6 +810,7 @@ def main():
             except ReloadRequest:
                 logger.info("Reloading")
                 continue
+
 
 def _main(virtWho):
     result = virtWho.run()

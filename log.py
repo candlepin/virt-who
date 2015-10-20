@@ -163,6 +163,7 @@ def setDefaultLogFile(log_file):
     global DEFAULT_LOG_FILE
     DEFAULT_LOG_FILE = log_file
 
+
 def checkDir(directory):
     try:
         if not os.path.isdir(directory):
@@ -173,11 +174,18 @@ def checkDir(directory):
     return True
 
 
-def getLogger(options, config=None):
+def getLogger(options, config=None, queue=True):
     """
     This method does the setup necessary to create and connect both
     the main logger instance used from virtwho as well as loggers for
     all the connected virt backends
+
+    If virt-who is running in background mode, the double fork closes all the
+    filedescriptiors, disrupting communication to queue logger. So the
+    queue logger is created after the initialization phase (after the fork).
+
+    First the logger is created without the queue and it's added later on
+    (after the fork).
     """
     # Set defaults if necessary
     if options.log_dir:
@@ -208,8 +216,7 @@ def getLogger(options, config=None):
         fileHandler = getFileHandler(logger_name)
 
     fileHandler.setLevel(level)
-    queueLogger = getDefaultQueueLogger()
-    queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
+    fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
 
     if not options.background:
         # set up a streamhandler if we are not running in the background
@@ -220,13 +227,22 @@ def getLogger(options, config=None):
         f = logging.Filter()
         f.filter = lambda record: record.exc_info is None
         streamHandler.addFilter(f)
-        queueLogger.addHandler(streamHandler)
+        logger.addHandler(streamHandler)
 
-    fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
-    queueHandler.setFormatter(fileHandler.formatter)
-    queueLogger.addHandler(fileHandler)
-    logger.addHandler(queueHandler)
-
+    if queue:
+        queueLogger = getDefaultQueueLogger()
+        queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
+        if not options.background:
+            queueLogger.addHandler(streamHandler)
+        queueHandler.setFormatter(fileHandler.formatter)
+        queueLogger.addHandler(fileHandler)
+        for h in logger.handlers:
+            if isinstance(h, logging.handlers.WatchedFileHandler) or isinstance(h, logging.StreamHandler):
+                h.close()
+                logger.removeHandler(h)
+        logger.addHandler(queueHandler)
+    else:
+        logger.addHandler(fileHandler)
     return logger
 
 
@@ -243,3 +259,8 @@ def getFileHandler(filtername, log_file=None, log_dir=None):
     except Exception as e:
         sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
     return fileHandler
+
+
+def closeLogger(logger):
+    for h in logger.handlers:
+        h.close()

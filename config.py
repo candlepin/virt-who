@@ -188,20 +188,13 @@ class Config(object):
 
 
 class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, smType=None, general_conf_path=None):
+    def __init__(self, logger, config_dir=None, smType=None):
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
-        if general_conf_path is None:
-            general_conf_path = VIRTWHO_GENERAL_CONF_PATH
         self.smType = smType
         parser = SafeConfigParser()
         self._configs = []
         self.logger = logger
-        general_conf = self._parseFile(general_conf_path)
-        self._defaults = general_conf.get('default', {})
-        # contains values that should be accessible to all of virt-who
-        # eg interval
-        self._globals = general_conf.get('global', {})
         try:
             config_dir_content = os.listdir(config_dir)
         except OSError:
@@ -227,34 +220,6 @@ class ConfigManager(object):
             except NoOptionError as e:
                 self.logger.error(str(e))
 
-    @classmethod
-    def getOptions(self, section, parser):
-        options = {}
-        for option in parser.options(section):
-            options[option] = parser.get(section, option)
-        return options
-
-    @classmethod
-    def getSections(self, parser):
-        sections = {}
-        for section in parser.sections():
-            try:
-                sections[section] = ConfigManager.getOptions(section, parser)
-            except NoOptionError:
-                sections[section] = {}
-        return sections
-
-    def _parseFile(self, filename):
-        # Parse a file into a dict of section_name: options_dict
-        # options_dict is a dict of option_name: value
-
-        parser = SafeConfigParser()
-        fname = parser.read(filename)
-        if len(fname) == 0:
-               self.logger.error("Unable to read general configuration file %s", filename)
-        sections = ConfigManager.getSections(parser)
-        return sections
-
     def readFile(self, filename):
         parser = SafeConfigParser()
         fname = parser.read(filename)
@@ -268,3 +233,29 @@ class ConfigManager(object):
 
     def addConfig(self, config):
         self._configs.append(config)
+
+def getOptions(section, parser):
+    options = {}
+    for option in parser.options(section):
+        options[option] = parser.get(section, option)
+    return options
+
+def getSections(parser):
+    sections = {}
+    for section in parser.sections():
+        try:
+            sections[section] = getOptions(section, parser)
+        except NoOptionError:
+            sections[section] = {}
+    return sections
+
+def parseFile(filename, logger=None):
+    # Parse a file into a dict of section_name: options_dict
+    # options_dict is a dict of option_name: value
+
+    parser = SafeConfigParser()
+    fname = parser.read(filename)
+    if len(fname) == 0 and logger:
+           logger.error("Unable to read configuration file %s", filename)
+    sections = getSections(parser)
+    return sections

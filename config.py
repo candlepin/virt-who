@@ -188,7 +188,8 @@ class Config(object):
 
 
 class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, smType=None):
+    def __init__(self, logger, config_dir=None, smType=None, defaults=None):
+        self._defaults = defaults or {}
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
         self.smType = smType

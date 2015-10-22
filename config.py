@@ -95,6 +95,17 @@ class GeneralConfig(object):
         '''
         self.__dict__['_options'].update(kwargs)
 
+    def __getitem__(self, name):
+        return self._options[name]
+
+    def __setitem__(self, name, value):
+        self._options[name] = value
+
+    def __delitem__(self, name):
+        del self._options[name]
+
+    def __contains__(self, name):
+        return name in self._options
 
 
 class VirtWhoConfig(GeneralConfig):

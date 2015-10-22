@@ -143,11 +143,10 @@ class VirtWho(object):
         self._429_count = 0
         self.reloading = False
 
-        self.configManager = ConfigManager(self.logger, config_dir, smType=options.smType)
-        for name in self.configManager._globals:
-            if name in vars(self.options):
-                continue
-            self.options.__dict__[name] = self.configManager._globals[name]
+        self.configManager = ConfigManager(self.logger,
+                                           config_dir,
+                                           smType=self.options.smType,
+                                           defaults=self.options.defaults)
 
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
@@ -557,6 +556,24 @@ def parseOptions():
 
     (options, args) = parser.parse_args()
 
+        # Handle general config options
+    general_config = config.parseFile(config.VIRTWHO_GENERAL_CONF_PATH)
+    global_options = general_config['global']
+    options_to_update = set([key for key in global_options if key not in vars(options)
+                                                          or vars(options)[key] is None
+                                                          or vars(options)[key] == parser.defaults.get(key)])
+    for option in options_to_update:
+        value = global_options[option]
+        try:
+            value = int(value)
+        except ValueError:
+            # If it's not an int don't do anything
+            pass
+        options.__dict__[option] = value
+
+    # add defaults parsed from general config for later use
+    options.defaults = general_config['default']
+
     # Handle enviroment variables
 
     env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
@@ -579,7 +596,8 @@ def parseOptions():
 
     # Used only when starting as service (initscript sets it to 1, systemd to 0)
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
-    options.background = env in ["1", "true"]
+    if env in ["1", "true"]:
+        options.background = True
 
     logger = log.getLogger(options)
 
@@ -590,9 +608,11 @@ def parseOptions():
     if options.print_:
         options.oneshot = True
 
-    env = os.getenv("VIRTWHO_INTERVAL", "0").strip().lower()
+    env = os.getenv("VIRTWHO_INTERVAL")
+    if env:
+        env = env.strip().lower()
     try:
-        if int(env) > 0 and options.interval == 0:
+        if env and int(env) >= MinimumSendInterval:
             options.interval = int(env)
     except ValueError:
         logger.warning("Interval is not number, ignoring")
@@ -693,7 +713,7 @@ def parseOptions():
         options.oneshot = False
 
     if options.interval < MinimumSendInterval:
-        if options.interval == 0:
+        if options.interval == options.defaults['interval']:
             logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
         else:
             logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))

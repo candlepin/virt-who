@@ -84,6 +84,9 @@ class GeneralConfig(object):
         return value
 
     def __setattr__(self, name, value):
+        if name.startswith('_'):
+            super(GeneralConfig, self).__setattr__(name, value)
+        else:
             self._options[name] = value
 
     def update(self, **kwargs):

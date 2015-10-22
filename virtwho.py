@@ -42,6 +42,7 @@ from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
 from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat
+import config
 from password import InvalidKeyFile
 
 import log

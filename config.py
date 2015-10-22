@@ -51,7 +51,72 @@ def parse_list(s):
     return map(strip_quote, reader([s.strip(' ')], skipinitialspace=True).next())
 
 
-class Config(object):
+class GeneralConfig(object):
+    DEFAULTS = {}
+    LIST_OPTIONS = ()
+    BOOL_OPTIONS = ()
+    INT_OPTIONS = ()
+
+    def __init__(self, defaults=None, **kwargs):
+        options = self.DEFAULTS.copy()
+        options.update(defaults or {})
+        options.update(kwargs)
+        # setting the attribute the normal way causes
+        # a reference to the dictionary to appear
+        self.__dict__['_options'] = options
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            super(GeneralConfig, self).__getattr__(name)
+
+        value = self._options.get(name, None)
+        if value is None:
+            if name in self.DEFAULTS:
+                return self.DEFAULTS[name]
+            else:
+                return None
+        if name in self.BOOL_OPTIONS:
+            return str(value).lower() not in ("0", "false", "no")
+        if name in self.LIST_OPTIONS:
+            return parse_list(value)
+        if name in self.INT_OPTIONS:
+            return int(value)
+        return value
+
+    def __setattr__(self, name, value):
+            self._options[name] = value
+
+    def update(self, **kwargs):
+        '''
+        Update _options with the kwargs
+        '''
+        self.__dict__['_options'].update(kwargs)
+
+
+
+class VirtWhoConfig(GeneralConfig):
+    DEFAULTS = {
+        'debug': False,
+        'oneshot': False,
+        'print_': False,
+        'log_per_config': False,
+        'background': False
+    }
+    LIST_OPTIONS = (
+        'configs',
+    )
+    BOOL_OPTIONS = (
+        'debug',
+        'oneshot',
+        'background',
+        'print_'
+        'log_per_config'
+    )
+    INT_OPTIONS = (
+        'interval',
+    )
+
+class Config(GeneralConfig):
     DEFAULTS = {
         'simplified_vim': True,
         'hypervisor_id': 'uuid',
@@ -68,12 +133,9 @@ class Config(object):
     )
 
     def __init__(self, name, type, defaults=None, **kwargs):
+        super(Config, self).__init__(defaults=defaults, **kwargs)
         self._name = name
         self._type = type
-        self._defaults = self.DEFAULTS.copy()
-        self._defaults.update(defaults or {})
-        self._options = self._defaults.copy()
-        self._options.update(kwargs)
 
         if self._type not in VIRTWHO_TYPES:
             raise InvalidOption('Invalid type "%s", must be one of following %s' %
@@ -169,22 +231,6 @@ class Config(object):
     @property
     def rhsm_proxy_password(self):
         return self._get_password('rhsm_proxy_password', 'rhsm_encrypted_proxy_password')
-
-    def __getattr__(self, name):
-        if name.startswith('_'):
-            super(Config, self).__getattr__(name)
-
-        value = self._options.get(name, None)
-        if value is None:
-            if name in self.DEFAULTS:
-                return self.DEFAULTS[name]
-            else:
-                return None
-        if name in self.BOOL_OPTIONS:
-            return value not in ("0", "false", "no")
-        if name in self.LIST_OPTIONS:
-            return parse_list(value)
-        return value
 
 
 class ConfigManager(object):

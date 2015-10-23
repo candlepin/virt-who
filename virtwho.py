@@ -145,8 +145,7 @@ class VirtWho(object):
 
         self.configManager = ConfigManager(self.logger,
                                            config_dir,
-                                           smType=self.options.smType,
-                                           defaults=self.options.defaults)
+                                           smType=self.options.smType)
 
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
@@ -492,12 +491,12 @@ def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
-    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
-    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
-    parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
+    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=NotSetSentinel(), help="Enable debugging output")
+    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=NotSetSentinel(), help="Send the list of guest IDs and exit immediately")
+    parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
+    parser.add_option("-p", "--print", action="store_true", dest="print_", default=NotSetSentinel(), help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
-    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=False, help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
     parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
     parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
 
@@ -554,25 +553,11 @@ def parseOptions():
     satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
     parser.add_option_group(satelliteGroup)
 
-    (options, args) = parser.parse_args()
+    (cli_options, args) = parser.parse_args()
 
-        # Handle general config options
-    general_config = config.parseFile(config.VIRTWHO_GENERAL_CONF_PATH)
-    global_options = general_config['global']
-    options_to_update = set([key for key in global_options if key not in vars(options)
-                                                          or vars(options)[key] is None
-                                                          or vars(options)[key] == parser.defaults.get(key)])
-    for option in options_to_update:
-        value = global_options[option]
-        try:
-            value = int(value)
-        except ValueError:
-            # If it's not an int don't do anything
-            pass
-        options.__dict__[option] = value
+    options = GlobalConfig.fromFile()
 
-    # add defaults parsed from general config for later use
-    options.defaults = general_config['default']
+    options.update(**vars(cli_options))
 
     # Handle enviroment variables
 
@@ -713,7 +698,7 @@ def parseOptions():
         options.oneshot = False
 
     if options.interval < MinimumSendInterval:
-        if options.interval == options.defaults['interval']:
+        if not options.interval or options.interval == parser.defaults['interval']:
             logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
         else:
             logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))

@@ -99,6 +99,8 @@ class GeneralConfig(object):
         return value
 
     def __setattr__(self, name, value):
+        if isinstance(value, NotSetSentinel):
+            return
         if name.startswith('_'):
             super(GeneralConfig, self).__setattr__(name, value)
         else:
@@ -108,12 +110,14 @@ class GeneralConfig(object):
         '''
         Update _options with the kwargs
         '''
-        self.__dict__['_options'].update(kwargs)
+        self.__dict__['_options'].update([(k,v) for k,v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
 
     def __getitem__(self, name):
         return self._options[name]
 
     def __setitem__(self, name, value):
+        if isinstance(value, NotSetSentinel):
+            return
         self._options[name] = value
 
     def __delitem__(self, name):

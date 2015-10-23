@@ -61,8 +61,11 @@ class NotSetSentinel(object):
 
 
 class GeneralConfig(object):
+    # This dictionary should be filled in for subclasses with option_name: default_value
     DEFAULTS = {}
+    # options that are lists should be placed here in subclasses
     LIST_OPTIONS = ()
+    # boolean options should be listed here
     BOOL_OPTIONS = ()
     INT_OPTIONS = ()
 

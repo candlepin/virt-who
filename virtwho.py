@@ -41,7 +41,7 @@ from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
 from manager.subscriptionmanager import SubscriptionManager
-from config import Config, ConfigManager, InvalidPasswordFormat
+from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel
 import config
 from password import InvalidKeyFile
 

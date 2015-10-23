@@ -90,7 +90,10 @@ class GeneralConfig(object):
         if name in self.BOOL_OPTIONS:
             return str(value).lower() not in ("0", "false", "no")
         if name in self.LIST_OPTIONS:
-            return parse_list(value)
+            if not isinstance(value, list):
+                return parse_list(value)
+            else:
+                return value
         if name in self.INT_OPTIONS:
             return int(value)
         return value
@@ -124,7 +127,6 @@ class GeneralConfig(object):
         raise NotImplementedError()
 
 
-
 class GlobalConfig(GeneralConfig):
     """
     This GeneralConfig subclass represents the config file
@@ -136,7 +138,8 @@ class GlobalConfig(GeneralConfig):
         'oneshot': False,
         'print_': False,
         'log_per_config': False,
-        'background': False
+        'background': False,
+        'configs': ''
     }
     LIST_OPTIONS = (
         'configs',
@@ -158,8 +161,6 @@ class GlobalConfig(GeneralConfig):
         if not global_config and logger:
             logger.warning('Unable to find "%s" section in general config file: "%s"\nWill use defaults where required' % (VIRTWHO_GLOBAL_SECTION_NAME, filename))
         return cls(**global_config)
-
-
 
 
 class Config(GeneralConfig):
@@ -349,7 +350,6 @@ def getSections(parser):
 def parseFile(filename, logger=None):
     # Parse a file into a dict of section_name: options_dict
     # options_dict is a dict of option_name: value
-
     parser = SafeConfigParser()
     fname = parser.read(filename)
     if len(fname) == 0 and logger:

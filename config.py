@@ -30,7 +30,8 @@ import json
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
 VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
-
+VIRTWHO_GLOBAL_SECTION_NAME = "global"
+VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 
 class InvalidOption(Error):
     pass

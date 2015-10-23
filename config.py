@@ -52,6 +52,14 @@ def parse_list(s):
     return map(strip_quote, reader([s.strip(' ')], skipinitialspace=True).next())
 
 
+class NotSetSentinel(object):
+    """
+    An empty object subclass that is meant to be used in place of 'None'.
+    We might want to set a config value to 'None'
+    """
+    pass
+
+
 class GeneralConfig(object):
     DEFAULTS = {}
     LIST_OPTIONS = ()

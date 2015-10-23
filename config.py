@@ -125,7 +125,12 @@ class GeneralConfig(object):
 
 
 
-class VirtWhoConfig(GeneralConfig):
+class GlobalConfig(GeneralConfig):
+    """
+    This GeneralConfig subclass represents the config file
+    that holds the global values used to control virt-who's
+    operation.
+    """
     DEFAULTS = {
         'debug': False,
         'oneshot': False,
@@ -146,6 +151,16 @@ class VirtWhoConfig(GeneralConfig):
     INT_OPTIONS = (
         'interval',
     )
+
+    @classmethod
+    def fromFile(cls, logger=None, filename=VIRTWHO_GENERAL_CONF_PATH):
+        global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
+        if not global_config and logger:
+            logger.warning('Unable to find "%s" section in general config file: "%s"\nWill use defaults where required' % (VIRTWHO_GLOBAL_SECTION_NAME, filename))
+        return cls(**global_config)
+
+
+
 
 class Config(GeneralConfig):
     DEFAULTS = {

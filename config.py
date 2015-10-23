@@ -119,6 +119,11 @@ class GeneralConfig(object):
     def __contains__(self, name):
         return name in self._options
 
+    @classmethod
+    def fromFile(cls, logger, filename):
+        raise NotImplementedError()
+
+
 
 class VirtWhoConfig(GeneralConfig):
     DEFAULTS = {

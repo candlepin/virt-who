@@ -26,6 +26,8 @@ from password import Password
 from binascii import unhexlify
 import hashlib
 import json
+import socket
+import util
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
@@ -143,7 +145,10 @@ class GlobalConfig(GeneralConfig):
         'print_': False,
         'log_per_config': False,
         'background': False,
-        'configs': ''
+        'configs': '',
+        'reporter_id': util.generateReporterId(),
+        'smType': 'sam',
+        'interval': 60
     }
     LIST_OPTIONS = (
         'configs',

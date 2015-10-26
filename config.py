@@ -129,7 +129,7 @@ class GeneralConfig(object):
         return name in self._options
 
     @classmethod
-    def fromFile(cls, logger, filename):
+    def fromFile(cls, filename, logger):
         raise NotImplementedError()
 
 
@@ -165,7 +165,7 @@ class GlobalConfig(GeneralConfig):
     )
 
     @classmethod
-    def fromFile(cls, logger=None, filename=VIRTWHO_GENERAL_CONF_PATH):
+    def fromFile(cls, filename, logger=None):
         global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
         if not global_config and logger:
             logger.warning('Unable to find "%s" section in general config file: "%s"\nWill use defaults where required' % (VIRTWHO_GLOBAL_SECTION_NAME, filename))

@@ -499,6 +499,7 @@ def parseOptions():
     parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
     parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
     parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
+    parser.add_option("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(), help="Label host/guest associations obtained by this instance of virt-who with the provided id.")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -576,6 +577,10 @@ def parseOptions():
     env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_FILE).strip()
     if env != log.DEFAULT_LOG_FILE:
         options.log_file = env
+
+    env = os.getenv("VIRTWHO_REPORTER_ID", "").strip()
+    if len(env) > 0:
+        options.reporter_id = env
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:

@@ -28,11 +28,14 @@ from mock import patch, Mock, sentinel
 
 from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
+import util
 from virt import HostGuestAssociationReport, Hypervisor, Guest, DomainListReport
 from multiprocessing import Queue
 
 
 class TestOptions(TestBase):
+    NO_GENERAL_CONF = {'global':{}}
+
     def setUp(self):
         self.clearEnv()
 
@@ -41,8 +44,13 @@ class TestOptions(TestBase):
             if key.startswith("VIRTWHO"):
                 del os.environ[key]
 
+    def setUpParseFile(self, parseFileMock):
+        parseFileMock.return_value = TestOptions.NO_GENERAL_CONF
+
     @patch('log.getLogger')
-    def test_default_cmdline_options(self, getLogger):
+    @patch('config.parseFile')
+    def test_default_cmdline_options(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py"]
         _, options = parseOptions()
         self.assertFalse(options.debug)
@@ -51,15 +59,67 @@ class TestOptions(TestBase):
         self.assertEqual(options.interval, 60)
         self.assertEqual(options.smType, 'sam')
         self.assertEqual(options.virtType, None)
+        self.assertEqual(options.reporter_id, util.generateReporterId())
 
     @patch('log.getLogger')
-    def test_minimum_interval_options(self, getLogger):
+    @patch('config.parseFile')
+    def test_minimum_interval_options(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--interval=5"]
         _, options = parseOptions()
         self.assertEqual(options.interval, 60)
 
+        sys.argv = ["virtwho.py"]
+        os.environ["VIRTWHO_INTERVAL"] = '1'
+
+        _, options = parseOptions()
+        self.assertEqual(options.interval, 60)
+
+        self.clearEnv()
+        bad_conf = {'global': {'interval': 1}}
+        parseFile.return_value = bad_conf
+
+        _, options = parseOptions()
+        self.assertEqual(options.interval, 60)
+
     @patch('log.getLogger')
-    def test_options_debug(self, getLogger):
+    @patch('config.parseFile')
+    def test_options_hierarchy_for_reporter_id(self, parseFile, getLogger):
+        # Set the value in all three possible locations
+        # Mock /etc/virt-who.conf file
+        global_conf_dict = {
+            'global':{
+                'reporter_id': "/etc/virt-who.conf"
+            }
+        }
+        parseFile.return_value = global_conf_dict
+        # cli option
+        sys.argv = ["virtwho.py", "--reporter-id=cli"]
+        # environment var
+        os.environ["VIRTWHO_REPORTER_ID"] = "env"
+        _, options = parseOptions()
+        # cli option should beat environment vars and virt-who.conf
+        self.assertEqual(options.reporter_id, "cli")
+
+        sys.argv = ["virtwho.py"]
+
+        _, options = parseOptions()
+        self.assertEqual(options.reporter_id, "env")
+
+        self.clearEnv()
+
+        _, options = parseOptions()
+        self.assertEqual(options.reporter_id, "/etc/virt-who.conf")
+
+        parseFile.return_value = {'global':{}}
+
+        _, options = parseOptions()
+        self.assertEqual(options.reporter_id, util.generateReporterId())
+
+    @patch('log.getLogger')
+    @patch('config.parseFile')
+    def test_options_debug(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "-d"]
         _, options = parseOptions()
         self.assertTrue(options.debug)
@@ -70,7 +130,9 @@ class TestOptions(TestBase):
         self.assertTrue(options.debug)
 
     @patch('log.getLogger')
-    def test_options_virt(self, getLogger):
+    @patch('config.parseFile')
+    def test_options_virt(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         for virt in ['esx', 'hyperv', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py", "--%s" % virt, "--%s-owner=owner" % virt,
@@ -102,7 +164,9 @@ class TestOptions(TestBase):
             self.assertEqual(options.password, 'xpassword')
 
     @patch('log.getLogger')
-    def test_options_virt_satellite(self, getLogger):
+    @patch('config.parseFile')
+    def test_options_virt_satellite(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         for virt in ['esx', 'hyperv', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py",
@@ -141,7 +205,9 @@ class TestOptions(TestBase):
             self.assertEqual(options.password, 'xpassword')
 
     @patch('log.getLogger')
-    def test_missing_option(self, getLogger):
+    @patch('config.parseFile')
+    def test_missing_option(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
         for smType in ['satellite', 'sam']:
             for virt in ['libvirt', 'vdsm', 'esx', 'hyperv', 'rhevm']:
                 for missing in ['server', 'username', 'password', 'env', 'owner']:
@@ -168,7 +234,9 @@ class TestOptions(TestBase):
     @patch('log.getLogger')
     @patch('virt.Virt.fromConfig')
     @patch('manager.Manager.fromOptions')
-    def test_sending_guests(self, fromOptions, fromConfig, getLogger):
+    @patch('config.parseFile')
+    def test_sending_guests(self, parseFile, fromOptions, fromConfig, getLogger):
+        self.setUpParseFile(parseFile)
         options = Mock()
         options.oneshot = True
         options.interval = 0

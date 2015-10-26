@@ -1,5 +1,5 @@
 """
-Test reading and writing configuration files.
+Test reading and writing configuration files as well as configuration objects.
 
 Copyright (C) 2014 Radek Novacek <rnovacek@redhat.com>
 

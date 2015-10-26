@@ -1,3 +1,4 @@
+import socket
 
 __all__ = ('OrderedDict',)
 
@@ -277,3 +278,17 @@ class OrderedDict(dict):
 
 def clean_filename(name):
     return ''.join([char for char in name if char in VALID_FILENAME_CHARS])
+
+def getMachineId():
+    machine_id = None
+    with open('/etc/machine-id') as machine_id_file:
+        machine_id = machine_id_file.readline().strip()
+    return machine_id
+
+def generateReporterId():
+    hostname = socket.gethostname()
+    machine_id = getMachineId()
+    if not machine_id or len(machine_id) == 0:
+        return hostname
+    else:
+        return hostname + '-' + machine_id

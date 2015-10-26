@@ -555,9 +555,11 @@ def parseOptions():
 
     (cli_options, args) = parser.parse_args()
 
-    options = GlobalConfig.fromFile()
+    options = GlobalConfig.fromFile(config.VIRTWHO_GENERAL_CONF_PATH)
 
-    options.update(**vars(cli_options))
+    # Handle defaults from the command line options parser
+
+    options.update(**parser.defaults)
 
     # Handle enviroment variables
 
@@ -638,14 +640,23 @@ def parseOptions():
     if env in ["1", "true"]:
         options.virtType = "hyperv"
 
+    def getNonDefaultOptions(cli_options, defaults):
+        return {option: value for option, value in cli_options.iteritems()
+                 if defaults.get(option, NotSetSentinel()) != value}
+
+    # Handle non-default command line options
+    options.update(**getNonDefaultOptions(vars(cli_options), parser.defaults))
+
+    # Check Env
+
     def checkEnv(variable, option, name, required=True):
         """
         If `option` is empty, check enviroment `variable` and return its value.
         Exit if it's still empty
         """
-        if len(option) == 0:
+        if not option or len(option) == 0:
             option = os.getenv(variable, "").strip()
-        if required and len(option) == 0:
+        if required and (not option or len(option) == 0):
             raise OptionError("Required parameter '%s' is not set, exiting" % name)
         return option
 

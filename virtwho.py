@@ -389,7 +389,10 @@ class VirtWho(object):
                 report_sent = report
 
             if (self.options.oneshot and report_sent) or self.options.print_:
-                oneshot_remaining.remove(report_sent.config.name)
+                try:
+                    oneshot_remaining.remove(report_sent.config.name)
+                except KeyError:
+                    pass
                 if not isinstance(report_sent, ErrorReport):
                     if self.options.print_:
                         result[report_sent.config] = report_sent

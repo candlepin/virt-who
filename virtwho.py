@@ -720,6 +720,7 @@ def parseOptions():
             logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))
         options.interval = MinimumSendInterval
 
+    logger.info("Using reporter_id='%s'" % options.reporter_id)
     return (logger, options)
 
 

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <soapenv:Body>
+        <WaitForUpdatesExResponse xmlns="urn:vim25">
+            <returnval>
+                <version>1</version>
+                <filterSet>
+                    <filter type="PropertyFilter">session[35da441b-d9b8-18e1-e184-b3191cafd598]523b902b-a574-590d-ae2d-3ed86be1d341</filter>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="VirtualMachine">1</obj>
+                        <changeSet>
+                            <name>config.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">9844af5d-101b-40ea-a125-8bf1a02f888b</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>runtime.powerState</name>
+                            <op>assign</op>
+                            <val xsi:type="VirtualMachinePowerState">poweredOn</val>
+                        </changeSet>
+                    </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="VirtualMachine">2</obj>
+                        <changeSet>
+                            <name>config.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">640bb2fe-fa3b-48cb-89d0-193c13b15663</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>runtime.powerState</name>
+                            <op>assign</op>
+                            <val xsi:type="VirtualMachinePowerState">poweredOn</val>
+                        </changeSet>
+                    </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="VirtualMachine">3</obj>
+                        <changeSet>
+                            <name>config.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">c0667b9d-64e1-480c-8b82-c1b1c06614e7</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>runtime.powerState</name>
+                            <op>assign</op>
+                            <val xsi:type="VirtualMachinePowerState">poweredOn</val>
+                        </changeSet>
+                    </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="HostSystem">ha-host</obj>
+                        <changeSet>
+                            <name>hardware.systemInfo.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">5627a268-f036-4f5d-b9a3-0183ec736913</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>name</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>parent</name>
+                            <op>assign</op>
+                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>vm</name>
+                            <op>assign</op>
+                            <val xsi:type="ArrayOfManagedObjectReference">
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">1</ManagedObjectReference>
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">2</ManagedObjectReference>
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">3</ManagedObjectReference>
+                            </val>
+                        </changeSet>
+                    </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="HostSystem">ha-host2</obj>
+                        <changeSet>
+                            <name>hardware.systemInfo.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">4172853d-e72a-493a-883b-8761f5daa5eb</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>name</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>parent</name>
+                            <op>assign</op>
+                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>vm</name>
+                            <op>assign</op>
+                            <val xsi:type="ArrayOfManagedObjectReference"></val>
+                        </changeSet>
+                    </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="HostSystem">ha-host3</obj>
+                        <changeSet>
+                            <name>hardware.systemInfo.uuid</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">a2c85a15-9b53-493d-9731-8b5cccdd8951</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>name</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>parent</name>
+                            <op>assign</op>
+                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>vm</name>
+                            <op>assign</op>
+                            <val xsi:type="ArrayOfManagedObjectReference"></val>
+                        </changeSet>
+                    </objectSet>
+                </filterSet>
+            </returnval>
+        </WaitForUpdatesExResponse>
+    </soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<clusters>
+    <cluster href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4" id="be0fa062-3be0-461a-bf43-ff7579c473e4">
+        <name>Cetus</name>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/networks" rel="networks"/>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/permissions" rel="permissions"/>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/glustervolumes" rel="glustervolumes"/>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/glusterhooks" rel="glusterhooks"/>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/affinitygroups" rel="affinitygroups"/>
+        <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/cpuprofiles" rel="cpuprofiles"/>
+        <cpu id="Intel Westmere Family">
+            <architecture>X86_64</architecture>
+        </cpu>
+        <data_center href="/api/datacenters/e79b66bb-65c3-4629-b792-11d966aa985a" id="e79b66bb-65c3-4629-b792-11d966aa985a"/>
+        <memory_policy>
+            <overcommit percent="150"/>
+            <transparent_hugepages>
+                <enabled>true</enabled>
+            </transparent_hugepages>
+        </memory_policy>
+        <scheduling_policy href="/api/schedulingpolicies/8d5d7bec-68de-4a67-b53e-0ac54686d579" id="8d5d7bec-68de-4a67-b53e-0ac54686d579">
+            <name>vm_evenly_distributed</name>
+            <policy>vm_evenly_distributed</policy>
+            <thresholds/>
+            <properties>
+                <property>
+                    <name>HighVmCount</name>
+                    <value>10</value>
+                </property>
+                <property>
+                    <name>MigrationThreshold</name>
+                    <value>5</value>
+                </property>
+                <property>
+                    <name>SpmVmGrace</name>
+                    <value>5</value>
+                </property>
+            </properties>
+        </scheduling_policy>
+        <version major="3" minor="5"/>
+        <error_handling>
+            <on_error>migrate</on_error>
+        </error_handling>
+        <virt_service>true</virt_service>
+        <gluster_service>false</gluster_service>
+        <threads_as_cores>true</threads_as_cores>
+        <tunnel_migration>false</tunnel_migration>
+        <trusted_service>false</trusted_service>
+        <ha_reservation>false</ha_reservation>
+        <optional_reason>false</optional_reason>
+        <ballooning_enabled>false</ballooning_enabled>
+        <ksm>
+            <enabled>false</enabled>
+        </ksm>
+        <required_rng_sources/>
+    </cluster>
+    <cluster href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d" id="166b99a7-a40c-4823-8960-749a8985cd9d">
+        <name>CL32</name>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/networks" rel="networks"/>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/permissions" rel="permissions"/>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/glustervolumes" rel="glustervolumes"/>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/glusterhooks" rel="glusterhooks"/>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/affinitygroups" rel="affinitygroups"/>
+        <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/cpuprofiles" rel="cpuprofiles"/>
+        <cpu id="Intel Conroe Family">
+            <architecture>X86_64</architecture>
+        </cpu>
+        <data_center href="/api/datacenters/7a6b26c1-f365-4c68-9228-c6e1e304f44b" id="7a6b26c1-f365-4c68-9228-c6e1e304f44b"/>
+        <memory_policy>
+            <overcommit percent="100"/>
+            <transparent_hugepages>
+                <enabled>true</enabled>
+            </transparent_hugepages>
+        </memory_policy>
+        <scheduling_policy href="/api/schedulingpolicies/b4ed2332-a7ac-4d5f-9596-99a439cb2812" id="b4ed2332-a7ac-4d5f-9596-99a439cb2812">
+            <name>none</name>
+            <policy>none</policy>
+        </scheduling_policy>
+        <version major="3" minor="2"/>
+        <error_handling>
+            <on_error>migrate</on_error>
+        </error_handling>
+        <virt_service>true</virt_service>
+        <gluster_service>false</gluster_service>
+        <threads_as_cores>false</threads_as_cores>
+        <tunnel_migration>false</tunnel_migration>
+        <trusted_service>false</trusted_service>
+        <ha_reservation>false</ha_reservation>
+        <optional_reason>false</optional_reason>
+        <ballooning_enabled>false</ballooning_enabled>
+        <ksm>
+            <enabled>false</enabled>
+        </ksm>
+        <required_rng_sources/>
+    </cluster>
+    <cluster href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95" id="99408929-82cf-4dc7-a532-9d998063fa95">
+        <name>Default</name>
+        <description>The default server cluster</description>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/networks" rel="networks"/>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/permissions" rel="permissions"/>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/glustervolumes" rel="glustervolumes"/>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/glusterhooks" rel="glusterhooks"/>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/affinitygroups" rel="affinitygroups"/>
+        <link href="/api/clusters/99408929-82cf-4dc7-a532-9d998063fa95/cpuprofiles" rel="cpuprofiles"/>
+        <cpu id="Intel Westmere Family">
+            <architecture>X86_64</architecture>
+        </cpu>
+        <memory_policy>
+            <overcommit percent="100"/>
+            <transparent_hugepages>
+                <enabled>true</enabled>
+            </transparent_hugepages>
+        </memory_policy>
+        <scheduling_policy href="/api/schedulingpolicies/20d25257-b4bd-4589-92a6-c4c5c5d3fd1a" id="20d25257-b4bd-4589-92a6-c4c5c5d3fd1a">
+            <name>evenly_distributed</name>
+            <policy>evenly_distributed</policy>
+            <thresholds high="80" duration="120"/>
+            <properties>
+                <property>
+                    <name>CpuOverCommitDurationMinutes</name>
+                    <value>2</value>
+                </property>
+                <property>
+                    <name>HighUtilization</name>
+                    <value>80</value>
+                </property>
+            </properties>
+        </scheduling_policy>
+        <version major="3" minor="4"/>
+        <error_handling>
+            <on_error>migrate</on_error>
+        </error_handling>
+        <virt_service>false</virt_service>
+        <gluster_service>false</gluster_service>
+        <threads_as_cores>false</threads_as_cores>
+        <tunnel_migration>false</tunnel_migration>
+        <trusted_service>false</trusted_service>
+        <ha_reservation>false</ha_reservation>
+        <optional_reason>false</optional_reason>
+        <ballooning_enabled>false</ballooning_enabled>
+        <ksm>
+            <enabled>true</enabled>
+        </ksm>
+        <required_rng_sources/>
+    </cluster>
+</clusters>

@@ -130,39 +130,6 @@ class QueueLogger(object):
     def addHandler(self, handler):
         self.logger.addHandler(handler)
 
-__DEFAULT_QUEUE_LOGGER = None
-
-
-def getDefaultQueueLogger():
-    """
-    This method returns a default logger instance at the module level
-    if it does not exist it creates it
-    """
-    global __DEFAULT_QUEUE_LOGGER
-    if not __DEFAULT_QUEUE_LOGGER:
-        __DEFAULT_QUEUE_LOGGER = QueueLogger(DEFAULT_NAME)
-        __DEFAULT_QUEUE_LOGGER.start_logging()
-    return __DEFAULT_QUEUE_LOGGER
-
-
-def setDefaultLogDir(log_dir):
-    """
-    A method to change the default log directory
-    """
-    global DEFAULT_LOG_DIR
-    if not checkDir(log_dir):
-        sys.stderr.write("Default Log Directory not changed")
-    else:
-        DEFAULT_LOG_DIR = log_dir
-
-
-def setDefaultLogFile(log_file):
-    """
-    Sets the default log file
-    """
-    global DEFAULT_LOG_FILE
-    DEFAULT_LOG_FILE = log_file
-
 
 def checkDir(directory):
     try:
@@ -174,7 +141,115 @@ def checkDir(directory):
     return True
 
 
-def getLogger(options, config=None, queue=True):
+class Logger(object):
+    _log_dir = DEFAULT_LOG_DIR
+    _log_file = DEFAULT_LOG_FILE
+    _log_per_config = False
+    _logs = {}
+    _stream_handler = None
+    _level = logging.DEBUG
+    _queue_logger = None
+    _background = False
+
+    @classmethod
+    def initialize(cls, options):
+        # Set defaults if necessary
+        if options.log_dir:
+            cls._log_dir = options.log_dir
+        if options.log_file:
+            cls._log_file = options.log_file
+        if options.log_per_config:
+            cls._log_per_config = True
+        cls._level = logging.DEBUG if options.debug else logging.INFO
+        cls._background = options.background
+
+    @classmethod
+    def get_logger(cls, name=None, config=None, queue=True):
+        if name is None:
+            # Remove slashes and periods in the config.name (as that could mess logging up
+            name = config.name.replace('.', '').replace('/', '_') if config else 'main'
+        logger_name = 'virtwho.' + name  # The name of the logger instance
+        try:
+            # Try to get an existing log
+            return cls._logs[logger_name]
+        except KeyError:
+            pass
+
+        logger = logging.getLogger(logger_name)
+        cls._logs[logger_name] = logger
+        logger.propagate = False  # Because we are using or own queue logger we don't want any of the loggers to propagate
+        logger.setLevel(logging.DEBUG)
+
+        fileHandler = cls.get_file_handler(name=logger_name, config=config)
+
+        if queue:
+            queueLogger = cls.get_queue_logger()
+            queueHandler = queueLogger.getHandler(cls._level)  # get a QueueHandler that will send to this queuelogger
+            queueHandler.setFormatter(fileHandler.formatter)
+            queueLogger.addHandler(fileHandler)
+
+            if not cls._background:
+                # set up a streamhandler if we are not running in the background
+                streamHandler = cls.get_stream_handler(name)
+                queueLogger.addHandler(streamHandler)
+
+            logger.addHandler(queueHandler)
+        else:
+            if not cls._background:
+                # set up a streamhandler if we are not running in the background
+                streamHandler = cls.get_stream_handler(name)
+                logger.addHandler(streamHandler)
+
+            logger.addHandler(fileHandler)
+
+        return logger
+
+    @classmethod
+    def get_file_handler(cls, name, config=None):
+        if cls._log_per_config:
+            log_file = getattr(config, 'log_file', None) or (name + '.log')
+        else:
+            log_file = cls._log_file
+
+        checkDir(cls._log_dir)
+        path = os.path.join(cls._log_dir, log_file)
+
+        try:
+            fileHandler = logging.handlers.WatchedFileHandler(path)
+        except Exception as e:
+            sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
+
+        fileHandler.addFilter(logging.Filter(name))
+        fileHandler.setLevel(cls._level)
+        fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
+        return fileHandler
+
+    @classmethod
+    def get_stream_handler(cls, name):
+        if cls._stream_handler is not None:
+            return cls._stream_handler
+        streamHandler = logging.StreamHandler()
+        streamHandler.setLevel(cls._level)
+        streamHandler.setFormatter(logging.Formatter(STREAM_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
+        f = logging.Filter()
+        f.filter = lambda record: record.exc_info is None
+        streamHandler.addFilter(f)
+        cls._stream_handler = streamHandler
+        return streamHandler
+
+    @classmethod
+    def get_queue_logger(cls):
+        if cls._queue_logger is None:
+            cls._queue_logger = QueueLogger(DEFAULT_NAME)
+            cls._queue_logger.start_logging()
+        return cls._queue_logger
+
+
+def init(options):
+    return Logger.initialize(options)
+
+
+def getLogger(name=None, config=None, queue=True):
     """
     This method does the setup necessary to create and connect both
     the main logger instance used from virtwho as well as loggers for
@@ -187,80 +262,16 @@ def getLogger(options, config=None, queue=True):
     First the logger is created without the queue and it's added later on
     (after the fork).
     """
-    # Set defaults if necessary
-    if options.log_dir:
-        setDefaultLogDir(options.log_dir)
 
-    if options.log_file:
-        setDefaultLogFile(options.log_file)
-    # Remove the periods in the config.name (as that could mess logging up
-    name = (''.join(config.name.split('.'))) if config else 'main'
-    logger_name = 'virtwho.' + name  # The name of the logger instance
-    logger = logging.getLogger(logger_name)
-    logger.propagate = False  # Because we are using or own queue logger we don't want any of the loggers to propagate
-    logger.setLevel(logging.DEBUG)
-    level = logging.DEBUG if options.debug else logging.INFO
-
-    if options.log_per_config:
-        log_file = getattr(config, 'log_file', None) or (name + '.log')
-    else:
-        log_file = DEFAULT_LOG_FILE
-    # Add a FileHandler to the queue logger that filters on the name of the
-    # newly created logger
-    fileHandler = getFileHandler(logger_name,
-                                 log_file,
-                                 getattr(config, 'log_dir', None))
-    if not fileHandler:
-        # Likely unable to write to that path
-        # use a default fileHandler instead
-        fileHandler = getFileHandler(logger_name)
-
-    fileHandler.setLevel(level)
-    fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
-
-    if not options.background:
-        # set up a streamhandler if we are not running in the background
-        streamHandler = logging.StreamHandler()
-        streamHandler.setLevel(level)
-        streamHandler.addFilter(logging.Filter(logger_name))
-        streamHandler.setFormatter(logging.Formatter(STREAM_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT))
-        f = logging.Filter()
-        f.filter = lambda record: record.exc_info is None
-        streamHandler.addFilter(f)
-        logger.addHandler(streamHandler)
-
-    if queue:
-        queueLogger = getDefaultQueueLogger()
-        queueHandler = queueLogger.getHandler(level)  # get a QueueHandler that will send to this queuelogger
-        if not options.background:
-            queueLogger.addHandler(streamHandler)
-        queueHandler.setFormatter(fileHandler.formatter)
-        queueLogger.addHandler(fileHandler)
-        for h in logger.handlers:
-            if isinstance(h, logging.handlers.WatchedFileHandler) or isinstance(h, logging.StreamHandler):
-                h.close()
-                logger.removeHandler(h)
-        logger.addHandler(queueHandler)
-    else:
-        logger.addHandler(fileHandler)
-    return logger
+    return Logger.get_logger(name=name, config=config, queue=queue)
 
 
-def getFileHandler(filtername, log_file=None, log_dir=None):
-    log_file = log_file or DEFAULT_LOG_FILE
-    log_dir = log_dir or DEFAULT_LOG_DIR
-    path = os.path.join(log_dir, log_file)
-    checkDir(log_dir)
-    fileHandler = None
-    try:
-        fileHandler = logging.handlers.WatchedFileHandler(path)
-        fileHandler.setFormatter(logging.Formatter(DEFAULT_FORMAT))
-        fileHandler.addFilter(logging.Filter(filtername))
-    except Exception as e:
-        sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
-    return fileHandler
+def getQueueLogger():
+    return Logger.get_queue_logger()
 
 
 def closeLogger(logger):
-    for h in logger.handlers:
+    while len(logger.handlers):
+        h = logger.handlers[0]
         h.close()
+        logger.removeHandler(h)

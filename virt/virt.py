@@ -342,7 +342,7 @@ class Virt(Process):
                 try:
                     self._run()
                 except VirtError as e:
-                    self.logger.error("Virt backend '%s' fails with error: %s" % (self.config.name, str(e)))
+                    self.logger.error("Virt backend '%s' fails with error: %s", self.config.name, str(e))
                     has_error = True
                 except Exception:
                     self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
@@ -351,14 +351,17 @@ class Virt(Process):
                 if self._oneshot:
                     if has_error:
                         self.enqueue(ErrorReport(self.config))
+                    self.logger.debug("Virt backend '%s' stopped after sending one report", self.config.name)
                     return
 
                 if self.is_terminated():
+                    self.logger.debug("Virt backend '%s' terminated", self.config.name)
                     return
 
                 self.logger.info("Waiting %s seconds before retrying backend '%s'", self._interval, self.config.name)
                 self.wait(self._interval)
         except KeyboardInterrupt:
+            self.logger.debug("Virt backend '%s' interrupted", self.config.name)
             sys.exit(1)
 
     def _run(self):

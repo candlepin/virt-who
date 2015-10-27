@@ -25,51 +25,59 @@ import threading
 from multiprocessing import Queue
 import log
 
+
 class TestLog(TestBase):
+    def setUp(self):
+        # Reset initial values of the Logger class variables
+        log.Logger._log_dir = log.DEFAULT_LOG_DIR
+        log.Logger._log_file = log.DEFAULT_LOG_FILE
+        log.Logger._log_per_config = False
+        log.Logger._queue_logger = None
 
     @patch('log.QueueLogger')
-    def test_get_default_queue_logger(self, queueloggerClass):
+    def test_get_queue_logger(self, queueloggerClass):
         queueloggerClass.return_value = Mock()
 
         # These two should be the same Mock object
-        defaultQueueLogger = log.getDefaultQueueLogger()
-        secondQueueLogger = log.getDefaultQueueLogger()
+        defaultQueueLogger = log.getQueueLogger()
+        self.addCleanup(defaultQueueLogger.terminate())
+        secondQueueLogger = log.getQueueLogger()
 
         self.assertTrue(defaultQueueLogger == secondQueueLogger)
         defaultQueueLogger.start_logging.assert_any_call()
 
     @patch('os.path.isdir')
-    @patch('log.getDefaultQueueLogger')
+    @patch('log.Logger.get_queue_logger')
     @patch('logging.FileHandler._open')
-    def test_get_logger_no_config(self, open, getDefaultQueueLogger, isdir):
+    def test_get_logger_no_config(self, open, getQueueLogger, isdir):
         open.return_value = None
         isdir.return_value = True
         queueLogger = log.QueueLogger('virtwho')
         queueLogger.logger.handlers = []
         mockQueueLogger = Mock(wraps=queueLogger)
-        getDefaultQueueLogger.return_value = mockQueueLogger
+        getQueueLogger.return_value = mockQueueLogger
         options = Mock()
         options.debug = False
         options.background = True
         options.log_file = log.DEFAULT_LOG_FILE
         options.log_dir = log.DEFAULT_LOG_DIR
         options.log_per_config = False
-        main_logger = log.getLogger(options)
+        log.init(options)
+        main_logger = log.getLogger(name='main')
         self.assertTrue(main_logger.name == 'virtwho.main')
         self.assertTrue(len(main_logger.handlers) == 1)
         self.assertTrue(isinstance(main_logger.handlers[0], log.QueueHandler))
-        mockQueueLogger.getHandler.assert_called_with(logging.INFO)
         queue_handlers = queueLogger.logger.handlers
         self.assertTrue(len(queue_handlers) == 1)
         self.assertEquals(queue_handlers[0].baseFilename, '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 
-    @patch('log.getDefaultQueueLogger')
-    @patch('log.getFileHandler')
-    def test_get_logger_different_log_file(self, getFileHandler, getDefaultQueueLogger):
+    @patch('log.Logger.get_queue_logger')
+    @patch('log.Logger.get_file_handler')
+    def test_get_logger_different_log_file(self, getFileHandler, getQueueLogger):
         queueLogger = log.QueueLogger('virtwho')
         queueLogger.logger.handlers = []
         mockQueueLogger = Mock(wraps=queueLogger)
-        getDefaultQueueLogger.return_value = mockQueueLogger
+        getQueueLogger.return_value = mockQueueLogger
 
         config = Mock()
         config.name = 'test'
@@ -82,24 +90,24 @@ class TestLog(TestBase):
         options.log_per_config = True
         options.log_dir = ''
         options.log_file = ''
-        test_logger = log.getLogger(options, config)
+        log.init(options)
+        test_logger = log.getLogger(name='test', config=config)
 
         self.assertTrue(test_logger.name == 'virtwho.test')
         self.assertTrue(len(test_logger.handlers) == 1)
         self.assertTrue(len(queueLogger.logger.handlers) == 1)
-        getFileHandler.assert_called_with(test_logger.name, config.log_file, config.log_dir)
+        getFileHandler.assert_called_with(name=test_logger.name, config=config)
 
     @patch('os.path.isdir')
     @patch('logging.FileHandler._open')
     def test_get_file_handler_defaults(self, open, isdir):
         open.return_value = None  # Ensure we don't actually try to open a file
         isdir.return_value = True
-        filtername = 'virtwho.test'
-        fileHandler = log.getFileHandler(filtername)
-        self.assertTrue(fileHandler.baseFilename == '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
-        self.assertTrue(len(fileHandler.filters) == 1)
-        self.assertTrue(fileHandler.filters[0].name == filtername)
-
+        filtername = 'test'
+        fileHandler = log.Logger.get_file_handler(filtername)
+        self.assertEquals(fileHandler.baseFilename, '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
+        self.assertEquals(len(fileHandler.filters), 1)
+        self.assertEquals(fileHandler.filters[0].name, filtername)
 
     @patch('os.path.isdir')
     @patch('logging.FileHandler._open')
@@ -107,15 +115,15 @@ class TestLog(TestBase):
         open.return_value = None  # Ensure we don't actually try to open a file
 
         # Ensure we don't try to make a directory
-        isdir.return_value  = True
-        filtername = 'virtwho.test'
-        log_file = 'test.log'
-        log_dir = '/nonexistant/'
+        isdir.return_value = True
+        options = Mock()
+        filtername = 'test'
+        options.log_file = 'test.log'
+        options.log_dir = '/nonexistant/'
 
-        fileHandler = log.getFileHandler(filtername,
-                                         log_file,
-                                         log_dir)
-        self.assertTrue(fileHandler.baseFilename == log_dir + log_file)
+        log.Logger.initialize(options)
+        fileHandler = log.Logger.get_file_handler(filtername)
+        self.assertEquals(fileHandler.baseFilename, options.log_dir + options.log_file)
 
 
 class TestQueueLogger(TestBase):

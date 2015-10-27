@@ -287,8 +287,6 @@ class VirtWho(object):
             self.logger.info("virt-who host/guest association update successful")
 
     def run(self):
-        self.queue_logger = log.getDefaultQueueLogger()
-
         self.reloading = False
         if not self.options.oneshot:
             self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
@@ -301,7 +299,7 @@ class VirtWho(object):
         self.virts = []
         for config in self.configManager.configs:
             try:
-                logger = log.getLogger(self.options, config)
+                logger = log.getLogger(config=config)
                 virt = Virt.fromConfig(logger, config)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
@@ -430,7 +428,6 @@ class VirtWho(object):
         time.sleep(0.5)
 
         self.stop_virts()
-        self.queue_logger = None
 
     def reload(self):
         self.logger.warn("virt-who reload")
@@ -450,7 +447,7 @@ class VirtWho(object):
     def getMapping(self):
         mapping = {}
         for config in self.configManager.configs:
-            logger = log.getLogger(self.options, config)
+            logger = log.getLogger(config=config)
             virt = Virt.fromConfig(logger, config)
             mapping[config.name or 'none'] = self._readGuests(virt)
         return mapping
@@ -575,7 +572,8 @@ def parseOptions():
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
     options.background = env in ["1", "true"]
 
-    logger = log.getLogger(options, queue=False)
+    log.init(options)
+    logger = log.getLogger(name='init', queue=False)
 
     env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
     if env in ["1", "true"]:
@@ -801,7 +799,7 @@ def main():
         signal.signal(signal.SIGHUP, reload)
         signal.signal(signal.SIGTERM, atexit_fn)
 
-        virtWho.logger = logger = log.getLogger(options, queue=True)
+        virtWho.logger = logger = log.getLogger(name='main', config=None, queue=True)
 
         sd_notify("READY=1\nMAINPID=%d" % os.getpid())
         while True:
@@ -850,7 +848,7 @@ def exit(code, status=None):
 
     if virtWho:
         virtWho.terminate()
-    queueLogger = log.getDefaultQueueLogger()
+    queueLogger = log.getQueueLogger()
     if queueLogger:
         queueLogger.terminate()
     sys.exit(code)

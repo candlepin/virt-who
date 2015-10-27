@@ -98,11 +98,8 @@ class Satellite(Manager):
                 raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
             # save the hypervisor systemid
             try:
-                f = open(systemid_filename, "w")
-                try:
+                with open(systemid_filename, "w") as f:
                     pickle.dump(new_system, f)
-                finally:
-                    f.close()
             except (OSError, IOError) as e:
                 self.logger.error("Unable to write system id to %s: %s" % (systemid_filename, str(e)))
 

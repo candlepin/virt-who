@@ -725,9 +725,8 @@ class PIDLock(object):
     def __enter__(self):
         # Write pid to pidfile
         try:
-            f = open(self.filename, "w")
-            f.write("%d" % os.getpid())
-            f.close()
+            with open(self.filename, "w") as f:
+                f.write("%d" % os.getpid())
         except Exception as e:
             print >>sys.stderr, "Unable to create pid file: %s" % str(e)
 

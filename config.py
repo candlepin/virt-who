@@ -294,8 +294,11 @@ class Config(GeneralConfig):
 class ConfigManager(object):
     def __init__(self, logger, config_dir=None, smType=None, defaults=None):
         if not defaults:
-            defaults_from_config = parseFile(VIRTWHO_GENERAL_CONF_PATH).get(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME)
-            self._defaults = defaults_from_config or {}
+            try:
+                defaults_from_config = parseFile(VIRTWHO_GENERAL_CONF_PATH).get(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME)
+                self._defaults = defaults_from_config or {}
+            except MissingSectionHeaderError:
+                self._defaults = {}
         else:
             self._defaults = defaults
         if config_dir is None:

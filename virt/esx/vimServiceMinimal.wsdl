@@ -427,6 +427,11 @@
      <xsd:element minOccurs="0" name="locale" type="xsd:string"/>
     </xsd:sequence>
    </xsd:complexType>
+   <xsd:complexType name="LogoutRequestType">
+    <xsd:sequence>
+     <xsd:element name="_this" type="vim25:ManagedObjectReference" />
+    </xsd:sequence>
+   </xsd:complexType>
    <xsd:element name="RetrieveServiceContent" type="vim25:RetrieveServiceContentRequestType"/>
    <xsd:element name="RetrieveServiceContentResponse">
     <xsd:complexType>
@@ -442,6 +447,10 @@
       <xsd:element name="returnval" type="vim25:UserSession"/>
      </xsd:sequence>
     </xsd:complexType>
+   </xsd:element>
+   <xsd:element name="Logout"  type="vim25:LogoutRequestType" />
+   <xsd:element name="LogoutResponse">
+       <xsd:complexType />
    </xsd:element>
    <xsd:element name="InvalidLocaleFault" type="vim25:InvalidLocale"/>
    <xsd:element name="InvalidLoginFault" type="vim25:InvalidLogin"/>
@@ -547,6 +556,12 @@
  <message name="LoginResponseMsg">
   <part element="vim25:LoginResponse" name="parameters"/>
  </message>
+ <message name="LogoutRequestMsg">
+  <part name="parameters" element="vim25:Logout" />
+ </message>
+ <message name="LogoutResponseMsg">
+  <part name="parameters" element="vim25:LogoutResponse" />
+ </message>
  <message name="InvalidLocaleFaultMsg">
   <part element="vim25:InvalidLocaleFault" name="fault"/>
  </message>
@@ -599,6 +614,11 @@
    <fault message="vim25:InvalidLoginFaultMsg" name="InvalidLoginFault"/>
    <fault message="vim25:InvalidLocaleFaultMsg" name="InvalidLocaleFault"/>
    <fault message="vim25:RuntimeFaultFaultMsg" name="RuntimeFault"/>
+  </operation>
+  <operation name="Logout">
+   <input message="vim25:LogoutRequestMsg" />
+   <output message="vim25:LogoutResponseMsg" />
+   <fault name="RuntimeFault" message="vim25:RuntimeFaultFaultMsg"/>
   </operation>
  </portType>
  <binding name="VimBinding" type="vim25:VimPortType">
@@ -715,6 +735,18 @@
    </fault>
    <fault name="RuntimeFault">
     <soap:fault name="RuntimeFault" use="literal"/>
+   </fault>
+  </operation>
+  <operation name="Logout">
+   <soap:operation soapAction="urn:vim25/5.0" style="document" />
+   <input>
+    <soap:body use="literal" />
+   </input>
+   <output>
+    <soap:body use="literal" />
+   </output>
+   <fault name="RuntimeFault">
+    <soap:fault name="RuntimeFault" use="literal" />
    </fault>
   </operation>
  </binding>

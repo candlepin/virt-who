@@ -144,10 +144,16 @@ class Esx(virt.Virt):
 
             self.logger.debug("Waiting for ESX changes")
 
+        self.cleanup()
+
+    def cleanup(self):
         self._cancel_wait()
 
         if self.filter is not None:
             self.client.service.DestroyPropertyFilter(self.filter)
+            self.filter = None
+
+        self.logout()
 
     def getHostGuestMapping(self):
         mapping = {'hypervisors': []}
@@ -245,6 +251,13 @@ class Esx(virt.Virt):
         except suds.WebFault as e:
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))
+
+    def logout(self):
+        """ Log out from ESX. """
+        try:
+            self.client.service.Logout(_this=self.sc.sessionManager)
+        except Exception as e:
+            self.logger.info("Can't log out from ESX: %s", str(e))
 
     def createFilter(self):
         oSpec = self.objectSpec()

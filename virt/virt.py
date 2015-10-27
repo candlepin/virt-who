@@ -367,6 +367,7 @@ class Virt(Process):
                 self.wait(self._interval)
         except KeyboardInterrupt:
             self.logger.debug("Virt backend '%s' interrupted", self.config.name)
+            self.cleanup()
             sys.exit(1)
 
     def _run(self):
@@ -423,3 +424,9 @@ class Virt(Process):
         return value of isHypervisor method.
         '''
         raise NotImplementedError('This should be reimplemented in subclass')
+
+    def cleanup(self):
+        '''
+        Perform cleaning up actions before termination.
+        '''
+        pass

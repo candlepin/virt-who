@@ -5,7 +5,14 @@ import signal
 import socket
 from multiprocessing import Process, Manager, Value
 import subprocess
-from unittest import TestCase
+
+# hack to use unittest2 on python <= 2.6, unittest otherwise
+# based on python version
+if sys.version_info[0] > 2 or sys.version_info[1] > 6:
+    from unittest import TestCase
+else:
+    from unittest2 import TestCase
+
 import random
 import json
 from StringIO import StringIO

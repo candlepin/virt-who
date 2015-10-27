@@ -318,9 +318,15 @@ class VirtWho(object):
         report = None
         report_sent = None
         while not self.terminate_event.is_set():
+            if self.jobs:
+                # There is an existing job, we want to check it's state often
+                timeout = 1
+            else:
+                timeout = self.queue_timeout
+
             # Wait for incoming report from virt backend
             try:
-                report = self.queue.get(block=True, timeout=self.queue_timeout)
+                report = self.queue.get(block=True, timeout=timeout)
             except Empty:
                 report = None
             except IOError:

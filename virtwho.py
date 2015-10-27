@@ -496,7 +496,7 @@ def parseOptions():
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=NotSetSentinel(), help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_option("-p", "--print", action="store_true", dest="print_", default=NotSetSentinel(), help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
-    parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
+    parser.add_option("-c", "--config", action="append", dest="configs", default=NotSetSentinel(), help="Configuration file that will be processed, can be used multiple times")
     parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
     parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
     parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)

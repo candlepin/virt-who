@@ -26,6 +26,7 @@ from datetime import datetime
 from multiprocessing import Process, Event
 import json
 import hashlib
+import signal
 
 try:
     from collections import OrderedDict
@@ -336,6 +337,10 @@ class Virt(Process):
         '''
         Wrapper around `_run` method that just catches the error messages.
         '''
+        self.logger.debug("Virt backend '%s' started", self.config.name)
+        # Reset the signal handlers, we'll handle them only in the main thread
+        signal.signal(signal.SIGHUP, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         try:
             while not self.is_terminated():
                 has_error = False

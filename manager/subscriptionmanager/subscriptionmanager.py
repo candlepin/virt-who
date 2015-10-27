@@ -138,7 +138,7 @@ class SubscriptionManager(Manager):
         # Send list of guest uuids to the server
         self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
 
-    def hypervisorCheckIn(self, config, mapping, type=None):
+    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
         """ Send hosts to guests mapping to subscription manager. """
         serialized_mapping = {}
 
@@ -164,7 +164,7 @@ class SubscriptionManager(Manager):
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4))
         try:
-            result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
+            result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.ConnectionException as e:

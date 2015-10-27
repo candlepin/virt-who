@@ -268,7 +268,8 @@ class VirtWho(object):
         manager.addJob = self.addJob
         result = manager.hypervisorCheckIn(report.config,
                                            report.association,
-                                           report.config.type)
+                                           report.config.type,
+                                           self.options)
         self.reports[report.config.hash] = report.hash
 
     def update_report_to_send(self, report):

@@ -66,7 +66,7 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
-            dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']))
+            dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']), options=None)
 
     @patch('rhsm.connection.UEPConnection')
     def test_hypervisorCheckInAsync(self, rhsmconnection):
@@ -80,5 +80,6 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
-            expected
+            expected,
+            options=None
         )

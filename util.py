@@ -1,6 +1,6 @@
 import socket
 
-__all__ = ('OrderedDict',)
+__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename')
 
 def decode(input):
     if isinstance(input, dict):
@@ -280,9 +280,11 @@ def clean_filename(name):
     return ''.join([char for char in name if char in VALID_FILENAME_CHARS])
 
 def getMachineId():
-    machine_id = None
-    with open('/etc/machine-id') as machine_id_file:
-        machine_id = machine_id_file.readline().strip()
+    try:
+        with open('/etc/machine-id') as machine_id_file:
+            machine_id = machine_id_file.readline().strip()
+    except IOError:
+        machine_id = None
     return machine_id
 
 def generateReporterId():

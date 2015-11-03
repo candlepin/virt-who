@@ -200,8 +200,9 @@ class Logger(object):
         if queue:
             queueLogger = cls.get_queue_logger()
             queueHandler = queueLogger.getHandler(cls._level)  # get a QueueHandler that will send to this queuelogger
-            queueHandler.setFormatter(fileHandler.formatter)
-            queueLogger.addHandler(fileHandler)
+            if fileHandler is not None:
+                queueHandler.setFormatter(fileHandler.formatter)
+                queueLogger.addHandler(fileHandler)
 
             if not cls._background:
                 # set up a streamhandler if we are not running in the background
@@ -216,7 +217,8 @@ class Logger(object):
                 streamHandler = cls.get_stream_handler(name)
                 logger.addHandler(streamHandler)
 
-            logger.addHandler(fileHandler)
+            if fileHandler is not None:
+                logger.addHandler(fileHandler)
 
         return logger
 
@@ -234,6 +236,7 @@ class Logger(object):
             fileHandler = logging.handlers.WatchedFileHandler(path)
         except Exception as e:
             sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
+            return None
 
         fileHandler.addFilter(logging.Filter(name))
         fileHandler.setLevel(cls._level)

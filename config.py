@@ -108,6 +108,9 @@ class GeneralConfig(object):
         else:
             self._options[name] = value
 
+    def keys(self):
+        return self.__dict__['_options'].keys()
+
     def update(self, **kwargs):
         '''
         Update _options with the kwargs

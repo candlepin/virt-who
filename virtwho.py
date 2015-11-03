@@ -806,7 +806,7 @@ def main():
         exit(1, "virt-who can't be started: %s" % str(e))
 
     if options.virtType is not None:
-        config = Config("env/cmdline", options.virtType, virtwho.configManager._defaults, **options.__dict__)
+        config = Config("env/cmdline", options.virtType, virtWho.configManager._defaults, **options)
         config.checkOptions(options.smType, logger)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:

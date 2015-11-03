@@ -26,10 +26,14 @@ from password import Password
 from binascii import unhexlify
 import hashlib
 import json
+import socket
+import util
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
-
+VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
+VIRTWHO_GLOBAL_SECTION_NAME = "global"
+VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 
 class InvalidOption(Error):
     pass
@@ -50,7 +54,127 @@ def parse_list(s):
     return map(strip_quote, reader([s.strip(' ')], skipinitialspace=True).next())
 
 
-class Config(object):
+class NotSetSentinel(object):
+    """
+    An empty object subclass that is meant to be used in place of 'None'.
+    We might want to set a config value to 'None'
+    """
+    pass
+
+
+class GeneralConfig(object):
+    # This dictionary should be filled in for subclasses with option_name: default_value
+    DEFAULTS = {}
+    # options that are lists should be placed here in subclasses
+    LIST_OPTIONS = ()
+    # boolean options should be listed here
+    BOOL_OPTIONS = ()
+    INT_OPTIONS = ()
+
+    def __init__(self, defaults=None, **kwargs):
+        options = self.DEFAULTS.copy()
+        options.update(defaults or {})
+        options.update(kwargs)
+        # setting the attribute the normal way causes
+        # a reference to the dictionary to appear
+        self.__dict__['_options'] = options
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            super(GeneralConfig, self).__getattr__(name)
+
+        value = self._options.get(name, None)
+        if value is None:
+            if name in self.DEFAULTS:
+                return self.DEFAULTS[name]
+            else:
+                return None
+        if name in self.BOOL_OPTIONS:
+            return str(value).lower() not in ("0", "false", "no")
+        if name in self.LIST_OPTIONS:
+            if not isinstance(value, list):
+                return parse_list(value)
+            else:
+                return value
+        if name in self.INT_OPTIONS:
+            return int(value)
+        return value
+
+    def __setattr__(self, name, value):
+        if isinstance(value, NotSetSentinel):
+            return
+        if name.startswith('_'):
+            super(GeneralConfig, self).__setattr__(name, value)
+        else:
+            self._options[name] = value
+
+    def update(self, **kwargs):
+        '''
+        Update _options with the kwargs
+        '''
+        self.__dict__['_options'].update([(k,v) for k,v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
+
+    def __getitem__(self, name):
+        return self._options[name]
+
+    def __setitem__(self, name, value):
+        if isinstance(value, NotSetSentinel):
+            return
+        self._options[name] = value
+
+    def __delitem__(self, name):
+        del self._options[name]
+
+    def __contains__(self, name):
+        return name in self._options
+
+    @classmethod
+    def fromFile(cls, filename, logger):
+        raise NotImplementedError()
+
+
+class GlobalConfig(GeneralConfig):
+    """
+    This GeneralConfig subclass represents the config file
+    that holds the global values used to control virt-who's
+    operation.
+    """
+    DEFAULTS = {
+        'debug': False,
+        'oneshot': False,
+        'print_': False,
+        'log_per_config': False,
+        'background': False,
+        'configs': '',
+        'reporter_id': util.generateReporterId(),
+        'smType': 'sam',
+        'interval': 60
+    }
+    LIST_OPTIONS = (
+        'configs',
+    )
+    BOOL_OPTIONS = (
+        'debug',
+        'oneshot',
+        'background',
+        'print_'
+        'log_per_config'
+    )
+    INT_OPTIONS = (
+        'interval',
+    )
+
+    @classmethod
+    def fromFile(cls, filename, logger=None):
+        global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
+        if not global_config:
+            if logger:
+                logger.warning('Unable to find "%s" section in general config file: "%s"\nWill use defaults where required' % (VIRTWHO_GLOBAL_SECTION_NAME, filename))
+            global_config = {}
+        return cls(**global_config)
+
+
+class Config(GeneralConfig):
     DEFAULTS = {
         'simplified_vim': True,
         'hypervisor_id': 'uuid',
@@ -66,11 +190,10 @@ class Config(object):
         'simplified_vim',
     )
 
-    def __init__(self, name, type, **kwargs):
+    def __init__(self, name, type, defaults=None, **kwargs):
+        super(Config, self).__init__(defaults=defaults, **kwargs)
         self._name = name
         self._type = type
-        self._options = self.DEFAULTS.copy()
-        self._options.update(kwargs)
 
         if self._type not in VIRTWHO_TYPES:
             raise InvalidOption('Invalid type "%s", must be one of following %s' %
@@ -123,12 +246,12 @@ class Config(object):
                     logger.warn("Option `owner` is not used in non-remote libvirt connection")
 
     @classmethod
-    def fromParser(self, name, parser):
+    def fromParser(self, name, parser, defaults=None):
         options = {}
         for option in parser.options(name):
             options[option] = parser.get(name, option)
         type = options.pop('type').lower()
-        config = Config(name, type, **options)
+        config = Config(name, type, defaults, **options)
         return config
 
     @property
@@ -167,25 +290,17 @@ class Config(object):
     def rhsm_proxy_password(self):
         return self._get_password('rhsm_proxy_password', 'rhsm_encrypted_proxy_password')
 
-    def __getattr__(self, name):
-        if name.startswith('_'):
-            super(Config, self).__getattr__(name)
-
-        value = self._options.get(name, None)
-        if value is None:
-            if name in self.DEFAULTS:
-                return self.DEFAULTS[name]
-            else:
-                return None
-        if name in self.BOOL_OPTIONS:
-            return value not in ("0", "false", "no")
-        if name in self.LIST_OPTIONS:
-            return parse_list(value)
-        return value
-
 
 class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, smType=None):
+    def __init__(self, logger, config_dir=None, smType=None, defaults=None):
+        if not defaults:
+            try:
+                defaults_from_config = parseFile(VIRTWHO_GENERAL_CONF_PATH).get(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME)
+                self._defaults = defaults_from_config or {}
+            except MissingSectionHeaderError:
+                self._defaults = {}
+        else:
+            self._defaults = defaults
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
         self.smType = smType
@@ -211,7 +326,7 @@ class ConfigManager(object):
         self._configs = []
         for section in parser.sections():
             try:
-                config = Config.fromParser(section, parser)
+                config = Config.fromParser(section, parser, self._defaults)
                 config.checkOptions(self.smType, self.logger)
                 self._configs.append(config)
             except NoOptionError as e:
@@ -230,3 +345,28 @@ class ConfigManager(object):
 
     def addConfig(self, config):
         self._configs.append(config)
+
+def getOptions(section, parser):
+    options = {}
+    for option in parser.options(section):
+        options[option] = parser.get(section, option)
+    return options
+
+def getSections(parser):
+    sections = {}
+    for section in parser.sections():
+        try:
+            sections[section] = getOptions(section, parser)
+        except NoOptionError:
+            sections[section] = {}
+    return sections
+
+def parseFile(filename, logger=None):
+    # Parse a file into a dict of section_name: options_dict
+    # options_dict is a dict of option_name: value
+    parser = SafeConfigParser()
+    fname = parser.read(filename)
+    if len(fname) == 0 and logger:
+           logger.error("Unable to read configuration file %s", filename)
+    sections = getSections(parser)
+    return sections

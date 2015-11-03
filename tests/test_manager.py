@@ -93,11 +93,11 @@ class TestSubscriptionManager(TestManager):
         manager = Manager.fromOptions(self.logger, self.options)
         self.options.env = "ENV"
         self.options.owner = "OWNER"
-        manager.hypervisorCheckIn(self.options, self.mapping)
+        manager.hypervisorCheckIn(self.options, self.mapping, options=self.options)
         manager.connection.hypervisorCheckIn.assert_called_with(
                 self.options.owner,
                 self.options.env,
-                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.mapping['hypervisors']))
+                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.mapping['hypervisors']), options=self.options)
 
 
 class TestSatellite(TestManager):

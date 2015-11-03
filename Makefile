@@ -33,6 +33,7 @@ install:
 	gzip -c virt-who-config.5 > virt-who-config.5.gz
 	install -pm 0644 virt-who-config.5.gz $(DESTDIR)/usr/share/man/man5/
 	install -pm 0644 template.conf $(DESTDIR)/etc/virt-who.d/
+	install -pm 0644 template-general.conf $(DESTDIR)/etc/virt-who.conf
 
 srpm:
 	tito build --srpm --test

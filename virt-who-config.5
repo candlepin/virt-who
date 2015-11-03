@@ -1,10 +1,50 @@
-.TH VIRT-WHO-CONFIG "5" "June 2014" "virt-who"
+.TH VIRT-WHO-CONFIG "5" "October 2015" "virt-who"
 .SH NAME
 virt-who-config - configuration for virt-who
 .SH SYNOPISIS
+/etc/virt-who.conf
 /etc/virt-who.d/*
 .SH DESCRIPTION
-Configuration format is ini-like, where group name (in square brackets) is arbitrary name of the configuration.
+Configuration format is ini-like.
+The configuration files located at /etc/virt-who.d/ are called virtualization backend configurations.
+The configuration located at /etc/virt-who.conf is the main configuration for virt-who.
+Below are descriptions of both the required and optional options for both kinds of configs and how they are used.
+.SH GENERAL CONFIGURATION
+The general configuration file (located at /etc/virt-who.conf), has two special sections \fBglobal\fR and \fBdefaults\fR.
+The settings that can be specified in \fBdefaults\fR are any setting listed in the \fBVIRTUALIZATION BACKEND CONFIGURATION\fR section of this manual. These settings are applied as defaults to the configurations found in /etc/virt-who.d/*.
+
+The settings in the \fBglobal\fR affect the overall operation of the application.
+The following are options that can be specified in the \fBglobal\fR section:
+.TP
+\fBinterval\fR
+how often to check connected hypervisors for changes (seconds). Also affects how often a mapping is reported.
+.TP
+\fBreporter_id\fR
+The id of this virt-who instance, reported with all mappings.
+Defaults to HOSTNAME-MACHINEID
+.TP
+\fBdebug\fR
+Enable debugging output
+.TP
+\fBoneshot\fR
+Send the list of guest IDs and exit immediately
+.TP
+\fBlog_per_config\fR
+Write a seperate log file per configuration in the config directory
+.TP
+\fBlog_dir\fR
+The absolute path of the directory to write logs to.
+.TP
+\fBlog_file\fR
+The file name to write logs to (used only if log_per_config=False)
+.TP
+\fBconfigs\fR
+A list of files containing configurations for virt-who
+Used to specify locations other than default
+
+
+.SH VIRTUALIZATION BACKEND CONFIGURATION
+Each section (or group), denoted by an arbitrary name for the configuration (in square brackets), is read in
 
 Only required key is \fBtype\fR that has to have one of the allowed virtualization backend names, see virt-who(8).
 

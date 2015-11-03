@@ -40,7 +40,8 @@ from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
 from manager.subscriptionmanager import SubscriptionManager
-from config import Config, ConfigManager, InvalidPasswordFormat
+from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel
+import config
 from password import InvalidKeyFile
 
 import log
@@ -141,7 +142,10 @@ class VirtWho(object):
         self._429_count = 0
         self.reloading = False
 
-        self.configManager = ConfigManager(self.logger, config_dir, smType=options.smType)
+        self.configManager = ConfigManager(self.logger,
+                                           config_dir,
+                                           smType=self.options.smType)
+
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 
@@ -261,7 +265,8 @@ class VirtWho(object):
         manager.addJob = self.addJob
         result = manager.hypervisorCheckIn(report.config,
                                            report.association,
-                                           report.config.type)
+                                           report.config.type,
+                                           self.options)
         self.reports[report.config.hash] = report.hash
 
     def update_report_to_send(self, report):
@@ -493,14 +498,15 @@ def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
-    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
-    parser.add_option("-i", "--interval", type="int", dest="interval", default=0, help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
-    parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
-    parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
-    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=False, help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
+    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=NotSetSentinel(), help="Enable debugging output")
+    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=NotSetSentinel(), help="Send the list of guest IDs and exit immediately")
+    parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
+    parser.add_option("-p", "--print", action="store_true", dest="print_", default=NotSetSentinel(), help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
+    parser.add_option("-c", "--config", action="append", dest="configs", default=NotSetSentinel(), help="Configuration file that will be processed, can be used multiple times")
+    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
     parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
     parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
+    parser.add_option("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(), help="Label host/guest associations obtained by this instance of virt-who with the provided id.")
 
     virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
@@ -555,7 +561,13 @@ def parseOptions():
     satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
     parser.add_option_group(satelliteGroup)
 
-    (options, args) = parser.parse_args()
+    (cli_options, args) = parser.parse_args()
+
+    options = GlobalConfig.fromFile(config.VIRTWHO_GENERAL_CONF_PATH)
+
+    # Handle defaults from the command line options parser
+
+    options.update(**parser.defaults)
 
     # Handle enviroment variables
 
@@ -573,13 +585,18 @@ def parseOptions():
     if env != log.DEFAULT_LOG_FILE:
         options.log_file = env
 
+    env = os.getenv("VIRTWHO_REPORTER_ID", "").strip()
+    if len(env) > 0:
+        options.reporter_id = env
+
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
     if env in ["1", "true"]:
         options.debug = True
 
     # Used only when starting as service (initscript sets it to 1, systemd to 0)
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
-    options.background = env in ["1", "true"]
+    if env in ["1", "true"]:
+        options.background = True
 
     log.init(options)
     logger = log.getLogger(name='init', queue=False)
@@ -591,9 +608,11 @@ def parseOptions():
     if options.print_:
         options.oneshot = True
 
-    env = os.getenv("VIRTWHO_INTERVAL", "0").strip().lower()
+    env = os.getenv("VIRTWHO_INTERVAL")
+    if env:
+        env = env.strip().lower()
     try:
-        if int(env) > 0 and options.interval == 0:
+        if env and int(env) >= MinimumSendInterval:
             options.interval = int(env)
     except ValueError:
         logger.warning("Interval is not number, ignoring")
@@ -634,14 +653,23 @@ def parseOptions():
     if env in ["1", "true"]:
         options.virtType = "hyperv"
 
+    def getNonDefaultOptions(cli_options, defaults):
+        return {option: value for option, value in cli_options.iteritems()
+                 if defaults.get(option, NotSetSentinel()) != value}
+
+    # Handle non-default command line options
+    options.update(**getNonDefaultOptions(vars(cli_options), parser.defaults))
+
+    # Check Env
+
     def checkEnv(variable, option, name, required=True):
         """
         If `option` is empty, check enviroment `variable` and return its value.
         Exit if it's still empty
         """
-        if len(option) == 0:
+        if not option or len(option) == 0:
             option = os.getenv(variable, "").strip()
-        if required and len(option) == 0:
+        if required and (not option or len(option) == 0):
             raise OptionError("Required parameter '%s' is not set, exiting" % name)
         return option
 
@@ -694,12 +722,13 @@ def parseOptions():
         options.oneshot = False
 
     if options.interval < MinimumSendInterval:
-        if options.interval == 0:
+        if not options.interval or options.interval == parser.defaults['interval']:
             logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
         else:
             logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))
         options.interval = MinimumSendInterval
 
+    logger.info("Using reporter_id='%s'" % options.reporter_id)
     return (logger, options)
 
 
@@ -777,7 +806,7 @@ def main():
         exit(1, "virt-who can't be started: %s" % str(e))
 
     if options.virtType is not None:
-        config = Config("env/cmdline", options.virtType, **options.__dict__)
+        config = Config("env/cmdline", options.virtType, virtwho.configManager._defaults, **options.__dict__)
         config.checkOptions(options.smType, logger)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:

@@ -49,6 +49,7 @@ class Esx(virt.Virt):
             self.url = "https://%s" % self.url
 
         self.filter = None
+        self.sc = None
 
     def _prepare(self):
         """ Prepare for obtaining information from ESX server. """
@@ -255,7 +256,8 @@ class Esx(virt.Virt):
     def logout(self):
         """ Log out from ESX. """
         try:
-            self.client.service.Logout(_this=self.sc.sessionManager)
+            if self.sc:
+                self.client.service.Logout(_this=self.sc.sessionManager)
         except Exception as e:
             self.logger.info("Can't log out from ESX: %s", str(e))
 

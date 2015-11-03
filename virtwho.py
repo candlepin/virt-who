@@ -312,7 +312,7 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-        if self.options.oneshot:
+        if self.options.oneshot or self.options.print_:
             oneshot_remaining = set(virt.config.name for virt in self.virts)
 
         if len(self.virts) == 0:

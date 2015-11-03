@@ -897,6 +897,8 @@ if __name__ == '__main__':
         exit(1)
     except Exception as e:
         print >>sys.stderr, e
+        import traceback
+        traceback.print_exc(file=sys.stderr)
         logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
         exit(1, "virt-who failed: %s" % str(e))

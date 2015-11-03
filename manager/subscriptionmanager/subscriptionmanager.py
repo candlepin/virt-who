@@ -164,7 +164,13 @@ class SubscriptionManager(Manager):
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4))
         try:
-            result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)
+            try:
+                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)
+            except TypeError:
+                # This is temporary workaround until the options parameter gets implemented
+                # in python-rhsm
+                self.logger.debug("hypervisorCheckIn method in python-rhsm doesn't understand options paramenter, ignoring")
+                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.ConnectionException as e:

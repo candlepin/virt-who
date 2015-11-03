@@ -654,8 +654,8 @@ def parseOptions():
         options.virtType = "hyperv"
 
     def getNonDefaultOptions(cli_options, defaults):
-        return {option: value for option, value in cli_options.iteritems()
-                 if defaults.get(option, NotSetSentinel()) != value}
+        return dict((option, value) for option, value in cli_options.iteritems()
+                    if defaults.get(option, NotSetSentinel()) != value)
 
     # Handle non-default command line options
     options.update(**getNonDefaultOptions(vars(cli_options), parser.defaults))

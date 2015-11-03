@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import logging
 import logging.handlers
+import traceback
+import cStringIO
 import os
 import sys
 import json
@@ -51,13 +53,26 @@ class QueueHandler(logging.Handler):
     def __init__(self, queue, level=logging.NOTSET):
         logging.Handler.__init__(self, level)
         self._queue = queue
+        self._formatter = self.formatter or logging.Formatter(FILE_LOG_FORMAT if level != logging.DEBUG else DEBUG_FORMAT)
+
+    def formatException(self, ei):
+        if self.level != logging.DEBUG:
+            s = traceback.format_exception_only(ei[0], ei[1])[0]
+        else:
+            sio = cStringIO.StringIO()
+            traceback.print_exception(ei[0], ei[1], ei[2], None, sio)
+            s = sio.getvalue()
+            sio.close()
+        if s[-1:] == "\n":
+            s = s[:-1]
+        return s
 
     def prepare(self, record):
         """
         Prepares the record to be placed on the queue
         """
         if record.exc_info:
-            record.exc_text = self.formatter.formatException(record.exc_info)
+            record.exc_text = self.formatException(record.exc_info)
             record.exc_info = None
 
         # Apply string formatting to the message using args
@@ -191,6 +206,7 @@ class Logger(object):
             if not cls._background:
                 # set up a streamhandler if we are not running in the background
                 streamHandler = cls.get_stream_handler(name)
+                streamHandler.setLevel(cls._level)
                 queueLogger.addHandler(streamHandler)
 
             logger.addHandler(queueHandler)

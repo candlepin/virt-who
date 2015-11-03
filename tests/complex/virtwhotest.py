@@ -129,9 +129,6 @@ class TestBase(TestCase):
         return (code, data)
 
     def stop_virtwho(self):
-        # Stop virt-who children first
-        for pid in subprocess.check_output(["ps", "-o", "pid", "--ppid", str(self.process.pid), "--noheaders"]).split():
-            os.kill(int(pid), signal.SIGTERM)
         self.process.terminate()
         self.process.join()
 

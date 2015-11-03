@@ -590,7 +590,7 @@ def parseOptions():
         options.reporter_id = env
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
-    if env in ["1", "true"]:
+    if env in ["1", "true"] or cli_options.debug is True:
         options.debug = True
 
     # Used only when starting as service (initscript sets it to 1, systemd to 0)

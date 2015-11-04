@@ -174,7 +174,7 @@ class Esx(virt.Virt):
                 elif self.config.hypervisor_id == 'hwuuid':
                     uuid = host_id
                 elif self.config.hypervisor_id == 'hostname':
-                    uuid = host['name']
+                    uuid = "%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s" % host
                 else:
                     raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (
                         self.config.hypervisor_id,
@@ -207,7 +207,7 @@ class Esx(virt.Virt):
                                              hypervisorType=host.get('config.product.name', 'vmware'),
                                              hypervisorVersion=host.get('config.product.version', None)
                                              ))
-            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=host.get('name', None)))
+            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name='%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host))
         return mapping
 
     def login(self):
@@ -270,7 +270,14 @@ class Esx(virt.Virt):
         pfs.objectSet = [oSpec]
         pfs.propSet = [
             self.createPropertySpec("VirtualMachine", ["config.uuid", "runtime.powerState"]),
-            self.createPropertySpec("HostSystem", ["name", "vm", "hardware.systemInfo.uuid", "parent", "config.product.name", "config.product.version"])
+            self.createPropertySpec("HostSystem", ["name",
+                                                   "vm",
+                                                   "hardware.systemInfo.uuid",
+                                                   "parent",
+                                                   "config.product.name",
+                                                   "config.product.version",
+                                                   "config.network.dnsConfig.hostName",
+                                                   "config.network.dnsConfig.domainName"])
         ]
 
         return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)

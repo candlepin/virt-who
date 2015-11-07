@@ -78,7 +78,7 @@ fi
 %attr(600, root, root) %{_sharedstatedir}/%{name}
 %ghost %{_sharedstatedir}/%{name}/key
 %{_sysconfdir}/virt-who.d/template.conf
-
+%{_sysconfdir}/virt-who.conf
 
 %changelog
 * Tue Aug 04 2015 Devan Goodwin <dgoodwin@rm-rf.ca> 0.15-1

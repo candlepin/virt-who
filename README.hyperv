@@ -27,4 +27,7 @@ In order to make virt-who connection to Hyper-V work, some steps needs to be don
 
         winrm get winrm/config/service/auth
 
-5. Make sure that you're using administrator account in virt-who.
+5. Use "Administrator" account. If for security concerns "Administrator" account
+    cannot be used to authenticate to Hyper-V, then it is necessary to create
+    an additional user and assign the user to the following groups
+    (Windows 2012 Server): "Hyper-V Administrators" and "Remote Management Users".

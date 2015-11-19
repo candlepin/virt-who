@@ -143,16 +143,12 @@ class VirtWho(object):
         self.reloading = False
 
         self.configManager = ConfigManager(self.logger,
-                                           config_dir,
-                                           smType=self.options.smType)
+                                           config_dir)
 
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 
         self.send_after = time.time()
-        self.unableToRecoverStr = "Unable to recover"
-        if not options.oneshot:
-            self.unableToRecoverStr += ", retry in %d seconds." % RetryInterval
 
     def addJob(self, job):
         # Add a job to be executed next time we have a report to send
@@ -255,13 +251,13 @@ class VirtWho(object):
         return True
 
     def _sendGuestList(self, report):
-        manager = Manager.fromOptions(self.logger, self.options)
+        manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.sendVirtGuests(report.guests)
         self.logger.info("virt-who guest list update successful")
         self.reports[report.config.hash] = report.hash
 
     def _sendGuestAssociation(self, report):
-        manager = Manager.fromOptions(self.logger, self.options)
+        manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.addJob = self.addJob
         result = manager.hypervisorCheckIn(report.config,
                                            report.association,
@@ -807,7 +803,7 @@ def main():
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, virtWho.configManager._defaults, **options)
-        config.checkOptions(options.smType, logger)
+        config.checkOptions(logger)
         virtWho.configManager.addConfig(config)
     for conffile in options.configs:
         try:

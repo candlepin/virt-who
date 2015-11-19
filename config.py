@@ -202,7 +202,17 @@ class Config(GeneralConfig):
             raise InvalidOption('Invalid type "%s", must be one of following %s' %
                                 (self._type, ", ".join(VIRTWHO_TYPES)))
 
-    def checkOptions(self, smType, logger):
+    @property
+    def smType(self):
+        try:
+            return self._options['smType']
+        except KeyError:
+            if 'sat_server' in self._options:
+                return 'satellite'
+            else:
+                return 'sam'
+
+    def checkOptions(self, logger):
         # Server option must be there for ESX, RHEVM, and HYPERV
         if 'server' not in self._options:
             if self.type in ['libvirt', 'vdsm', 'fake']:
@@ -211,7 +221,7 @@ class Config(GeneralConfig):
                 raise InvalidOption("Option `server` needs to be set in config `%s`" % (self.name))
 
         # Check for env and owner options, it must be present for SAM
-        if (smType is not None and smType == 'sam' and (
+        if (self.smType is not None and self.smType == 'sam' and (
                 (self.type in ('esx', 'rhevm', 'hyperv')) or
                 (self.type == 'libvirt' and self.server) or
                 (self.type == 'fake' and self.fake_is_hypervisor))):
@@ -293,9 +303,13 @@ class Config(GeneralConfig):
     def rhsm_proxy_password(self):
         return self._get_password('rhsm_proxy_password', 'rhsm_encrypted_proxy_password')
 
+    @property
+    def sat_password(self):
+        return self._get_password('sat_password', 'sat_encrypted_password')
+
 
 class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, smType=None, defaults=None):
+    def __init__(self, logger, config_dir=None, defaults=None):
         if not defaults:
             try:
                 defaults_from_config = parseFile(VIRTWHO_GENERAL_CONF_PATH).get(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME)
@@ -306,7 +320,6 @@ class ConfigManager(object):
             self._defaults = defaults
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
-        self.smType = smType
         parser = SafeConfigParser()
         self._configs = []
         self.logger = logger
@@ -330,7 +343,7 @@ class ConfigManager(object):
         for section in parser.sections():
             try:
                 config = Config.fromParser(section, parser, self._defaults)
-                config.checkOptions(self.smType, self.logger)
+                config.checkOptions(self.logger)
                 self._configs.append(config)
             except NoOptionError as e:
                 self.logger.error(str(e))
@@ -370,6 +383,6 @@ def parseFile(filename, logger=None):
     parser = SafeConfigParser()
     fname = parser.read(filename)
     if len(fname) == 0 and logger:
-           logger.error("Unable to read configuration file %s", filename)
+        logger.error("Unable to read configuration file %s", filename)
     sections = getSections(parser)
     return sections

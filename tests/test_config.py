@@ -167,7 +167,6 @@ env=staging
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].rhsm_password, passwd)
 
-
     @patch('password.Password._read_key_iv')
     def testCryptedRHSMProxyPassword(self, password):
         from password import Password
@@ -421,7 +420,7 @@ username=admin
 password=password
 owner=root
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir, 'sam')
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
     def testMissingOwnerOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -433,7 +432,7 @@ username=admin
 password=password
 env=env
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir, 'sam')
+        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
 class TestGeneralConfig(TestBase):
     """

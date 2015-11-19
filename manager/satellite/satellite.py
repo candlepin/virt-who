@@ -54,10 +54,10 @@ class Satellite(Manager):
         self.server = None
         self.options = options
 
-    def _connect(self):
-        server = self.options.sat_server
-        self.username = self.options.sat_username
-        self.password = self.options.sat_password
+    def _connect(self, config):
+        server = config.sat_server or self.options.sat_server
+        self.username = config.sat_username or self.options.sat_username
+        self.password = config.sat_password or self.options.sat_password
 
         if not server.startswith("http://") and not server.startswith("https://"):
             server = "https://%s" % server
@@ -146,8 +146,8 @@ class Satellite(Manager):
         raise SatelliteError("virt-who does not support sending local hypervisor "
                              "data to satellite; use rhn-virtualization-host instead")
 
-    def hypervisorCheckIn(self, config, mapping, type=None):
-        self._connect()
+    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
+        self._connect(config)
 
         self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
         if len(mapping) == 0:

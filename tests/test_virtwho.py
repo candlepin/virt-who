@@ -24,7 +24,7 @@ from base import TestBase, unittest
 import logging
 from rhsm.connection import RestlibException
 
-from mock import patch, Mock, sentinel
+from mock import patch, Mock, sentinel, ANY
 
 from virtwho import parseOptions, VirtWho, OptionError, Queue, Job
 from config import Config
@@ -259,7 +259,7 @@ class TestOptions(TestBase):
 
         fromConfig.assert_called_with(sentinel.logger, config)
         self.assertTrue(fromConfig.return_value.start.called)
-        fromOptions.assert_called_with(self.logger, options)
+        fromOptions.assert_called_with(self.logger, options, ANY)
 
 
 class TestJobs(TestBase):

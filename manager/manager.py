@@ -33,7 +33,7 @@ class Manager(object):
         raise NotImplementedError()
 
     @classmethod
-    def fromOptions(cls, logger, options):
+    def fromOptions(cls, logger, options, config=None):
         # Imports can't be top-level, it would be circular dependency
         import subscriptionmanager
         import satellite
@@ -43,7 +43,7 @@ class Manager(object):
         assert satellite
 
         for subcls in cls.__subclasses__():
-            if subcls.smType == options.smType:
+            if subcls.smType == config.smType:
                 return subcls(logger, options)
 
-        raise KeyError("Invalid config type: %s" % options.smType)
+        raise KeyError("Invalid config type: %s" % config.smType)

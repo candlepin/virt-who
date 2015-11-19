@@ -24,6 +24,7 @@ import tempfile
 from mock import patch, MagicMock, ANY
 
 from base import TestBase
+from config import Config
 from manager import Manager, ManagerError
 
 from virt import Guest, Virt, Hypervisor
@@ -57,7 +58,6 @@ class TestSubscriptionManager(TestManager):
 
     def prepare(self, create_from_file, connection):
         self.options = MagicMock()
-        self.options.smType = self.smType
 
         tempdir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, tempdir)
@@ -80,7 +80,8 @@ class TestSubscriptionManager(TestManager):
     @patch("rhsm.certificate.create_from_file")
     def test_sendVirtGuests(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
-        manager = Manager.fromOptions(self.logger, self.options)
+        config = Config('test', 'libvirt')
+        manager = Manager.fromOptions(self.logger, self.options, config)
         manager.sendVirtGuests(self.guestInfo)
         manager.connection.updateConsumer.assert_called_with(
                 ANY,
@@ -90,7 +91,8 @@ class TestSubscriptionManager(TestManager):
     @patch("rhsm.certificate.create_from_file")
     def test_hypervisorCheckIn(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
-        manager = Manager.fromOptions(self.logger, self.options)
+        config = Config('test', 'libvirt')
+        manager = Manager.fromOptions(self.logger, self.options, config)
         self.options.env = "ENV"
         self.options.owner = "OWNER"
         manager.hypervisorCheckIn(self.options, self.mapping, options=self.options)
@@ -105,17 +107,19 @@ class TestSatellite(TestManager):
 
     def test_sendVirtGuests(self):
         options = MagicMock()
-        options.smType = self.smType
-
-        manager = Manager.fromOptions(self.logger, options)
+        config = Config('test', 'libvirt', sat_server='localhost')
+        manager = Manager.fromOptions(self.logger, options, config)
         self.assertRaises(ManagerError, manager.sendVirtGuests, self.guestInfo)
 
     @patch("xmlrpclib.Server")
     def test_hypervisorCheckIn(self, server):
         options = MagicMock()
-        options.smType = self.smType
+        server.return_value.registration.new_system_user_pass.return_value = {
+            'system_id': '123'
+        }
 
-        manager = Manager.fromOptions(self.logger, options)
+        config = Config('test', 'libvirt', sat_server='localhost')
+        manager = Manager.fromOptions(self.logger, options, config)
         options.env = "ENV"
         options.owner = "OWNER"
         manager.hypervisorCheckIn(options, self.mapping, 'ABC')

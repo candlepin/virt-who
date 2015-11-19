@@ -97,8 +97,6 @@ class OptionParserEpilog(OptionParser):
         else:
             return ""
 
-# Change detection will limit the sending if no changes exist
-RetryInterval = 60  # One minute
 # Default interval for sending list of UUIDs
 DefaultInterval = 60  # One per minute
 MinimumSendInterval = 60  # One minute
@@ -789,10 +787,6 @@ def main():
         msg = "virt-who seems to be already running. If not, remove %s" % PIDFILE
         print >>sys.stderr, msg
         exit(1, status=msg)
-
-    global RetryInterval
-    if options.interval < RetryInterval:
-        RetryInterval = options.interval
 
     global virtWho
     try:

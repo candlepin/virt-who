@@ -30,7 +30,7 @@ from virt import VirtError, Guest
 import xmlrpclib
 
 
-class TestEsx(TestBase):
+class TestVdsm(TestBase):
     def setUp(self):
         config = Config('test', 'vdsm')
 

@@ -57,6 +57,16 @@
                             <val xsi:type="xsd:string">5627a268-f036-4f5d-b9a3-0183ec736913</val>
                         </changeSet>
                         <changeSet>
+                            <name>config.network.dnsConfig.hostName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>config.network.dnsConfig.domainName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localdomain</val>
+                        </changeSet>
+                        <changeSet>
                             <name>name</name>
                             <op>assign</op>
                             <val xsi:type="xsd:string">localhost.localdomain</val>
@@ -84,6 +94,16 @@
                             <val xsi:type="xsd:string">4172853d-e72a-493a-883b-8761f5daa5eb</val>
                         </changeSet>
                         <changeSet>
+                            <name>config.network.dnsConfig.hostName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>config.network.dnsConfig.domainName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localdomain</val>
+                        </changeSet>
+                        <changeSet>
                             <name>name</name>
                             <op>assign</op>
                             <val xsi:type="xsd:string">localhost.localdomain</val>
@@ -108,6 +128,16 @@
                             <name>hardware.systemInfo.uuid</name>
                             <op>assign</op>
                             <val xsi:type="xsd:string">a2c85a15-9b53-493d-9731-8b5cccdd8951</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>config.network.dnsConfig.hostName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localhost</val>
+                        </changeSet>
+                        <changeSet>
+                            <name>config.network.dnsConfig.domainName</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">localdomain</val>
                         </changeSet>
                         <changeSet>
                             <name>name</name>

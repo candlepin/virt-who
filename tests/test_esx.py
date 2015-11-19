@@ -79,7 +79,7 @@ class TestEsx(TestBase):
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping(self, mock_client):
-        expected_hostname = 'Fake_hostname'
+        expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
         expected_guestId = 'guest1UUID'
         expected_guest_state = Guest.STATE_RUNNING
@@ -97,6 +97,8 @@ class TestEsx(TestBase):
         self.esx.vms = fake_vms
 
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
+                     'config.network.dnsConfig.hostName': 'hostname',
+                     'config.network.dnsConfig.domainName': 'domainname',
                      'name': expected_hostname,
                      'parent': fake_parent,
                      'vm': fake_vm
@@ -117,7 +119,7 @@ class TestEsx(TestBase):
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping_incomplete_data(self, mock_client):
-        expected_hostname = None
+        expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
         expected_guestId = 'guest1UUID'
         expected_guest_state = Guest.STATE_UNKNOWN
@@ -135,6 +137,8 @@ class TestEsx(TestBase):
         self.esx.vms = fake_vms
 
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
+                     'config.network.dnsConfig.hostName': 'hostname',
+                     'config.network.dnsConfig.domainName': 'domainname',
                      'parent': fake_parent,
                      'vm': fake_vm
                      }

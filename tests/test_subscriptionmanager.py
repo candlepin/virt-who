@@ -1,5 +1,5 @@
 import os
-
+import sys
 import shutil
 import logging
 import tempfile
@@ -8,9 +8,11 @@ from mock import patch, Mock, DEFAULT
 
 from base import TestBase
 
-from config import Config
+from config import Config, ConfigManager
+from manager import Manager
 from manager.subscriptionmanager import SubscriptionManager
 from virt import Guest, Hypervisor
+from virtwho import parseOptions
 
 import rhsm.config
 import rhsm.certificate
@@ -83,3 +85,43 @@ class TestSubscriptionManager(TestBase):
             expected,
             options=None
         )
+
+
+class TestSubscriptionManagerConfig(TestBase):
+    def test_sm_config_env(self):
+        os.environ = {
+            "VIRTWHO_SAM": '1',
+            "VIRTWHO_LIBVIRT": '1'
+        }
+        sys.argv = ["virt-who"]
+        logger, options = parseOptions()
+        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        config.checkOptions(logger)
+        manager = Manager.fromOptions(logger, options, config)
+        self.assertTrue(isinstance(manager, SubscriptionManager))
+
+    def test_sm_config_cmd(self):
+        os.environ = {}
+        sys.argv = ["virt-who", "--sam", "--libvirt"]
+        logger, options = parseOptions()
+        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        config.checkOptions(logger)
+        manager = Manager.fromOptions(logger, options, config)
+        self.assertTrue(isinstance(manager, SubscriptionManager))
+
+    def test_sm_config_file(self):
+        config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, config_dir)
+        with open(os.path.join(config_dir, "test.conf"), "w") as f:
+            f.write("""
+[test]
+type=libvirt
+rhsm_hostname=host
+""")
+
+        config_manager = ConfigManager(self.logger, config_dir)
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0]
+        manager = Manager.fromOptions(self.logger, Mock(), config)
+        self.assertTrue(isinstance(manager, SubscriptionManager))
+        self.assertEqual(config.rhsm_hostname, 'host')

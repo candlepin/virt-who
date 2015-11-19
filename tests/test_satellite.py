@@ -26,13 +26,19 @@ import logging
 import threading
 import tempfile
 import pickle
+import shutil
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
-from mock import MagicMock
+from mock import MagicMock, patch, ANY
 
+from config import Config, ConfigManager
+from manager import Manager
 from manager.satellite import Satellite, SatelliteError
-
 from virt import Guest, Hypervisor
+from virtwho import parseOptions
+import password
+from binascii import hexlify
+
 
 TEST_SYSTEM_ID = 'test-system-id'
 TEST_PORT = 8090
@@ -170,6 +176,81 @@ class TestSatellite(TestBase):
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
+
+    def test_per_config_options(self):
+        options = Options(None, None, None)
+        options.force_register = True
+        config = Config('test', 'libvirt', sat_server="http://localhost:%s" % TEST_PORT, sat_username='username', sat_password='password')
+        s = Satellite(self.logger, options)
+        result = s.hypervisorCheckIn(config, self.mapping, "type")
+        self.assertTrue("failedUpdate" in result)
+        self.assertTrue("created" in result)
+        self.assertTrue("updated" in result)
+
+    @patch('password.Password._can_write')
+    def test_per_config_options_encrypted(self, can_write):
+        options = Options(None, None, None)
+        options.force_register = True
+        can_write.return_value = True
+        with tempfile.NamedTemporaryFile() as tmp:
+            password.Password.KEYFILE = tmp.name
+            config = Config('test', 'libvirt',
+                            sat_server="http://localhost:%s" % TEST_PORT,
+                            sat_username='username',
+                            sat_encrypted_password=hexlify(password.Password.encrypt('password')))
+            s = Manager.fromOptions(self.logger, options, config)
+            self.assertTrue(isinstance(s, Satellite))
+            result = s.hypervisorCheckIn(config, self.mapping, "type")
+        self.assertTrue("failedUpdate" in result)
+        self.assertTrue("created" in result)
+        self.assertTrue("updated" in result)
+
+
+class TestSatelliteConfig(TestBase):
+    def test_satellite_config_env(self):
+        os.environ = {
+            "VIRTWHO_SATELLITE": '1',
+            "VIRTWHO_SATELLITE_SERVER": 'sat.example.com',
+            "VIRTWHO_SATELLITE_USERNAME": 'username',
+            "VIRTWHO_SATELLITE_PASSWORD": 'password',
+            "VIRTWHO_LIBVIRT": '1'
+        }
+        sys.argv = ["virt-who"]
+        logger, options = parseOptions()
+        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        config.checkOptions(logger)
+        manager = Manager.fromOptions(logger, options, config)
+        self.assertTrue(isinstance(manager, Satellite))
+
+    def test_satellite_config_cmd(self):
+        os.environ = {}
+        sys.argv = ["virt-who", "--satellite",
+                    "--satellite-server=sat.example.com",
+                    "--satellite-username=username",
+                    "--satellite-password=password",
+                    "--libvirt"]
+        logger, options = parseOptions()
+        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        config.checkOptions(logger)
+        manager = Manager.fromOptions(logger, options, config)
+        self.assertTrue(isinstance(manager, Satellite))
+
+    def test_satellite_config_file(self):
+        config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, config_dir)
+        with open(os.path.join(config_dir, "test.conf"), "w") as f:
+            f.write("""
+[test]
+type=libvirt
+sat_server=sat.example.com
+""")
+
+        config_manager = ConfigManager(self.logger, config_dir)
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0]
+        manager = Manager.fromOptions(self.logger, MagicMock(), config)
+        self.assertTrue(isinstance(manager, Satellite))
+        self.assertEqual(config.sat_server, 'sat.example.com')
 
 
 if __name__ == '__main__':

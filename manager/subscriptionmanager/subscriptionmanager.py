@@ -139,7 +139,7 @@ class SubscriptionManager(Manager):
         try:
             self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
         except rhsm_connection.GoneException:
-            self.logger.error("Communication with subscription manager failed: consumer no longer exists")
+            raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
 
     def hypervisorCheckIn(self, config, mapping, type=None, options=None):
         """ Send hosts to guests mapping to subscription manager. """
@@ -177,7 +177,7 @@ class SubscriptionManager(Manager):
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.GoneException:
-            self.logger.error("Communication with subscription manager failed: consumer no longer exists")
+            raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
         except rhsm_connection.ConnectionException as e:
             self.logger.exception("Communication with server failed:")
             if hasattr(e, 'code') and e.code >= 500:

@@ -136,7 +136,10 @@ class SubscriptionManager(Manager):
         self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4))
 
         # Send list of guest uuids to the server
-        self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
+        try:
+            self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
+        except rhsm_connection.GoneException:
+            self.logger.error("Communication with subscription manager failed: consumer no longer exists")
 
     def hypervisorCheckIn(self, config, mapping, type=None, options=None):
         """ Send hosts to guests mapping to subscription manager. """
@@ -173,6 +176,8 @@ class SubscriptionManager(Manager):
                 result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.GoneException:
+            self.logger.error("Communication with subscription manager failed: consumer no longer exists")
         except rhsm_connection.ConnectionException as e:
             self.logger.exception("Communication with server failed:")
             if hasattr(e, 'code') and e.code >= 500:

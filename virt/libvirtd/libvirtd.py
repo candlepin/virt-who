@@ -82,6 +82,8 @@ class Libvirtd(virt.Virt):
         super(Libvirtd, self).__init__(logger, config)
         self.changedCallback = None
         self.registerEvents = registerEvents
+        self._host_capabilities_xml = None
+        self._host_socket_count = None
         self._host_uuid = None
         self._host_name = None
         self.eventLoopThread = None
@@ -237,11 +239,16 @@ class Libvirtd(virt.Virt):
         self.logger.debug("Libvirt domains found: %s" % [guest.uuid for guest in domains])
         return domains
 
+    @property
+    def host_capabilities_xml(self):
+        if self._host_capabilities_xml is None:
+            self._host_capabilities_xml = ElementTree.fromstring(self.virt.getCapabilities())
+        return self._host_capabilities_xml
+
     def _remote_host_id(self):
         if self._host_uuid is None:
             if self.config.hypervisor_id == 'uuid':
-                xml = ElementTree.fromstring(self.virt.getCapabilities())
-                self._host_uuid = xml.find('host/uuid').text
+                self._host_uuid = self.host_capabilities_xml.find('host/uuid').text
             elif self.config.hypervisor_id == 'hostname':
                 self._host_uuid = self.virt.getHostname()
             else:
@@ -251,15 +258,29 @@ class Libvirtd(virt.Virt):
 
     def _remote_host_name(self):
         if self._host_name is None:
-            xml = ElementTree.fromstring(self.virt.getCapabilities())
-            if (xml.find('host/name') is not None):
-                self._host_name = xml.find('host/name').text
+            try:
+                self._host_name = self.host_capabilities_xml.find('host/name').text
+            except AttributeError:
+                self._host_name = None
         return self._host_name
+
+    def _remote_host_sockets(self):
+        if self._host_socket_count is None:
+            try:
+                self._host_socket_count = self.host_capabilities_xml.find('host/cpu/topology').get('sockets')
+            except AttributeError:
+                self._host_socket_count = None
+        return self._host_socket_count
 
     def _getHostGuestMapping(self):
         mapping = {'hypervisors': []}
+        facts = {
+            'cpu.cpu_socket(s)': self._remote_host_sockets()
+
+        }
         host = virt.Hypervisor(hypervisorId=self._remote_host_id(),
                                guestIds=self._listDomains(),
-                               name=self._remote_host_name())
+                               name=self._remote_host_name(),
+                               facts=facts)
         mapping['hypervisors'].append(host)
         return mapping

@@ -99,6 +99,7 @@ class TestEsx(TestBase):
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
                      'config.network.dnsConfig.hostName': 'hostname',
                      'config.network.dnsConfig.domainName': 'domainname',
+                     'hardware.cpuInfo.numCpuPackages': '1',
                      'name': expected_hostname,
                      'parent': fake_parent,
                      'vm': fake_vm
@@ -106,14 +107,21 @@ class TestEsx(TestBase):
         fake_hosts = {'random-host-id': fake_host}
         self.esx.hosts = fake_hosts
 
-        expected_result = Hypervisor(hypervisorId=expected_hypervisorId,
-                                     name=expected_hostname,
-                                     guestIds=[Guest(expected_guestId,
-                                                     self.esx,
-                                                     expected_guest_state,
-                                                     hypervisorType='vmware')
-                                              ]
-                                    )
+        expected_result = Hypervisor(
+            hypervisorId=expected_hypervisorId,
+            name=expected_hostname,
+            guestIds=[
+                Guest(
+                    expected_guestId,
+                    self.esx,
+                    expected_guest_state,
+                    hypervisorType='vmware'
+                )
+            ],
+            facts={
+                'cpu.cpu_socket(s)': '1',
+            }
+        )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
@@ -139,20 +147,28 @@ class TestEsx(TestBase):
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
                      'config.network.dnsConfig.hostName': 'hostname',
                      'config.network.dnsConfig.domainName': 'domainname',
+                     'hardware.cpuInfo.numCpuPackages': '1',
                      'parent': fake_parent,
                      'vm': fake_vm
                      }
         fake_hosts = {'random-host-id': fake_host}
         self.esx.hosts = fake_hosts
 
-        expected_result = Hypervisor(hypervisorId=expected_hypervisorId,
-                                     name=expected_hostname,
-                                     guestIds=[Guest(expected_guestId,
-                                                     self.esx,
-                                                     expected_guest_state,
-                                                     hypervisorType='vmware')
-                                              ]
-                                    )
+        expected_result = Hypervisor(
+            hypervisorId=expected_hypervisorId,
+            name=expected_hostname,
+            guestIds=[
+                Guest(
+                    expected_guestId,
+                    self.esx,
+                    expected_guest_state,
+                    hypervisorType='vmware'
+                )
+            ],
+            facts={
+                'cpu.cpu_socket(s)': '1',
+            }
+        )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 

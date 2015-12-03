@@ -124,24 +124,25 @@ class RhevM(virt.Virt):
                 continue
 
             if self.config.hypervisor_id == 'uuid':
-                hosts[id] = virt.Hypervisor(id)
+                host_id = id
             elif self.config.hypervisor_id == 'hwuuid':
                 try:
-                    hosts[id] = virt.Hypervisor(
-                        host.find('hardware_information').find('uuid').text
-                    )
+                    host_id = host.find('hardware_information').find('uuid').text
                 except AttributeError:
                     self.logger.warn("Host %s doesn't have hardware uuid", id)
                     continue
             elif self.config.hypervisor_id == 'hostname':
-                hosts[id] = virt.Hypervisor(host.find('name').text)
+                host_id = host.find('name').text
             else:
                 raise virt.VirtError(
                     'Reporting of hypervisor %s is not implemented in %s backend',
                     self.config.hypervisor_id, self.CONFIG_TYPE)
+
+            facts = {
+                'cpu.cpu_socket(s)': host.find('cpu').find('topology').get('sockets'),
+            }
+            hosts[id] = virt.Hypervisor(hypervisorId=host_id, name=host.find('name').text, facts=facts)
             mapping[id] = []
-            # BZ 1065465 Add hostname to hypervisor profile
-            hosts[id].name = host.find('name').text
         for vm in vms_xml.findall('vm'):
             guest_id = vm.get('id')
             host = vm.find('host')

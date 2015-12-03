@@ -207,7 +207,11 @@ class Esx(virt.Virt):
                                              hypervisorType=host.get('config.product.name', 'vmware'),
                                              hypervisorVersion=host.get('config.product.version', None)
                                              ))
-            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name='%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host))
+            name = '%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host
+            facts = {
+                'cpu.cpu_socket(s)': str(host['hardware.cpuInfo.numCpuPackages']),
+            }
+            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
 
     def login(self):
@@ -273,6 +277,7 @@ class Esx(virt.Virt):
             self.createPropertySpec("HostSystem", ["name",
                                                    "vm",
                                                    "hardware.systemInfo.uuid",
+                                                   "hardware.cpuInfo.numCpuPackages",
                                                    "parent",
                                                    "config.product.name",
                                                    "config.product.version",

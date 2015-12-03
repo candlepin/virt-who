@@ -502,9 +502,11 @@ class HyperV(virt.Virt):
                     hypervisorVersion=vmmsVersion))
         # Get the hostname
         hostname = None
-        data = hypervsoap.Enumerate("select DNSHostName from Win32_ComputerSystem", "root/cimv2")
+        socket_count = None
+        data = hypervsoap.Enumerate("select DNSHostName, NumberOfProcessors from Win32_ComputerSystem", "root/cimv2")
         for instance in hypervsoap.Pull(data, "root/cimv2"):
             hostname = instance["DNSHostName"]
+            socket_count = instance["NumberOfProcessors"]
 
         if self.config.hypervisor_id == 'uuid':
             uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
@@ -516,7 +518,10 @@ class HyperV(virt.Virt):
         else:
             raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
                                  (self.config.hypervisor_id, self.CONFIG_TYPE))
-        hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests)
+        facts = {
+            'cpu.cpu_socket(s)': str(socket_count),
+        }
+        hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests, facts=facts)
         return {'hypervisors': [hypervisor]}
 
     def ping(self):

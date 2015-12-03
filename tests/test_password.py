@@ -29,6 +29,12 @@ from password import Password
 
 
 class TestPassword(TestBase):
+    def mock_pwd_file(self):
+        f, filename = tempfile.mkstemp()
+        self.addCleanup(os.unlink, filename)
+        Password.KEYFILE = filename
+        Password._can_write = MagicMock(retun_value=True)
+
     def testEncrypt(self):
         self.assertEqual(hexlify(
             Password._crypt(
@@ -48,11 +54,8 @@ class TestPassword(TestBase):
             'Single block msg')
 
     def testBoth(self):
-        f, filename = tempfile.mkstemp()
-        self.addCleanup(os.unlink, filename)
-        Password.KEYFILE = filename
+        self.mock_pwd_file()
         pwd = "Test password"
-        Password._can_write = MagicMock(retun_value=True)
         encrypted = Password.encrypt(pwd)
         self.assertEqual(pwd, Password.decrypt(encrypted))
 
@@ -61,3 +64,17 @@ class TestPassword(TestBase):
 
     def testUnpad(self):
         self.assertEqual(hexlify(Password._unpad(unhexlify("00010203040506070809060606060606"))), "00010203040506070809")
+
+    def testPercent(self):
+        self.mock_pwd_file()
+        pwd = 'abc%%def'
+        self.assertEqual(
+            Password.decrypt(Password.encrypt(pwd)),
+            pwd)
+
+    def testBackslash(self):
+        self.mock_pwd_file()
+        pwd = 'abc\\def'
+        self.assertEqual(
+            Password.decrypt(Password.encrypt(pwd)),
+            pwd)

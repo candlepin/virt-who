@@ -27,7 +27,7 @@ from password import Password
 from binascii import unhexlify
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
-VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
+VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake")
 
 
 class InvalidOption(Error):

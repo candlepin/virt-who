@@ -204,6 +204,9 @@ class Libvirtd(virt.Virt):
                 break
 
             time.sleep(1)
+        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
+            self.eventLoopThread.terminate()
+            self.eventLoopThread.join(1)
         self._disconnect()
 
     def _callback(self, *args, **kwargs):

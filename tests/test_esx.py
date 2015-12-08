@@ -52,8 +52,8 @@ class TestEsx(TestBase):
 
         self.assertTrue(mock_client.called)
         mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None)
-        mock_client.service.RetrieveServiceContent.assert_called_once()
-        mock_client.service.Login.assert_called_once()
+        mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
+        mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
     @patch('suds.client.Client')
     def test_connection_timeout(self, mock_client):
@@ -74,8 +74,8 @@ class TestEsx(TestBase):
 
         self.assertTrue(mock_client.called)
         mock_client.assert_called_with(ANY, location="https://localhost/sdk")
-        mock_client.service.RetrieveServiceContent.assert_called_once()
-        mock_client.service.Login.assert_called_once()
+        mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
+        mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping(self, mock_client):

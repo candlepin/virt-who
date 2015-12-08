@@ -61,4 +61,4 @@ class TestVdsm(TestBase):
         }
         domains = self.vdsm.listDomains()
         self.assertEquals([d.uuid for d in domains], ['1', '2', '3'])
-        self.vdsm.server.list.assert_called_once()
+        self.vdsm.server.list.assert_called_once_with(True)

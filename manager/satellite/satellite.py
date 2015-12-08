@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import xmlrpclib
 import pickle
+import json
 
 from manager import Manager, ManagerError
 from virt import Guest
@@ -149,7 +150,11 @@ class Satellite(Manager):
     def hypervisorCheckIn(self, config, mapping, type=None, options=None):
         self._connect(config)
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % mapping)
+        hypervisor_count = len(mapping['hypervisors'])
+        guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
+        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found" % (hypervisor_count, guest_count))
+        serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
+        self.logger.debug("Host-to-guest mapping: %s" % json.dumps(serialized_mapping, indent=4))
         if len(mapping) == 0:
             self.logger.info("no hypervisors found, not sending data to satellite")
 

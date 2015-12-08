@@ -155,7 +155,7 @@ class SubscriptionManager(Manager):
         if is_async:
             self.logger.debug("Server has capability 'hypervisors_async'")
             # Transform the mapping into the async version
-            serialized_mapping = {'hypervisors':[h.toDict() for h in mapping['hypervisors']]}
+            serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
 
         else:
             self.logger.debug("Server does not have 'hypervisors_async' capability")
@@ -165,7 +165,10 @@ class SubscriptionManager(Manager):
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
 
-        self.logger.info("Sending update in hosts-to-guests mapping: %s" % json.dumps(serialized_mapping, indent=4))
+        hypervisor_count = len(serialized_mapping)
+        guest_count = sum(len(hypervisor) for hypervisor in serialized_mapping)
+        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found" % (hypervisor_count, guest_count))
+        self.logger.debug("Host-to-guest mapping: %s" % json.dumps(serialized_mapping, indent=4))
         try:
             try:
                 result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)

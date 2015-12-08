@@ -7,7 +7,7 @@ env:
 sudo: required
 install:
   - pip install -r requirements.txt
-  - pip install iniparse python-dateutil 'M2Crypto>=0.22.6rc4' libvirt-python unittest2 pytest-timeout mock
+  - pip install -U iniparse python-dateutil 'M2Crypto>=0.22.6rc4' libvirt-python unittest2 pytest-timeout mock
 script: py.test --timeout=30
 before_install:
   - sudo add-apt-repository -y ppa:ubuntu-cloud-archive/icehouse-staging

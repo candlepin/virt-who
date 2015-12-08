@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from threading import Event
 from Queue import Queue
 from base import TestBase
-from mock import patch, ANY
+from mock import patch, ANY, Mock
 
 from config import Config
 from virt import Virt, VirtError
@@ -45,6 +45,7 @@ class TestLibvirtd(TestBase):
         v._terminate_event = Event()
         v._interval = 3600
         v._oneshot = True
+        v._createEventLoop = Mock()
         v._run()
 
     @patch('libvirt.openReadOnly')

@@ -489,7 +489,8 @@ class OptionError(Exception):
 
 
 def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]",
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--esx]",
+
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=NotSetSentinel(), help="Enable debugging output")
@@ -506,6 +507,7 @@ def parseOptions():
     virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
     virtGroup.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
     virtGroup.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
+    virtGroup.add_option("--xen", action="store_const", dest="virtType", const="xen", help="Register XEN machines using XenServer")
     virtGroup.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
     virtGroup.add_option("--hyperv", action="store_const", dest="virtType", const="hyperv", help="Register guests using Hyper-V")
     parser.add_option_group(virtGroup)
@@ -639,6 +641,10 @@ def parseOptions():
     if env in ["1", "true"]:
         options.virtType = "esx"
 
+    env = os.getenv("VIRTWHO_XEN", "0").strip().lower()
+    if env in ["1", "true"]:
+        options.virtType = "xen"
+
     env = os.getenv("VIRTWHO_RHEVM", "0").strip().lower()
     if env in ["1", "true"]:
         options.virtType = "rhevm"
@@ -688,6 +694,14 @@ def parseOptions():
         options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
+
+    if options.virtType == "xen":
+        options.owner = checkEnv("VIRTWHO_XEN_OWNER", options.owner, "owner", required=False)
+        options.env = checkEnv("VIRTWHO_XEN_ENV", options.env, "env", required=False)
+        options.server = checkEnv("VIRTWHO_XEN_SERVER", options.server, "server")
+        options.username = checkEnv("VIRTWHO_XEN_USERNAME", options.username, "username")
+        if len(options.password) == 0:
+            options.password = os.getenv("VIRTWHO_XEN_PASSWORD", "")
 
     if options.virtType == "rhevm":
         options.owner = checkEnv("VIRTWHO_RHEVM_OWNER", options.owner, "owner", required=False)
@@ -860,7 +874,7 @@ def _main(virtWho):
         })
         virtWho.logger.debug("Associations found: %s" % json.dumps({
             'hypervisors': hypervisors
-        }, indent=4))
+        }, indent=4, sort_keys=True))
         print(data)
 
 

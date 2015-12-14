@@ -93,11 +93,10 @@ class Xen(virt.Virt):
                     )
                 )
 
-            #mapping[record["hostname"]]=guests
             mapping['hypervisors']= Hypervisor (hypervisorId=record["uuid"],
                                                 guestIds=guests,
                                                 name=record["hostname"],
-                                                facts="")
+                                                facts=None)
         return mapping
 
     def _run(self):

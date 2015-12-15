@@ -165,8 +165,8 @@ class SubscriptionManager(Manager):
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
 
-        hypervisor_count = len(serialized_mapping)
-        guest_count = sum(len(hypervisor) for hypervisor in serialized_mapping)
+        hypervisor_count = len(mapping['hypervisors'])
+        guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
         self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found", hypervisor_count, guest_count)
         self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
         try:

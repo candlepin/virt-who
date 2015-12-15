@@ -91,6 +91,10 @@ class TestBase(TestCase):
         self.assoc.clear()
         self.server.data_version = 0
 
+    def tearDown(self):
+        self.process.terminate()
+        self.process.join()
+
     def run_virtwho(self, args, grab_stdout=False, background=False):
         '''
         Execute virt-who process with given arguments.

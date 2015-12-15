@@ -18,13 +18,15 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-__all__ = ['InvalidKeyFile', 'UnwritableKeyFile', 'Password']
 
 import os
 import stat
 from M2Crypto import EVP
 from binascii import hexlify, unhexlify
 from cStringIO import StringIO
+
+
+__all__ = ['InvalidKeyFile', 'UnwritableKeyFile', 'Password']
 
 
 class InvalidKeyFile(Exception):
@@ -49,7 +51,6 @@ class Password(object):
     @classmethod
     def _unpad(cls, s):
         return s[0:-ord(s[-1])]
-
 
     @classmethod
     def _crypt(cls, op, key, iv, data):

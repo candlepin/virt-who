@@ -76,7 +76,7 @@ class Vdsm(Virt):
         try:
             self.management_port = parser.get("addresses", "management_port")
         except (NoSectionError, NoOptionError):
-            self.management_port = 54321
+            self.management_port = '54321'
 
     def _getLocalVdsName(self, tsPath):
         p = subprocess.Popen([

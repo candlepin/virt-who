@@ -170,7 +170,7 @@ class VirtWho(object):
                 self.logger.debug('VirtWho has no method "%s"', job.target)
 
     def reportChanged(self, report):
-        return not report.hash == self.reports.get(report.config.hash)
+        return report.hash != self.reports.get(report.config.hash)
 
     def _get_current_report(self):
         if not self.configs_ready:
@@ -191,7 +191,6 @@ class VirtWho(object):
                 report_sent = report_to_send
             delta = time.time() - start_time
             self.queue_timeout = max(0,  self.options.interval - delta)
-            # self.logger.debug('%s' %  self.options.interval)
         except RestlibException as e:
             if e.code in ['429']:
                 # We've exceeded the rate limit
@@ -254,10 +253,10 @@ class VirtWho(object):
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.addJob = self.addJob
-        result = manager.hypervisorCheckIn(report.config,
-                                           report.association,
-                                           report.config.type,
-                                           self.options)
+        manager.hypervisorCheckIn(report.config,
+                                  report.association,
+                                  report.config.type,
+                                  self.options)
         self.reports[report.config.hash] = report.hash
 
     def update_report_to_send(self, report):
@@ -767,7 +766,6 @@ def atexit_fn(*args, **kwargs):
 
 
 def reload(signal, stackframe):
-    global virtWho
     virtWho.reload()
 
 

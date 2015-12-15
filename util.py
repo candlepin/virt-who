@@ -1,22 +1,5 @@
 import socket
 
-__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename')
-
-def decode(input):
-    if isinstance(input, dict):
-        return dict((decode(key), decode(value)) for key, value in input.iteritems())
-    elif isinstance(input, list):
-        return [decode(element) for element in input]
-    elif isinstance(input, unicode):
-        return input.encode('utf-8')
-    else:
-        return input
-
-# Taken from http://code.activestate.com/recipes/576693/
-
-# Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.
-# Passes Python2.7's test suite and incorporates all the latest updates.
-
 try:
     from thread import get_ident as _get_ident
 except ImportError:
@@ -28,9 +11,17 @@ except ImportError:
     pass
 from string import letters, digits
 
+__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename')
+
+
 # A list of desired characters allowed in filenames
 VALID_FILENAME_CHARS = set([char for char in letters + digits + '_-'])
 
+
+# Taken from http://code.activestate.com/recipes/576693/
+
+# Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.
+# Passes Python2.7's test suite and incorporates all the latest updates.
 class OrderedDict(dict):
     'Dictionary that remembers insertion order'
     # An inherited dict maps keys to values.
@@ -256,7 +247,7 @@ class OrderedDict(dict):
 
         '''
         if isinstance(other, OrderedDict):
-            return len(self)==len(other) and self.items() == other.items()
+            return len(self) == len(other) and self.items() == other.items()
         return dict.__eq__(self, other)
 
     def __ne__(self, other):
@@ -276,8 +267,21 @@ class OrderedDict(dict):
         "od.viewitems() -> a set-like object providing a view on od's items"
         return ItemsView(self)
 
+
+def decode(input):
+    if isinstance(input, dict):
+        return dict((decode(key), decode(value)) for key, value in input.iteritems())
+    elif isinstance(input, list):
+        return [decode(element) for element in input]
+    elif isinstance(input, unicode):
+        return input.encode('utf-8')
+    else:
+        return input
+
+
 def clean_filename(name):
     return ''.join([char for char in name if char in VALID_FILENAME_CHARS])
+
 
 def getMachineId():
     try:
@@ -286,6 +290,7 @@ def getMachineId():
     except IOError:
         machine_id = None
     return machine_id
+
 
 def generateReporterId():
     hostname = socket.gethostname()

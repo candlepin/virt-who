@@ -34,6 +34,7 @@ VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VIRTWHO_GLOBAL_SECTION_NAME = "global"
 VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 
+
 class InvalidOption(Error):
     pass
 
@@ -114,7 +115,7 @@ class GeneralConfig(object):
         '''
         Update _options with the kwargs
         '''
-        self.__dict__['_options'].update([(k,v) for k,v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
+        self.__dict__['_options'].update([(k, v) for k, v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
 
     def __getitem__(self, name):
         return self._options[name]
@@ -363,11 +364,13 @@ class ConfigManager(object):
     def addConfig(self, config):
         self._configs.append(config)
 
+
 def getOptions(section, parser):
     options = {}
     for option in parser.options(section):
         options[option] = parser.get(section, option)
     return options
+
 
 def getSections(parser):
     sections = {}
@@ -377,6 +380,7 @@ def getSections(parser):
         except NoOptionError:
             sections[section] = {}
     return sections
+
 
 def parseFile(filename, logger=None):
     # Parse a file into a dict of section_name: options_dict

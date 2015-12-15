@@ -120,7 +120,6 @@ class Hypervisor(object):
         self.name = name
         self.facts = facts
 
-
     def toDict(self):
         d = OrderedDict((
             ('hypervisorId', {'hypervisorId': self.hypervisorId}),

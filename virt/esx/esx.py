@@ -98,6 +98,10 @@ class Esx(virt.Virt):
 
             start_time = time()
             try:
+                # Make sure that WaitForUpdatesEx finishes even
+                # if the ESX shuts down in the middle of waiting
+                self.client.set_options(timeout=max_wait_seconds + 5)
+
                 updateSet = self.client.service.WaitForUpdatesEx(
                     _this=self.sc.propertyCollector,
                     version=version,
@@ -108,6 +112,7 @@ class Esx(virt.Virt):
                 self._cancel_wait()
                 # Get the initial update again
                 version = ''
+                initial = True
                 continue
             except (suds.WebFault, HTTPException) as e:
                 suppress_exception = False

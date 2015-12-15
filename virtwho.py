@@ -27,7 +27,6 @@ from multiprocessing import Event, Queue
 import json
 
 from Queue import Empty
-from httplib import BadStatusLine
 from rhsm.connection import RestlibException
 
 try:
@@ -40,12 +39,10 @@ from daemon import daemon
 from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError
 from manager.subscriptionmanager import SubscriptionManager
-from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel
-import config
+from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH
 from password import InvalidKeyFile
 
 import log
-from log import QueueLogger, QueueHandler
 import logging
 
 from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
@@ -556,7 +553,7 @@ def parseOptions():
 
     (cli_options, args) = parser.parse_args()
 
-    options = GlobalConfig.fromFile(config.VIRTWHO_GENERAL_CONF_PATH)
+    options = GlobalConfig.fromFile(VIRTWHO_GENERAL_CONF_PATH)
 
     # Handle defaults from the command line options parser
 

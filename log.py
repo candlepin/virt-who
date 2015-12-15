@@ -28,7 +28,7 @@ import sys
 import json
 from Queue import Empty
 from multiprocessing import Queue
-from threading import Thread, Event
+from threading import Thread
 import util
 
 FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""

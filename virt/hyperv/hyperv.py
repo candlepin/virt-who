@@ -23,8 +23,11 @@ import os
 import httplib
 import urlparse
 import base64
+from xml.etree import ElementTree
 
 import virt
+
+import ntlm
 
 try:
     from uuid import uuid1
@@ -34,14 +37,6 @@ except ImportError:
     def uuid1():
         # fallback to calling commandline uuidgen
         return subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0].strip()
-
-# Import XML parser
-try:
-    from elementtree import ElementTree
-except ImportError:
-    from xml.etree import ElementTree
-
-import ntlm
 
 
 class HyperVSoapGenerator(object):

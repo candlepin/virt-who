@@ -27,11 +27,8 @@ import virt
 
 from config import Config
 
-# Import XML parser
-try:
-    from elementtree import ElementTree
-except ImportError:
-    from xml.etree import ElementTree
+from xml.etree import ElementTree
+
 
 
 RHEVM_STATE_TO_GUEST_STATE = {

@@ -25,11 +25,7 @@ import urlparse
 
 import virt
 
-# Import XML parser
-try:
-    from elementtree import ElementTree
-except ImportError:
-    from xml.etree import ElementTree
+from xml.etree import ElementTree
 
 
 class LibvirtdGuest(virt.Guest):

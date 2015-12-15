@@ -21,13 +21,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import time
 import logging
-import log
 from datetime import datetime
 from multiprocessing import Process, Event
 import json
 import hashlib
 import signal
-from datetime import datetime
 
 try:
     from collections import OrderedDict

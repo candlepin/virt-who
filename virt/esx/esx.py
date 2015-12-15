@@ -30,7 +30,6 @@ from httplib import HTTPException
 
 import virt
 
-from virt import Hypervisor, Guest
 
 
 class Esx(virt.Virt):
@@ -216,7 +215,7 @@ class Esx(virt.Virt):
             facts = {
                 'cpu.cpu_socket(s)': str(host['hardware.cpuInfo.numCpuPackages']),
             }
-            mapping['hypervisors'].append(Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
+            mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
 
     def login(self):

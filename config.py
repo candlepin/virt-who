@@ -26,7 +26,6 @@ from password import Password
 from binascii import unhexlify
 import hashlib
 import json
-import socket
 import util
 
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"

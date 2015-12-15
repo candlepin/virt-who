@@ -4,11 +4,7 @@ import time
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 import SocketServer
 
-# Import XML parser
-try:
-    from elementtree import ElementTree
-except ImportError:
-    from xml.etree import ElementTree
+from xml.etree import ElementTree
 
 from virtwhotest import FakeVirt
 

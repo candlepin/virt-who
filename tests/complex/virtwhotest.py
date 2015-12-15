@@ -28,8 +28,9 @@ except ImportError:
     sys.path.append("/usr/share/virt-who/")
     import virtwho
     import config
+
 config.VIRTWHO_CONF_DIR = '/this/does/not/exist'
-config.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
+virtwho.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
 
 
 class FakeVirt(Process):

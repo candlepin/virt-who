@@ -378,7 +378,6 @@ class VirtWho(object):
                     # don't wait too long
                     wait_time = self.send_after - time.time()
                     self.queue_timeout = max(0, wait_time)
-                    self.logger.debug('Waiting to send report')
             except ManagerFatalError:
                 # System not register (probably), stop the backends
                 self.stop_virts()

@@ -105,11 +105,11 @@ class SubscriptionManager(Manager):
                 kwargs['insecure'] = config.rhsm_insecure
 
         if rhsm_username and rhsm_password:
-            self.logger.debug("Authenticating with RHSM username %s" % rhsm_username)
+            self.logger.debug("Authenticating with RHSM username %s", rhsm_username)
             kwargs['username'] = rhsm_username
             kwargs['password'] = rhsm_password
         else:
-            self.logger.debug("Authenticating with certificate: %s" % self.cert_file)
+            self.logger.debug("Authenticating with certificate: %s", self.cert_file)
             if not os.access(self.cert_file, os.R_OK):
                 raise SubscriptionManagerUnregisteredError(
                     "Unable to read certificate, system is not registered or you are not root")
@@ -133,7 +133,7 @@ class SubscriptionManager(Manager):
         guests.sort(key=lambda item: item.uuid)
 
         serialized_guests = [guest.toDict() for guest in guests]
-        self.logger.info("Sending domain info: %s" % json.dumps(serialized_guests, indent=4))
+        self.logger.info("Sending domain info: %s", json.dumps(serialized_guests, indent=4))
 
         # Send list of guest uuids to the server
         try:
@@ -167,11 +167,11 @@ class SubscriptionManager(Manager):
 
         hypervisor_count = len(serialized_mapping)
         guest_count = sum(len(hypervisor) for hypervisor in serialized_mapping)
-        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found" % (hypervisor_count, guest_count))
-        self.logger.debug("Host-to-guest mapping: %s" % json.dumps(serialized_mapping, indent=4))
+        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found", hypervisor_count, guest_count)
+        self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
         try:
             try:
-                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)
+                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm
@@ -192,13 +192,13 @@ class SubscriptionManager(Manager):
 
     def checkJobStatus(self, config, job_id):
         self._connect(config)
-        self.logger.debug('Checking status of job %s' % job_id)
+        self.logger.debug('Checking status of job %s', job_id)
         result = self.connection.getJob(job_id)
         state = result['state']
         if state not in ['FINISHED', 'CANCELED', 'FAILED']:
             # This will cause virtwho to do this again later
             self.addJob(('checkJobStatus', [config, result['id']]))
-            self.logger.debug('Job %s not finished, rescheduling' % job_id)
+            self.logger.debug('Job %s not finished, rescheduling', job_id)
         else:
             # log completed job status
             # TODO Make this its own method inside a class
@@ -218,7 +218,7 @@ class SubscriptionManager(Manager):
                     self.logger.info("Created host: %s with guests: [%s]",
                                      created['uuid'],
                                      ", ".join(guests))
-            self.logger.info("Number of mappings unchanged: %s" % len(resultData['unchanged']))
+            self.logger.info("Number of mappings unchanged: %d", len(resultData['unchanged']))
             result = resultData
         return result, state
 

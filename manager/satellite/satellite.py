@@ -70,7 +70,7 @@ class Satellite(Manager):
         except AttributeError:
             self.force_register = False
 
-        self.logger.debug("Initializing satellite connection to %s" % server)
+        self.logger.debug("Initializing satellite connection to %s", server)
         try:
             self.server = xmlrpclib.Server(server, verbose=0)
         except Exception:
@@ -84,7 +84,7 @@ class Satellite(Manager):
         try:
             if self.force_register:
                 raise IOError()
-            self.logger.debug("Loading system id info from %s" % systemid_filename)
+            self.logger.debug("Loading system id info from %s", systemid_filename)
             new_system = pickle.load(open(systemid_filename, "rb"))
         except IOError:
             # assume file was not found, create a new hypervisor
@@ -102,9 +102,9 @@ class Satellite(Manager):
                 with open(systemid_filename, "w") as f:
                     pickle.dump(new_system, f)
             except (OSError, IOError) as e:
-                self.logger.error("Unable to write system id to %s: %s" % (systemid_filename, str(e)))
+                self.logger.error("Unable to write system id to %s: %s", systemid_filename, str(e))
 
-            self.logger.debug("New system created in satellite, system id saved in %s" % systemid_filename)
+            self.logger.debug("New system created in satellite, system id saved in %s", systemid_filename)
 
         if new_system is None:
             raise SatelliteError("Unable to register hypervisor %s" % hypervisor_uuid)
@@ -152,21 +152,21 @@ class Satellite(Manager):
 
         hypervisor_count = len(mapping['hypervisors'])
         guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
-        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found" % (hypervisor_count, guest_count))
+        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found", hypervisor_count, guest_count)
         serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
-        self.logger.debug("Host-to-guest mapping: %s" % json.dumps(serialized_mapping, indent=4))
+        self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
         if len(mapping) == 0:
             self.logger.info("no hypervisors found, not sending data to satellite")
 
         for hypervisor in mapping['hypervisors']:
-            self.logger.debug("Loading systemid for %s" % hypervisor.hypervisorId)
+            self.logger.debug("Loading systemid for %s", hypervisor.hypervisorId)
             hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=type)
 
-            self.logger.debug("Building plan for hypervisor %s: %s" % (hypervisor.hypervisorId, hypervisor.guestIds))
+            self.logger.debug("Building plan for hypervisor %s: %s", hypervisor.hypervisorId, hypervisor.guestIds)
             plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=type)
 
             try:
-                self.logger.debug("Sending plan: %s" % plan)
+                self.logger.debug("Sending plan: %s", plan)
                 self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
             except Exception as e:
                 self.logger.exception("Unable to send host/guest association to the satellite:")

@@ -192,11 +192,11 @@ class HostGuestAssociationReport(AbstractVirtReport):
         assoc = []
         for host in self._assoc['hypervisors']:
             if self._config.exclude_host_uuids is not None and host.hypervisorId in self._config.exclude_host_uuids:
-                logger.debug("Skipping host '%s' because its uuid is excluded" % host.hypervisorId)
+                logger.debug("Skipping host '%s' because its uuid is excluded", host.hypervisorId)
                 continue
 
             if self._config.filter_host_uuids is not None and host.hypervisorId not in self._config.filter_host_uuids:
-                logger.debug("Skipping host '%s' because its uuid is not included" % host.hypervisorId)
+                logger.debug("Skipping host '%s' because its uuid is not included", host.hypervisorId)
                 continue
             assoc.append(host)
         return {'hypervisors': assoc}
@@ -349,7 +349,7 @@ class Virt(Process):
                     self.logger.error("Virt backend '%s' fails with error: %s", self.config.name, str(e))
                     has_error = True
                 except Exception:
-                    self.logger.exception("Virt backend '%s' fails with exception:" % self.config.name)
+                    self.logger.exception("Virt backend '%s' fails with exception:", self.config.name)
                     has_error = True
 
                 if self._oneshot:

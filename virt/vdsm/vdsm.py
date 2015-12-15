@@ -122,7 +122,7 @@ class Vdsm(Virt):
         domains = []
         response = self.server.list(True)
         if response['status']['code'] != 0:
-            self.logger.error("Unable to list virtual machines: %s" % response['status']['message'])
+            self.logger.error("Unable to list virtual machines: %s", response['status']['message'])
         else:
             for vm in response['vmList']:
                 domains.append(

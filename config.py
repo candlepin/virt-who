@@ -171,7 +171,9 @@ class GlobalConfig(GeneralConfig):
         global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
         if not global_config:
             if logger:
-                logger.warning('Unable to find "%s" section in general config file: "%s"\nWill use defaults where required' % (VIRTWHO_GLOBAL_SECTION_NAME, filename))
+                logger.warning(
+                    'Unable to find "%s" section in general config file: "%s"\nWill use defaults where required',
+                    VIRTWHO_GLOBAL_SECTION_NAME, filename)
             global_config = {}
         return cls(**global_config)
 

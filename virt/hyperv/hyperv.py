@@ -299,7 +299,7 @@ class HyperV(virt.Virt):
             path = parsed[2]
         self.url = urlparse.urlunsplit((parsed[0], self.host, path, "", ""))
 
-        logger.debug("Hyper-V url: %s" % self.url)
+        logger.debug("Hyper-V url: %s", self.url)
 
         # Check if we have domain defined and set flags accordingly
         user_parts = self.username.split('\\', 1)

@@ -165,10 +165,10 @@ class Esx(virt.Virt):
         for host_id, host in self.hosts.items():
             parent = host['parent'].value
             if self.config.exclude_host_parents is not None and parent in self.config.exclude_host_parents:
-                self.logger.debug("Skipping host '%s' because its parent '%s' is excluded" % (host_id, parent))
+                self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
                 continue
             if self.config.filter_host_parents is not None and parent not in self.config.filter_host_parents:
-                self.logger.debug("Skipping host '%s' because its parent '%s' is not included" % (host_id, parent))
+                self.logger.debug("Skipping host '%s' because its parent '%s' is not included", host_id, parent)
                 continue
             guests = []
 
@@ -184,16 +184,16 @@ class Esx(virt.Virt):
                         self.config.hypervisor_id,
                         self.CONFIG_TYPE))
             except KeyError:
-                self.logger.debug("Host '%s' doesn't have hypervisor_id property" % host_id)
+                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_id)
                 continue
             if host['vm']:
                 for vm_id in host['vm'].ManagedObjectReference:
                     if vm_id.value not in self.vms:
-                        self.logger.debug("Host '%s' references non-existing guest '%s'" % (host_id, vm_id.value))
+                        self.logger.debug("Host '%s' references non-existing guest '%s'", host_id, vm_id.value)
                         continue
                     vm = self.vms[vm_id.value]
                     if 'config.uuid' not in vm:
-                        self.logger.debug("Guest '%s' doesn't have 'config.uuid' property" % vm_id.value)
+                        self.logger.debug("Guest '%s' doesn't have 'config.uuid' property", vm_id.value)
                         continue
                     state = virt.Guest.STATE_UNKNOWN
                     try:
@@ -204,7 +204,7 @@ class Esx(virt.Virt):
                         elif vm['runtime.powerState'] == 'poweredOff':
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
-                        self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property" % vm_id.value)
+                        self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property", vm_id.value)
                     guests.append(virt.Guest(vm['config.uuid'],
                                              self,
                                              state,
@@ -226,7 +226,7 @@ class Esx(virt.Virt):
         kwargs = {}
         for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
             if env in os.environ:
-                self.logger.debug("ESX module using proxy: %s" % os.environ[env])
+                self.logger.debug("ESX module using proxy: %s", os.environ[env])
                 kwargs['proxy'] = {env.lower().replace('_proxy', ''): os.environ[env]}
                 break
 
@@ -308,7 +308,7 @@ class Esx(virt.Virt):
                             elif change.op == 'add':
                                 vm[change.name].append(change.val)
                             else:
-                                self.logger.error("Unknown change operation: %s" % change.op)
+                                self.logger.error("Unknown change operation: %s", change.op)
                     elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
                         host = self.hosts[objectSet.obj.value]
                         for change in objectSet.changeSet:
@@ -324,7 +324,7 @@ class Esx(virt.Virt):
                     elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
                         del self.hosts[objectSet.obj.value]
                 else:
-                    self.logger.error("Unkown update objectSet type: %s" % objectSet.kind)
+                    self.logger.error("Unkown update objectSet type: %s", objectSet.kind)
 
     def objectSpec(self):
         return self.client.factory.create('ns0:ObjectSpec')

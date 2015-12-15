@@ -161,13 +161,13 @@ class VirtWho(object):
         self.jobs = []
         for job in jobsToRun:
             if hasattr(self, job.target):
-                self.logger.debug('Running method "%s"' % job.target)
+                self.logger.debug('Running method "%s"', job.target)
                 try:
                     getattr(self, job.target)(*job.args)
                 except Exception:
                     self.logger.exception("Job failed:")
             else:
-                self.logger.debug('VirtWho has no method "%s"' % job.target)
+                self.logger.debug('VirtWho has no method "%s"', job.target)
 
     def reportChanged(self, report):
         return not report.hash == self.reports.get(report.config.hash)
@@ -199,12 +199,12 @@ class VirtWho(object):
                 retry_after = getattr(e, 'headers', {}).get('Retry-After') \
                     or RetryAfter
                 self.queue_timeout = (retry_after ** self._429_count)
-                self.logger.debug('429 received, waiting %s seconds until sending again' % self.queue_timeout)
+                self.logger.debug('429 received, waiting %s seconds until sending again', self.queue_timeout)
             else:
                 self.queue_timeout = max(0,  self.options.interval)
 
         if report_sent:
-            self.logger.debug('Report for config "%s" sent' % config.name)
+            self.logger.debug('Report for config "%s" sent', config.name)
             del self.reports_to_send[config.hash]
         elif config:
             self.configs_ready.append(config)
@@ -226,7 +226,7 @@ class VirtWho(object):
             else:
                 self.logger.warn("Unable to handle report of type: %s", type(report))
         except ManagerError as e:
-            self.logger.error("Unable to send data: %s" % str(e))
+            self.logger.error("Unable to send data: %s", str(e))
             return False
         except ManagerFatalError as e:
             # Something really bad happened (system is not register), stop the backends
@@ -272,7 +272,7 @@ class VirtWho(object):
         if report.config not in self.configs_ready:
             # Mark this config as one that is ready to be sent
             self.configs_ready.append(report.config)
-        self.logger.debug('Report for config "%s" updated' % report.config.name)
+        self.logger.debug('Report for config "%s" updated', report.config.name)
         return True
 
     def checkJobStatus(self, config, job_id):
@@ -285,7 +285,7 @@ class VirtWho(object):
     def run(self):
         self.reloading = False
         if not self.options.oneshot:
-            self.logger.debug("Starting infinite loop with %d seconds interval" % self.options.interval)
+            self.logger.debug("Starting infinite loop with %d seconds interval", self.options.interval)
 
         # Queue for getting events from virt backends
         if self.queue is None:
@@ -298,7 +298,7 @@ class VirtWho(object):
                 logger = log.getLogger(config=config)
                 virt = Virt.fromConfig(logger, config)
             except Exception as e:
-                self.logger.error('Unable to use configuration "%s": %s' % (config.name, str(e)))
+                self.logger.error('Unable to use configuration "%s": %s', config.name, str(e))
                 continue
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
@@ -361,7 +361,7 @@ class VirtWho(object):
                     if self.options.oneshot:
                         # Don't hang on the failed backend
                         oneshot_remaining.remove(report.config.name)
-                        self.logger.warn('Unable to collect report for config "%s"' % report.config.name)
+                        self.logger.warn('Unable to collect report for config "%s"', report.config.name)
                 # Send the report
                 if not self.options.print_ and not isinstance(report, ErrorReport):
                     self.update_report_to_send(report)
@@ -713,12 +713,12 @@ def parseOptions():
 
     if options.interval < MinimumSendInterval:
         if not options.interval or options.interval == parser.defaults['interval']:
-            logger.info("Interval set to the default of %s seconds." % str(DefaultInterval))
+            logger.info("Interval set to the default of %d seconds.", DefaultInterval)
         else:
-            logger.warning("Interval value may not be set below the default of %s seconds. Will use default value." % str(MinimumSendInterval))
+            logger.warning("Interval value may not be set below the default of %d seconds. Will use default value.", MinimumSendInterval)
         options.interval = MinimumSendInterval
 
-    logger.info("Using reporter_id='%s'" % options.reporter_id)
+    logger.info("Using reporter_id='%s'", options.reporter_id)
     return (logger, options)
 
 
@@ -799,7 +799,7 @@ def main():
         try:
             virtWho.configManager.readFile(conffile)
         except Exception as e:
-            logger.error('Config file "%s" skipped because of an error: %s' % (conffile, str(e)))
+            logger.error('Config file "%s" skipped because of an error: %s', conffile, str(e))
     if len(virtWho.configManager.configs) == 0:
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
@@ -810,7 +810,7 @@ def main():
         if config.name is None:
             logger.info('Using commandline or sysconfig configuration ("%s" mode)', config.type)
         else:
-            logger.info('Using configuration "%s" ("%s" mode)' % (config.name, config.type))
+            logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
     log.closeLogger(logger)
     if options.background:
@@ -854,7 +854,7 @@ def _main(virtWho):
         data = json.dumps({
             'hypervisors': hypervisors
         })
-        virtWho.logger.debug("Associations found: %s" % json.dumps({
+        virtWho.logger.debug("Associations found: %s", json.dumps({
             'hypervisors': hypervisors
         }, indent=4))
         print(data)

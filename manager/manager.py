@@ -31,7 +31,7 @@ class Manager(object):
     def sendVirtGuests(self, domains):
         raise NotImplementedError()
 
-    def hypervisorCheckIn(self, config, mapping, type=None):
+    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
         raise NotImplementedError()
 
     @classmethod

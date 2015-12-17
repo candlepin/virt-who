@@ -6,11 +6,13 @@ import os
 import sys
 from bs4 import BeautifulSoup
 
+
 class InvalidXmlError(Exception):
     pass
 
 
 already_included = set()
+
 
 def process_file(filename):
     xml = BeautifulSoup(open(filename), "xml")
@@ -39,6 +41,7 @@ def process_file(filename):
         include.decompose()
     return xml
 
+
 def clean_up_vim(vim, keep_methods=None, keep_types=None):
     if keep_types is None:
         keep_types = set()
@@ -48,7 +51,6 @@ def clean_up_vim(vim, keep_methods=None, keep_types=None):
             pass
         else:
             operation.decompose()
-
 
     for operation in vim.portType.find_all('operation', recursive=False):
         if operation['name'] in keep_methods:
@@ -112,16 +114,18 @@ if __name__ == '__main__':
     vim.definitions.attrs['xmlns:xsd'] = "http://www.w3.org/2001/XMLSchema"
     with open('/tmp/vim_full.xml', 'w') as f:
         f.write(vim.prettify())
-    filtered_vim = clean_up_vim(vim,
-            keep_methods={'Login', 'RetrieveServiceContent', 'RetrieveProperties',
-                          'RetrievePropertiesEx', 'CreateFilter', 'WaitForUpdatesEx',
-                          'DestroyPropertyFilter', 'CancelWaitForUpdates'},
-            keep_types={'TraversalSpec', 'ArrayOfManagedObjectReference',
-                        'ArrayOfDynamicProperty', 'DynamicData', 'VimFault',
-                        'PropertyFilterSpec'})
+    filtered_vim = clean_up_vim(
+        vim,
+        keep_methods=set((
+            'Login', 'RetrieveServiceContent', 'RetrieveProperties',
+            'RetrievePropertiesEx', 'CreateFilter', 'WaitForUpdatesEx',
+            'DestroyPropertyFilter', 'CancelWaitForUpdates')),
+        keep_types=set((
+            'TraversalSpec', 'ArrayOfManagedObjectReference',
+            'ArrayOfDynamicProperty', 'DynamicData', 'VimFault',
+            'PropertyFilterSpec')))
     '''ManagedObjectReference', 'ServiceContent',
     'AboutInfo', 'UserSession', 'ObjectSpec',
     'DynamicProperty', 'TraversalSpec',
     'PropertyFilterSpec', 'PropertySpec'''
     print(filtered_vim.prettify())
-

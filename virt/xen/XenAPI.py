@@ -49,10 +49,13 @@ import xmlrpclib
 import httplib
 import socket
 
-translation = gettext.translation('xen-xm', fallback = True)
+
+translation = gettext.translation('xen-xm', fallback=True)
+
 
 API_VERSION_1_1 = '1.1'
 API_VERSION_1_2 = '1.2'
+
 
 class Failure(Exception):
     def __init__(self, details):
@@ -61,7 +64,7 @@ class Failure(Exception):
     def __str__(self):
         try:
             return str(self.details)
-        except Exception, exn:
+        except Exception as exn:
             import sys
             print >>sys.stderr, exn
             return "Xen-API failure: %s" % str(self.details)
@@ -70,15 +73,16 @@ class Failure(Exception):
         return dict([(str(i), self.details[i])
                      for i in range(len(self.details))])
 
+
 class NewMaster(Exception):
     def __init__(self, details, newMaster):
         self.details = details
-        self.newMaster= newMaster
+        self.newMaster = newMaster
 
     def __str__(self):
         try:
             return str(self.details)
-        except Exception, exn:
+        except Exception as exn:
             import sys
             print >>sys.stderr, exn
             return "Xen-API failure: %s" % str(self.details)
@@ -91,7 +95,8 @@ class NewMaster(Exception):
                      for i in range(len(self.details))])
 
 
-_RECONNECT_AND_RETRY = (lambda _ : ())
+_RECONNECT_AND_RETRY = (lambda _: ())
+
 
 class UDSHTTPConnection(httplib.HTTPConnection):
     """HTTPConnection subclass to allow HTTP over Unix domain sockets. """
@@ -100,21 +105,27 @@ class UDSHTTPConnection(httplib.HTTPConnection):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(path)
 
+
 class UDSHTTP(httplib.HTTP):
     _connection_class = UDSHTTPConnection
+
 
 class UDSTransport(xmlrpclib.Transport):
     def __init__(self, use_datetime=0):
         self._use_datetime = use_datetime
-        self._extra_headers=[]
+        self._extra_headers = []
+
     def add_extra_header(self, key, value):
-        self._extra_headers += [ (key,value) ]
+        self._extra_headers += [(key, value)]
+
     def make_connection(self, host):
         return UDSHTTP(host)
+
     def send_request(self, connection, handler, request_body):
         connection.putrequest("POST", handler)
         for key, value in self._extra_headers:
             connection.putheader(key, value)
+
 
 class Session(xmlrpclib.ServerProxy):
     """A server proxy and session manager for communicating with xapi using
@@ -127,7 +138,6 @@ class Session(xmlrpclib.ServerProxy):
     session.xenapi.VM.start(vm_uuid)
     session.xenapi.session.logout()
     """
-
     def __init__(self, uri, transport=None, encoding=None, verbose=0,
                  allow_none=1):
         xmlrpclib.ServerProxy.__init__(self, uri, transport, encoding,
@@ -137,7 +147,6 @@ class Session(xmlrpclib.ServerProxy):
         self.last_login_method = None
         self.last_login_params = None
         self.API_version = API_VERSION_1_1
-
 
     def xenapi_request(self, methodname, params):
         if methodname.startswith('login'):
@@ -162,7 +171,6 @@ class Session(xmlrpclib.ServerProxy):
                     return result
             raise xmlrpclib.Fault(
                 500, 'Tried 3 times to get a valid session, but failed')
-
 
     def _login(self, method, params):
         result = _parse_result(getattr(self, 'session.%s' % method)(*params))
@@ -191,7 +199,7 @@ class Session(xmlrpclib.ServerProxy):
         host = self.xenapi.pool.get_master(pool)
         major = self.xenapi.host.get_API_version_major(host)
         minor = self.xenapi.host.get_API_version_minor(host)
-        return "%s.%s"%(major,minor)
+        return "%s.%s" % (major, minor)
 
     def __getattr__(self, name):
         if name == 'handle':
@@ -203,8 +211,10 @@ class Session(xmlrpclib.ServerProxy):
         else:
             return xmlrpclib.ServerProxy.__getattr__(self, name)
 
+
 def xapi_local():
     return Session("http://_var_xapi_xapi/", transport=UDSTransport())
+
 
 def _parse_result(result):
     if type(result) != dict or 'Status' not in result:

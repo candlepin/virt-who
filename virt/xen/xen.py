@@ -16,7 +16,7 @@ class Xen(virt.Virt):
 
     # if the token parameter is set to an empty string, the return from event_from will contain all
     # events that have occurred, you probably want to use this the first time you use event_from
-    token_from =''
+    token_from = ''
 
     # Register for events on all classes
     event_types = ["*"]
@@ -63,17 +63,17 @@ class Xen(virt.Virt):
             raise
 
     def getHostGuestMapping(self):
-        hosts= self.session.xenapi.host.get_all()
+        hosts = self.session.xenapi.host.get_all()
 
         mapping = {}
 
         for host in hosts:
 
-            record= self.session.xenapi.host.get_record(host)
-            guests=[]
+            record = self.session.xenapi.host.get_record(host)
+            guests = []
 
             for resident in self.session.xenapi.host.get_resident_VMs(host):
-                vm= self.session.xenapi.VM.get_record(resident)
+                vm = self.session.xenapi.VM.get_record(resident)
 
                 if vm['power_state'] == 'Running':
                     state = virt.Guest.STATE_RUNNING
@@ -87,14 +87,14 @@ class Xen(virt.Virt):
                     state = virt.Guest.STATE_UNKNOWN
 
                 guests.append(virt.Guest(
-                        uuid= vm["uuid"],
-                        virt= self,
-                        state= state,
+                        uuid=vm["uuid"],
+                        virt=self,
+                        state=state,
                         hypervisorType=None
                     )
                 )
 
-            mapping['hypervisors']= Hypervisor (hypervisorId=record["uuid"],
+            mapping['hypervisors'] = Hypervisor(hypervisorId=record["uuid"],
                                                 guestIds=guests,
                                                 name=record["hostname"],
                                                 facts=None)
@@ -108,13 +108,13 @@ class Xen(virt.Virt):
         start_time = end_time = time()
         initial = True
 
-
         while self._oneshot or not self.is_terminated():
             delta = end_time - start_time
             try:
-                event_from_ret = self.session.xenapi.event_from(self.event_types,
-                                                            self.token_from,
-                                                            self.EVENT_FROM_TIMEOUT)
+                event_from_ret = self.session.xenapi.event_from(
+                    self.event_types,
+                    self.token_from,
+                    self.EVENT_FROM_TIMEOUT)
                 events = event_from_ret['events']
             except:
                 events = []
@@ -151,20 +151,8 @@ class Xen(virt.Virt):
 
             self.logger.debug("Waiting for XEN changes")
 
-        #self._cancel_wait()
 
 if __name__ == "__main__":
-    #if len(sys.argv) <> 4:
-        #print "Usage:"
-        #print sys.argv[0], " <url> <username> <password>"
-        #sys.exit(1)
-    #url = sys.argv[1]
-    #username = sys.argv[2]
-    #password = sys.argv[3]
-    #url = 'http://172.17.8.203:80'
-    #username = "ggiardullo"
-    #password = "wido-arsat02"
-
     # First acquire a valid session by logging in:
     from config import Config
     config = Config('xen', 'xen', url, username, password)
@@ -184,4 +172,3 @@ if __name__ == "__main__":
         xenserver.start_sync(q, Event())
     except KeyboardInterrupt:
         sys.exit(1)
-

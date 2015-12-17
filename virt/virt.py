@@ -250,6 +250,7 @@ class Virt(Process):
         # Imports can't be top-level, it would be circular dependency
         import libvirtd
         import esx
+        import xen
         import rhevm
         import vdsm
         import hyperv

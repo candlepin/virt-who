@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        0.15
+Version:        0.16
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -70,17 +70,21 @@ fi
 %{_bindir}/virt-who-password
 %{_datadir}/virt-who/
 %{_sysconfdir}/rc.d/init.d/virt-who
+%{_sysconfdir}/virt-who.conf
 %attr(600, root, root) %dir %{_sysconfdir}/virt-who.d
-%attr(600, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
+%attr(700, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 %{_mandir}/man8/virt-who.8.gz
 %{_mandir}/man8/virt-who-password.8.gz
 %{_mandir}/man5/virt-who-config.5.gz
-%attr(600, root, root) %{_sharedstatedir}/%{name}
+%attr(700, root, root) %{_sharedstatedir}/%{name}
 %ghost %{_sharedstatedir}/%{name}/key
 %{_sysconfdir}/virt-who.d/template.conf
 %{_sysconfdir}/virt-who.conf
 
 %changelog
+* Thu Dec 17 2015 Radek Novacek <rnovacek@redhat.com> 0.16-1
+- Version 0.16
+
 * Tue Aug 04 2015 Devan Goodwin <dgoodwin@rm-rf.ca> 0.15-1
 - Update spec for renamed README.md. (dgoodwin@redhat.com)
 - Moves fakevirt._decode() to util.decode() (csnyder@redhat.com)

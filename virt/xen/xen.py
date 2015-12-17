@@ -5,7 +5,8 @@ from time import time
 import XenAPI
 from XenAPI import Failure, NewMaster
 from collections import defaultdict, OrderedDict
-from virt import Guest, Hypervisor
+import virt
+
 
 class Xen(virt.Virt):
     CONFIG_TYPE = "xen"

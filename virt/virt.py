@@ -144,18 +144,38 @@ class AbstractVirtReport(object):
     '''
     An abstract report from virt backend.
     '''
+    # The report was just collected, but is not yet being reported
+    STATE_CREATED = 1
+    # The report is being processed by server
+    STATE_PROCESSING = 2
+    # The report has been processed by server
+    STATE_FINISHED = 3
+    # Failed to process the report by server
+    STATE_FAILED = 4
+    # Processing the report on server was canceled
+    STATE_CANCELED = 5
+
     def __init__(self, config):
         self._config = config
+        self._state = AbstractVirtReport.STATE_CREATED
 
     @property
     def config(self):
         return self._config
 
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._state = value
+
 
 class ErrorReport(AbstractVirtReport):
     '''
     Report that virt backend fails. Used in oneshot mode to inform
-    main process that now data are coming.
+    main process that no data are coming.
     '''
 
 

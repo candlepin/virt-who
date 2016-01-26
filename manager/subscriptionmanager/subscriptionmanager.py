@@ -26,7 +26,8 @@ import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
-from ..manager import Manager, ManagerError, ManagerFatalError
+from ..manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
+from virt import AbstractVirtReport
 
 
 class SubscriptionManagerError(ManagerError):
@@ -37,15 +38,23 @@ class SubscriptionManagerUnregisteredError(ManagerFatalError):
     pass
 
 
+# Mapping between strings returned from getJob and report statuses
+STATE_MAPPING = {
+    'FINISHED': AbstractVirtReport.STATE_FINISHED,
+    'CANCELED': AbstractVirtReport.STATE_CANCELED,
+    'FAILED': AbstractVirtReport.STATE_FAILED,
+    'RUNNING': AbstractVirtReport.STATE_PROCESSING,
+}
+
+
 class SubscriptionManager(Manager):
     smType = "sam"
 
     """ Class for interacting subscription-manager. """
-    def __init__(self, logger, options, addJob=None):
+    def __init__(self, logger, options):
         self.logger = logger
         self.options = options
         self.cert_uuid = None
-        self.addJob = addJob
 
         self.rhsm_config = rhsm_config.initConfig(rhsm_config.DEFAULT_CONFIG_PATH)
         self.readConfig()
@@ -180,30 +189,35 @@ class SubscriptionManager(Manager):
                 result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.RateLimitExceededException as e:
+            self.retry_after = int(getattr(e, 'headers', {}).get('Retry-After'))
+            raise ManagerThrottleError(self.retry_after)
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
         except rhsm_connection.ConnectionException as e:
-            self.logger.exception("Communication with server failed:")
-            if hasattr(e, 'code') and e.code >= 500:
+            if hasattr(e, 'code'):
                 raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
-        if (is_async is True and self.addJob is not None):
-            self.addJob(('checkJobStatus', [config, result['id']]))
+        if is_async is True:
+            report.state = AbstractVirtReport.STATE_PROCESSING
+            report.job_id = result['id']
+        else:
+            report.state = AbstractVirtReport.STATE_FINISHED
         return result
 
-    def checkJobStatus(self, config, job_id):
-        self._connect(config)
+    def check_report_state(self, report):
+        job_id = report.job_id
+        self._connect(report.config)
         self.logger.debug('Checking status of job %s', job_id)
         result = self.connection.getJob(job_id)
-        state = result['state']
-        if state not in ['FINISHED', 'CANCELED', 'FAILED']:
-            # This will cause virtwho to do this again later
-            self.addJob(('checkJobStatus', [config, result['id']]))
-            self.logger.debug('Job %s not finished, rescheduling', job_id)
+        state = STATE_MAPPING.get(result['state'], AbstractVirtReport.STATE_FAILED)
+        report.state = state
+        if state not in (AbstractVirtReport.STATE_FINISHED,
+                         AbstractVirtReport.STATE_CANCELED,
+                         AbstractVirtReport.STATE_FAILED):
+            self.logger.debug('Job %s not finished', job_id)
         else:
             # log completed job status
-            # TODO Make this its own method inside a class
-            # representing a status object
             resultData = result['resultData']
             if 'failedUpdate' in resultData:
                 for fail in resultData['failedUpdate']:
@@ -220,8 +234,6 @@ class SubscriptionManager(Manager):
                                      created['uuid'],
                                      ", ".join(guests))
             self.logger.info("Number of mappings unchanged: %d", len(resultData['unchanged']))
-            result = resultData
-        return result, state
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

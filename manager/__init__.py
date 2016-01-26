@@ -1,4 +1,4 @@
 
-from manager import Manager, ManagerError, ManagerFatalError
+from manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
 
-__all__ = ['Manager', 'ManagerError', 'ManagerFatalError']
+__all__ = ['Manager', 'ManagerError', 'ManagerFatalError', 'ManagerThrottleError']

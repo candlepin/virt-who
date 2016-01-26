@@ -27,12 +27,27 @@ class ManagerFatalError(Exception):
     pass
 
 
+class ManagerThrottleError(Exception):
+    '''
+    Exception that is thrown when manager is too busy and want us to
+    send reports less often.
+    '''
+    def __init__(self, retry_after=None):
+        self.retry_after = retry_after
+
+
 class Manager(object):
     def sendVirtGuests(self, report, options=None):
         raise NotImplementedError()
 
     def hypervisorCheckIn(self, report, options=None):
         raise NotImplementedError()
+
+    def check_report_state(self, report):
+        '''
+        Check state of given report. This is used to check server side
+        job if finished.
+        '''
         raise NotImplementedError()
 
     @classmethod

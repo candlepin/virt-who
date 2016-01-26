@@ -27,7 +27,6 @@ from multiprocessing import Event, Queue
 import json
 
 from Queue import Empty
-from rhsm.connection import RestlibException
 
 try:
     from collections import OrderedDict
@@ -36,8 +35,8 @@ except ImportError:
     from util import OrderedDict
 
 from daemon import daemon
-from virt import Virt, DomainListReport, HostGuestAssociationReport, ErrorReport
-from manager import Manager, ManagerError, ManagerFatalError
+from virt import Virt, AbstractVirtReport, DomainListReport, HostGuestAssociationReport, ErrorReport
+from manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
 from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH
 from password import InvalidKeyFile
@@ -52,24 +51,6 @@ try:
 except ImportError:
     def sd_notify(status, unset_environment=False):
         pass
-
-
-class Job(object):
-    """
-    This class represents a job to be run
-    Parameters:
-        'target': this is the method to be executed with 'args' arguments
-        'args': OPTIONAL the arguments list to be passed to 'target'
-    """
-    def __init__(self,
-                 target,
-                 args=None):
-        self.target = target
-
-        if args is None:
-            self.args = []
-        else:
-            self.args = args
 
 
 class ReloadRequest(Exception):
@@ -97,8 +78,6 @@ class OptionParserEpilog(OptionParser):
 # Default interval for sending list of UUIDs
 DefaultInterval = 60  # One per minute
 MinimumSendInterval = 60  # One minute
-# How many seconds to wait until attempting to send a report again
-RetryAfter = 2
 
 PIDFILE = "/var/run/virt-who.pid"
 SAT5 = "satellite"
@@ -121,95 +100,90 @@ class VirtWho(object):
 
         # Queue for getting events from virt backends
         self.queue = None
-        # How long should we wait for new item in queue, it depends on
-        # jobs we have and how long we have them
-        self.queue_timeout = None
-        # a heap to manage the jobs we have incoming
-        self.jobs = []
-        # A dictionary of hashs of reports previously sent
-        self.reports = {}
-        # a list of configs that have reports ready to send
-        self.configs_ready = []
-        # A dictionary of reports to send
-        self.reports_to_send = {}
+
+        # Dictionary with mapping between config names and report hashes,
+        # used for checking if the report changed from last time
+        self.last_reports_hash = {}
+        # How long should we wait between reports sent to server
+        self.retry_after = max(MinimumSendInterval, options.interval)
         # This counts the number of responses of http code 429
         # received between successfully sent reports
         self._429_count = 0
         self.reloading = False
 
-        self.configManager = ConfigManager(self.logger,
-                                           config_dir)
+        # Reports that are queued for sending
+        self.queued_reports = OrderedDict()
+
+        # Name of configs that wasn't reported in oneshot mode
+        self.oneshot_remaining = set()
+
+        # Reports that are currently processed by server
+        self.reports_in_progress = []
+
+        self.configManager = ConfigManager(self.logger, config_dir)
 
         for config in self.configManager.configs:
             logger.debug("Using config named '%s'" % config.name)
 
         self.send_after = time.time()
 
-    def addJob(self, job):
-        # Add a job to be executed next time we have a report to send
-        if (not isinstance(job, Job)):
-            job = Job(*job)
-        self.jobs.append(job)
+    def check_report_state(self, report):
+        ''' Check state of one report that is being processed on server. '''
+        manager = Manager.fromOptions(self.logger, self.options, report.config)
+        manager.check_report_state(report)
 
-    def runJobs(self):
-        if not self.jobs:
+    def check_reports_state(self):
+        ''' Check status of the reports that are being processed on server. '''
+        if not self.reports_in_progress:
             return
-        # Run only those jobs added before this method was called
-        # This prevents any issues with jobs that result in the creation of
-        # another job
-        jobsToRun = self.jobs
-        self.jobs = []
-        for job in jobsToRun:
-            if hasattr(self, job.target):
-                self.logger.debug('Running method "%s"', job.target)
-                try:
-                    getattr(self, job.target)(*job.args)
-                except Exception:
-                    self.logger.exception("Job failed:")
+        updated = []
+        finished = False
+        for report in self.reports_in_progress:
+            self.check_report_state(report)
+            if report.state == AbstractVirtReport.STATE_CREATED:
+                self.logger.warning("Can't check status of report that is not yet sent")
+            elif report.state == AbstractVirtReport.STATE_PROCESSING:
+                updated.append(report)
             else:
-                self.logger.debug('VirtWho has no method "%s"', job.target)
+                self.report_done(report)
+                finished = True
+        self.reports_in_progress = updated
 
-    def reportChanged(self, report):
-        return report.hash != self.reports.get(report.config.hash)
-
-    def _get_current_report(self):
-        if not self.configs_ready:
-            return None, None
-        config = self.configs_ready.pop(0)
-        report = self.reports_to_send.get(config.hash)
-        return config, report
+        # We've just finished sending last report, we can send next one after
+        # backend interval
+        if finished and not updated:
+            self.send_after = time.time() + self.retry_after
 
     def send_current_report(self):
-        report_sent = None
-        config = None
+        name, report = self.queued_reports.popitem(last=False)
+
         try:
-            config, report_to_send = self._get_current_report()
-            start_time = time.time()
-            if report_to_send and self.send(report_to_send):
-                # Reset the count of 429's between successful sends
-                self._429_count = 0
-                report_sent = report_to_send
-            delta = time.time() - start_time
-            self.queue_timeout = max(0,  self.options.interval - delta)
-        except RestlibException as e:
-            if e.code in ['429']:
-                # We've exceeded the rate limit
-                self._429_count += 1
-                retry_after = getattr(e, 'headers', {}).get('Retry-After') \
-                    or RetryAfter
-                self.queue_timeout = (retry_after ** self._429_count)
-                self.logger.debug('429 received, waiting %s seconds until sending again', self.queue_timeout)
+            if self.send(report):
+                self.logger.debug('Report for config "%s" sent', name)
+                if report.state == AbstractVirtReport.STATE_PROCESSING:
+                    self.reports_in_progress.append(report)
+                else:
+                    self.report_done(report)
             else:
-                self.queue_timeout = max(0,  self.options.interval)
+                report.state = AbstractVirtReport.STATE_FAILED
+                self.logger.debug('Report from "%s" failed to sent', name)
+                self.report_done(report)
+        except ManagerThrottleError as e:
+            self.queued_reports[name] = report
+            self.retry_after = e.retry_after
+            self.send_after = time.time() + self.retry_after
+            self.logger.debug('429 received, waiting %s seconds until sending again', e.retry_after)
 
-        if report_sent:
-            self.logger.debug('Report for config "%s" sent', config.name)
-            del self.reports_to_send[config.hash]
-        elif config:
-            self.configs_ready.append(config)
+    def report_done(self, report):
+        name = report.config.name
+        if report.state == AbstractVirtReport.STATE_FINISHED:
+            self.last_reports_hash[name] = report.hash
 
-        self.send_after = time.time() + self.queue_timeout
-        return config, report_sent
+        if self.options.oneshot:
+            try:
+                self.oneshot_remaining.remove(name)
+            except KeyError:
+                pass
 
     def send(self, report):
         """
@@ -231,7 +205,7 @@ class VirtWho(object):
             # Something really bad happened (system is not register), stop the backends
             self.logger.exception("Error in communication with subscription manager:")
             raise
-        except RestlibException as e:
+        except ManagerThrottleError:
             raise
         except Exception as e:
             if self.reloading:
@@ -248,35 +222,10 @@ class VirtWho(object):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.sendVirtGuests(report, self.options)
         self.logger.info("virt-who guest list update successful")
-        self.reports[report.config.hash] = report.hash
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
-        manager.addJob = self.addJob
         manager.hypervisorCheckIn(report, self.options)
-        self.reports[report.config.hash] = report.hash
-
-    def update_report_to_send(self, report):
-        """
-        Updates the reports to send dict with the given report (provided there are changes detected).
-        Returns a boolean of if there were any changes
-        """
-        if hasattr(report, 'hash') and not self.reportChanged(report):
-            self.logger.info('No change in report gathered using config: "%s", report not sent.', report.config.name)
-            return False
-        self.reports_to_send[report.config.hash] = report
-        if report.config not in self.configs_ready:
-            # Mark this config as one that is ready to be sent
-            self.configs_ready.append(report.config)
-        self.logger.debug('Report for config "%s" updated', report.config.name)
-        return True
-
-    def checkJobStatus(self, config, job_id):
-        manager = SubscriptionManager(self.logger, self.options, self.addJob)
-        result, state = manager.checkJobStatus(config, job_id)
-
-        if state == 'FINISHED':
-            self.logger.info("virt-who host/guest association update successful")
 
     def run(self):
         self.reloading = False
@@ -299,24 +248,38 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-        if self.options.oneshot or self.options.print_:
-            oneshot_remaining = set(virt.config.name for virt in self.virts)
+        if self.options.oneshot:
+            self.oneshot_remaining = set(virt.config.name for virt in self.virts)
 
         if len(self.virts) == 0:
             self.logger.error("No suitable virt backend found")
             return
 
-        result = {}
-        report = None
-        report_sent = None
-        while not self.terminate_event.is_set():
-            if self.jobs:
-                # There is an existing job, we want to check it's state often
-                timeout = 1
-            else:
-                timeout = self.queue_timeout
+        # queued reports depend on OrderedDict feature that if key exists
+        # when setting an item, it will remain in the same order
+        self.queued_reports.clear()
 
-            # Wait for incoming report from virt backend
+        # List of reports that are being processed by server
+        self.reports_in_progress = []
+
+        while not self.terminate_event.is_set():
+            if self.reports_in_progress:
+                # Check sent report status regularly
+                timeout = 1
+            elif time.time() > self.send_after:
+                if self.queued_reports:
+                    # Reports are queued and we can send them right now,
+                    # don't wait in queue
+                    timeout = 0
+                else:
+                    # No reports in progress or queued and we can send report
+                    # immediately, we can wait for report as long as we want
+                    timeout = 3600
+            else:
+                # We can't send report right now, wait till we can
+                timeout = max(1, self.send_after - time.time())
+
+            # Wait for incoming report from virt backend or for timeout
             try:
                 report = self.queue.get(block=True, timeout=timeout)
             except Empty:
@@ -324,81 +287,58 @@ class VirtWho(object):
             except IOError:
                 continue
 
-            # Read all the reports from the queue in order to remove obsoleted
-            # reports from same virt
-            reports = [report]
+            # Read rest of the reports from the queue in order to remove
+            # obsoleted reports from same virt
             while True:
-                try:
-                    report = self.queue.get(block=False)
-                    reports.append(report)
-                except Empty:
-                    break
-            reports = self._remove_obsolete(reports)
-
-            try:
-                # Run all jobs that have been queued as a result of sending last
-                # time
-                self.runJobs()
-                if self.options.oneshot and not oneshot_remaining and not self.jobs:
-                    break
-            except Empty:
-                pass
-            except IOError:
-                pass
-
-            report_sent = None
-            for report in reports:
-                if report == "exit":
-                    break
-                if report == "reload":
-                    self.stop_virts()
-                    raise ReloadRequest()
                 if isinstance(report, ErrorReport):
                     if self.options.oneshot:
                         # Don't hang on the failed backend
-                        oneshot_remaining.remove(report.config.name)
+                        try:
+                            self.oneshot_remaining.remove(report.config.name)
+                        except KeyError:
+                            pass
                         self.logger.warn('Unable to collect report for config "%s"', report.config.name)
-                # Send the report
-                if not self.options.print_ and not isinstance(report, ErrorReport):
-                    self.update_report_to_send(report)
-            # Check to see if it is time to send a report
-            try:
-                if time.time() >= self.send_after:
-                    # It is time, send the current report
-                    config, report_sent = self.send_current_report()
-                else:
-                    # It's not time update our queue_timeout to make sure we
-                    # don't wait too long
-                    wait_time = self.send_after - time.time()
-                    self.queue_timeout = max(0, wait_time)
-            except ManagerFatalError:
-                # System not register (probably), stop the backends
-                self.stop_virts()
-                continue
-
-            if self.options.print_:
-                report_sent = report
-
-            if (self.options.oneshot and report_sent) or self.options.print_:
-                try:
-                    oneshot_remaining.remove(report_sent.config.name)
-                except KeyError:
-                    pass
-                if not isinstance(report_sent, ErrorReport):
-                    if self.options.print_:
-                        result[report_sent.config] = report_sent
-                for virt in self.virts:
-                    if virt.config.name == report_sent.config.name:
-                        virt.stop()
-                if not oneshot_remaining and not self.jobs:
+                elif isinstance(report, AbstractVirtReport):
+                    if self.last_reports_hash.get(report.config.name, None) == report.hash:
+                        self.logger.info('Report for config "%s" didn\'t change, not sending', report.config.name)
+                    else:
+                        self.queued_reports[report.config.name] = report
+                        if self.options.print_:
+                            try:
+                                self.oneshot_remaining.remove(report.config.name)
+                            except KeyError:
+                                pass
+                elif report in ['exit', 'reload']:
+                    # Reload and exit reports takes priority, do not process
+                    # any other reports
                     break
+                try:
+                    report = self.queue.get(block=False)
+                except Empty:
+                    break
+
+            if report == 'exit':
+                break
+            elif report == 'reload':
+                self.stop_virts()
+                raise ReloadRequest()
+
+            self.check_reports_state()
+
+            if not self.reports_in_progress and self.queued_reports and time.time() > self.send_after:
+                # No report is processed, send next one
+                if not self.options.print_:
+                    self.send_current_report()
+
+            if self.options.oneshot and not self.oneshot_remaining:
+                break
+
         self.queue = None
-        self.jobs = None
         self.stop_virts()
 
         self.virt = []
         if self.options.print_:
-            return result
+            return self.queued_reports
 
     def stop_virts(self):
         for virt in self.virts:
@@ -434,7 +374,6 @@ class VirtWho(object):
         # Set the terminate event in all the virts
         for virt in self.virts:
             virt.stop()
-        self.reports = {}
         # clear the queue and put "reload" there
         try:
             while True:
@@ -443,28 +382,6 @@ class VirtWho(object):
             pass
         self.reloading = True
         self.queue.put("reload")
-
-    def getMapping(self):
-        mapping = {}
-        for config in self.configManager.configs:
-            logger = log.getLogger(config=config)
-            virt = Virt.fromConfig(logger, config)
-            mapping[config.name or 'none'] = self._readGuests(virt)
-        return mapping
-
-    def _remove_obsolete(self, reports):
-        reports_dict = OrderedDict()
-        for report in reports:
-            if report is None:
-                continue
-
-            if report in ['exit', 'reload']:
-                # Throw away all other reports when report is 'exit' or 'reload'
-                return [report]
-
-            reports_dict[report.config.name] = report
-
-        return reports_dict.values()
 
 
 def exceptionCheck(e):
@@ -485,10 +402,10 @@ def parseOptions():
 
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=NotSetSentinel(), help="Enable debugging output")
-    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=NotSetSentinel(), help="Send the list of guest IDs and exit immediately")
+    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
+    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
-    parser.add_option("-p", "--print", action="store_true", dest="print_", default=NotSetSentinel(), help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
+    parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
     parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
     parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
@@ -593,9 +510,6 @@ def parseOptions():
     if env in ["1", "true"]:
         options.oneshot = True
 
-    if options.print_:
-        options.oneshot = True
-
     env = os.getenv("VIRTWHO_INTERVAL")
     if env:
         env = env.strip().lower()
@@ -653,7 +567,6 @@ def parseOptions():
     options.update(**getNonDefaultOptions(vars(cli_options), parser.defaults))
 
     # Check Env
-
     def checkEnv(variable, option, name, required=True):
         """
         If `option` is empty, check enviroment `variable` and return its value.
@@ -727,6 +640,9 @@ def parseOptions():
         else:
             logger.warning("Interval value may not be set below the default of %d seconds. Will use default value.", MinimumSendInterval)
         options.interval = MinimumSendInterval
+
+    if options.print_:
+        options.oneshot = True
 
     logger.info("Using reporter_id='%s'", options.reporter_id)
     return (logger, options)
@@ -880,8 +796,8 @@ def exit(code, status=None):
 
     if virtWho:
         virtWho.terminate()
-    queueLogger = log.getQueueLogger()
-    if queueLogger:
+    if log.hasQueueLogger():
+        queueLogger = log.getQueueLogger()
         queueLogger.terminate()
     sys.exit(code)
 

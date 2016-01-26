@@ -263,6 +263,10 @@ class Logger(object):
             cls._queue_logger.start_logging()
         return cls._queue_logger
 
+    @classmethod
+    def has_queue_logger(cls):
+        return cls._queue_logger is not None
+
 
 def init(options):
     return Logger.initialize(options)
@@ -287,6 +291,10 @@ def getLogger(name=None, config=None, queue=True):
 
 def getQueueLogger():
     return Logger.get_queue_logger()
+
+
+def hasQueueLogger():
+    return Logger.has_queue_logger()
 
 
 def closeLogger(logger):

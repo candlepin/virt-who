@@ -27,7 +27,7 @@ from base import TestBase
 from config import Config
 from manager import Manager, ManagerError
 
-from virt import Guest, Virt, Hypervisor
+from virt import Guest, Virt, Hypervisor, HostGuestAssociationReport, DomainListReport
 
 import rhsm.config as rhsm_config
 import rhsm.certificate
@@ -45,12 +45,14 @@ class TestManager(TestBase):
     guest2 = Guest('d5ffceb5-f79d-41be-a4c1-204f836e144a', xvirt, Guest.STATE_SHUTOFF, hypervisorType='QEMU')
     guestInfo = [guest1]
 
-    mapping = {
+    config = Config('test', 'libvirt', owner='OWNER', env='ENV')
+    host_guest_report = HostGuestAssociationReport(config, {
         'hypervisors': [
             Hypervisor('9c927368-e888-43b4-9cdb-91b10431b258', []),
-            Hypervisor('ad58b739-5288-4cbc-a984-bd771612d670', [guest1,guest2])
+            Hypervisor('ad58b739-5288-4cbc-a984-bd771612d670', [guest1, guest2])
         ]
-    }
+    })
+    domain_report = DomainListReport(config, [guest1])
 
 
 class TestSubscriptionManager(TestManager):
@@ -82,7 +84,7 @@ class TestSubscriptionManager(TestManager):
         self.prepare(create_from_file, connection)
         config = Config('test', 'libvirt')
         manager = Manager.fromOptions(self.logger, self.options, config)
-        manager.sendVirtGuests(self.guestInfo)
+        manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
                 ANY,
                 guest_uuids=[guest.toDict() for guest in self.guestInfo])
@@ -95,11 +97,11 @@ class TestSubscriptionManager(TestManager):
         manager = Manager.fromOptions(self.logger, self.options, config)
         self.options.env = "ENV"
         self.options.owner = "OWNER"
-        manager.hypervisorCheckIn(self.options, self.mapping, options=self.options)
+        manager.hypervisorCheckIn(self.host_guest_report, self.options)
         manager.connection.hypervisorCheckIn.assert_called_with(
                 self.options.owner,
                 self.options.env,
-                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.mapping['hypervisors']), options=self.options)
+                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.host_guest_report.association['hypervisors']), options=self.options)
 
 
 class TestSatellite(TestManager):
@@ -109,7 +111,7 @@ class TestSatellite(TestManager):
         options = MagicMock()
         config = Config('test', 'libvirt', sat_server='localhost')
         manager = Manager.fromOptions(self.logger, options, config)
-        self.assertRaises(ManagerError, manager.sendVirtGuests, self.guestInfo)
+        self.assertRaises(ManagerError, manager.sendVirtGuests, self.domain_report)
 
     @patch("xmlrpclib.Server")
     def test_hypervisorCheckIn(self, server):
@@ -122,13 +124,13 @@ class TestSatellite(TestManager):
         manager = Manager.fromOptions(self.logger, options, config)
         options.env = "ENV"
         options.owner = "OWNER"
-        manager.hypervisorCheckIn(options, self.mapping, 'ABC')
+        manager.hypervisorCheckIn(self.host_guest_report, options)
         manager.server.registration.virt_notify.assert_called_with(ANY, [
             [0, "exists", "system", {"identity": "host", "uuid": "0000000000000000"}],
             [0, "crawl_began", "system", {}],
             [0, "exists", "domain", {
                 "memory_size": 0,
-                "name": "VM 9c927368-e888-43b4-9cdb-91b10431b258 from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
+                "name": "VM 9c927368-e888-43b4-9cdb-91b10431b258 from libvirt hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
                 "state": "running",
                 "uuid": "9c927368e88843b49cdb91b10431b258",
                 "vcpus": 1,
@@ -136,7 +138,7 @@ class TestSatellite(TestManager):
             }],
             [0, "exists", "domain", {
                 "memory_size": 0,
-                "name": "VM d5ffceb5-f79d-41be-a4c1-204f836e144a from ABC hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
+                "name": "VM d5ffceb5-f79d-41be-a4c1-204f836e144a from libvirt hypervisor ad58b739-5288-4cbc-a984-bd771612d670",
                 "state": "shutoff",
                 "uuid": "d5ffceb5f79d41bea4c1204f836e144a",
                 "vcpus": 1,

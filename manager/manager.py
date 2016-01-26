@@ -28,10 +28,11 @@ class ManagerFatalError(Exception):
 
 
 class Manager(object):
-    def sendVirtGuests(self, domains):
+    def sendVirtGuests(self, report, options=None):
         raise NotImplementedError()
 
-    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
+    def hypervisorCheckIn(self, report, options=None):
+        raise NotImplementedError()
         raise NotImplementedError()
 
     @classmethod

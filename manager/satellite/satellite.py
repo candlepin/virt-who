@@ -143,12 +143,13 @@ class Satellite(Manager):
 
         return events
 
-    def sendVirtGuests(self, domains):
+    def sendVirtGuests(self, report, options=None):
         raise SatelliteError("virt-who does not support sending local hypervisor "
                              "data to satellite; use rhn-virtualization-host instead")
 
-    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
-        self._connect(config)
+    def hypervisorCheckIn(self, report, options=None):
+        mapping = report.association
+        self._connect(report.config)
 
         hypervisor_count = len(mapping['hypervisors'])
         guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
@@ -160,10 +161,10 @@ class Satellite(Manager):
 
         for hypervisor in mapping['hypervisors']:
             self.logger.debug("Loading systemid for %s", hypervisor.hypervisorId)
-            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=type)
+            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=report.config.type)
 
             self.logger.debug("Building plan for hypervisor %s: %s", hypervisor.hypervisorId, hypervisor.guestIds)
-            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=type)
+            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=report.config.type)
 
             try:
                 self.logger.debug("Sending plan: %s", plan)

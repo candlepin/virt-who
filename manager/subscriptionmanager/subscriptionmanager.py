@@ -120,13 +120,13 @@ class SubscriptionManager(Manager):
         if not self.connection.ping()['result']:
             raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
 
-    def sendVirtGuests(self, guests):
+    def sendVirtGuests(self, report, options=None):
         """
         Update consumer facts with info about virtual guests.
 
         `guests` is a list of `Guest` instances (or it children).
         """
-
+        guests = report.guests
         self._connect()
 
         # Sort the list
@@ -141,11 +141,12 @@ class SubscriptionManager(Manager):
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
 
-    def hypervisorCheckIn(self, config, mapping, type=None, options=None):
+    def hypervisorCheckIn(self, report, options=None):
         """ Send hosts to guests mapping to subscription manager. """
+        mapping = report.association
         serialized_mapping = {}
 
-        self._connect(config)
+        self._connect(report.config)
         self.logger.debug("Checking if server has capability 'hypervisor_async'")
         is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
         if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
@@ -171,12 +172,12 @@ class SubscriptionManager(Manager):
         self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
         try:
             try:
-                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping, options=options)  # pylint:disable=unexpected-keyword-arg
+                result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping, options=options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm
                 self.logger.debug("hypervisorCheckIn method in python-rhsm doesn't understand options paramenter, ignoring")
-                result = self.connection.hypervisorCheckIn(config.owner, config.env, serialized_mapping)
+                result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.GoneException:

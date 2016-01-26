@@ -34,7 +34,7 @@ from mock import MagicMock, patch, ANY
 from config import Config, ConfigManager
 from manager import Manager
 from manager.satellite import Satellite, SatelliteError
-from virt import Guest, Hypervisor
+from virt import Guest, Hypervisor, HostGuestAssociationReport
 from virtwho import parseOptions
 import password
 from binascii import hexlify
@@ -128,32 +128,43 @@ class TestSatellite(TestBase):
     def test_wrong_server(self):
         options = Options("wrong_server", "abc", "def")
         s = Satellite(self.logger, options)
-        #self.assertRaises(SatelliteError, s.connect, "wrong_server", "abc", "def")
-        options.env = "ENV"
-        options.owner = "OWNER"
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.assertRaises(SatelliteError, s.hypervisorCheckIn, report, options)
 
-        s.hypervisorCheckIn(options, {'hypervisors': []}, "test")
-        #self.assertRaises(SatelliteError, s.connect, "localhost", "abc", "def")
+    def test_wrong_username(self):
+        options = Options("http://localhost:%s" % TEST_PORT, "wrong", "password")
+        options.force_register = True
+        s = Satellite(self.logger, options)
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.assertRaises(SatelliteError, s.hypervisorCheckIn, report, options)
+
+    def test_wrong_password(self):
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "wrong")
+        options.force_register = True
+        s = Satellite(self.logger, options)
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.assertRaises(SatelliteError, s.hypervisorCheckIn, report, options)
 
     def test_new_system(self):
         options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
         options.force_register = True
         s = Satellite(self.logger, options)
 
-        # Register with wrong username
-        #self.assertRaises(SatelliteError, s.connect, "http://localhost:8080", "wrong", "password", force_register=True)
-
-        # Register with wrong password
-        #self.assertRaises(SatelliteError, s.connect, "http://localhost:8080", "username", "wrong", force_register=True)
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        s.hypervisorCheckIn(report, options)
 
     def test_hypervisorCheckIn(self):
         options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
         options.force_register = True
-        options.env = "ENV"
-        options.owner = "OWNER"
         s = Satellite(self.logger, options)
 
-        result = s.hypervisorCheckIn(options, self.mapping, "type")
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        result = s.hypervisorCheckIn(report, options)
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
@@ -166,13 +177,13 @@ class TestSatellite(TestBase):
         f.close()
 
         options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
-        options.env = "ENV"
-        options.owner = "OWNER"
         s = Satellite(self.logger, options)
 
         s.HYPERVISOR_SYSTEMID_FILE = filename.replace(TEST_SYSTEM_ID, '%s')
 
-        result = s.hypervisorCheckIn(options, self.mapping, "type")
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        result = s.hypervisorCheckIn(report, options)
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
@@ -182,7 +193,9 @@ class TestSatellite(TestBase):
         options.force_register = True
         config = Config('test', 'libvirt', sat_server="http://localhost:%s" % TEST_PORT, sat_username='username', sat_password='password')
         s = Satellite(self.logger, options)
-        result = s.hypervisorCheckIn(config, self.mapping, "type")
+
+        report = HostGuestAssociationReport(config, self.mapping)
+        result = s.hypervisorCheckIn(report, options)
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
@@ -200,7 +213,8 @@ class TestSatellite(TestBase):
                             sat_encrypted_password=hexlify(password.Password.encrypt('password')))
             s = Manager.fromOptions(self.logger, options, config)
             self.assertTrue(isinstance(s, Satellite))
-            result = s.hypervisorCheckIn(config, self.mapping, "type")
+            report = HostGuestAssociationReport(config, self.mapping)
+            result = s.hypervisorCheckIn(report, options)
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)

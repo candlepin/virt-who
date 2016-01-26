@@ -11,7 +11,7 @@ from base import TestBase
 from config import Config, ConfigManager
 from manager import Manager
 from manager.subscriptionmanager import SubscriptionManager
-from virt import Guest, Hypervisor
+from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
 from virtwho import parseOptions
 
 import rhsm.config
@@ -53,7 +53,9 @@ class TestSubscriptionManager(TestBase):
 
     @patch('rhsm.connection.UEPConnection')
     def test_sendVirtGuests(self, rhsmconnection):
-        self.sm.sendVirtGuests(self.guestList)
+        config = Config('test', 'libvirt')
+        report = DomainListReport(config, self.guestList)
+        self.sm.sendVirtGuests(report)
         self.sm.connection.updateConsumer.assert_called_with(123, guest_uuids=[g.toDict() for g in self.guestList])
 
     @patch('rhsm.connection.UEPConnection')
@@ -63,7 +65,8 @@ class TestSubscriptionManager(TestBase):
         config = Config("test", "esx", owner=owner, env=env)
         # Ensure the data takes the proper for for the old API
         rhsmconnection.return_value.has_capability.return_value = False
-        self.sm.hypervisorCheckIn(config, self.mapping)
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.sm.hypervisorCheckIn(report)
 
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
@@ -77,7 +80,8 @@ class TestSubscriptionManager(TestBase):
         config = Config("test", "esx", owner=owner, env=env)
         # Ensure we try out the new API
         rhsmconnection.return_value.has_capability.return_value = True
-        self.sm.hypervisorCheckIn(config, self.mapping)
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.sm.hypervisorCheckIn(report)
         expected = {'hypervisors': [h.toDict() for h in self.mapping['hypervisors']]}
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,

@@ -246,17 +246,14 @@ class VirtWho(object):
 
     def _sendGuestList(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
-        manager.sendVirtGuests(report.guests)
+        manager.sendVirtGuests(report, self.options)
         self.logger.info("virt-who guest list update successful")
         self.reports[report.config.hash] = report.hash
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.addJob = self.addJob
-        manager.hypervisorCheckIn(report.config,
-                                  report.association,
-                                  report.config.type,
-                                  self.options)
+        manager.hypervisorCheckIn(report, self.options)
         self.reports[report.config.hash] = report.hash
 
     def update_report_to_send(self, report):

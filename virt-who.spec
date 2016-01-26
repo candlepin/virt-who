@@ -18,6 +18,7 @@ Requires:       python-rhsm >= 1.10.10
 Requires:       python-suds
 # m2crypto is required for Hyper-V support
 Requires:       m2crypto
+Requires:       python-requests
 Requires(post): chkconfig
 Requires(preun): chkconfig
 # This is for /sbin/service

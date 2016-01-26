@@ -1,2 +1,4 @@
 suds>=0.4.0
 git+https://github.com/candlepin/python-rhsm#egg=rhsm
+requests>=2.0
+

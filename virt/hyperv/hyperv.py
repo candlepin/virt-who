@@ -20,10 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
+import re
 import httplib
 import urlparse
 import base64
+import struct
 from xml.etree import ElementTree
+from requests.auth import AuthBase
+import requests
 
 import virt
 
@@ -37,6 +41,169 @@ except ImportError:
     def uuid1():
         # fallback to calling commandline uuidgen
         return subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0].strip()
+
+
+class HyperVAuth(AuthBase):
+    def __init__(self, username, password, logger):
+        self.username = username
+        self.password = password
+        self.logger = logger
+        self.authenticated = False
+        self.ignore_ntlm = False
+        self.num_401s = 0
+        self.ntlm = None
+        self.basic = None
+
+    def prepare_resend(self, response):
+        '''
+        Consume content and release the original connection
+        to allow our new request to reuse the same one.
+        '''
+        response.content
+        response.raw.release_conn()
+        return response.request.copy()
+
+    def retry_ntlm_negotitate(self, response, **kwargs):
+        self.logger.debug("Using NTLM authentication")
+
+        request = self.prepare_resend(response)
+
+        self.ntlm = ntlm.Ntlm()
+        negotiate = base64.b64encode(self.ntlm.negotiate_message(self.username))
+        request.headers["Authorization"] = "Negotiate %s" % negotiate
+        r = response.connection.send(request, **kwargs)
+        if r.status_code != 401:
+            raise HyperVAuthFailed("NTLM authentication failed, unexpected error code %d" % r.status_code)
+        return self.retry_ntlm_authenticate(r, **kwargs)
+
+    def retry_ntlm_authenticate(self, response, **kwargs):
+        self.logger.debug("Sending NTLM authentication data")
+
+        request = self.prepare_resend(response)
+
+        auth_header = response.headers.get("www-authenticate", '')
+        nego, challenge = auth_header.split(" ", 1)
+        if nego != "Negotiate":
+            self.logger.warning("Wrong ntlm header: %s", auth_header)
+
+        negotiate = base64.b64encode(self.ntlm.authentication_message(base64.b64decode(challenge), self.password))
+        request.headers["Authorization"] = "Negotiate %s" % negotiate
+
+        # Encrypt body of original request and include it
+        request.body = self._body
+        request.headers['Content-Length'] = len(self._body)
+
+        self.encrypt_request(request)
+
+        r = response.connection.send(request, **kwargs)
+        if r.status_code == 401:
+            raise HyperVAuthFailed("Incorrect domain/username/password")
+        else:
+            self.authenticated = True
+            self.logger.debug("NTLM authentication successful")
+
+        return self.decrypt_response(r)
+
+    def encrypt_request(self, request):
+        # Seal the message
+        encrypted, signature = self.ntlm.encrypt(request.body)
+
+        boundary = 'Encrypted Boundary'
+        body = b'''--{boundary}\r
+Content-Type: application/HTTP-SPNEGO-session-encrypted\r
+OriginalContent: type={original};Length={length}\r
+--{boundary}\r
+Content-Type: application/octet-stream\r
+{header_len}{signature}{encrypted}--{boundary}--\r
+'''.format(
+            original=request.headers["Content-Type"],
+            length=len(encrypted),
+            header_len=struct.pack('<I', len(signature)),
+            signature=signature,
+            encrypted=encrypted,
+            boundary=boundary)
+        request.headers["Content-Type"] = (
+            'multipart/encrypted;'
+            'protocol="application/HTTP-SPNEGO-session-encrypted";'
+            'boundary="{boundary}"').format(boundary=boundary)
+        request.body = body
+        request.headers["Content-Length"] = len(body)
+        return request
+
+    def decrypt_response(self, response):
+        # See `encrypt_request` method for format of the response
+        content_type = response.headers.get('Content-Type', 'text/xml')
+        if 'multipart/encrypted' not in content_type:
+            # The response is not encrypted, just return it
+            return response
+        data = response.raw.read(response.headers.get('Content-Length', 0))
+        parts = re.split(r'-- ?Encrypted Boundary', data)
+        try:
+            body = parts[2].lstrip('\r\n').split('\r\n', 1)[1]
+        except IndexError:
+            self.logger.debug("Incorrect multipart data: %s", data)
+            raise HyperVAuthFailed("Unable to decrypt sealed response: incorrect format")
+        # First four bytes of body is signature length
+        l = struct.unpack('<I', body[:4])[0]
+        # Then there is signature with given length
+        signature = body[4:4 + l]
+        # Message body follows
+        msg = body[4 + l:]
+        # Decrypt it
+        decrypted = self.ntlm.decrypt(msg, signature)
+        response._content = decrypted
+        return response
+
+    def retry_basic(self, response, **kwargs):
+        self.logger.debug("Using Basic authentication")
+
+        request = self.prepare_resend(response)
+
+        passphrase = '%s:%s' % (self.username, self.password)
+        self.basic = 'Basic %s' % base64.b64encode(passphrase)
+        request.headers['Authorization'] = self.basic
+        request.headers['Content-Length'] = len(self._body)
+        request.body = self._body
+        r = response.connection.send(request, **kwargs)
+        if r.status_code == requests.codes.ok:
+            self.authenticated = True
+        return r
+
+    def handle_response(self, response, **kwargs):
+        if self.authenticated and self.ntlm:
+            # If we're authenticated and have ntlm object, the body might be sealed
+            return self.decrypt_response(response)
+        if response.status_code == requests.codes.ok and not self.authenticated:
+            self.authenticated = True
+            response.request.body = self._body
+            r = response.connection.send(response.request, **kwargs)
+            return r
+
+        if response.status_code == 401:
+            authenticate_header = response.headers.get('www-authenticate', '').lower()
+            if 'negotiate' in authenticate_header and not self.ignore_ntlm:
+                return self.retry_ntlm_negotitate(response, **kwargs)
+            elif 'basic' in authenticate_header:
+                return self.retry_basic(response, **kwargs)
+            else:
+                raise HyperVAuthFailed(
+                    "Server doesn't known any supported authentication method "
+                    "(server methods: %s)" % authenticate_header)
+        return response
+
+    def __call__(self, request):
+        request.headers["Connection"] = "Keep-Alive"
+        if not self.authenticated:
+            request.headers["Content-Length"] = "0"
+            self._body = request.body
+            request.body = None
+            request.register_hook('response', self.handle_response)
+        elif self.ntlm:
+            request.register_hook('response', self.handle_response)
+            return self.encrypt_request(request)
+        elif self.basic:
+            request.headers['Authorization'] = self.basic
+        return request
 
 
 class HyperVSoapGenerator(object):
@@ -146,32 +313,35 @@ ENABLED_STATE_TO_GUEST_STATE = {
 
 
 class HyperVSoap(object):
-    def __init__(self, url, connection, headers, logger):
+    def __init__(self, url, connection, logger):
         self.url = url
         self.connection = connection
-        self.headers = headers
         self.generator = HyperVSoapGenerator(self.url)
         self.logger = logger
 
     def post(self, body):
-        self.headers["Content-Length"] = "%d" % len(body)
-        self.headers["Content-Type"] = "application/soap+xml;charset=UTF-8"
-        self.connection.request("POST", self.url, body=body, headers=self.headers)
-        response = self.connection.getresponse()
-        if response.status == 401:
+        headers = {
+            "Content-Type": "application/soap+xml;charset=UTF-8"
+        }
+        response = self.connection.post(self.url, body, headers=headers)
+        data = response.text
+        if response.status_code == 401:
             raise HyperVAuthFailed("Authentication failed")
-        if response.status != 200:
-            data = response.read()
+        if 400 <= response.status_code < 500:
+            raise HyperVException("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
+        elif response.status_code == 500:
+            raise HyperVCallFailed("Hyper-V call failed, HTTP error: %d" % response.status_code)
+        if response.status_code != requests.codes.ok:
             xml = ElementTree.fromstring(data)
             errorcode = xml.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
             # Suppress reporting of invalid namespace, because we're testing
             # both old and new namespaces that HyperV uses
             if errorcode is None or errorcode.text != '2150858778':
-                self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status, data)
-            raise HyperVException("Communication with Hyper-V failed, HTTP error: %d" % response.status)
+                self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
+            raise HyperVException("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
         if response is None:
             raise HyperVException("No reply from Hyper-V")
-        return response
+        return data
 
     @classmethod
     def _Instance(cls, xml):
@@ -188,9 +358,8 @@ class HyperVSoap(object):
 
     def Enumerate(self, query, namespace="root/virtualization"):
         data = self.generator.enumerateXML(query=query, namespace=namespace)
-        response = self.post(data)
-        d = response.read()
-        xml = ElementTree.fromstring(d)
+        body = self.post(data)
+        xml = ElementTree.fromstring(body)
         if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
         responses = xml.findall("{%(s)s}Body/{%(wsen)s}EnumerateResponse" % self.generator.namespaces)
@@ -206,9 +375,8 @@ class HyperVSoap(object):
 
     def _PullOne(self, uuid, namespace):
         data = self.generator.pullXML(enumerationContext=uuid, namespace=namespace)
-        response = self.post(data)
-        d = response.read()
-        xml = ElementTree.fromstring(d)
+        body = self.post(data)
+        xml = ElementTree.fromstring(body)
         if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
         responses = xml.findall("{%(s)s}Body/{%(wsen)s}PullResponse" % self.generator.namespaces)
@@ -240,9 +408,8 @@ class HyperVSoap(object):
         return dict where `ElementName` is key and `virt.GUEST.STATE_*` is value.
         '''
         data = self.generator.getSummaryInformationXML(namespace)
-        response = self.post(data)
-        d = response.read()
-        xml = ElementTree.fromstring(d)
+        body = self.post(data)
+        xml = ElementTree.fromstring(body)
         if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
         responses = xml.findall("{%(s)s}Body/{%(vsms)s}GetSummaryInformation_OUTPUT" % {
@@ -266,6 +433,10 @@ class HyperVException(virt.VirtError):
 
 
 class HyperVAuthFailed(HyperVException):
+    pass
+
+
+class HyperVCallFailed(HyperVException):
     pass
 
 
@@ -301,115 +472,12 @@ class HyperV(virt.Virt):
 
         logger.debug("Hyper-V url: %s", self.url)
 
-        # Check if we have domain defined and set flags accordingly
-        user_parts = self.username.split('\\', 1)
-        if len(user_parts) == 1:
-            self.username = user_parts[0]
-            self.domainname = ''
-            self.type1_flags = ntlm.NTLM_TYPE1_FLAGS & ~ntlm.NTLM_NegotiateOemDomainSupplied
-        else:
-            self.domainname = user_parts[0].upper()
-            self.username = user_parts[1]
-            self.type1_flags = ntlm.NTLM_TYPE1_FLAGS
-
     def connect(self):
-        host, port = self.host.split(':')
-        proxy = False
-        protocol = self.url.partition("://")[0]
-        for env in ['%s_proxy' % protocol.lower(), '%s_PROXY' % protocol.upper()]:
-            if env in os.environ:
-                proxy_url = os.environ[env]
-                if "://" not in proxy_url:
-                    # Add http or https to proxy_url otherwise urlsplit
-                    # won't parse it correctly
-                    proxy_url = "%s://%s" % (protocol, proxy_url)
-                r = urlparse.urlsplit(proxy_url)
-                host = r.hostname
-                port = r.port or (80 if protocol == 'http' else 443)
-                proxy = True
-                break
-
-        if protocol == "https":
-            connection = httplib.HTTPSConnection(host, int(port))
-        else:
-            connection = httplib.HTTPConnection(host, int(port))
-
-        if proxy and proxy_url.startswith('https'):
-            connection.request("CONNECT", self.host)
-            response = connection.getresponse()
-
-        headers = {}
-        headers["Connection"] = "Keep-Alive"
-        headers["Proxy-Connection"] = "Keep-Alive"
-        headers["Content-Length"] = "0"
-        headers["Host"] = self.host
-
-        connection.request("POST", self.url, headers=headers)
-        response = connection.getresponse()
-        response.read()
-
-        if response.status == 200:
-            return connection, headers
-        elif response.status == 404:
-            raise HyperVException("Invalid HyperV url: %s" % self.url)
-        elif response.status != 401:
-            raise HyperVException("Unable to connect to HyperV at: %s" % self.url)
-        # 401 - need authentication
-
-        authenticate_header = response.getheader("WWW-Authenticate", "")
-        if 'Negotiate' in authenticate_header:
-            try:
-                self.ntlmAuth(connection, headers)
-            except HyperVAuthFailed:
-                if 'Basic' in authenticate_header:
-                    self.basicAuth(connection, headers)
-                else:
-                    raise
-        elif 'Basic' in authenticate_header:
-            self.basicAuth(connection, headers)
-        else:
-            raise HyperVAuthFailed("Server doesn't known any supported authentication method")
-        return connection, headers
-
-    def ntlmAuth(self, connection, headers):
-        self.logger.debug("Using NTLM authentication")
-        # Use ntlm
-        headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_NEGOTIATE_MESSAGE(self.username, self.type1_flags)
-
-        connection.request("POST", self.url, headers=headers)
-        response = connection.getresponse()
-        response.read()
-        if response.status != 401:
-            raise HyperVAuthFailed("NTLM negotiation failed")
-
-        auth_header = response.getheader("WWW-Authenticate", "")
-        if auth_header == "":
-            raise HyperVAuthFailed("NTLM negotiation failed")
-
-        nego, challenge = auth_header.split(" ")
-        if nego != "Negotiate":
-            self.logger.warning("Wrong header: %s", auth_header)
-            raise HyperVAuthFailed("Wrong header: %s", auth_header)
-
-        nonce, flags = ntlm.parse_NTLM_CHALLENGE_MESSAGE(challenge)
-        headers["Authorization"] = "Negotiate %s" % ntlm.create_NTLM_AUTHENTICATE_MESSAGE(
-                    nonce, self.username, self.domainname, self.password, flags)
-
-        connection.request("POST", self.url, headers=headers)
-        response = connection.getresponse()
-        response.read()
-        if response.status == 200:
-            headers.pop("Authorization")
-            self.logger.debug("NTLM authentication successful")
-        else:
-            raise HyperVAuthFailed("NTLM negotiation failed")
-
-    def basicAuth(self, connection, headers):
-        self.logger.debug("Using Basic authentication")
-
-        passphrase = "%s:%s" % (self.username, self.password)
-        encoded = base64.encodestring(passphrase)
-        headers["Authorization"] = "Basic %s" % encoded.replace('\n', '')
+        s = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1)
+        s.mount('http://', adapter)
+        s.auth = HyperVAuth(self.username, self.password, self.logger)
+        return s
 
     @classmethod
     def decodeWinUUID(cls, uuid):
@@ -439,31 +507,29 @@ class HyperV(virt.Virt):
 
     def getHostGuestMapping(self):
         guests = []
-        connection, headers = self.connect()
-        hypervsoap = HyperVSoap(self.url, connection, headers, self.logger)
-        try:
-            if not self.useNewApi:
+        connection = self.connect()
+        hypervsoap = HyperVSoap(self.url, connection, self.logger)
+        if not self.useNewApi:
+            try:
                 # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
                 uuid = hypervsoap.Enumerate(
                     "select BIOSGUID, ElementName "
                     "from Msvm_VirtualSystemSettingData "
                     "where SettingType = 3",
                     "root/virtualization")
-            else:
-                # Filter out Planned VMs and snapshots, see
-                # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
-                uuid = hypervsoap.Enumerate(
-                    "select BIOSGUID, ElementName "
-                    "from Msvm_VirtualSystemSettingData "
-                    "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
-                    "root/virtualization/v2")
-        except HyperVException:
-            if not self.useNewApi:
-                self.logger.debug("Error when enumerating using root/virtualization namespace, "
+            except HyperVCallFailed:
+                self.logger.debug("Unable to enumerate using root/virtualization namespace, "
                                   "trying root/virtualization/v2 namespace")
                 self.useNewApi = True
-                return self.getHostGuestMapping()
-            raise
+
+        if self.useNewApi:
+            # Filter out Planned VMs and snapshots, see
+            # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
+            uuid = hypervsoap.Enumerate(
+                "select BIOSGUID, ElementName "
+                "from Msvm_VirtualSystemSettingData "
+                "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
+                "root/virtualization/v2")
 
         # Get guest states
         guest_states = hypervsoap.Invoke_GetSummaryInformation(

@@ -122,7 +122,7 @@ Only hosts which uuid (or hostname or hwuuid, based on \fBhypervisor_id\fR) is s
 Hosts which uuid (or hostname or hwuuid, based on \fBhypervisor_id\fR) is specified in comma-separated list in this option will \fBNOT\fR be reported. Put the value into the double-quotes if it contains special characters (like comma).
 .TP
 \fBhypervisor_id\fR
-Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. Applicable to esx, hyperv and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
+Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. Applicable to esx and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
 
 .SH EXAMPLE
 [test-esx]

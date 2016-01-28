@@ -137,7 +137,6 @@ class VirtWho(object):
         if not self.reports_in_progress:
             return
         updated = []
-        finished = False
         for report in self.reports_in_progress:
             self.check_report_state(report)
             if report.state == AbstractVirtReport.STATE_CREATED:
@@ -146,19 +145,18 @@ class VirtWho(object):
                 updated.append(report)
             else:
                 self.report_done(report)
-                finished = True
         self.reports_in_progress = updated
-
-        # We've just finished sending last report, we can send next one after
-        # backend interval
-        if finished and not updated:
-            self.send_after = time.time() + self.retry_after
 
     def send_current_report(self):
         name, report = self.queued_reports.popitem(last=False)
 
         try:
             if self.send(report):
+                # Success will reset the 429 count
+                if self._429_count > 0:
+                    self._429_count = 1
+                    self.retry_after = max(MinimumSendInterval, self.options.interval)
+
                 self.logger.debug('Report for config "%s" sent', name)
                 if report.state == AbstractVirtReport.STATE_PROCESSING:
                     self.reports_in_progress.append(report)
@@ -170,12 +168,14 @@ class VirtWho(object):
                 self.report_done(report)
         except ManagerThrottleError as e:
             self.queued_reports[name] = report
-            self.retry_after = e.retry_after
+            self._429_count += 1
+            self.retry_after = max(MinimumSendInterval, self.options.interval, e.retry_after * self._429_count)
             self.send_after = time.time() + self.retry_after
             self.logger.debug('429 received, waiting %s seconds until sending again', e.retry_after)
 
     def report_done(self, report):
         name = report.config.name
+        self.send_after = time.time() + self.retry_after
         if report.state == AbstractVirtReport.STATE_FINISHED:
             self.last_reports_hash[name] = report.hash
 

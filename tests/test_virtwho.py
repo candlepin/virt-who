@@ -401,7 +401,7 @@ class TestSend(TestBase):
         initial = 10
         retry_after = 2
         expected_429_count = 1
-        time.side_effect = [initial, initial]
+        time.return_value = initial
 
         fromOptions.return_value = Mock()
         options = Mock()
@@ -416,7 +416,7 @@ class TestSend(TestBase):
         config.hash = "config_hash"
         config.name = "config_name"
 
-        report = HostGuestAssociationReport(config, {})
+        report = HostGuestAssociationReport(config, {'hypervisors': []})
         report.state = AbstractVirtReport.STATE_PROCESSING
         virtwho.queued_reports[config.name] = report
 
@@ -427,5 +427,22 @@ class TestSend(TestBase):
         virtwho.send_current_report()
 
         virtwho.send.assert_called_with(report)
-        self.assertEquals(virtwho.send_after, initial + retry_after)
+        self.assertEquals(virtwho.send_after, initial + 60)
         self.assertEquals(len(virtwho.queued_reports), 1)
+
+        retry_after = 120
+        virtwho.send.side_effect = ManagerThrottleError(retry_after)
+        virtwho.send_current_report()
+        virtwho.send.assert_called_with(report)
+        self.assertEquals(virtwho.send_after, initial + retry_after * 2)
+        self.assertEquals(len(virtwho.queued_reports), 1)
+
+        def finish(x):
+            report.state = AbstractVirtReport.STATE_FINISHED
+            return True
+        virtwho.send.side_effect = finish
+        virtwho.send_current_report()
+        retry_after = 60
+        self.assertEquals(virtwho.retry_after, retry_after)
+        self.assertEquals(virtwho.send_after, initial + retry_after)
+        self.assertEquals(len(virtwho.queued_reports), 0)

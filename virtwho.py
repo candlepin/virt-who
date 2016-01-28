@@ -37,7 +37,6 @@ except ImportError:
 from daemon import daemon
 from virt import Virt, AbstractVirtReport, DomainListReport, HostGuestAssociationReport, ErrorReport
 from manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
-from manager.subscriptionmanager import SubscriptionManager
 from config import Config, ConfigManager, InvalidPasswordFormat, GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH
 from password import InvalidKeyFile
 
@@ -201,9 +200,7 @@ class VirtWho(object):
         except ManagerError as e:
             self.logger.error("Unable to send data: %s", str(e))
             return False
-        except ManagerFatalError as e:
-            # Something really bad happened (system is not register), stop the backends
-            self.logger.exception("Error in communication with subscription manager:")
+        except ManagerFatalError:
             raise
         except ManagerThrottleError:
             raise
@@ -258,8 +255,14 @@ class VirtWho(object):
         # when setting an item, it will remain in the same order
         self.queued_reports.clear()
 
+        # Clear last reports, we need to resend them when reloaded
+        self.last_reports_hash.clear()
+
         # List of reports that are being processed by server
         self.reports_in_progress = []
+
+        # Send the first report immediatelly
+        self.send_after = time.time()
 
         while not self.terminate_event.is_set():
             if self.reports_in_progress:
@@ -754,7 +757,12 @@ def main():
 
 
 def _main(virtWho):
-    result = virtWho.run()
+    try:
+        result = virtWho.run()
+    except ManagerFatalError:
+        virtWho.stop_virts()
+        virtWho.logger.exception("Fatal error:")
+        return
 
     if virtWho.options.print_:
         hypervisors = []

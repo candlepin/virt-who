@@ -499,8 +499,7 @@ def parseOptions():
 
     # Used only when starting as service (initscript sets it to 1, systemd to 0)
     env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.background = True
+    options.background = env in ["1", "true"]
 
     log.init(options)
     logger = log.getLogger(name='init', queue=False)
@@ -628,10 +627,6 @@ def parseOptions():
             raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
         if not options.env:
             raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
-
-    if options.background and options.oneshot:
-        logger.error("Background and oneshot can't be used together, using background mode")
-        options.oneshot = False
 
     if options.interval < MinimumSendInterval:
         if not options.interval or options.interval == parser.defaults['interval']:

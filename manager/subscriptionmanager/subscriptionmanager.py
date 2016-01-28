@@ -142,7 +142,10 @@ class SubscriptionManager(Manager):
         guests.sort(key=lambda item: item.uuid)
 
         serialized_guests = [guest.toDict() for guest in guests]
-        self.logger.info("Sending domain info: %s", json.dumps(serialized_guests, indent=4))
+        self.logger.info('Sending update in guests lists for config '
+                         '"%s": %d guests found',
+                         report.config.name, len(guests))
+        self.logger.debug("Domain info: %s", json.dumps(serialized_guests, indent=4))
 
         # Send list of guest uuids to the server
         try:
@@ -177,7 +180,9 @@ class SubscriptionManager(Manager):
 
         hypervisor_count = len(mapping['hypervisors'])
         guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
-        self.logger.info("Sending update in hosts-to-guests mapping: %d hypervisors and %d guests found", hypervisor_count, guest_count)
+        self.logger.info('Sending update in hosts-to-guests mapping for config '
+                         '"%s": %d hypervisors and %d guests found',
+                         report.config.name, hypervisor_count, guest_count)
         self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
         try:
             try:
@@ -224,16 +229,17 @@ class SubscriptionManager(Manager):
                     self.logger.error("Error during update list of guests: %s", str(fail))
             for updated in resultData['updated']:
                 guests = [x['guestId'] for x in updated['guestIds']]
-                self.logger.info("Updated host %s with guests: [%s]",
-                                 updated['uuid'],
-                                 ", ".join(guests))
+                self.logger.debug("Updated host %s with guests: [%s]",
+                                  updated['uuid'],
+                                  ", ".join(guests))
             if (isinstance(result['created'], list)):
                 for created in result['created']:
                     guests = [x['guestId'] for x in created['guestIds']]
-                    self.logger.info("Created host: %s with guests: [%s]",
-                                     created['uuid'],
-                                     ", ".join(guests))
-            self.logger.info("Number of mappings unchanged: %d", len(resultData['unchanged']))
+                    self.logger.debug("Created host: %s with guests: [%s]",
+                                      created['uuid'],
+                                      ", ".join(guests))
+            self.logger.debug("Number of mappings unchanged: %d", len(resultData['unchanged']))
+            self.logger.info("Mapping for config \"%s\" updated", report.config.name)
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

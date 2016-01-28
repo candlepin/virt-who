@@ -225,13 +225,11 @@ class Libvirtd(virt.Virt):
                     # Don't send Domain-0 on xen (zeroed uuid)
                     continue
                 domains.append(LibvirtdGuest(self, domain))
-                self.logger.debug("Virtual machine found: %s: %s", domain.name(), domain.UUIDString())
 
             # Non active domains
             for domainName in self.virt.listDefinedDomains():
                 domain = self.virt.lookupByName(domainName)
                 domains.append(LibvirtdGuest(self, domain))
-                self.logger.debug("Virtual machine found: %s: %s", domainName, domain.UUIDString())
         except libvirt.libvirtError as e:
             self.virt.close()
             raise virt.VirtError(str(e))

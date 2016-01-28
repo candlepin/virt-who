@@ -76,7 +76,7 @@ class Satellite(Manager):
         except Exception:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server")
-        self.logger.info("Initialized satellite connection")
+        self.logger.debug("Initialized satellite connection")
 
     def _load_hypervisor(self, hypervisor_uuid, type):
         systemid_filename = self.HYPERVISOR_SYSTEMID_FILE % hypervisor_uuid
@@ -172,6 +172,8 @@ class Satellite(Manager):
             except Exception as e:
                 self.logger.exception("Unable to send host/guest association to the satellite:")
                 raise SatelliteError("Unable to send host/guest association to the satellite: %s" % str(e))
+
+        self.logger.info("Mapping for config \"%s\" updated", report.config.name)
 
         # TODO: figure out what to populate here
         result = {}

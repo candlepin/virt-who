@@ -221,7 +221,6 @@ class VirtWho(object):
     def _sendGuestList(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
         manager.sendVirtGuests(report, self.options)
-        self.logger.info("virt-who guest list update successful")
 
     def _sendGuestAssociation(self, report):
         manager = Manager.fromOptions(self.logger, self.options, report.config)
@@ -300,7 +299,7 @@ class VirtWho(object):
                         self.logger.warn('Unable to collect report for config "%s"', report.config.name)
                 elif isinstance(report, AbstractVirtReport):
                     if self.last_reports_hash.get(report.config.name, None) == report.hash:
-                        self.logger.info('Report for config "%s" didn\'t change, not sending', report.config.name)
+                        self.logger.info('Report for config "%s" haven\'t changed, not sending', report.config.name)
                     else:
                         self.queued_reports[report.config.name] = report
                         if self.options.print_:

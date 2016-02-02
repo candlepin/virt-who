@@ -5,11 +5,12 @@ python:
 env:
   - PYTHONPATH=.
 sudo: required
+dist: trusty
 install:
   - pip install -r requirements.txt
   - pip install -U iniparse python-dateutil 'M2Crypto>=0.22.6rc4' libvirt-python unittest2 pytest-timeout mock
 script: py.test --timeout=30
 before_install:
-  - sudo add-apt-repository -y ppa:ubuntu-cloud-archive/icehouse-staging
+  #- sudo add-apt-repository -y ppa:ubuntu-cloud-archive/icehouse-staging
   - sudo apt-get update -qq
   - sudo apt-get install -y libvirt0 swig libvirt-dev

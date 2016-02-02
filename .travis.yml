@@ -10,5 +10,7 @@ install:
   - pip install -U iniparse python-dateutil M2Crypto libvirt-python unittest2 pytest-timeout mock
 script: py.test --timeout=30
 before_install:
+  # We need newer version of libvirt - get it from this repo
+  - sudo add-apt-repository -y ppa:ubuntu-cloud-archive/icehouse-staging
   - sudo apt-get update -qq
   - sudo apt-get install -y libvirt0 swig libvirt-dev libssl-dev

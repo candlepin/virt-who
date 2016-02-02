@@ -3,8 +3,8 @@
 import sys
 from time import time
 import XenAPI
-from XenAPI import Failure, NewMaster
-from collections import defaultdict, OrderedDict
+from XenAPI import NewMaster
+from collections import defaultdict
 import virt
 
 

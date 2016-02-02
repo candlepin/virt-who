@@ -7,6 +7,7 @@ import SocketServer
 import ssl
 import json
 import random
+import shutil
 
 from manager.subscriptionmanager.subscriptionmanager import rhsm_config
 
@@ -40,17 +41,23 @@ class FakeSam(Process):
         self.server = SocketServer.TCPServer(("localhost", self.port), SamHandler)
         base = os.path.dirname(os.path.abspath(__file__))
         self.server.socket = ssl.wrap_socket(self.server.socket, certfile=os.path.join(base, 'server.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
-        self.config = tempfile.NamedTemporaryFile()
-        self.config.write("""
+
+        self.tempdir = tempfile.mkdtemp()
+        config_name = os.path.join(self.tempdir, 'rhsm.conf')
+        with open(config_name, 'w') as f:
+            f.write("""
 [server]
 hostname = localhost
 prefix = /
 port = %s
 insecure = 1
-""" % self.port)
-        self.config.seek(0)
-        rhsm_config.DEFAULT_CONFIG_PATH = self.config.name
-        rhsm_config.DEFAULT_HOSTNAME = 'localhost'
+consumerCertDir = %s
+""" % (self.port, self.tempdir))
+
+        for name in ['cert.pem', 'key.pem']:
+            with open(os.path.join(self.tempdir, name), 'w') as f:
+                f.write('fake')
+        rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
         self.server.sam = self
         self.association = association
@@ -77,7 +84,7 @@ insecure = 1
             raise AssertionError("No free port found, starting aborted")
 
     def terminate(self):
-        self.config.close()
+        shutil.rmtree(self.tempdir)
         super(FakeSam, self).terminate()
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ import ssl
 import json
 import random
 import shutil
+import subprocess
 
 from manager.subscriptionmanager.subscriptionmanager import rhsm_config
 
@@ -51,12 +52,12 @@ hostname = localhost
 prefix = /
 port = %s
 insecure = 1
+
+[rhsm]
 consumerCertDir = %s
 """ % (self.port, self.tempdir))
 
-        for name in ['cert.pem', 'key.pem']:
-            with open(os.path.join(self.tempdir, name), 'w') as f:
-                f.write('fake')
+        subprocess.Popen("openssl req -x509 -newkey rsa:2048 -keyout {0}/key.pem -out {0}/cert.pem -nodes -batch".format(self.tempdir).split(" "))
         rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
         self.server.sam = self

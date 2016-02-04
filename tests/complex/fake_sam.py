@@ -41,7 +41,7 @@ class FakeSam(Process):
         self._port = None
         self.server = SocketServer.TCPServer(("localhost", self.port), SamHandler)
         base = os.path.dirname(os.path.abspath(__file__))
-        self.server.socket = ssl.wrap_socket(self.server.socket, certfile=os.path.join(base, 'server.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
+        self.server.socket = ssl.wrap_socket(self.server.socket, certfile=os.path.join(base, 'cert.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
 
         self.tempdir = tempfile.mkdtemp()
         config_name = os.path.join(self.tempdir, 'rhsm.conf')
@@ -55,9 +55,8 @@ insecure = 1
 
 [rhsm]
 consumerCertDir = %s
-""" % (self.port, self.tempdir))
+""" % (self.port, base))
 
-        subprocess.Popen("openssl req -x509 -newkey rsa:2048 -keyout {0}/key.pem -out {0}/cert.pem -nodes -batch".format(self.tempdir).split(" "))
         rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
         self.server.sam = self

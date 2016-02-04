@@ -8,7 +8,6 @@ import ssl
 import json
 import random
 import shutil
-import subprocess
 
 from manager.subscriptionmanager.subscriptionmanager import rhsm_config
 
@@ -25,8 +24,7 @@ class SamHandler(SimpleHTTPRequestHandler):
         if self.path.startswith('/hypervisors'):
             size = int(self.headers["Content-Length"])
             data = json.loads(self.rfile.read(size))
-            self.server.sam.association.clear()
-            self.server.sam.association.update(data)
+            self.server.queue.put(data)
             self.wfile.write(json.dumps({
                 "failedUpdate": [],
                 "updated": [],
@@ -35,7 +33,7 @@ class SamHandler(SimpleHTTPRequestHandler):
 
 
 class FakeSam(Process):
-    def __init__(self, association):
+    def __init__(self, queue):
         super(FakeSam, self).__init__()
         self.daemon = True
         self._port = None
@@ -60,7 +58,7 @@ consumerCertDir = %s
         rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
         self.server.sam = self
-        self.association = association
+        self.server.queue = queue
 
     @property
     def port(self):

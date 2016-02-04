@@ -1,10 +1,14 @@
 
 import sys
-import os
-import signal
 import socket
-from multiprocessing import Process, Manager, Value
-import subprocess
+from Queue import Empty
+from multiprocessing import Process, Queue, Value
+
+import random
+import json
+from tempfile import TemporaryFile
+
+from fake_sam import FakeSam
 
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version
@@ -12,14 +16,6 @@ if sys.version_info[0] > 2 or sys.version_info[1] > 6:
     from unittest import TestCase
 else:
     from unittest2 import TestCase
-
-import random
-import json
-from StringIO import StringIO
-import time
-from tempfile import TemporaryFile
-
-from fake_sam import FakeSam
 
 try:
     import virtwho
@@ -74,21 +70,23 @@ class TestBase(TestCase):
     @classmethod
     def setUpClass(cls):
         TestCase.setUpClass()
-        cls.manager = Manager()
-        cls.assoc = cls.manager.dict()
-        cls.sam = FakeSam(cls.assoc)
+        cls.queue = Queue()
+        cls.sam = FakeSam(cls.queue)
         cls.sam.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.manager.shutdown()
-        cls.manager.join()
         cls.sam.terminate()
         cls.sam.join()
         TestCase.tearDownClass()
 
     def setUp(self):
-        self.assoc.clear()
+        # Clear the queue
+        while True:
+            try:
+                self.queue.get(block=False)
+            except Empty:
+                break
         self.server.data_version = 0
 
     def tearDown(self):
@@ -245,17 +243,16 @@ class VirtBackendTestMixin(object):
         })
 
     def wait_for_assoc(self, timeout=3):
-        for _ in range(timeout):
-            if self.assoc:
-                break
-            time.sleep(1)
-        else:
+        try:
+            return self.queue.get(timeout=timeout)
+        except Empty:
             raise AssertionError("Association was not obtained in %d seconds" % timeout)
 
     def test_basic(self):
         code, _ = self.run_virtwho(self.arguments + ['-o', '--debug'])
         self.assertEqual(code, 0, "virt-who exited with wrong error code: %s" % code)
-        self.check_assoc_initial(dict(self.assoc))
+        assoc = self.wait_for_assoc()
+        self.check_assoc_initial(assoc)
 
     def test_print(self):
         code, out = self.run_virtwho(self.arguments + ['-p', '--debug'], grab_stdout=True)
@@ -302,11 +299,10 @@ class VirtBackendTestMixin(object):
         self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
         self.addCleanup(self.stop_virtwho)
 
-        self.wait_for_assoc()
-        self.check_assoc_initial(dict(self.assoc))
+        assoc = self.wait_for_assoc()
+        self.check_assoc_initial(assoc)
 
         self.server.data_version = 1
-        self.assoc.clear()
 
-        self.wait_for_assoc(5)
-        self.check_assoc_updated(dict(self.assoc))
+        assoc = self.wait_for_assoc(5)
+        self.check_assoc_updated(assoc)

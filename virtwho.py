@@ -690,7 +690,8 @@ def atexit_fn(*args, **kwargs):
 
 
 def reload(signal, stackframe):
-    virtWho.reload()
+    if virtWho:
+        virtWho.reload()
 
 
 def main():
@@ -762,7 +763,15 @@ def _main(virtWho):
     except ManagerFatalError:
         virtWho.stop_virts()
         virtWho.logger.exception("Fatal error:")
-        return
+        if not virtWho.options.oneshot:
+            virtWho.logger.info("Waiting for reload signal")
+            # Wait indefinately until we get reload or exit signal
+            while True:
+                report = virtWho.queue.get(block=True)
+                if report == 'reload':
+                    raise ReloadRequest()
+                elif report == 'exit':
+                    return
 
     if virtWho.options.print_:
         hypervisors = []

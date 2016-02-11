@@ -20,20 +20,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
-from base import TestBase, unittest
-import logging
-from rhsm.connection import RestlibException
+from base import TestBase
 
-from mock import patch, Mock, sentinel, ANY
+from mock import patch, Mock, sentinel, ANY, call
 
-from virtwho import parseOptions, VirtWho, OptionError, Queue
+from virtwho import parseOptions, VirtWho, OptionError, _main, ReloadRequest
 from config import Config
 import util
-from manager import ManagerThrottleError
+from manager import ManagerThrottleError, ManagerFatalError
 from virt import (
     HostGuestAssociationReport, Hypervisor, Guest,
     DomainListReport, AbstractVirtReport)
 from multiprocessing import Queue
+from Queue import Empty
 
 
 class TestOptions(TestBase):
@@ -389,7 +388,6 @@ class TestSend(TestBase):
         virtwho.check_report_state = Mock(side_effect=check_report_state)
         virtwho.check_reports_state()
 
-        #self.assertEquals(expected_queue_timeout, virtwho.queue_timeout)
         virtwho.send.assert_called_with(report)
         self.assertEquals(virtwho.send_after, initial + 60)
 
@@ -400,7 +398,6 @@ class TestSend(TestBase):
     def test_send_current_report_with_429(self, fromConfig, fromOptions, getLogger, time):
         initial = 10
         retry_after = 2
-        expected_429_count = 1
         time.return_value = initial
 
         fromOptions.return_value = Mock()
@@ -446,3 +443,80 @@ class TestSend(TestBase):
         self.assertEquals(virtwho.retry_after, retry_after)
         self.assertEquals(virtwho.send_after, initial + retry_after)
         self.assertEquals(len(virtwho.queued_reports), 0)
+
+
+class TestReload(TestBase):
+    def mock_virtwho(self):
+        options = Mock()
+        options.interval = 6
+        options.oneshot = False
+        options.print_ = False
+        virtwho = VirtWho(Mock(), options, config_dir="/nonexistant")
+        config = Config("env/cmdline", 'libvirt')
+        virtwho.configManager.addConfig(config)
+        virtwho.queue = Mock()
+        virtwho.send = Mock()
+        return virtwho
+
+    def assertStartStop(self, fromConfig):
+        ''' Make sure that Virt was started and stopped. '''
+        self.assertTrue(fromConfig.return_value.start.called)
+        self.assertTrue(fromConfig.return_value.terminate.called)
+
+    @patch('log.getLogger')
+    @patch('virt.Virt.fromConfig')
+    def test_start_unregistered(self, fromConfig, getLogger):
+        virtwho = self.mock_virtwho()
+        virtwho.queue.get.side_effect = [DomainListReport(virtwho.configManager.configs[0], []), Empty, 'reload']
+        virtwho.send.side_effect = ManagerFatalError
+        # When not registered, it should throw ReloadRequest
+        self.assertRaises(ReloadRequest, _main, virtwho)
+        # queue.get should be called 3 times: report, nonblocking reading
+        # of remaining reports and after ManagerFatalError wait indefinately
+        self.assertEqual(virtwho.queue.get.call_count, 3)
+        # It should wait blocking for the reload
+        virtwho.queue.get.assert_has_calls([call(block=True)])
+        self.assertStartStop(fromConfig)
+
+    @patch('log.getLogger')
+    @patch('virt.Virt.fromConfig')
+    def test_exit_after_unregister(self, fromConfig, getLogger):
+        virtwho = self.mock_virtwho()
+        report = DomainListReport(virtwho.configManager.configs[0], [])
+        # Send two reports and then 'exit'
+        virtwho.queue.get.side_effect = [report, Empty, report, Empty, 'exit']
+        # First report will be successful, second one will throw ManagerFatalError
+        virtwho.send.side_effect = [True, ManagerFatalError]
+        # _main should exit normally
+        _main(virtwho)
+        self.assertStartStop(fromConfig)
+
+    @patch('log.getLogger')
+    @patch('virt.Virt.fromConfig')
+    def test_reload_after_unregister(self, fromConfig, getLogger):
+        virtwho = self.mock_virtwho()
+        report = DomainListReport(virtwho.configManager.configs[0], [])
+        # Send two reports and then 'reload'
+        virtwho.queue.get.side_effect = [report, Empty, report, Empty, 'reload']
+        # First report will be successful, second one will throw ManagerFatalError
+        virtwho.send.side_effect = [True, ManagerFatalError]
+        # _main should throw ReloadRequest
+        self.assertRaises(ReloadRequest, _main, virtwho)
+        self.assertStartStop(fromConfig)
+
+    @patch('log.getLogger')
+    @patch('virt.Virt.fromConfig')
+    def test_reload_after_register(self, fromConfig, getLogger):
+        virtwho = self.mock_virtwho()
+        report = DomainListReport(virtwho.configManager.configs[0], [])
+        # Send report and then 'reload'
+        virtwho.queue.get.side_effect = [report, Empty, 'reload']
+        # First report will be successful, second one will throw ManagerFatalError
+        virtwho.send.side_effect = [ManagerFatalError, True]
+        # _main should throw ReloadRequest
+        self.assertRaises(ReloadRequest, _main, virtwho)
+
+        self.assertEqual(virtwho.queue.get.call_count, 3)
+        # It should wait blocking for the reload
+        virtwho.queue.get.assert_has_calls([call(block=True)])
+        self.assertStartStop(fromConfig)

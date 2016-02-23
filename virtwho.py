@@ -104,7 +104,7 @@ class VirtWho(object):
         # used for checking if the report changed from last time
         self.last_reports_hash = {}
         # How long should we wait between reports sent to server
-        self.retry_after = max(MinimumSendInterval, options.interval)
+        self.retry_after = MinimumSendInterval
         # This counts the number of responses of http code 429
         # received between successfully sent reports
         self._429_count = 0
@@ -154,7 +154,7 @@ class VirtWho(object):
                 # Success will reset the 429 count
                 if self._429_count > 0:
                     self._429_count = 1
-                    self.retry_after = max(MinimumSendInterval, self.options.interval)
+                    self.retry_after = MinimumSendInterval
 
                 self.logger.debug('Report for config "%s" sent', name)
                 if report.state == AbstractVirtReport.STATE_PROCESSING:
@@ -168,9 +168,9 @@ class VirtWho(object):
         except ManagerThrottleError as e:
             self.queued_reports[name] = report
             self._429_count += 1
-            self.retry_after = max(MinimumSendInterval, self.options.interval, e.retry_after * self._429_count)
+            self.retry_after = max(MinimumSendInterval, e.retry_after * self._429_count)
             self.send_after = time.time() + self.retry_after
-            self.logger.debug('429 received, waiting %s seconds until sending again', e.retry_after)
+            self.logger.debug('429 received, waiting %s seconds until sending again', self.retry_after)
 
     def report_done(self, report):
         name = report.config.name

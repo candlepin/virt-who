@@ -195,7 +195,7 @@ class SubscriptionManager(Manager):
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.RateLimitExceededException as e:
-            retry_after = int(getattr(e, 'headers', {}).get('Retry-After'))
+            retry_after = int(getattr(e, 'headers', {}).get('Retry-After', '60'))
             raise ManagerThrottleError(retry_after)
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")

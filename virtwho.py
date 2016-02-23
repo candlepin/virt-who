@@ -651,8 +651,8 @@ class PIDLock(object):
 
     def is_locked(self):
         try:
-            f = open(self.filename, "r")
-            pid = int(f.read().strip())
+            with open(self.filename, "r") as f:
+                pid = int(f.read().strip())
             try:
                 os.kill(pid, 0)
                 return True
@@ -667,7 +667,7 @@ class PIDLock(object):
     def __enter__(self):
         # Write pid to pidfile
         try:
-            with open(self.filename, "w") as f:
+            with os.fdopen(os.open(self.filename, os.O_WRONLY | os.O_CREAT, 0600), 'w') as f:
                 f.write("%d" % os.getpid())
         except Exception as e:
             print >>sys.stderr, "Unable to create pid file: %s" % str(e)

@@ -71,31 +71,23 @@ class Esx(virt.Virt):
         last_version = 'last_version'  # Bogus value so version != last_version from the start
         self.hosts = defaultdict(Host)
         self.vms = defaultdict(VM)
-        start_time = end_time = time()
         initial = True
+        next_update = time()
 
         while self._oneshot or not self.is_terminated():
-            delta = end_time - start_time
 
-            if initial:
+            delta = next_update - time()
+            if initial or delta < 0:
                 # We want to read the update asap
                 max_wait_seconds = 0
             else:
-                if delta - self._interval > 2.0:
-                    # The update took longer than it should, don't wait so long next time
-                    max_wait_seconds = max(self._interval - int(delta - self._interval), 0)
-                    self.logger.debug(
-                        "Getting the host/guests association took too long,"
-                        "interval waiting is shortened to %s", max_wait_seconds)
-                else:
-                    max_wait_seconds = self._interval
+                max_wait_seconds = int(delta)
 
             if version == '':
                 # also, clean all data we have
                 self.hosts.clear()
                 self.vms.clear()
 
-            start_time = time()
             try:
                 # Make sure that WaitForUpdatesEx finishes even
                 # if the ESX shuts down in the middle of waiting
@@ -116,7 +108,7 @@ class Esx(virt.Virt):
             except (suds.WebFault, HTTPException) as e:
                 suppress_exception = False
                 try:
-                    if e.fault.faultstring == 'The session is not authenticated.':
+                    if hasattr(e, 'fault') and e.fault.faultstring == 'The session is not authenticated.':
                         # Do not print the exception if we get 'not authenticated',
                         # it's quite normal behaviour and nothing to worry about
                         suppress_exception = True
@@ -127,7 +119,6 @@ class Esx(virt.Virt):
                 self._cancel_wait()
                 version = ''
                 self._prepare()
-                start_time = end_time = time()
                 continue
 
             if updateSet is not None:
@@ -137,17 +128,14 @@ class Esx(virt.Virt):
             if hasattr(updateSet, 'truncated') and updateSet.truncated:
                 continue
 
-            if last_version != version:
+            if last_version != version or time() > next_update:
                 assoc = self.getHostGuestMapping()
                 self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
+                next_update = time() + self._interval
                 last_version = version
-
-            end_time = time()
 
             if self._oneshot:
                 break
-
-            self.logger.debug("Waiting for ESX changes")
 
         self.cleanup()
 

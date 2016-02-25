@@ -349,7 +349,7 @@ class Virt(Process):
         if self.is_terminated():
             sys.exit(0)
             return
-        self.logger.debug("Report gathered, putting to queue for sending")
+        self.logger.debug('Report for config "%s" gathered, putting to queue for sending', report.config.name)
         self._queue.put(report)
 
     def run(self):

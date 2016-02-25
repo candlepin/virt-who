@@ -148,7 +148,9 @@ class VirtWho(object):
 
     def send_current_report(self):
         name, report = self.queued_reports.popitem(last=False)
+        return self.send_report(name, report)
 
+    def send_report(self, name, report):
         try:
             if self.send(report):
                 # Success will reset the 429 count
@@ -244,8 +246,10 @@ class VirtWho(object):
             # Run the process
             virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
             self.virts.append(virt)
-        if self.options.oneshot:
-            self.oneshot_remaining = set(virt.config.name for virt in self.virts)
+
+        # This set is used both for oneshot mode and to bypass rate-limit
+        # when virt-who is starting
+        self.oneshot_remaining = set(virt.config.name for virt in self.virts)
 
         if len(self.virts) == 0:
             self.logger.error("No suitable virt backend found")
@@ -302,14 +306,17 @@ class VirtWho(object):
                         self.logger.warn('Unable to collect report for config "%s"', report.config.name)
                 elif isinstance(report, AbstractVirtReport):
                     if self.last_reports_hash.get(report.config.name, None) == report.hash:
-                        self.logger.info('Report for config "%s" haven\'t changed, not sending', report.config.name)
+                        self.logger.info('Report for config "%s" hasn\'t changed, not sending', report.config.name)
                     else:
-                        self.queued_reports[report.config.name] = report
-                        if self.options.print_:
-                            try:
-                                self.oneshot_remaining.remove(report.config.name)
-                            except KeyError:
-                                pass
+                        if report.config.name in self.oneshot_remaining:
+                            # Send the report immediately
+                            self.oneshot_remaining.remove(report.config.name)
+                            if not self.options.print_:
+                                self.send_report(report.config.name, report)
+                            else:
+                                self.queued_reports[report.config.name] = report
+                        else:
+                            self.queued_reports[report.config.name] = report
                 elif report in ['exit', 'reload']:
                     # Reload and exit reports takes priority, do not process
                     # any other reports

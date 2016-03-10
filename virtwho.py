@@ -757,8 +757,7 @@ def main():
         sd_notify("READY=1\nMAINPID=%d" % os.getpid())
         while True:
             try:
-                _main(virtWho)
-                break
+                return _main(virtWho)
             except ReloadRequest:
                 logger.info("Reloading")
                 continue
@@ -778,9 +777,12 @@ def _main(virtWho):
                 if report == 'reload':
                     raise ReloadRequest()
                 elif report == 'exit':
-                    return
+                    return 0
 
     if virtWho.options.print_:
+        if len(result) == 0:
+            virtWho.logger.error("No hypervisor reports found")
+            return 1
         hypervisors = []
         for config, report in result.items():
             if isinstance(report, DomainListReport):
@@ -801,6 +803,7 @@ def _main(virtWho):
             'hypervisors': hypervisors
         }, indent=4, sort_keys=True))
         print(data)
+    return 0
 
 
 def exit(code, status=None):
@@ -821,7 +824,7 @@ def exit(code, status=None):
 
 if __name__ == '__main__':
     try:
-        main()
+        res = main()
     except KeyboardInterrupt:
         exit(1)
     except Exception as e:
@@ -833,4 +836,4 @@ if __name__ == '__main__':
         exit(1, "virt-who failed: %s" % str(e))
     logger = logging.getLogger("virtwho.main")
     logger.debug("virt-who terminated")
-    exit(0)
+    exit(res)

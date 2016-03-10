@@ -199,7 +199,11 @@ class Esx(virt.Virt):
                                              hypervisorType=host.get('config.product.name', 'vmware'),
                                              hypervisorVersion=host.get('config.product.version', None)
                                              ))
-            name = '%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host
+            try:
+                name = '%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host
+            except KeyError:
+                self.logger.debug("Unable to determine hostname for host '%s'", uuid)
+                name = ''
             facts = {
                 'cpu.cpu_socket(s)': str(host['hardware.cpuInfo.numCpuPackages']),
             }

@@ -150,7 +150,7 @@ class GlobalConfig(GeneralConfig):
         'background': False,
         'configs': '',
         'reporter_id': util.generateReporterId(),
-        'smType': 'sam',
+        'smType': None,
         'interval': 60
     }
     LIST_OPTIONS = (
@@ -211,8 +211,10 @@ class Config(GeneralConfig):
         except KeyError:
             if 'sat_server' in self._options:
                 return 'satellite'
-            else:
+            elif 'rhsm_hostname' in self._options:
                 return 'sam'
+            else:
+                return None
 
     def checkOptions(self, logger):
         # Server option must be there for ESX, RHEVM, and HYPERV
@@ -261,7 +263,7 @@ class Config(GeneralConfig):
                     logger.warn("Option `owner` is not used in non-remote libvirt connection")
 
     @classmethod
-    def fromParser(self, name, parser, defaults=None):
+    def fromParser(cls, name, parser, defaults=None):
         options = {}
         for option in parser.options(name):
             options[option] = parser.get(name, option)

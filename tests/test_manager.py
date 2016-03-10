@@ -83,6 +83,7 @@ class TestSubscriptionManager(TestManager):
     def test_sendVirtGuests(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
         config = Config('test', 'libvirt')
+        config.smType = 'sam'
         manager = Manager.fromOptions(self.logger, self.options, config)
         manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
@@ -94,6 +95,7 @@ class TestSubscriptionManager(TestManager):
     def test_hypervisorCheckIn(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
         config = Config('test', 'libvirt')
+        config.smType = 'sam'
         manager = Manager.fromOptions(self.logger, self.options, config)
         self.options.env = "ENV"
         self.options.owner = "OWNER"

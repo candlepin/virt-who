@@ -60,8 +60,10 @@ class Manager(object):
         assert subscriptionmanager
         assert satellite
 
+        smType = config.smType or options.smType or 'sam'
+
         for subcls in cls.__subclasses__():
-            if subcls.smType == config.smType:
+            if subcls.smType == smType:
                 return subcls(logger, options)
 
-        raise KeyError("Invalid config type: %s" % config.smType)
+        raise KeyError("Invalid config type: %s" % smType)

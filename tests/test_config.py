@@ -419,6 +419,7 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
+rhsm_hostname=abc
 """)
         self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
@@ -431,8 +432,10 @@ server=1.2.3.4
 username=admin
 password=password
 env=env
+rhsm_hostname=abc
 """)
         self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
+
 
 class TestGeneralConfig(TestBase):
     """

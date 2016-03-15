@@ -97,7 +97,7 @@ class Vdsm(Virt):
         CERTFILE = self.trust_store_path + '/certs/vdsmcert.pem'
         CACERT = self.trust_store_path + '/certs/cacert.pem'
 
-        ctx = SSL.Context('sslv3')
+        ctx = SSL.Context()
 
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 16)
         ctx.load_verify_locations(CACERT)

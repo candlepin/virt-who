@@ -152,6 +152,7 @@ class SubscriptionManager(Manager):
             self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
+        report.state = AbstractVirtReport.STATE_FINISHED
 
     def hypervisorCheckIn(self, report, options=None):
         """ Send hosts to guests mapping to subscription manager. """

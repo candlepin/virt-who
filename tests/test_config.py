@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import shutil
-from config import ConfigManager, InvalidOption, GeneralConfig, NotSetSentinel, GlobalConfig
+from config import ConfigManager, InvalidOption, GeneralConfig, NotSetSentinel, GlobalConfig, parse_list
 from tempfile import mkdtemp
 from base import TestBase, unittest
 from binascii import hexlify, unhexlify
@@ -530,3 +530,67 @@ class TestGlobalConfig(TestBase):
         for false_string in test_false_strings:
             setattr(self.config, bool_option, false_string)
             self.assertEqual(getattr(self.config, bool_option), False)
+
+
+class TestParseList(TestBase):
+    def test_unquoted(self):
+        self.assertEqual(
+            parse_list('abc,def,ghi'),
+            ['abc', 'def', 'ghi']
+        )
+        self.assertEqual(
+            parse_list(' abc, def ,ghi, jkl '),
+            ['abc', 'def', 'ghi', 'jkl']
+        )
+        self.assertEqual(
+            parse_list(' abc, def ,ghi, jkl,'),
+            ['abc', 'def', 'ghi', 'jkl']
+        )
+
+    def test_doublequoted(self):
+        self.assertEqual(
+            parse_list('"abc","def","ghi"'),
+            ['abc', 'def', 'ghi']
+        )
+        self.assertEqual(
+            parse_list('"abc", "def" ,"ghi" , "jkl"'),
+            ['abc', 'def', 'ghi', 'jkl']
+        )
+        self.assertEqual(
+            parse_list('"abc ", " def" ,"g h i" , " j,l "'),
+            ['abc ', ' def', 'g h i', ' j,l ']
+        )
+        self.assertRaises(ValueError, parse_list, 'abc"def')
+        self.assertEqual(
+            parse_list('"abc\\"", "\\"def"'),
+            ['abc"', '"def']
+        )
+
+    def test_singlequoted(self):
+        self.assertEqual(
+            parse_list("'abc','def','ghi'"),
+            ['abc', 'def', 'ghi']
+        )
+        self.assertEqual(
+            parse_list("'abc', 'def' ,'ghi' , 'jkl'"),
+            ['abc', 'def', 'ghi', 'jkl']
+        )
+        self.assertEqual(
+            parse_list("'abc ', ' def' ,'g h i' , ' j,l '"),
+            ['abc ', ' def', 'g h i', ' j,l ']
+        )
+        self.assertRaises(ValueError, parse_list, "abc'def")
+
+    def test_special(self):
+        self.assertEqual(
+            parse_list("'\babc','!def',',\\\\ghi'"),
+            ['\babc', '!def', ',\\ghi']
+        )
+        self.assertEqual(
+            parse_list("'a\nc', '\tdef' ,'\"ghi\"' , \"'jkl'\""),
+            ['a\nc', '\tdef', '"ghi"', "'jkl'"]
+        )
+        self.assertEqual(
+            parse_list("'abc\ ', '\\\\ def' ,'g h i' , ' jkl '"),
+            ['abc ', '\\ def', 'g h i', ' jkl ']
+        )

@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-from csv import reader
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from password import Password
@@ -45,13 +44,38 @@ class InvalidPasswordFormat(Exception):
 
 def parse_list(s):
     '''
-    Parse comma-separated list of items that might be in double-quotes to the list of strings
+    Parse comma-separated list of items (that might be in quotes) to the list of strings
     '''
-    def strip_quote(s):
-        if s[0] == s[-1] == "'":
-            return s[1:-1]
-        return s
-    return map(strip_quote, reader([s.strip(' ')], skipinitialspace=True).next())
+    items = []
+
+    read_to = None  # everything until next `read_to` (single or double
+    # quotes) character is one item
+    item = []  # characters of current items so far
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if ch == '\\':
+            item.append(s[i + 1])
+            i += 1
+        elif read_to is None:
+            if ch in ['"', "'"]:
+                # everything until next quote is single item
+                read_to = ch
+            elif ch == ',':
+                items.append(''.join(item))
+                item = []
+            elif not ch.isspace():
+                item.append(ch)
+        elif ch == read_to:
+            read_to = None
+        else:
+            item.append(ch)
+        i += 1
+    if read_to is not None:
+        raise ValueError("Unterminated %s sign" % {"'": "single quote", '"': "double quote"}.get(read_to, read_to))
+    if item:
+        items.append(''.join(item))
+    return items
 
 
 class NotSetSentinel(object):

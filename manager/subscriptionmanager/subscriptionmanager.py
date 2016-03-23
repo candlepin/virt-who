@@ -149,7 +149,7 @@ class SubscriptionManager(Manager):
 
         # Send list of guest uuids to the server
         try:
-            self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests)
+            self.connection.updateConsumer(self.uuid(), guest_uuids=serialized_guests, hypervisor_id=report.hypervisor_id)
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
         report.state = AbstractVirtReport.STATE_FINISHED
@@ -225,6 +225,8 @@ class SubscriptionManager(Manager):
         else:
             # log completed job status
             resultData = result['resultData']
+            if resultData is None:
+                return
             if 'failedUpdate' in resultData:
                 for fail in resultData['failedUpdate']:
                     self.logger.error("Error during update list of guests: %s", str(fail))

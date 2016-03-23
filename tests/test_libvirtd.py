@@ -52,6 +52,7 @@ class TestLibvirtd(TestBase):
     def test_read(self, libvirt):
         config = Config('test', 'libvirt')
         libvirtd = Virt.fromConfig(self.logger, config)
+        libvirt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         libvirt.assert_called_with("")
 

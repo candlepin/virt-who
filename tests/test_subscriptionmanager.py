@@ -31,6 +31,7 @@ class TestSubscriptionManager(TestBase):
     mapping = {
         'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR')]
     }
+    hypervisor_id = "HYPERVISOR_ID"
 
     @classmethod
     @patch('rhsm.config.initConfig')
@@ -54,9 +55,11 @@ class TestSubscriptionManager(TestBase):
     @patch('rhsm.connection.UEPConnection')
     def test_sendVirtGuests(self, rhsmconnection):
         config = Config('test', 'libvirt')
-        report = DomainListReport(config, self.guestList)
+        report = DomainListReport(config, self.guestList, self.hypervisor_id)
         self.sm.sendVirtGuests(report)
-        self.sm.connection.updateConsumer.assert_called_with(123, guest_uuids=[g.toDict() for g in self.guestList])
+        self.sm.connection.updateConsumer.assert_called_with(123,
+            guest_uuids=[g.toDict() for g in self.guestList],
+            hypervisor_id=self.hypervisor_id)
 
     @patch('rhsm.connection.UEPConnection')
     def test_hypervisorCheckIn(self, rhsmconnection):

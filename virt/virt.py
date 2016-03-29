@@ -183,17 +183,23 @@ class DomainListReport(AbstractVirtReport):
     '''
     Report from virt backend about list of virtual guests on given system.
     '''
-    def __init__(self, config, guests):
+    def __init__(self, config, guests, hypervisor_id=None):
         super(DomainListReport, self).__init__(config)
         self._guests = guests
+        self._hypervisor_id = hypervisor_id
 
     @property
     def guests(self):
         return self._guests
 
     @property
+    def hypervisor_id(self):
+        return self._hypervisor_id
+
+    @property
     def hash(self):
-        return hashlib.md5(json.dumps([g.toDict() for g in self.guests], sort_keys=True)).hexdigest()
+        return hashlib.md5(json.dumps([g.toDict() for g in self.guests], sort_keys=True) +
+            str(self.hypervisor_id)).hexdigest()
 
 
 class HostGuestAssociationReport(AbstractVirtReport):

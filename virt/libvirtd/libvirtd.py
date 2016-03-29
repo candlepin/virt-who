@@ -221,7 +221,7 @@ class Libvirtd(virt.Virt):
         if self.isHypervisor():
             return virt.HostGuestAssociationReport(self.config, self._getHostGuestMapping())
         else:
-            return virt.DomainListReport(self.config, self._listDomains())
+            return virt.DomainListReport(self.config, self._listDomains(), self._remote_host_id())
 
     def _listDomains(self):
         domains = []

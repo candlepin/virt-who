@@ -44,6 +44,7 @@ class TestManager(TestBase):
     guest1 = Guest('9c927368-e888-43b4-9cdb-91b10431b258', xvirt, Guest.STATE_RUNNING, hypervisorType='QEMU')
     guest2 = Guest('d5ffceb5-f79d-41be-a4c1-204f836e144a', xvirt, Guest.STATE_SHUTOFF, hypervisorType='QEMU')
     guestInfo = [guest1]
+    hypervisor_id = "HYPERVISOR_ID"
 
     config = Config('test', 'libvirt', owner='OWNER', env='ENV')
     host_guest_report = HostGuestAssociationReport(config, {
@@ -52,7 +53,7 @@ class TestManager(TestBase):
             Hypervisor('ad58b739-5288-4cbc-a984-bd771612d670', [guest1, guest2])
         ]
     })
-    domain_report = DomainListReport(config, [guest1])
+    domain_report = DomainListReport(config, [guest1], hypervisor_id)
 
 
 class TestSubscriptionManager(TestManager):
@@ -88,7 +89,8 @@ class TestSubscriptionManager(TestManager):
         manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
                 ANY,
-                guest_uuids=[guest.toDict() for guest in self.guestInfo])
+                guest_uuids=[guest.toDict() for guest in self.guestInfo],
+                hypervisor_id=self.hypervisor_id)
 
     @patch("rhsm.connection.UEPConnection")
     @patch("rhsm.certificate.create_from_file")

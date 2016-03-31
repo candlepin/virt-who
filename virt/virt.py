@@ -105,7 +105,7 @@ class Hypervisor(object):
     """
     A model for information about a hypervisor
     """
-    def __init__(self, hypervisorId,  guestIds=None, name=None, facts=None):
+    def __init__(self, hypervisorId, guestIds=None, name=None, facts=None):
         """
         Create a new Hypervisor that will be sent to subscription manager
 
@@ -263,7 +263,6 @@ class Virt(Process):
         self.logger = logger
         self.config = config
         self._internal_terminate_event = Event()
-        #super(Virt, self).__init__(name=config.name)
         super(Virt, self).__init__()
         self.daemon = True
 
@@ -274,13 +273,13 @@ class Virt(Process):
         """
 
         # Imports can't be top-level, it would be circular dependency
-        import libvirtd
-        import esx
-        import xen
-        import rhevm
-        import vdsm
-        import hyperv
-        import fakevirt
+        import libvirtd  # flake8: noqa
+        import esx  # flake8: noqa
+        import xen  # flake8: noqa
+        import rhevm  # flake8: noqa
+        import vdsm  # flake8: noqa
+        import hyperv  # flake8: noqa
+        import fakevirt  # flake8: noqa
 
         for subcls in cls.__subclasses__():
             if config.type == subcls.CONFIG_TYPE:

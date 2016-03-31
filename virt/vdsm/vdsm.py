@@ -126,10 +126,9 @@ class Vdsm(Virt):
         else:
             for vm in response['vmList']:
                 domains.append(
-                        Guest(vm['vmId'],
-                              self,
-                              VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN),
-                              hypervisorType='qemu'))
+                    Guest(vm['vmId'], self,
+                          VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN),
+                          hypervisorType='qemu'))
         return domains
 
 

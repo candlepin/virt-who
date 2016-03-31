@@ -404,7 +404,7 @@ if __name__ == '__main__':
     class Printer(Thread):
         def run(self):
             while True:
-                print q.get(True).association
+                print(q.get(True).association)
     p = Printer()
     p.daemon = True
     p.start()

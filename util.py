@@ -2,12 +2,12 @@ import socket
 
 try:
     from thread import get_ident as _get_ident
-except ImportError:
+except ImportError:  # pragma: no cover
     from dummy_thread import get_ident as _get_ident
 
 try:
     from _abcoll import KeysView, ValuesView, ItemsView
-except ImportError:
+except ImportError:  # pragma: no cover
     pass
 from string import letters, digits
 
@@ -22,7 +22,7 @@ VALID_FILENAME_CHARS = set([char for char in letters + digits + '_-'])
 
 # Backport of OrderedDict() class that runs on Python 2.4, 2.5, 2.6, 2.7 and pypy.
 # Passes Python2.7's test suite and incorporates all the latest updates.
-class OrderedDict(dict):
+class OrderedDict(dict):  # pragma: no cover
     'Dictionary that remembers insertion order'
     # An inherited dict maps keys to values.
     # The inherited dict provides __getitem__, __len__, __contains__, and get.

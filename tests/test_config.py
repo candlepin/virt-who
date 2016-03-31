@@ -193,7 +193,7 @@ env=staging
     def testCryptedPasswordWithoutKey(self):
         from password import Password, InvalidKeyFile
         Password.KEYFILE = "/some/nonexistant/file"
-        passwd = "TestSecretPassword!"
+        # passwd = "TestSecretPassword!"
         with self.assertRaises(InvalidKeyFile):
             Password.decrypt(unhexlify("06a9214036b8a15b512e03d534120006"))
 
@@ -447,11 +447,11 @@ class TestGeneralConfig(TestBase):
     def test___init__(self):
         defaults = {
             'test': '1',
-            'override_me':'wrong_value'
+            'override_me': 'wrong_value'
         }
         arg_dict = {
-            'arg_dict':'some_value',
-            'override_me':'expected_value'
+            'arg_dict': 'some_value',
+            'override_me': 'expected_value'
         }
         general_config = GeneralConfig(defaults=defaults, **arg_dict)
 

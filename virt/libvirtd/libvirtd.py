@@ -98,9 +98,11 @@ class Libvirtd(virt.Virt):
         version_num -= minor * 1000
 
         release = version_num
-        return "%(major)s.%(minor)s.%(release)s" % {'major': major,
-                'minor': minor,
-                'release': release}
+        return "%(major)s.%(minor)s.%(release)s" % {
+            'major': major,
+            'minor': minor,
+            'release': release
+        }
 
     def getHypervisorType(self):
         return self.virt.getType()

@@ -745,9 +745,9 @@ def main():
 
     log.closeLogger(logger)
     if options.background:
-        locker = lambda: daemon.DaemonContext(pidfile=lock)
+        locker = lambda: daemon.DaemonContext(pidfile=lock)  # flake8: noqa
     else:
-        locker = lambda: lock
+        locker = lambda: lock  # flake8: noqa
 
     with locker():
         signal.signal(signal.SIGHUP, reload)

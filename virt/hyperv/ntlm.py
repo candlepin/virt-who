@@ -2,7 +2,6 @@
 import os
 import struct
 from socket import gethostname
-import subprocess
 import hmac
 import hashlib
 from M2Crypto.RC4 import RC4

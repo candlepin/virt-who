@@ -365,7 +365,7 @@ class Virt(Process):
         self.logger.debug("Virt backend '%s' started", self.config.name)
         # Reset the signal handlers, we'll handle them only in the main thread
         signal.signal(signal.SIGHUP, signal.SIG_DFL)
-        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, lambda *a: self.cleanup())
         try:
             while not self.is_terminated():
                 has_error = False

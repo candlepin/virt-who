@@ -108,10 +108,16 @@ class Esx(virt.Virt):
             except (suds.WebFault, HTTPException) as e:
                 suppress_exception = False
                 try:
-                    if hasattr(e, 'fault') and e.fault.faultstring == 'The session is not authenticated.':
-                        # Do not print the exception if we get 'not authenticated',
-                        # it's quite normal behaviour and nothing to worry about
-                        suppress_exception = True
+                    if hasattr(e, 'fault'):
+                        if e.fault.faultstring == 'The session is not authenticated.':
+                            # Do not print the exception if we get 'not authenticated',
+                            # it's quite normal behaviour and nothing to worry about
+                            suppress_exception = True
+                        if e.fault.faultstring == 'The task was canceled by a user.':
+                            # Do not print the exception if we get 'canceled by user',
+                            # this happens when the wait is terminated when
+                            # virt-who is being stopped
+                            continue
                 except Exception:
                     pass
                 if not suppress_exception:
@@ -258,6 +264,7 @@ class Esx(virt.Virt):
         try:
             if self.sc:
                 self.client.service.Logout(_this=self.sc.sessionManager)
+                self.sc = None
         except Exception as e:
             self.logger.info("Can't log out from ESX: %s", str(e))
 

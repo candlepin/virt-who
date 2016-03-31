@@ -351,6 +351,7 @@ class VirtWho(object):
 
     def stop_virts(self):
         for virt in self.virts:
+            virt.stop()
             virt.terminate()
             virt.join()
         self.virts = []

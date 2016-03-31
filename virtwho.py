@@ -408,8 +408,7 @@ class OptionError(Exception):
 
 
 def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--esx]",
-
+    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
                                 epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
@@ -469,6 +468,14 @@ def parseOptions():
     hypervGroup.add_option("--hyperv-username", action="store", dest="username", default="", help="Username for connecting to Hyper-V")
     hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
     parser.add_option_group(hypervGroup)
+
+    xenGroup = OptionGroup(parser, "XenServer options", "Use these options with --xen")
+    xenGroup.add_option("--xen-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
+    xenGroup.add_option("--xen-env", action="store", dest="env", default="", help="Environment where the XenServer belongs to")
+    xenGroup.add_option("--xen-server", action="store", dest="server", default="", help="URL of the XenServer server to connect to")
+    xenGroup.add_option("--xen-username", action="store", dest="username", default="", help="Username for connecting to XenServer")
+    xenGroup.add_option("--xen-password", action="store", dest="password", default="", help="Password for connecting to XenServer")
+    parser.add_option_group(xenGroup)
 
     satelliteGroup = OptionGroup(parser, "Satellite 5 options", "Use these options with --satellite5")
     satelliteGroup.add_option("--satellite-server", action="store", dest="sat_server", default="", help="Satellite server URL")
@@ -633,7 +640,7 @@ def parseOptions():
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_HYPERV_PASSWORD", "")
 
-    if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv'):
+    if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv', 'xen'):
         if not options.owner:
             raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
         if not options.env:

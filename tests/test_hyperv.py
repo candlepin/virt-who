@@ -89,7 +89,7 @@ class HyperVMock(object):
                 xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration"
                 xmlns:vsms="http://schemas.microsoft.com/wbem/wsman/1/wmi/root/virtualization/Msvm_VirtualSystemManagementService">
                 <s:Body>
-                    {}
+                    {0}
                 </s:Body>
             </s:Envelope>'''.format(body)
         return MagicMock(text=xml, status_code=200)
@@ -98,7 +98,7 @@ class HyperVMock(object):
     def enumerate(cls, id):
         return HyperVMock.envelope('''
             <wsen:EnumerateResponse>
-                <wsen:EnumerationContext>uuid:00000000-0000-0000-0000-{}</wsen:EnumerationContext>
+                <wsen:EnumerationContext>uuid:00000000-0000-0000-0000-{0}</wsen:EnumerationContext>
             </wsen:EnumerateResponse>'''.format(str(id).rjust(12, '0')))
 
     @classmethod
@@ -110,10 +110,10 @@ class HyperVMock(object):
                 s.append("<{0}>{1}</{0}>".format(key, value))
             return HyperVMock.envelope('''
                 <wsen:PullResponse>
-                    <wsen:EnumerationContext>uuid:00000000-0000-0000-0000-{}</wsen:EnumerationContext>
+                    <wsen:EnumerationContext>uuid:00000000-0000-0000-0000-{0}</wsen:EnumerationContext>
                     <wsen:Items>
                         <p:CIM_DataFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://schemas.microsoft.com/wbem/wsman/1/wmi/root/cimv2/CIM_DataFile" xmlns:cim="http://schemas.dmtf.org/wbem/wscim/1/common" xsi:type="p:CIM_DataFile_Type">
-                            {}
+                            {1}
                         </p:CIM_DataFile>
                     </wsen:Items>
                 </wsen:PullResponse>
@@ -161,7 +161,7 @@ class TestHyperV(TestBase):
         session.return_value.post.side_effect = HyperVMock.post
         self.run_once()
 
-        session.assert_called()
+        session.assert_called_with()
         session.return_value.post.assert_called_with('http://localhost:5985/wsman', ANY, headers=ANY)
 
     @patch('requests.Session')

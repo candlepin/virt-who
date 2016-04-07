@@ -406,6 +406,8 @@ class Virt(Process):
             start_time = datetime.now()
             report = self._get_report()
             self.enqueue(report)
+            if self._oneshot:
+                break
             end_time = datetime.now()
 
             delta = end_time - start_time

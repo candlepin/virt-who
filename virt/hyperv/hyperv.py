@@ -19,9 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import sys
-import os
 import re
-import httplib
 import urlparse
 import base64
 import struct
@@ -323,25 +321,28 @@ class HyperVSoap(object):
         headers = {
             "Content-Type": "application/soap+xml;charset=UTF-8"
         }
-        response = self.connection.post(self.url, body, headers=headers)
-        data = response.text
-        if response.status_code == 401:
+        try:
+            response = self.connection.post(self.url, body, headers=headers)
+        except requests.RequestException as e:
+            raise HyperVException("Unable to connect to Hyper-V server: %s" % str(e))
+
+        if response.status_code == requests.codes.ok:
+            return response.text
+        elif response.status_code == 401:
             raise HyperVAuthFailed("Authentication failed")
-        if 400 <= response.status_code < 500:
-            raise HyperVException("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
-        elif response.status_code == 500:
-            raise HyperVCallFailed("Hyper-V call failed, HTTP error: %d" % response.status_code)
-        if response.status_code != requests.codes.ok:
-            xml = ElementTree.fromstring(data)
-            errorcode = xml.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
-            # Suppress reporting of invalid namespace, because we're testing
-            # both old and new namespaces that HyperV uses
-            if errorcode is None or errorcode.text != '2150858778':
-                self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
-            raise HyperVException("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
-        if response is None:
-            raise HyperVException("No reply from Hyper-V")
-        return data
+        else:
+            data = response.text
+            try:
+                xml = ElementTree.fromstring(data)
+                errorcode = xml.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
+                # Suppress reporting of invalid namespace, because we're testing
+                # both old and new namespaces that HyperV uses
+                if errorcode is None or errorcode.text != '2150858778':
+                    self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
+            except Exception:
+                self.logger.exception("ERR")
+                pass
+            raise HyperVCallFailed("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
 
     @classmethod
     def _Instance(cls, xml):
@@ -533,7 +534,7 @@ class HyperV(virt.Virt):
 
         # Get guest states
         guest_states = hypervsoap.Invoke_GetSummaryInformation(
-                "root/virtualization/v2" if self.useNewApi else "root/virtualization")
+            "root/virtualization/v2" if self.useNewApi else "root/virtualization")
         vmmsVersion = self.getVmmsVersion(hypervsoap)
         for instance in hypervsoap.Pull(uuid):
             try:

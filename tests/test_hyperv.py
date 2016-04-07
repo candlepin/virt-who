@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 from mock import patch, MagicMock, ANY
 from multiprocessing import Queue, Event
-from xml.etree import ElementTree
 import requests
 
 from base import TestBase
@@ -79,28 +78,6 @@ class HyperVMock(object):
         else:
             print(">>>> 11")
             raise AssertionError("Not implemented")
-
-        xml = ElementTree.fromstring(data)
-        header = xml.find('{http://www.w3.org/2003/05/soap-envelope}Header')
-        action = header.find('{http://schemas.xmlsoap.org/ws/2004/08/addressing}Action').text
-        if action == 'http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate':
-            pass
-
-        print "POST", url, data
-        '''
-        [
-            HyperVMock.enumerate({}),
-            HyperVMock.summary_information(),
-            HyperVMock.enumerate({}),
-            HyperVMock.pull(''),
-            HyperVMock.pull(''),
-            HyperVMock.pull(''),
-            HyperVMock.enumerate({}),
-            HyperVMock.pull(''),
-            HyperVMock.enumerate({}),
-            HyperVMock.pull(''),
-        ]
-        '''
 
     @classmethod
     def envelope(cls, body):

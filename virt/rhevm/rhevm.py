@@ -20,8 +20,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import urlparse
-import urllib2
-import base64
+import requests
+from requests.auth import HTTPBasicAuth
 
 import virt
 
@@ -75,15 +75,29 @@ class RhevM(virt.Virt):
         self.hosts_url = urlparse.urljoin(self.url, "/api/hosts")
         self.vms_url = urlparse.urljoin(self.url, "/api/vms")
 
-        self.auth = base64.encodestring('%s:%s' % (self.config.username, self.config.password))[:-1]
+        self.auth = HTTPBasicAuth(self.config.username, self.config.password)
 
     def get(self, url):
         """
         Call RHEV-M server and retrieve what's on given url.
         """
-        request = urllib2.Request(url)
-        request.add_header("Authorization", "Basic %s" % self.auth)
-        return urllib2.urlopen(request)
+        try:
+            response = requests.get(url, auth=self.auth)
+        except requests.RequestException as e:
+            raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
+        # FIXME: other errors
+        return response.text
+
+    def get_xml(self, url):
+        """
+        Call RHEV-M server, retrieve XML and parse it.
+        """
+        response = self.get(url)
+        try:
+            return ElementTree.fromstring(response)
+        except Exception as e:
+            self.logger.debug("Invalid xml file: %s" % response)
+            raise virt.VirtError("Invalid XML file returned from RHEV-M: %s" % str(e))
 
     def getHostGuestMapping(self):
         """
@@ -98,9 +112,9 @@ class RhevM(virt.Virt):
         hosts = {}
         clusters = set()
 
-        clusters_xml = ElementTree.parse(self.get(self.clusters_url))
-        hosts_xml = ElementTree.parse(self.get(self.hosts_url))
-        vms_xml = ElementTree.parse(self.get(self.vms_url))
+        clusters_xml = self.get_xml(self.clusters_url)
+        hosts_xml = self.get_xml(self.hosts_url)
+        vms_xml = self.get_xml(self.vms_url)
 
         # Save ids of clusters that are "virt_service"
         for cluster in clusters_xml.findall('cluster'):

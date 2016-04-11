@@ -54,6 +54,9 @@ upload: pack
 test:
 	PYTHONPATH=. py.test
 
+testmon:
+	PYTHONPATH=. ptw -- --testmon --timeout 5
+
 coverage:
 	PYTHONPATH=. py.test -k 'not complex' --cov=. --cov-report=html --cov-report=term --cov-config .coveragerc
 

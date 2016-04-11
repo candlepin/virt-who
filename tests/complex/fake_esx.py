@@ -1,15 +1,13 @@
 
 import os
 import time
-from SimpleHTTPServer import SimpleHTTPRequestHandler
-import SocketServer
 
 from xml.etree import ElementTree
 
-from virtwhotest import FakeVirt
+from fake_virt import FakeVirt, FakeHandler
 
 
-class EsxHandler(SimpleHTTPRequestHandler):
+class EsxHandler(FakeHandler):
     def do_GET(self):
         print '[GET] >>>>>>>', self.path
         '''
@@ -65,18 +63,6 @@ class EsxHandler(SimpleHTTPRequestHandler):
                 self.write_file('esx_destroypropertyfilterresponse.xml')
 
 class FakeEsx(FakeVirt):
-    def __init__(self):
-        super(FakeEsx, self).__init__()
-        self.server = SocketServer.TCPServer(("localhost", self.port), EsxHandler)
+    def __init__(self, port=None):
+        super(FakeEsx, self).__init__(EsxHandler, port=port)
         self.server._data_version = self._data_version
-
-    def run(self):
-        for i in range(100):
-            try:
-                print "Starting FakeEsx on port", self.port
-                self.server.serve_forever()
-                break
-            except AssertionError:
-                self.clear_port()
-        else:
-            raise AssertionError("No free port found, starting aborted")

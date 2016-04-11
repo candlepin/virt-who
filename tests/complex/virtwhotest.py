@@ -2,9 +2,8 @@
 import sys
 import socket
 from Queue import Empty
-from multiprocessing import Process, Queue, Value
+from multiprocessing import Process, Queue
 
-import random
 import json
 from tempfile import TemporaryFile
 
@@ -27,43 +26,6 @@ except ImportError:
 
 config.VIRTWHO_CONF_DIR = '/this/does/not/exist'
 virtwho.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
-
-
-class FakeVirt(Process):
-    def __init__(self):
-        super(FakeVirt, self).__init__()
-        self.daemon = True
-        self._port = None
-        self._data_version = Value('d', 0)
-
-    @property
-    def port(self):
-        if self._port is None:
-            self._port = random.randint(8000, 9000)
-        return self._port
-
-    def clear_port(self):
-        print "Clear port: ", self._port
-        self._port = None
-
-    @property
-    def username(self):
-        return 'A!bc\n 3#\'"'
-
-    @property
-    def password(self):
-        return 'A!bc\n 3#\'"'
-
-    def run(self):
-        raise NotImplementedError()
-
-    @property
-    def data_version(self):
-        return self._data_version.value
-
-    @data_version.setter
-    def data_version(self, version):
-        self._data_version.value = version
 
 
 class TestBase(TestCase):

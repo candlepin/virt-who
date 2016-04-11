@@ -2,17 +2,15 @@
 import os
 import tempfile
 from SimpleHTTPServer import SimpleHTTPRequestHandler
-from multiprocessing import Process
-import SocketServer
 import ssl
 import json
-import random
 import shutil
 
 from manager.subscriptionmanager.subscriptionmanager import rhsm_config
+from fake_virt import FakeVirt, FakeHandler
 
 
-class SamHandler(SimpleHTTPRequestHandler):
+class SamHandler(FakeHandler):
     def do_GET(self):
         if self.path.startswith('/status'):
             self.wfile.write(json.dumps({
@@ -32,12 +30,11 @@ class SamHandler(SimpleHTTPRequestHandler):
             }))
 
 
-class FakeSam(Process):
-    def __init__(self, queue):
-        super(FakeSam, self).__init__()
+
+class FakeSam(FakeVirt):
+    def __init__(self, queue, port=None):
+        super(FakeSam, self).__init__(SamHandler, port=port)
         self.daemon = True
-        self._port = None
-        self.server = SocketServer.TCPServer(("localhost", self.port), SamHandler)
         base = os.path.dirname(os.path.abspath(__file__))
         self.server.socket = ssl.wrap_socket(self.server.socket, certfile=os.path.join(base, 'cert.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
 
@@ -59,27 +56,6 @@ consumerCertDir = %s
 
         self.server.sam = self
         self.server.queue = queue
-
-    @property
-    def port(self):
-        if self._port is None:
-            self._port = random.randint(8000, 9000)
-        return self._port
-
-    def clear_port(self):
-        print "Clear port: ", self._port
-        self._port = None
-
-    def run(self):
-        for i in range(100):
-            try:
-                print "Starting FakeSam on port", self.port
-                self.server.serve_forever()
-                break
-            except AssertionError:
-                self.clear_port()
-        else:
-            raise AssertionError("No free port found, starting aborted")
 
     def terminate(self):
         shutil.rmtree(self.tempdir)

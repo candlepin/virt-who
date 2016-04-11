@@ -7,17 +7,13 @@ from fake_virt import FakeVirt, FakeHandler
 class RhevmHandler(FakeHandler):
     def do_GET(self):
         time.sleep(0.1)
-        base = os.path.dirname(os.path.abspath(__file__))
+        print("DO GET", self.path)
         if self.path == '/api/clusters':
-            with open(os.path.join(base, 'data/rhevm/rhevm_clusters.xml'), 'r') as f:
-                self.wfile.write(f.read())
+            self.write_file('rhevm', 'rhevm_clusters.xml')
         if self.path == '/api/hosts':
-            with open(os.path.join(base, 'data/rhevm/rhevm_hosts.xml'), 'r') as f:
-                self.wfile.write(f.read())
+            self.write_file('rhevm', 'rhevm_hosts.xml')
         elif self.path == '/api/vms':
-            vms = 'data/rhevm/rhevm_vms_%d.xml' % self.server._data_version.value
-            with open(os.path.join(base, vms), 'r') as f:
-                self.wfile.write(f.read())
+            self.write_file('rhevm', 'rhevm_vms_%d.xml' % self.server._data_version.value)
 
 
 class FakeRhevm(FakeVirt):

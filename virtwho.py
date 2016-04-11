@@ -830,7 +830,7 @@ def exit(code, status=None):
         queueLogger.terminate()
     sys.exit(code)
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     try:
         res = main()
     except KeyboardInterrupt:

@@ -170,7 +170,7 @@ class RhevM(virt.Virt):
     def ping(self):
         return True
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     # TODO: read from config
     if len(sys.argv) < 4:
         print("Usage: %s url username password" % sys.argv[0])

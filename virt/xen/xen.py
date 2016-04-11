@@ -152,7 +152,7 @@ class Xen(virt.Virt):
             self.logger.debug("Waiting for XEN changes")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     # First acquire a valid session by logging in:
     from config import Config
     config = Config('xen', 'xen', url, username, password)

@@ -132,7 +132,7 @@ class Vdsm(Virt):
         return domains
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     import logging
     logger = logging.getLogger("virtwho.vdsm.main")
     logger.addHandler(logging.StreamHandler())

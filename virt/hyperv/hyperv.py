@@ -589,7 +589,7 @@ class HyperV(virt.Virt):
     def ping(self):
         return True
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     if len(sys.argv) < 4:
         print "Usage: %s url username password"
         sys.exit(0)

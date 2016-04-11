@@ -55,7 +55,7 @@ test:
 	PYTHONPATH=. py.test
 
 coverage:
-	PYTHONPATH=. py.test --cov=. --cov-report=html --cov-report=term --cov-config .coveragerc
+	PYTHONPATH=. py.test -k 'not complex' --cov=. --cov-report=html --cov-report=term --cov-config .coveragerc
 
 test-ci-build:
 	docker build -f docker/ci/Dockerfile -t virt-who/test-ci .

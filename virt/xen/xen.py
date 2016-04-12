@@ -19,7 +19,7 @@ class Xen(virt.Virt):
     token_from = ''
 
     # Register for events on all classes
-    event_types = ["*"]
+    event_types = ["host", "vm"]
 
     def __init__(self, logger, config):
         super(Xen, self).__init__(logger, config)
@@ -58,6 +58,7 @@ class Xen(virt.Virt):
             raise virt.VirtError(str(e))
 
     def getHostGuestMapping(self):
+        assert hasattr(self, 'session'), "Login was not called"
         hosts = self.session.xenapi.host.get_all()
 
         mapping = {}

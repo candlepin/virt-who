@@ -250,19 +250,6 @@ class HostGuestAssociationReport(AbstractVirtReport):
         return hashlib.md5(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
 
 
-class HypervisorInfoReport(AbstractVirtReport):
-    '''
-    Report from virt backend with info about the hypervisor itself.
-    '''
-    def __init__(self, config, info):
-        super(HypervisorInfoReport, self).__init__(config)
-        self._info = info
-
-    @property
-    def info(self):
-        return self._info
-
-
 class Virt(Process):
     '''
     Virtualization backend abstract class.

@@ -6,6 +6,7 @@ import XenAPI
 from XenAPI import NewMaster
 from collections import defaultdict
 import virt
+import logging
 
 
 class Xen(virt.Virt):
@@ -165,7 +166,13 @@ class Xen(virt.Virt):
 if __name__ == "__main__":  # pragma: no cover
     # First acquire a valid session by logging in:
     from config import Config
-    config = Config('xen', 'xen', url, username, password)
+    if len(sys.argv) < 4:
+        print("Usage: %s url username password" % sys.argv[0])
+        sys.exit(0)
+    logger = logging.getLogger('virtwho.xen')
+    logger.addHandler(logging.StreamHandler())
+    url, username, password = sys.argv[1:4]
+    config = Config('xen', 'xen', server=url, username=username, password=password)
     xenserver = Xen(logger, config)
     from Queue import Queue
     from threading import Event, Thread

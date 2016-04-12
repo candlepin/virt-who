@@ -3,7 +3,7 @@
 import sys
 from time import time
 import XenAPI
-from XenAPI import NewMaster
+from XenAPI import NewMaster, Failure
 from collections import defaultdict
 import virt
 import logging
@@ -114,53 +114,52 @@ class Xen(virt.Virt):
             ]
         return mapping
 
+    def _wait(self, token, timeout):
+        try:
+            return self.session.xenapi.event_from(
+                self.event_types,
+                token,
+                float(timeout))
+        except Failure as e:
+            if 'timeout' not in e.details:
+                self.logger.exception("Waiting on XEN events failed: ")
+        except Exception:
+            self.logger.exception("Waiting on XEN events failed: ")
+        return None
+
     def _run(self):
         self._prepare()
 
         self.hosts = defaultdict(virt.Hypervisor)
         self.vms = defaultdict(virt.Guest)
-        start_time = end_time = time()
+        next_update = time()
         initial = True
         token = ''
 
-        while not self.is_terminated():
-            delta = end_time - start_time
-            try:
-                event_from_ret = self.session.xenapi.event_from(
-                    self.event_types,
-                    token,
-                    self.EVENT_FROM_TIMEOUT)
-                events = event_from_ret['events']
-                token = event_from_ret['token']
-            except Exception:
-                self.logger.exception("Waiting on XEN events failed: ")
-                token = ''
+        while self._oneshot or not self.is_terminated():
+            delta = next_update - time()
+            if initial or delta > 0:
+                # Wait for update
+                wait_result = self._wait(token, 60 if initial else delta)
+                if wait_result:
+                    events = wait_result['events']
+                    token = wait_result['token']
+                else:
+                    events = []
+                    token = ''
+            else:
                 events = []
 
-            if initial:
-                # We want to read the update asap
-                max_wait_seconds = 0
-            else:
-                if delta - self._interval > 2.0:
-                    # The update took longer than it should, don't wait so long next time
-                    max_wait_seconds = max(self._interval - int(delta - self._interval), 0)
-                    self.logger.debug(
-                        "Getting the host/guests association took too long,"
-                        "interval waiting is shortened to %s", max_wait_seconds)
-                else:
-                    max_wait_seconds = self._interval
-
-            start_time = time()
-
-            if initial or len(events) > 0:
+            if initial or len(events) > 0 or delta > 0:
                 assoc = self.getHostGuestMapping()
                 self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
+                next_update = time() + self._interval
                 initial = False
-
-            end_time = time()
 
             if self._oneshot:
                 break
+
+        self.cleanup()
 
 
 if __name__ == "__main__":  # pragma: no cover

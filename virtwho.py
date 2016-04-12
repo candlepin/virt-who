@@ -321,6 +321,8 @@ class VirtWho(object):
                     # Reload and exit reports takes priority, do not process
                     # any other reports
                     break
+
+                # Get next report from queue
                 try:
                     report = self.queue.get(block=False)
                 except Empty:
@@ -339,7 +341,7 @@ class VirtWho(object):
                 if not self.options.print_:
                     self.send_current_report()
 
-            if self.options.oneshot and not self.oneshot_remaining:
+            if self.options.oneshot and not self.oneshot_remaining and not self.reports_in_progress:
                 break
 
         self.queue = None

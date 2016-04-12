@@ -1,22 +1,17 @@
 import os
 import sys
 import shutil
-import logging
 import tempfile
 
-from mock import patch, Mock, DEFAULT
+from mock import patch, Mock, DEFAULT, MagicMock
 
 from base import TestBase
 
 from config import Config, ConfigManager
 from manager import Manager
 from manager.subscriptionmanager import SubscriptionManager
-from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
+from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
 from virtwho import parseOptions
-
-import rhsm.config
-import rhsm.certificate
-import rhsm.connection
 
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
@@ -57,7 +52,8 @@ class TestSubscriptionManager(TestBase):
         config = Config('test', 'libvirt')
         report = DomainListReport(config, self.guestList, self.hypervisor_id)
         self.sm.sendVirtGuests(report)
-        self.sm.connection.updateConsumer.assert_called_with(123,
+        self.sm.connection.updateConsumer.assert_called_with(
+            123,
             guest_uuids=[g.toDict() for g in self.guestList],
             hypervisor_id=self.hypervisor_id)
 
@@ -93,6 +89,44 @@ class TestSubscriptionManager(TestBase):
             options=None
         )
 
+    @patch('rhsm.connection.UEPConnection')
+    def test_job_status(self, rhsmconnection):
+        rhsmconnection.return_value.has_capability.return_value = True
+        config = Config("test", "esx", owner='owner', env='env')
+        report = HostGuestAssociationReport(config, self.mapping)
+        self.sm.hypervisorCheckIn(report)
+        rhsmconnection.return_value.getJob.return_value = {
+            'state': 'RUNNING',
+        }
+        self.sm.check_report_state(report)
+        self.assertEqual(report.state, AbstractVirtReport.STATE_PROCESSING)
+
+        def host_guest(host, guests):
+            return {
+                'uuid': host,
+                'guestIds': [{'guestId': guest} for guest in guests]
+            }
+        rhsmconnection.return_value.getJob.return_value = {
+            'state': 'FINISHED',
+            'resultData': {
+                'failedUpdate': ["failed"],
+                'updated': [
+                    host_guest('123', ['111', '222'])
+                ],
+                'created': [
+                    host_guest('456', ['333', '444'])
+                ],
+                'unchanged': [
+                    host_guest('789', ['555', '666'])
+                ]
+            }
+        }
+        self.sm.logger = MagicMock()
+        self.sm.check_report_state(report)
+        # calls: authenticating + checking job status + 3 host guest lines
+        self.assertEqual(self.sm.logger.debug.call_count, 5)
+        self.assertEqual(report.state, AbstractVirtReport.STATE_FINISHED)
+
 
 class TestSubscriptionManagerConfig(TestBase):
     def test_sm_config_env(self):
@@ -116,7 +150,8 @@ class TestSubscriptionManagerConfig(TestBase):
         manager = Manager.fromOptions(logger, options, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
-    def test_sm_config_file(self):
+    @patch('rhsm.connection.UEPConnection')
+    def test_sm_config_file(self, rhsmconnection):
         config_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, config_dir)
         with open(os.path.join(config_dir, "test.conf"), "w") as f:
@@ -124,6 +159,15 @@ class TestSubscriptionManagerConfig(TestBase):
 [test]
 type=libvirt
 rhsm_hostname=host
+rhsm_port=8080
+rhsm_prefix=prefix
+rhsm_proxy_hostname=proxy_host
+rhsm_proxy_port=9090
+rhsm_proxy_user=proxy_user
+rhsm_proxy_password=proxy_password
+rhsm_insecure=1
+rhsm_username=user
+rhsm_password=passwd
 """)
 
         config_manager = ConfigManager(self.logger, config_dir)
@@ -132,3 +176,17 @@ rhsm_hostname=host
         manager = Manager.fromOptions(self.logger, Mock(), config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
         self.assertEqual(config.rhsm_hostname, 'host')
+        self.assertEqual(config.rhsm_port, '8080')
+
+        manager._connect(config)
+        rhsmconnection.assert_called_with(
+            username='user',
+            password='passwd',
+            host='host',
+            ssl_port=8080,
+            handler='prefix',
+            proxy_hostname='proxy_host',
+            proxy_port='9090',
+            proxy_user='proxy_user',
+            proxy_password='proxy_password',
+            insecure='1')

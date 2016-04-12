@@ -227,24 +227,23 @@ class SubscriptionManager(Manager):
             self.logger.debug('Job %s not finished', job_id)
         else:
             # log completed job status
-            resultData = result['resultData']
-            if resultData is None:
+            resultData = result.get('resultData', {})
+            if not resultData:
+                self.logger.warning("Job status report without resultData: %s", result)
                 return
-            if 'failedUpdate' in resultData:
-                for fail in resultData['failedUpdate']:
-                    self.logger.error("Error during update list of guests: %s", str(fail))
-            for updated in resultData['updated']:
+            for fail in resultData.get('failedUpdate', []):
+                self.logger.error("Error during update list of guests: %s", str(fail))
+            for updated in resultData.get('updated', []):
                 guests = [x['guestId'] for x in updated['guestIds']]
                 self.logger.debug("Updated host %s with guests: [%s]",
                                   updated['uuid'],
                                   ", ".join(guests))
-            if (isinstance(result['created'], list)):
-                for created in result['created']:
-                    guests = [x['guestId'] for x in created['guestIds']]
-                    self.logger.debug("Created host: %s with guests: [%s]",
-                                      created['uuid'],
-                                      ", ".join(guests))
-            self.logger.debug("Number of mappings unchanged: %d", len(resultData['unchanged']))
+            for created in resultData.get('created', []):
+                guests = [x['guestId'] for x in created['guestIds']]
+                self.logger.debug("Created host: %s with guests: [%s]",
+                                  created['uuid'],
+                                  ", ".join(guests))
+            self.logger.debug("Number of mappings unchanged: %d", len(resultData.get('unchanged', [])))
             self.logger.info("Mapping for config \"%s\" updated", report.config.name)
 
     def uuid(self):

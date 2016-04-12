@@ -75,6 +75,14 @@ class Xen(virt.Virt):
             for resident in self.session.xenapi.host.get_resident_VMs(host):
                 vm = self.session.xenapi.VM.get_record(resident)
 
+                if vm.get('is_control_domain', False):
+                    self.logger.debug("Control Domain %s is ignored", vm['uuid'])
+                    continue
+
+                if vm.get('is_a_snapshot', False) or vm.get('is_a_template', False):
+                    self.logger.debug("Guest %s is snapshot or template, ignoring", vm['uuid'])
+                    continue
+
                 if vm['power_state'] == 'Running':
                     state = virt.Guest.STATE_RUNNING
                 elif vm['power_state'] == 'Suspended':
@@ -86,7 +94,8 @@ class Xen(virt.Virt):
                 else:
                     state = virt.Guest.STATE_UNKNOWN
 
-                guests.append(virt.Guest(
+                guests.append(
+                    virt.Guest(
                         uuid=vm["uuid"],
                         virt=self,
                         state=state,

@@ -107,20 +107,24 @@ class Xen(virt.Virt):
     def _run(self):
         self._prepare()
 
-        self.hosts = defaultdict(Host)
-        self.vms = defaultdict(VM)
+        self.hosts = defaultdict(virt.Hypervisor)
+        self.vms = defaultdict(virt.Guest)
         start_time = end_time = time()
         initial = True
+        token = ''
 
-        while self._oneshot or not self.is_terminated():
+        while not self.is_terminated():
             delta = end_time - start_time
             try:
                 event_from_ret = self.session.xenapi.event_from(
                     self.event_types,
-                    self.token_from,
+                    token,
                     self.EVENT_FROM_TIMEOUT)
                 events = event_from_ret['events']
-            except:
+                token = event_from_ret['token']
+            except Exception:
+                self.logger.exception("Waiting on XEN events failed: ")
+                token = ''
                 events = []
 
             if initial:
@@ -138,22 +142,15 @@ class Xen(virt.Virt):
 
             start_time = time()
 
-            if len(events) > 0:
+            if initial or len(events) > 0:
                 assoc = self.getHostGuestMapping()
-                self._queue.put(virt.HostGuestAssociationReport(self.config, assoc))
-
-                event_from_ret = self.session.xenapi.event_from(self.event_types,
-                                                                self.token_from,
-                                                                self.EVENT_FROM_TIMEOUT)
-                events = event_from_ret['events']
+                self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
                 initial = False
 
             end_time = time()
 
             if self._oneshot:
                 break
-
-            self.logger.debug("Waiting for XEN changes")
 
 
 if __name__ == "__main__":  # pragma: no cover

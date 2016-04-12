@@ -36,31 +36,26 @@ class Xen(virt.Virt):
 
     def _prepare(self):
         """ Prepare for obtaining information from Xen server. """
-        self.logger.debug("Log into XEN pools %s" % self.url)
+        self.logger.debug("Logging into XEN pools %s" % self.url)
         self.login()
 
-    def login(self):
-        # Login to server using given credentials
+    def login(self, url=None):
+        """ Login to server using given credentials. """
+        url = url or self.url
         try:
             # Don't log message containing password
-            self.session = XenAPI.Session(self.url)
+            self.session = XenAPI.Session(url)
             self.session.xenapi.login_with_password(self.username, self.password)
-            self.logger.debug("I'm in XEN pools! with user %s" % self.username)
-
+            self.logger.debug("XEN pool login successful with user %s" % self.username)
         except NewMaster as nm:
-            self.logger.debug("Do I have a new master?")
-            try:
-                self.session = XenAPI.Session('http://%s' % nm.new_master())
-                self.session.xenapi.login_with_password(self.username, self.password)
-                self.logger.debug("I'm in XEN pools with new master %s! with user %s" % (nm.new_master(), self.username))
-
-            except Exception:
-                self.logger.exception("Unable to login to XENserver %s" % self.url)
-                raise
-
-        except Exception:
+            url = nm.new_master()
+            if "://" not in url:
+                url = '%s://%s' % (self.url.partition(":")[0], url)
+            self.logger.debug("Switching to new master: %s", url)
+            return self.login(url)
+        except Exception as e:
             self.logger.exception("Unable to login to XENserver %s" % self.url)
-            raise
+            raise virt.VirtError(str(e))
 
     def getHostGuestMapping(self):
         hosts = self.session.xenapi.host.get_all()

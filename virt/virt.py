@@ -67,9 +67,9 @@ class Guest(object):
         `virt` is a `Virt` class instance that represents virtualization hypervisor
         that owns the guest.
 
-        `hypervisorType` is additional type of the virtualization, used in libvirt.
-
         `state` is a number that represents the state of the guest (stopped, running, ...)
+
+        `hypervisorType` is additional type of the virtualization, used in libvirt.
 
         `hypervisorVersion` is the version of the hypervisor software running on
         the hypervisor, if available. If none is available then the value of
@@ -82,6 +82,9 @@ class Guest(object):
         self.hypervisorType = hypervisorType
         self.state = state
         self.hypervisorVersion = hypervisorVersion or ""
+
+    def __repr__(self):
+        return 'Guest({0.uuid!r}, {0.virtWhoType!r}, {0.state!r}, {0.hypervisorType!r}, {0.hypervisorVersion!r})'.format(self)
 
     def toDict(self):
         d = OrderedDict((
@@ -120,6 +123,9 @@ class Hypervisor(object):
         self.name = name
         self.facts = facts
 
+    def __repr__(self):
+        return 'Hypervisor({0.hypervisorId!r}, {0.guestIds!r}, {0.name!r}, {0.facts!r})'.format(self)
+
     def toDict(self):
         d = OrderedDict((
             ('hypervisorId', {'hypervisorId': self.hypervisorId}),
@@ -155,9 +161,12 @@ class AbstractVirtReport(object):
     # Processing the report on server was canceled
     STATE_CANCELED = 5
 
-    def __init__(self, config):
+    def __init__(self, config, state=STATE_CREATED):
         self._config = config
-        self._state = AbstractVirtReport.STATE_CREATED
+        self._state = state
+
+    def __repr__(self):
+        return '{1}({0.config!r}, {0.state!r})'.format(self, self.__class__.__name__)
 
     @property
     def config(self):
@@ -183,10 +192,13 @@ class DomainListReport(AbstractVirtReport):
     '''
     Report from virt backend about list of virtual guests on given system.
     '''
-    def __init__(self, config, guests, hypervisor_id=None):
-        super(DomainListReport, self).__init__(config)
+    def __init__(self, config, guests, hypervisor_id=None, state=AbstractVirtReport.STATE_CREATED):
+        super(DomainListReport, self).__init__(config, state)
         self._guests = guests
         self._hypervisor_id = hypervisor_id
+
+    def __repr__(self):
+        return 'DomainListReport({0.config!r}, {0.guests!r}, {0.hypervisor_id!r}, {0.state!r})'.format(self)
 
     @property
     def guests(self):
@@ -206,9 +218,12 @@ class HostGuestAssociationReport(AbstractVirtReport):
     '''
     Report from virt backend about host/guest association on given hypervisor.
     '''
-    def __init__(self, config, assoc):
-        super(HostGuestAssociationReport, self).__init__(config)
+    def __init__(self, config, assoc, state=AbstractVirtReport.STATE_CREATED):
+        super(HostGuestAssociationReport, self).__init__(config, state)
         self._assoc = assoc
+
+    def __repr__(self):
+        return 'HostGuestAssociationReport({0.config!r}, {0._assoc!r}, {0.state!r})'.format(self)
 
     @property
     def association(self):
@@ -265,6 +280,9 @@ class Virt(Process):
         self._internal_terminate_event = Event()
         super(Virt, self).__init__()
         self.daemon = True
+
+    def __repr__(self):
+        return '{1}({0.logger!r}, {0.config!r})'.format(self, self.__class__.__name__)
 
     @classmethod
     def fromConfig(cls, logger, config):

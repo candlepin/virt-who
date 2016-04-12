@@ -37,6 +37,9 @@ class ManagerThrottleError(Exception):
 
 
 class Manager(object):
+    def __repr__(self):
+        return '{0.__class__.__name__}({0.logger!r}, {0.options!r})'.format(self)
+
     def sendVirtGuests(self, report, options=None):
         raise NotImplementedError()
 

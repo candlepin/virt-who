@@ -98,10 +98,18 @@ class Xen(virt.Virt):
                     )
                 )
 
-            mapping['hypervisors'] = Hypervisor(hypervisorId=record["uuid"],
-                                                guestIds=guests,
-                                                name=record["hostname"],
-                                                facts=None)
+            facts = {}
+            sockets = record.get('cpu_info', {}).get('socket_count', None)
+            if sockets is not None:
+                facts['cpu.cpu_socket(s)'] = sockets
+
+            mapping['hypervisors'] = [
+                virt.Hypervisor(
+                    hypervisorId=record["uuid"],
+                    guestIds=guests,
+                    name=record["hostname"],
+                    facts=facts)
+            ]
         return mapping
 
     def _run(self):

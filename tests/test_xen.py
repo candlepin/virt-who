@@ -18,6 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import os
 import urllib2
 from mock import patch, call, ANY
 from multiprocessing import Queue, Event
@@ -27,6 +28,7 @@ from config import Config
 from virt.xen import Xen
 from virt.xen.XenAPI import NewMaster, Failure
 from virt import VirtError, Guest, Hypervisor
+from proxy import Proxy
 
 
 class TestXen(TestBase):
@@ -134,3 +136,15 @@ class TestXen(TestBase):
             call('https://new.master.xxx', transport=ANY),
             call('http://new2.master.xxx', transport=ANY)
         ], any_order=True)
+
+    def test_proxy(self):
+        proxy = Proxy()
+        self.addCleanup(proxy.terminate)
+        proxy.start()
+        oldenv = os.environ.copy()
+        self.addCleanup(lambda: setattr(os, 'environ', oldenv))
+        os.environ['https_proxy'] = proxy.address
+
+        self.assertRaises(VirtError, self.run_once)
+        self.assertIsNotNone(proxy.last_path, "Proxy was not called")
+        self.assertEqual(proxy.last_path, 'localhost:443')

@@ -27,6 +27,7 @@ from base import TestBase
 from config import Config
 from virt.esx import Esx
 from virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
+from proxy import Proxy
 
 
 class TestEsx(TestBase):
@@ -189,3 +190,16 @@ class TestEsx(TestBase):
         result_report = queue.get(block=True, timeout=1)
         self.assertEqual(expected_report.config.hash, result_report.config.hash)
         self.assertEqual(expected_report._assoc, result_report._assoc)
+
+    def test_proxy(self):
+        self.esx.config.simplified_vim = True
+        proxy = Proxy()
+        self.addCleanup(proxy.terminate)
+        proxy.start()
+        oldenv = os.environ.copy()
+        self.addCleanup(lambda: setattr(os, 'environ', oldenv))
+        os.environ['https_proxy'] = proxy.address
+
+        self.assertRaises(VirtError, self.run_once)
+        self.assertIsNotNone(proxy.last_path, "Proxy was not called")
+        self.assertEqual(proxy.last_path, 'localhost:443')

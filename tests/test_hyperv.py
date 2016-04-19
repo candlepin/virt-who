@@ -18,6 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import os
 from mock import patch, MagicMock, ANY
 from multiprocessing import Queue, Event
 import requests
@@ -26,6 +27,7 @@ from base import TestBase
 from config import Config
 from virt.hyperv import HyperV
 from virt import VirtError, Guest, Hypervisor
+from proxy import Proxy
 
 
 class HyperVMock(object):
@@ -237,3 +239,15 @@ class TestHyperV(TestBase):
         )
         result = self.hyperv.getHostGuestMapping()['hypervisors'][0]
         assert expected_result.toDict() == result.toDict()
+
+    def test_proxy(self):
+        proxy = Proxy()
+        self.addCleanup(proxy.terminate)
+        proxy.start()
+        oldenv = os.environ.copy()
+        self.addCleanup(lambda: setattr(os, 'environ', oldenv))
+        os.environ['http_proxy'] = proxy.address
+
+        self.assertRaises(VirtError, self.run_once)
+        self.assertIsNotNone(proxy.last_path, "Proxy was not called")
+        self.assertEqual(proxy.last_path, 'http://localhost:5985/wsman')

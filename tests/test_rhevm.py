@@ -18,6 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import os
 import requests
 from mock import patch, call, ANY, MagicMock
 from multiprocessing import Queue, Event
@@ -26,6 +27,8 @@ from base import TestBase
 from config import Config
 from virt.rhevm import RhevM
 from virt import VirtError, Guest, Hypervisor
+from proxy import Proxy
+
 
 uuids = {
     'cluster': '00000000-0000-0000-0000-000000000001',
@@ -150,3 +153,15 @@ class TestRhevM(TestBase):
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_proxy(self):
+        proxy = Proxy()
+        self.addCleanup(proxy.terminate)
+        proxy.start()
+        oldenv = os.environ.copy()
+        self.addCleanup(lambda: setattr(os, 'environ', oldenv))
+        os.environ['https_proxy'] = proxy.address
+
+        self.assertRaises(VirtError, self.run_once)
+        self.assertIsNotNone(proxy.last_path, "Proxy was not called")
+        self.assertEqual(proxy.last_path, 'localhost:8443')

@@ -21,6 +21,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 import suds
+import requests
+import errno
+import stat
+from StringIO import StringIO
+import io
 import logging
 from time import time
 from urllib2 import URLError
@@ -30,6 +35,70 @@ from httplib import HTTPException
 
 import virt
 
+
+class FileAdapter(requests.adapters.BaseAdapter):
+    '''Add handler from downloading local files.
+
+    This is necessary because we want suds to use local wsdl file.
+    '''
+    def send(self, request, **kwargs):
+        resp = requests.Response()
+
+        filename = request.url.replace('file://', '')
+        if not os.path.isabs(filename):
+            raise ValueError("Expected absolute path: %s" % request.url)
+
+        try:
+            resp.raw = io.open(filename, "rb")
+            resp.raw.release_conn = resp.raw.close
+        except IOError as e:
+            if e.errno == errno.EACCES:
+                resp.status_code = requests.codes.forbidden
+            elif e.errno == errno.ENOENT:
+                resp.status_code = requests.codes.not_found
+            else:
+                resp.status_code = requests.codes.bad_request
+        else:
+            resp_stat = os.fstat(resp.raw.fileno())
+            if stat.S_ISREG(resp_stat.st_mode):
+                resp.headers['Content-Length'] = resp_stat.st_size
+        return resp
+
+    def close(self):
+        pass
+
+
+class RequestsTransport(suds.transport.Transport):
+    '''
+    Transport for suds that uses Requests instead of urllib2.
+
+    This unifies network handling with other backends. For example
+    proxy support will be same as for other modules.
+    '''
+    def __init__(self, session=None):
+        suds.transport.Transport.__init__(self)
+        self._session = session or requests.Session()
+        self._session.mount('file://', FileAdapter())
+
+    def open(self, request):
+        resp = self._session.get(request.url)
+        resp.raise_for_status()
+        return StringIO(resp.content)
+
+    def send(self, request):
+        resp = self._session.post(
+            request.url,
+            data=request.message,
+            headers=request.headers,
+            verify=False
+        )
+        if resp.headers.get('content-type') not in ('text/xml', 'application/soap+xml'):
+            resp.raise_for_status()
+        return suds.transport.Reply(
+            resp.status_code,
+            resp.headers,
+            resp.content,
+        )
 
 
 class Esx(virt.Virt):
@@ -221,13 +290,7 @@ class Esx(virt.Virt):
         Log into ESX
         """
 
-        kwargs = {}
-        for env in ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY']:
-            if env in os.environ:
-                self.logger.debug("ESX module using proxy: %s", os.environ[env])
-                kwargs['proxy'] = {env.lower().replace('_proxy', ''): os.environ[env]}
-                break
-
+        kwargs = {'transport': RequestsTransport()}
         # Connect to the vCenter server
         if self.config.simplified_vim:
             wsdl = 'file://%s/vimServiceMinimal.wsdl' % os.path.dirname(os.path.abspath(__file__))
@@ -236,7 +299,7 @@ class Esx(virt.Virt):
             wsdl = self.url + '/sdk/vimService.wsdl'
         try:
             self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
-        except URLError as e:
+        except requests.RequestException as e:
             self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
 
@@ -247,7 +310,11 @@ class Esx(virt.Virt):
         self.moRef._type = 'ServiceInstance'  # pylint: disable=W0212
 
         # Service Content object defines properties of the ServiceInstance object
-        self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
+        try:
+            self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
+        except requests.RequestException as e:
+            self.logger.exception("Unable to connect to ESX")
+            raise virt.VirtError(str(e))
 
         # Login to server using given credentials
         try:

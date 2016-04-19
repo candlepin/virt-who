@@ -17,9 +17,8 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-
-import logging
-import urllib2
+import os
+import requests
 import suds
 from mock import patch, ANY, MagicMock, Mock
 from multiprocessing import Queue, Event
@@ -51,13 +50,13 @@ class TestEsx(TestBase):
         self.run_once()
 
         self.assertTrue(mock_client.called)
-        mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None)
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None, transport=ANY)
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
     @patch('suds.client.Client')
     def test_connection_timeout(self, mock_client):
-        mock_client.side_effect = urllib2.URLError('timed out')
+        mock_client.side_effect = requests.Timeout('timed out')
         self.assertRaises(VirtError, self.run_once)
 
     @patch('suds.client.Client')
@@ -73,7 +72,7 @@ class TestEsx(TestBase):
         self.run_once()
 
         self.assertTrue(mock_client.called)
-        mock_client.assert_called_with(ANY, location="https://localhost/sdk")
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk", transport=ANY)
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 

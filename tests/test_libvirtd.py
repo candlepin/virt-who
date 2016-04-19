@@ -35,6 +35,7 @@ def raiseLibvirtError(*args, **kwargs):
 LIBVIRT_CAPABILITIES_XML = '<capabilities><host><name>this-my-name</name><uuid>this-is-uuid</uuid></host></capabilities>'
 LIBVIRT_CAPABILITIES_NO_HOSTNAME_XML = '<capabilities><host><uuid>this-is-uuid</uuid></host></capabilities>'
 
+
 class TestLibvirtd(TestBase):
     def setUp(self):
         pass
@@ -51,7 +52,6 @@ class TestLibvirtd(TestBase):
     @patch('libvirt.openReadOnly')
     def test_read(self, libvirt):
         config = Config('test', 'libvirt')
-        libvirtd = Virt.fromConfig(self.logger, config)
         libvirt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         self.run_virt(config)
         libvirt.assert_called_with("")

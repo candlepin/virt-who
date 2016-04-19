@@ -49,7 +49,6 @@ import xmlrpclib
 import httplib
 import socket
 
-
 translation = gettext.translation('xen-xm', fallback=True)
 
 

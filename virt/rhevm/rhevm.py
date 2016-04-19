@@ -30,7 +30,6 @@ from config import Config
 from xml.etree import ElementTree
 
 
-
 RHEVM_STATE_TO_GUEST_STATE = {
     'unassigned': virt.Guest.STATE_UNKNOWN,
     'down': virt.Guest.STATE_SHUTOFF,

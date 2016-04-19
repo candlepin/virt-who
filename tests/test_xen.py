@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import urllib2
-from mock import patch, call
+from mock import patch, call, ANY
 from multiprocessing import Queue, Event
 
 from base import TestBase
@@ -49,7 +49,7 @@ class TestXen(TestBase):
         session.return_value.xenapi.login_with_password.return_value = None
         self.run_once()
 
-        session.assert_called_with('https://localhost')
+        session.assert_called_with('https://localhost', transport=ANY)
         self.assertTrue(session.return_value.xenapi.login_with_password.called)
         session.return_value.xenapi.login_with_password.assert_called_with('username', 'password')
 
@@ -130,7 +130,7 @@ class TestXen(TestBase):
             None]
         self.run_once()
         session.assert_has_calls([
-            call('https://localhost'),
-            call('https://new.master.xxx'),
-            call('http://new2.master.xxx')
+            call('https://localhost', transport=ANY),
+            call('https://new.master.xxx', transport=ANY),
+            call('http://new2.master.xxx', transport=ANY)
         ], any_order=True)

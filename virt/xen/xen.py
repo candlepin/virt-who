@@ -7,45 +7,7 @@ from XenAPI import NewMaster, Failure
 from collections import defaultdict
 import virt
 import logging
-import requests
-import xmlrpclib
-
-
-class RequestsTransport(xmlrpclib.Transport):
-    """
-    Transport for xmlrpclib that uses Requests instead of httplib.
-
-    This unifies network handling with other backends. For example
-    proxy support will be same as for other modules.
-    """
-    # change our user agent to reflect Requests
-    user_agent = "Python XMLRPC with Requests"
-
-    def request(self, host, handler, request_body, verbose):
-        """
-        Make an xmlrpc request.
-        """
-        headers = {'User-Agent': self.user_agent}
-        if '://' not in host:
-            url = 'https://{0}/{1}'.format(host, handler)
-        else:
-            url = '{0}/{1}'.format(host, handler)
-        resp = requests.post(url, data=request_body, headers=headers, verify=False)
-        try:
-            resp.raise_for_status()
-        except requests.RequestException as e:
-            raise xmlrpclib.ProtocolError(url, resp.status_code, str(e), resp.headers)
-        else:
-            return self.parse_response(resp)
-
-    def parse_response(self, resp):
-        """
-        Parse the xmlrpc response.
-        """
-        p, u = self.getparser()
-        p.feed(resp.text)
-        p.close()
-        return u.close()
+from util import RequestsXmlrpcTransport
 
 
 class Xen(virt.Virt):
@@ -84,7 +46,7 @@ class Xen(virt.Virt):
         url = url or self.url
         try:
             # Don't log message containing password
-            self.session = XenAPI.Session(url, transport=RequestsTransport())
+            self.session = XenAPI.Session(url, transport=RequestsXmlrpcTransport())
             self.session.xenapi.login_with_password(self.username, self.password)
             self.logger.debug("XEN pool login successful with user %s" % self.username)
         except NewMaster as nm:

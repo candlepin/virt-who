@@ -1,4 +1,6 @@
 import socket
+import xmlrpclib
+import requests
 
 try:
     from thread import get_ident as _get_ident
@@ -11,7 +13,45 @@ except ImportError:  # pragma: no cover
     pass
 from string import letters, digits
 
-__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename')
+
+__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename', 'RequestsXmlrpcTransport')
+
+
+class RequestsXmlrpcTransport(xmlrpclib.Transport):
+    """
+    Transport for xmlrpclib that uses Requests instead of httplib.
+
+    This unifies network handling with other backends. For example
+    proxy support will be same as for other modules.
+    """
+    # change our user agent to reflect Requests
+    user_agent = "Python XMLRPC with Requests"
+
+    def request(self, host, handler, request_body, verbose):
+        """
+        Make an xmlrpc request.
+        """
+        headers = {'User-Agent': self.user_agent}
+        if '://' not in host:
+            url = 'https://{0}/{1}'.format(host, handler)
+        else:
+            url = '{0}/{1}'.format(host, handler)
+        resp = requests.post(url, data=request_body, headers=headers, verify=False)
+        try:
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            raise xmlrpclib.ProtocolError(url, resp.status_code, str(e), resp.headers)
+        else:
+            return self.parse_response(resp)
+
+    def parse_response(self, resp):
+        """
+        Parse the xmlrpc response.
+        """
+        p, u = self.getparser()
+        p.feed(resp.text)
+        p.close()
+        return u.close()
 
 
 # A list of desired characters allowed in filenames

@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import xmlrpclib
+from util import RequestsXmlrpcTransport
 import pickle
 import json
 
@@ -72,7 +73,7 @@ class Satellite(Manager):
 
         self.logger.debug("Initializing satellite connection to %s", server)
         try:
-            self.server = xmlrpclib.Server(server, verbose=0)
+            self.server = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport())
         except Exception:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server")

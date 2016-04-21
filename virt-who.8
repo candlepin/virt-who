@@ -1,4 +1,4 @@
-.TH VIRT-WHO "8" "August 2013" "virt-who"
+.TH VIRT-WHO "8" "April 2016" "virt-who"
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager, Satellite 6, or Satellite 5.
 .SH SYNOPSIS
@@ -10,9 +10,6 @@ show this help message and exit
 .TP
 \fB\-d\fR, \fB\-\-debug\fR
 Enable debugging output
-.TP
-\fB\-b\fR, \fB\-\-background\fR
-Run in the background and monitor virtual guests
 .TP
 \fB\-o\fR, \fB\-\-one\-shot\fR
 Send the list of guest IDs and exit immediately
@@ -177,21 +174,17 @@ virt-who has three modes how it can run:
 1. one-shot mode
 # virt-who -o
 
-In this mode virt-who just sends list of guest UUIDs to the server and exits.
+In this mode virt-who just sends the host to guest assocation to the server once and then exits.
 .TP
 2. interval mode
 # virt-who
 
-This is default mode. virt-who will check and send list of guest UUIDs once per minute. This interval can be changed using "-i INTERVAL" option where INTERVAL is number of seconds how often it should check and send the list.
+This is default mode. virt-who will listen to change events (if available) or do a polling with given interval, and will send the host to guest association when it changes. The default polling interval is 60 seconds and can be changed using "-i INTERVAL" (in seconds).
 .TP
-3. background mode
-# virt-who -b
+3. print mode
+# virt-who -p
 
-This mode is similar to interval mode but it monitors events from libvirt and update list of guest UUIDs as soon as possible. It also does the interval check (interval can be altered by "-i INTERVAL" option).
-.IP
-NOTE: virt-who don't print anything to terminal in this mode
-.IP
-NOTE: monitoring for events requires libvirt backend, but this mode can be used with all backends.
+This mode is similar to oneshot mode but the host to guest association is not send to server, but printed to standard output instead.
 
 .SS VIRTUALIZATION BACKEND
 

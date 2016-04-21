@@ -81,7 +81,7 @@ class RhevM(virt.Virt):
         Call RHEV-M server and retrieve what's on given url.
         """
         try:
-            response = requests.get(url, auth=self.auth)
+            response = requests.get(url, auth=self.auth, verify=False)
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
         # FIXME: other errors

@@ -23,6 +23,7 @@ import os
 import signal
 import errno
 import time
+import requests
 from multiprocessing import Event, Queue
 import json
 
@@ -50,6 +51,10 @@ try:
 except ImportError:
     def sd_notify(status, unset_environment=False):
         pass
+
+
+# Disable Insecure Request warning from requests library
+requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
 
 class ReloadRequest(Exception):

@@ -269,5 +269,22 @@ virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes
 
 virt-who can be started with option "-d" in all modes and with all backends. This option will enable verbose output with more information.
 
+.SH SECURITY
+
+In certain environments, virt-who might conflict with security requirements. To minimize potential risks, virt-who should be in a small virtual system that is locked down from any unnecessary network access. virt-who doesn't not listen to any network ports. Only outgoing network access is to the hypervisor running virtual machines you want to register and subscription manager server. virt-who doesn't need access to any virtual machine.
+
+Here is a list of ports that need to be open for different hypervisors:
+
+    VMWare ESX/vCenter: 443/tcp
+    Hyper-V: 5985/tcp
+    RHEV-M: 443/tcp or 8443/tcp (depending on version)
+    XenServer: 443/tcp
+    libvirt: depending on transport type, default (for remote connections) is qemu over ssh on port 22
+    local libvirt and vdsm use local connections and don't need open ports
+
+virt-who also needs to have access to Subscription Asset Manager, Satellite 5, or Satellite 6. Default port is 443/tcp. All the ports might be changed by system administrators.
+
+Using the same network for machine running virt-who as for hypervisor management software instead of production VM networks is suggested.
+
 .SH AUTHOR
 Radek Novacek <rnovacek at redhat dot com>

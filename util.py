@@ -17,7 +17,7 @@ from string import letters, digits
 __all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename', 'RequestsXmlrpcTransport')
 
 
-class RequestsXmlrpcTransport(xmlrpclib.Transport):
+class RequestsXmlrpcTransport(xmlrpclib.SafeTransport):
     """
     Transport for xmlrpclib that uses Requests instead of httplib.
 
@@ -27,20 +27,20 @@ class RequestsXmlrpcTransport(xmlrpclib.Transport):
     # change our user agent to reflect Requests
     user_agent = "Python XMLRPC with Requests"
 
+    def __init__(self, url, *args, **kwargs):
+        self._url = url
+        xmlrpclib.SafeTransport.__init__(self, *args, **kwargs)
+
     def request(self, host, handler, request_body, verbose):
         """
         Make an xmlrpc request.
         """
         headers = {'User-Agent': self.user_agent}
-        if '://' not in host:
-            url = 'https://{0}/{1}'.format(host, handler)
-        else:
-            url = '{0}/{1}'.format(host, handler)
-        resp = requests.post(url, data=request_body, headers=headers, verify=False)
+        resp = requests.post(self._url, data=request_body, headers=headers, verify=False)
         try:
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise xmlrpclib.ProtocolError(url, resp.status_code, str(e), resp.headers)
+            raise xmlrpclib.ProtocolError(self._url, resp.status_code, str(e), resp.headers)
         else:
             return self.parse_response(resp)
 

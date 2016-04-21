@@ -46,7 +46,7 @@ class Xen(virt.Virt):
         url = url or self.url
         try:
             # Don't log message containing password
-            self.session = XenAPI.Session(url, transport=RequestsXmlrpcTransport())
+            self.session = XenAPI.Session(url, transport=RequestsXmlrpcTransport(url))
             self.session.xenapi.login_with_password(self.username, self.password)
             self.logger.debug("XEN pool login successful with user %s" % self.username)
         except NewMaster as nm:

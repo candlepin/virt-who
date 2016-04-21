@@ -73,10 +73,10 @@ class Satellite(Manager):
 
         self.logger.debug("Initializing satellite connection to %s", server)
         try:
-            self.server = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport())
-        except Exception:
+            self.server = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
+        except Exception as e:
             self.logger.exception("Unable to connect to the Satellite server")
-            raise SatelliteError("Unable to connect to the Satellite server")
+            raise SatelliteError("Unable to connect to the Satellite server: " % str(e))
         self.logger.debug("Initialized satellite connection")
 
     def _load_hypervisor(self, hypervisor_uuid, type):

@@ -117,7 +117,7 @@ class TestSatellite(TestManager):
         manager = Manager.fromOptions(self.logger, options, config)
         self.assertRaises(ManagerError, manager.sendVirtGuests, self.domain_report)
 
-    @patch("xmlrpclib.Server")
+    @patch("xmlrpclib.ServerProxy")
     def test_hypervisorCheckIn(self, server):
         options = MagicMock()
         server.return_value.registration.new_system_user_pass.return_value = {

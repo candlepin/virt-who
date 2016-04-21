@@ -148,9 +148,12 @@ class Esx(virt.Virt):
             delta = next_update - time()
             if initial or delta < 0:
                 # We want to read the update asap
-                max_wait_seconds = 0
+                options = {}
+                timeout = 60
             else:
                 max_wait_seconds = int(delta)
+                options = {'maxWaitSeconds': max_wait_seconds}
+                timeout = max_wait_seconds + 5
 
             if version == '':
                 # also, clean all data we have
@@ -160,12 +163,12 @@ class Esx(virt.Virt):
             try:
                 # Make sure that WaitForUpdatesEx finishes even
                 # if the ESX shuts down in the middle of waiting
-                self.client.set_options(timeout=max_wait_seconds + 5)
+                self.client.set_options(timeout=timeout)
 
                 updateSet = self.client.service.WaitForUpdatesEx(
                     _this=self.sc.propertyCollector,
                     version=version,
-                    options={'maxWaitSeconds': max_wait_seconds})
+                    options=options)
                 initial = False
             except (socket.error, URLError):
                 self.logger.debug("Wait for ESX event finished, timeout")

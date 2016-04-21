@@ -95,6 +95,11 @@ class Satellite(Manager):
                     "%s hypervisor %s" % (type, hypervisor_uuid),
                     "unknown", "6Server", "x86_64", self.username, self.password, {})
                 self.server.registration.refresh_hw_profile(new_system['system_id'], [])
+            except xmlrpclib.Fault as e:
+                if e.faultCode == -70:
+                    raise SatelliteError("Unable to find channel to register to. Make sure that satellite-sync was ran on the Satellite 5 server")
+                self.logger.exception("Unable to refresh HW profile:")
+                raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
             except Exception as e:
                 self.logger.exception("Unable to refresh HW profile:")
                 raise SatelliteError("Unable to refresh HW profile: %s" % str(e))

@@ -5,7 +5,7 @@ import tempfile
 
 from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
-from base import TestBase
+from base import TestBase, unittest
 
 from config import Config, ConfigManager
 from manager import Manager
@@ -191,10 +191,18 @@ rhsm_password=passwd
             proxy_password='proxy_password',
             insecure='1')
 
-    @patch('rhsm.connection.Restlib')
+    @unittest.expectedFailure
+    @patch('rhsm.connection.RhsmProxyHTTPSConnection')
+    @patch('M2Crypto.httpslib.HTTPSConnection')
     @patch('rhsm.config.initConfig')
-    def test_sm_config_override(self, initConfig, restlib):
+    def test_sm_config_override(self, initConfig, HTTPSConnection, RhsmProxyHTTPSConnection):
         '''Test if overriding options from rhsm.conf works.'''
+
+        conn = MagicMock()
+        conn.getresponse.return_value.status = 200
+        conn.getresponse.return_value.read.return_value = '{"result": "ok"}'
+        HTTPSConnection.return_value = conn
+        RhsmProxyHTTPSConnection.return_value = conn
 
         def config_get(section, key):
             return {
@@ -213,7 +221,7 @@ rhsm_password=passwd
 type=libvirt
 rhsm_hostname=host
 rhsm_port=8080
-rhsm_prefix=prefix
+rhsm_prefix=/prefix
 rhsm_proxy_hostname=
 rhsm_proxy_port=8443
 rhsm_insecure=1
@@ -230,16 +238,10 @@ rhsm_password=passwd
         self.assertEqual(config.rhsm_port, '8080')
 
         manager._connect(config)
-        restlib.assert_called_with(
-            'host',
-            8080,
-            'prefix',
-            username='user',
-            password='passwd',
-            proxy_hostname='',
-            proxy_port='8443',
-            proxy_user='',
-            proxy_password='',
-            insecure='1',
-            ssl_verify_depth=ANY,
-            ca_dir='/etc/rhsm/ca/')
+        self.assertFalse(RhsmProxyHTTPSConnection.called, "It shouldn't use proxy")
+        self.assertTrue(HTTPSConnection.called)
+        conn.request.assert_called_with(
+            'GET',
+            '/prefix/status/',
+            body=ANY,
+            headers=ANY)

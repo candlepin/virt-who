@@ -3,7 +3,7 @@ import sys
 import shutil
 import tempfile
 
-from mock import patch, Mock, DEFAULT, MagicMock
+from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase
 
@@ -215,6 +215,7 @@ rhsm_hostname=host
 rhsm_port=8080
 rhsm_prefix=prefix
 rhsm_proxy_hostname=
+rhsm_proxy_port=8443
 rhsm_insecure=1
 rhsm_username=user
 rhsm_password=passwd
@@ -240,5 +241,5 @@ rhsm_password=passwd
             proxy_user='',
             proxy_password='',
             insecure='1',
-            ssl_verify_depth=0,
+            ssl_verify_depth=ANY,
             ca_dir='/etc/rhsm/ca/')

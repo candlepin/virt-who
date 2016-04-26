@@ -327,11 +327,11 @@ class HyperVSoap(object):
             raise HyperVException("Unable to connect to Hyper-V server: %s" % str(e))
 
         if response.status_code == requests.codes.ok:
-            return response.text
+            return response.content
         elif response.status_code == 401:
             raise HyperVAuthFailed("Authentication failed")
         else:
-            data = response.text
+            data = response.content
             try:
                 xml = ElementTree.fromstring(data)
                 errorcode = xml.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
@@ -340,8 +340,7 @@ class HyperVSoap(object):
                 if errorcode is None or errorcode.text != '2150858778':
                     self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
             except Exception:
-                self.logger.exception("ERR")
-                pass
+                self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
             raise HyperVCallFailed("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
 
     @classmethod

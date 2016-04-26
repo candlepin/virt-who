@@ -34,51 +34,39 @@ class HyperVMock(object):
     @classmethod
     def post(cls, url, data, **kwargs):
         if 'uuid:00000000-0000-0000-0000-000000000000' in data:
-            print(">>>> 0")
             return HyperVMock.pull(None, {})
         if 'Msvm_VirtualSystemSettingData' in data:
-            print(">>>> 1")
             return HyperVMock.enumerate(5)
         elif 'uuid:00000000-0000-0000-0000-000000000005' in data:
-            print(">>>> 2")
             return HyperVMock.pull(0, {
                 'BIOSGUID': '{78563412-AB90-EFCD-1234-567890ABCDEF}',
                 'ElementName': '',
             })
         elif 'GetSummaryInformation_INPUT' in data:
-            print(">>>> 3")
             return HyperVMock.summary_information()
         elif 'select * from CIM_Datafile' in data:
-            print(">>>> 4")
             return HyperVMock.enumerate(1)
         elif 'uuid:00000000-0000-0000-0000-000000000001' in data:
-            print(">>>> 5")
             return HyperVMock.pull(2, {
                 'p:Path': '\\windows\\system32\\',
                 'p:Version': '0.1.2345.67890',
             })
         elif 'uuid:00000000-0000-0000-0000-000000000002' in data:
-            print(">>>> 6")
             return HyperVMock.pull(None, {})
         elif 'NumberOfProcessors from Win32_ComputerSystem' in data:
-            print(">>>> 7")
             return HyperVMock.enumerate(3)
         elif 'uuid:00000000-0000-0000-0000-000000000003' in data:
-            print(">>>> 8")
             return HyperVMock.pull(0, {
                 'NumberOfProcessors': '1',
                 'DNSHostName': 'hostname.domainname',
             })
         elif 'UUID from Win32_ComputerSystemProduct' in data:
-            print(">>>> 9")
             return HyperVMock.enumerate(4)
         elif 'uuid:00000000-0000-0000-0000-000000000004' in data:
-            print(">>>> 10")
             return HyperVMock.pull(0, {
                 'UUID': '{78563412-AB90-EFCD-1234-567890ABCDEF}',
             })
         else:
-            print(">>>> 11")
             raise AssertionError("Not implemented")
 
     @classmethod
@@ -94,7 +82,7 @@ class HyperVMock(object):
                     {0}
                 </s:Body>
             </s:Envelope>'''.format(body)
-        return MagicMock(text=xml, status_code=200)
+        return MagicMock(content=xml, status_code=200)
 
     @classmethod
     def enumerate(cls, id):

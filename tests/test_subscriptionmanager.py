@@ -190,3 +190,55 @@ rhsm_password=passwd
             proxy_user='proxy_user',
             proxy_password='proxy_password',
             insecure='1')
+
+    @patch('rhsm.connection.Restlib')
+    @patch('rhsm.config.initConfig')
+    def test_sm_config_override(self, initConfig, restlib):
+        '''Test if overriding options from rhsm.conf works.'''
+
+        def config_get(section, key):
+            return {
+                'server/proxy_hostname': 'proxy.server.test',
+                'rhsm/consumerCertDir': '',
+                'server/hostname': 'server.test',
+                'server/port': '8081',
+                'server/prefix': 'old_prefix',
+            }.get('%s/%s' % (section, key), None)
+        initConfig.return_value.get.side_effect = config_get
+        config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, config_dir)
+        with open(os.path.join(config_dir, "test.conf"), "w") as f:
+            f.write("""
+[test]
+type=libvirt
+rhsm_hostname=host
+rhsm_port=8080
+rhsm_prefix=prefix
+rhsm_proxy_hostname=
+rhsm_insecure=1
+rhsm_username=user
+rhsm_password=passwd
+""")
+
+        config_manager = ConfigManager(self.logger, config_dir)
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0]
+        manager = Manager.fromOptions(self.logger, Mock(), config)
+        self.assertTrue(isinstance(manager, SubscriptionManager))
+        self.assertEqual(config.rhsm_hostname, 'host')
+        self.assertEqual(config.rhsm_port, '8080')
+
+        manager._connect(config)
+        restlib.assert_called_with(
+            'host',
+            8080,
+            'prefix',
+            username='user',
+            password='passwd',
+            proxy_hostname='',
+            proxy_port='8443',
+            proxy_user='',
+            proxy_password='',
+            insecure='1',
+            ssl_verify_depth=0,
+            ca_dir='/etc/rhsm/ca/')

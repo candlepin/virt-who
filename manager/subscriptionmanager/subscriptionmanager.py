@@ -89,28 +89,30 @@ class SubscriptionManager(Manager):
             rhsm_username = config.rhsm_username
             rhsm_password = config.rhsm_password
 
-            if config.rhsm_hostname:
+            # Testing for None is necessary, it might be an empty string
+
+            if config.rhsm_hostname is not None:
                 kwargs['host'] = config.rhsm_hostname
 
-            if config.rhsm_port:
+            if config.rhsm_port is not None:
                 kwargs['ssl_port'] = int(config.rhsm_port)
 
-            if config.rhsm_prefix:
+            if config.rhsm_prefix is not None:
                 kwargs['handler'] = config.rhsm_prefix
 
-            if config.rhsm_proxy_hostname:
+            if config.rhsm_proxy_hostname is not None:
                 kwargs['proxy_hostname'] = config.rhsm_proxy_hostname
 
-            if config.rhsm_proxy_port:
+            if config.rhsm_proxy_port is not None:
                 kwargs['proxy_port'] = config.rhsm_proxy_port
 
-            if config.rhsm_proxy_user:
+            if config.rhsm_proxy_user is not None:
                 kwargs['proxy_user'] = config.rhsm_proxy_user
 
-            if config.rhsm_proxy_password:
+            if config.rhsm_proxy_password is not None:
                 kwargs['proxy_password'] = config.rhsm_proxy_password
 
-            if config.rhsm_insecure:
+            if config.rhsm_insecure is not None:
                 kwargs['insecure'] = config.rhsm_insecure
 
         if rhsm_username and rhsm_password:

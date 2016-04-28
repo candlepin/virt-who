@@ -1,7 +1,7 @@
 
 import os
+import sys
 import tempfile
-from SimpleHTTPServer import SimpleHTTPRequestHandler
 import ssl
 import json
 import shutil
@@ -12,14 +12,24 @@ from fake_virt import FakeVirt, FakeHandler
 
 class SamHandler(FakeHandler):
     def do_GET(self):
+        print "GET", self.path
         if self.path.startswith('/status'):
             self.wfile.write(json.dumps({
                 "result": "ok",
                 "managerCapabilities": [""]
             }))
+        else:
+            self.wfile.write(json.dumps({
+                "result": "ok",
+            }))
 
     def do_POST(self):
-        if self.path.startswith('/hypervisors'):
+        print "POST", self.path
+        if self.server.code:
+            self.send_response(self.server.code)
+            self.send_header("Retry-After", "60")
+            self.wfile.write(json.dumps({}))
+        elif self.path.startswith('/hypervisors'):
             size = int(self.headers["Content-Length"])
             data = json.loads(self.rfile.read(size))
             self.server.queue.put(data)
@@ -29,14 +39,23 @@ class SamHandler(FakeHandler):
                 "created": [],
             }))
 
+    def do_PUT(self):
+        print "PUT", self.path
 
 
 class FakeSam(FakeVirt):
-    def __init__(self, queue, port=None):
+    def __init__(self, queue, port=None, code=None):
         super(FakeSam, self).__init__(SamHandler, port=port)
         self.daemon = True
+        self.server.code = code
         base = os.path.dirname(os.path.abspath(__file__))
-        self.server.socket = ssl.wrap_socket(self.server.socket, certfile=os.path.join(base, 'cert.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
+        certfile = os.path.join(base, 'cert.pem')
+        keyfile = os.path.join(base, 'key.pem')
+        if not os.access(certfile, os.R_OK):
+            raise OSError("No such file %s" % certfile)
+        if not os.access(keyfile, os.R_OK):
+            raise OSError("No such file %s" % keyfile)
+        self.server.socket = ssl.wrap_socket(self.server.socket, certfile=certfile, keyfile=keyfile, server_side=True)
 
         self.tempdir = tempfile.mkdtemp()
         config_name = os.path.join(self.tempdir, 'rhsm.conf')
@@ -45,12 +64,13 @@ class FakeSam(FakeVirt):
 [server]
 hostname = localhost
 prefix = /
-port = %s
+port = {port}
 insecure = 1
+proxy_hostname =
 
 [rhsm]
-consumerCertDir = %s
-""" % (self.port, base))
+consumerCertDir = {certdir}
+""".format(port=self.port, certdir=base))
 
         rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
@@ -62,7 +82,11 @@ consumerCertDir = %s
         super(FakeSam, self).terminate()
 
 if __name__ == '__main__':
-    server = SocketServer.TCPServer(("localhost", 8443), SamHandler)
-    base = os.path.dirname(os.path.abspath(__file__))
-    server.socket = ssl.wrap_socket(server.socket, certfile=os.path.join(base, 'server.pem'), keyfile=os.path.join(base, 'key.pem'), server_side=True)
-    server.serve_forever()
+    if len(sys.argv) >= 2:
+        code = int(sys.argv[1])
+    else:
+        code = None
+    from Queue import Queue
+    q = Queue()
+    f = FakeSam(q, port=8443, code=code)
+    f.run()

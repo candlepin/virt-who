@@ -217,12 +217,12 @@ class TestHyperV(TestBase):
                     expected_guestId,
                     self.hyperv,
                     expected_guest_state,
-                    hypervisorType='hyperv',
-                    hypervisorVersion='0.1.2345.67890',
                 )
             ],
             facts={
-                'cpu.cpu_socket(s)': '1',
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '0.1.2345.67890',
             }
         )
         result = self.hyperv.getHostGuestMapping()['hypervisors'][0]

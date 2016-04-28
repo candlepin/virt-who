@@ -99,6 +99,7 @@ class TestEsx(TestBase):
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
                      'config.network.dnsConfig.hostName': 'hostname',
                      'config.network.dnsConfig.domainName': 'domainname',
+                     'config.product.version': '1.2.3',
                      'hardware.cpuInfo.numCpuPackages': '1',
                      'name': expected_hostname,
                      'parent': fake_parent,
@@ -115,11 +116,12 @@ class TestEsx(TestBase):
                     expected_guestId,
                     self.esx,
                     expected_guest_state,
-                    hypervisorType='vmware'
                 )
             ],
             facts={
-                'cpu.cpu_socket(s)': '1',
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
@@ -147,6 +149,7 @@ class TestEsx(TestBase):
         fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
                      'config.network.dnsConfig.hostName': 'hostname',
                      'config.network.dnsConfig.domainName': 'domainname',
+                     'config.product.version': '1.2.3',
                      'hardware.cpuInfo.numCpuPackages': '1',
                      'parent': fake_parent,
                      'vm': fake_vm
@@ -162,11 +165,12 @@ class TestEsx(TestBase):
                     expected_guestId,
                     self.esx,
                     expected_guest_state,
-                    hypervisorType='vmware'
                 )
             ],
             facts={
-                'cpu.cpu_socket(s)': '1',
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]

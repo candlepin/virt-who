@@ -92,19 +92,18 @@ class Xen(virt.Virt):
                 else:
                     state = virt.Guest.STATE_UNKNOWN
 
-                guests.append(
-                    virt.Guest(
-                        uuid=vm["uuid"],
-                        virt=self,
-                        state=state,
-                        hypervisorType=None
-                    )
-                )
+                guests.append(virt.Guest(uuid=vm["uuid"], virt=self, state=state))
 
             facts = {}
-            sockets = record.get('cpu_info', {}).get('socket_count', None)
+            sockets = record.get('cpu_info', {}).get('socket_count')
             if sockets is not None:
-                facts['cpu.cpu_socket(s)'] = sockets
+                facts[virt.Hypervisor.CPU_SOCKET_FACT] = str(sockets)
+            brand = record.get('software_version', {}).get('product_brand')
+            if brand:
+                facts[virt.Hypervisor.HYPERVISOR_TYPE_FACT] = brand
+            version = record.get('software_version', {}).get('product_version')
+            if version:
+                facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
 
             mapping['hypervisors'] = [
                 virt.Hypervisor(

@@ -40,9 +40,7 @@ class LibvirtdGuest(virt.Guest):
         super(LibvirtdGuest, self).__init__(
             uuid=domain.UUIDString(),
             virt=libvirtd,
-            state=state,
-            hypervisorType=libvirtd.getHypervisorType(),
-            hypervisorVersion=libvirtd.getVersion())
+            state=state)
 
 
 class VirEventLoopThread(threading.Thread):
@@ -282,8 +280,9 @@ class Libvirtd(virt.Virt):
     def _getHostGuestMapping(self):
         mapping = {'hypervisors': []}
         facts = {
-            'cpu.cpu_socket(s)': self._remote_host_sockets()
-
+            virt.Hypervisor.CPU_SOCKET_FACT: self._remote_host_sockets(),
+            virt.Hypervisor.HYPERVISOR_TYPE_FACT: self.virt.getType(),
+            virt.Hypervisor.HYPERVISOR_VERSION_FACT: self.virt.getVersion(),
         }
         host = virt.Hypervisor(hypervisorId=self._remote_host_id(),
                                guestIds=self._listDomains(),

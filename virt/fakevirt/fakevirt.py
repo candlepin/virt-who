@@ -29,10 +29,7 @@ class FakeVirt(Virt):
     def _process_guest(self, guest):
         attributes = guest.get('attributes', {})
         self.CONFIG_TYPE = attributes.get('virtWhoType', 'fake')
-        hypervisorType = attributes.get('hypervisorType', None)
-        hypervisorVersion = attributes.get('hypervisorVersion', None)
-        return Guest(guest['guestId'], self, guest['state'], hypervisorType=hypervisorType,
-                     hypervisorVersion=hypervisorVersion)
+        return Guest(guest['guestId'], self, guest['state'])
 
     def _process_hypervisor(self, hypervisor):
         guests = []
@@ -40,7 +37,8 @@ class FakeVirt(Virt):
             guests.append(self._process_guest(guest))
         return Hypervisor(hypervisor['uuid'],
                           guests,
-                          hypervisor.get('name'))
+                          hypervisor.get('name'),
+                          hypervisor.get('facts'))
 
     def getHostGuestMapping(self):
         assoc = {'hypervisors': []}

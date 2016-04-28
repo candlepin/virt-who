@@ -271,20 +271,21 @@ class Esx(virt.Virt):
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property", vm_id.value)
-                    guests.append(virt.Guest(vm['config.uuid'],
-                                             self,
-                                             state,
-                                             hypervisorType=host.get('config.product.name', 'vmware'),
-                                             hypervisorVersion=host.get('config.product.version', None)
-                                             ))
+                    guests.append(virt.Guest(vm['config.uuid'], self, state))
             try:
                 name = '%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host
             except KeyError:
                 self.logger.debug("Unable to determine hostname for host '%s'", uuid)
                 name = ''
+
             facts = {
-                'cpu.cpu_socket(s)': str(host['hardware.cpuInfo.numCpuPackages']),
+                virt.Hypervisor.CPU_SOCKET_FACT: str(host['hardware.cpuInfo.numCpuPackages']),
+                virt.Hypervisor.HYPERVISOR_TYPE_FACT: host.get('config.product.name', 'vmware'),
             }
+            version = host.get('config.product.version', None)
+            if version:
+                facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
+
             mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
 

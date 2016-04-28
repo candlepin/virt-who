@@ -554,13 +554,7 @@ class HyperV(virt.Virt):
                 self.logger.warning("Unknown state for guest %s", elementName)
                 state = virt.Guest.STATE_UNKNOWN
 
-            guests.append(
-                virt.Guest(
-                    HyperV.decodeWinUUID(uuid),
-                    self,
-                    state,
-                    hypervisorType='hyperv',
-                    hypervisorVersion=vmmsVersion))
+            guests.append(virt.Guest(HyperV.decodeWinUUID(uuid), self, state))
         # Get the hostname
         hostname = None
         socket_count = None
@@ -580,7 +574,9 @@ class HyperV(virt.Virt):
             raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
                                  (self.config.hypervisor_id, self.CONFIG_TYPE))
         facts = {
-            'cpu.cpu_socket(s)': str(socket_count),
+            virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
+            virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',
+            virt.Hypervisor.HYPERVISOR_VERSION_FACT: vmmsVersion,
         }
         hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests, facts=facts)
         return {'hypervisors': [hypervisor]}

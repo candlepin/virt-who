@@ -138,27 +138,21 @@ class VirtBackendTestMixin(object):
                     'guestId': '9844af5d-101b-40ea-a125-8bf1a02f888b',
                     'attributes': {
                         'active': 1,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }, {
                     'guestId': '640bb2fe-fa3b-48cb-89d0-193c13b15663',
                     'attributes': {
                         'active': 1,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }, {
                     'guestId': 'c0667b9d-64e1-480c-8b82-c1b1c06614e7',
                     'attributes': {
                         'active': 1,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }
@@ -174,9 +168,7 @@ class VirtBackendTestMixin(object):
                     'guestId': '9844af5d-101b-40ea-a125-8bf1a02f888b',
                     'attributes': {
                         'active': 1,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }
@@ -186,18 +178,14 @@ class VirtBackendTestMixin(object):
                     'guestId': '640bb2fe-fa3b-48cb-89d0-193c13b15663',
                     'attributes': {
                         'active': 1,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }, {
                     'guestId': 'c0667b9d-64e1-480c-8b82-c1b1c06614e7',
                     'attributes': {
                         'active': 0,
-                        'hypervisorVersion': '',
                         'virtWhoType': self.virt,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 5
                 }
@@ -230,27 +218,21 @@ class VirtBackendTestMixin(object):
                     'guestId': '9844af5d-101b-40ea-a125-8bf1a02f888b',
                     'attributes': {
                         'virtWhoType': self.virt,
-                        'hypervisorVersion': '',
                         'active': 1,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }, {
                     'guestId': '640bb2fe-fa3b-48cb-89d0-193c13b15663',
                     'attributes': {
                         'virtWhoType': self.virt,
-                        'hypervisorVersion': '',
                         'active': 1,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }, {
                     'guestId': 'c0667b9d-64e1-480c-8b82-c1b1c06614e7',
                     'attributes': {
                         'virtWhoType': self.virt,
-                        'hypervisorVersion': '',
                         'active': 1,
-                        'hypervisorType': self.hypervisorType
                     },
                     'state': 1
                 }

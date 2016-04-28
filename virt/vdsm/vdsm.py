@@ -125,10 +125,8 @@ class Vdsm(Virt):
             self.logger.error("Unable to list virtual machines: %s", response['status']['message'])
         else:
             for vm in response['vmList']:
-                domains.append(
-                    Guest(vm['vmId'], self,
-                          VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN),
-                          hypervisorType='qemu'))
+                status = VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN)
+                domains.append(Guest(vm['vmId'], self, status))
         return domains
 
 

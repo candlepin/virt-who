@@ -41,8 +41,8 @@ xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 
 class TestManager(TestBase):
     """ Test of all available subscription managers. """
-    guest1 = Guest('9c927368-e888-43b4-9cdb-91b10431b258', xvirt, Guest.STATE_RUNNING, hypervisorType='QEMU')
-    guest2 = Guest('d5ffceb5-f79d-41be-a4c1-204f836e144a', xvirt, Guest.STATE_SHUTOFF, hypervisorType='QEMU')
+    guest1 = Guest('9c927368-e888-43b4-9cdb-91b10431b258', xvirt, Guest.STATE_RUNNING)
+    guest2 = Guest('d5ffceb5-f79d-41be-a4c1-204f836e144a', xvirt, Guest.STATE_SHUTOFF)
     guestInfo = [guest1]
     hypervisor_id = "HYPERVISOR_ID"
 

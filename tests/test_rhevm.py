@@ -53,6 +53,7 @@ HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <cpu>
             <topology sockets="1" cores="6" threads="2"/>
         </cpu>
+        <version full_version="1.2.3" />
     </host>
 </hosts>
 '''.format(**uuids)
@@ -143,12 +144,12 @@ class TestRhevM(TestBase):
                     expected_guestId,
                     self.rhevm,
                     expected_guest_state,
-                    hypervisorType='qemu',
-                    hypervisorVersion='',
                 )
             ],
             facts={
-                'cpu.cpu_socket(s)': '1',
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
             }
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]

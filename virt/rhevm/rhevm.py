@@ -149,8 +149,16 @@ class RhevM(virt.Virt):
                     self.config.hypervisor_id, self.CONFIG_TYPE)
 
             facts = {
-                'cpu.cpu_socket(s)': host.find('cpu').find('topology').get('sockets'),
+                virt.Hypervisor.CPU_SOCKET_FACT: host.find('cpu').find('topology').get('sockets'),
+                virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
             }
+            try:
+                version = host.find('version').get('full_version')
+                if version:
+                    facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
+            except AttributeError:
+                pass
+
             hosts[id] = virt.Hypervisor(hypervisorId=host_id, name=host.find('name').text, facts=facts)
             mapping[id] = []
         for vm in vms_xml.findall('vm'):
@@ -176,7 +184,7 @@ class RhevM(virt.Virt):
                     guest_id)
                 state = virt.Guest.STATE_UNKNOWN
 
-            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state, hypervisorType='qemu'))
+            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state))
 
         return {'hypervisors': hosts.values()}
 

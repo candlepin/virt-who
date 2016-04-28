@@ -79,7 +79,11 @@ class TestXen(TestBase):
             'hostname': expected_hostname,
             'cpu_info': {
                 'socket_count': '1'
-            }
+            },
+            'software_version': {
+                'product_brand': 'XenServer',
+                'product_version': '1.2.3',
+            },
         }
         xenapi.host.get_all.return_value = [
             host
@@ -117,7 +121,9 @@ class TestXen(TestBase):
                 )
             ],
             facts={
-                'cpu.cpu_socket(s)': '1',
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'XenServer',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
             }
         )
         self.xen._prepare()

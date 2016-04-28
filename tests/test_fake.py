@@ -39,8 +39,7 @@ HYPERVISOR_JSON = """
                     "state": 1,
                     "attributes": {
                         "active": 1,
-                        "virtWhoType": "hyperv",
-                        "hypervisorType": "hyperv"
+                        "virtWhoType": "hyperv"
                     }
                 }
             ]
@@ -58,8 +57,7 @@ NON_HYPERVISOR_JSON = """
                     "state": 1,
                     "attributes": {
                         "active": 1,
-                        "virtWhoType": "libvirt",
-                        "hypervisorType": "QEMU"
+                        "virtWhoType": "libvirt"
                     }
                 }
             ]

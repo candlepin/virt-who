@@ -57,8 +57,7 @@ class Guest(object):
                  uuid,
                  virt,
                  state,
-                 hypervisorType=None,
-                 hypervisorVersion=None):
+                 hypervisorType=None):
         """
         Create new guest instance that will be sent to the subscription manager.
 
@@ -68,23 +67,13 @@ class Guest(object):
         that owns the guest.
 
         `state` is a number that represents the state of the guest (stopped, running, ...)
-
-        `hypervisorType` is additional type of the virtualization, used in libvirt.
-
-        `hypervisorVersion` is the version of the hypervisor software running on
-        the hypervisor, if available. If none is available then the value of
-        this attribute will be an empty string ""
-            - This attribute is only included in the dictionary representation
-              if the hypervisorType is not None.
         """
         self.uuid = uuid
         self.virtWhoType = virt.CONFIG_TYPE
-        self.hypervisorType = hypervisorType
         self.state = state
-        self.hypervisorVersion = hypervisorVersion or ""
 
     def __repr__(self):
-        return 'Guest({0.uuid!r}, {0.virtWhoType!r}, {0.state!r}, {0.hypervisorType!r}, {0.hypervisorVersion!r})'.format(self)
+        return 'Guest({0.uuid!r}, {0.virtWhoType!r}, {0.state!r})'.format(self)
 
     def toDict(self):
         d = OrderedDict((
@@ -95,12 +84,6 @@ class Guest(object):
                 'active': 1 if self.state in (self.STATE_RUNNING, self.STATE_PAUSED) else 0
             }),
         ))
-
-        if self.hypervisorType is not None:
-            d['attributes']['hypervisorType'] = self.hypervisorType
-            if self.hypervisorVersion is not None or \
-               self.hypervisorVersion is not "":
-                d['attributes']['hypervisorVersion'] = self.hypervisorVersion
         return d
 
 
@@ -108,6 +91,11 @@ class Hypervisor(object):
     """
     A model for information about a hypervisor
     """
+
+    CPU_SOCKET_FACT = 'cpu.cpu_socket(s)'
+    HYPERVISOR_TYPE_FACT = 'hypervisor.type'
+    HYPERVISOR_VERSION_FACT = 'hypervisor.version'
+
     def __init__(self, hypervisorId, guestIds=None, name=None, facts=None):
         """
         Create a new Hypervisor that will be sent to subscription manager

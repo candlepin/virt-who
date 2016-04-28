@@ -5,6 +5,7 @@ python:
 env:
   - PYTHONPATH=.
 sudo: required
+dist: trusty
 install:
   - pip install -r requirements.txt
   - pip install -U iniparse python-dateutil M2Crypto libvirt-python unittest2 pytest-timeout mock

@@ -26,6 +26,7 @@ import threading
 import tempfile
 import pickle
 import shutil
+import xmlrpclib
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
 from mock import MagicMock, patch
@@ -68,7 +69,7 @@ class FakeSatellite(SimpleXMLRPCServer):
 
     def virt_notify(self, system_id, plan):
         if system_id != TEST_SYSTEM_ID:
-            raise Exception("Wrong system id")
+            raise xmlrpclib.Fault(-9, "Wrong system id")
 
         if plan[0] != [0, 'exists', 'system', {'uuid': '0000000000000000', 'identity': 'host'}]:
             raise Exception("Wrong value for virt_notify: invalid format of first entry")
@@ -186,6 +187,30 @@ class TestSatellite(TestBase):
         self.assertTrue("failedUpdate" in result)
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
+
+    def test_hypervisorCheckIn_deleted(self):
+        '''Test running hypervisorCheckIn on system that was deleted from Satellite'''
+        system_id = 'wrong-system-id'
+        temp, filename = tempfile.mkstemp(suffix=system_id)
+        self.addCleanup(os.unlink, filename)
+        with os.fdopen(temp, "wb") as f:
+            pickle.dump({'system_id': system_id}, f)
+
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
+        s = Satellite(self.logger, options)
+
+        s.HYPERVISOR_SYSTEMID_FILE = filename.replace(system_id, '%s')
+        config = Config('test', 'libvirt')
+        mapping = {
+            'hypervisors': [
+                Hypervisor(system_id, [])
+            ]
+        }
+        report = HostGuestAssociationReport(config, mapping)
+        s.hypervisorCheckIn(report, options)
+        with open(filename, "rb") as f:
+            data = pickle.load(f)
+        self.assertEqual(data['system_id'], TEST_SYSTEM_ID)
 
     def test_per_config_options(self):
         options = Options(None, None, None)

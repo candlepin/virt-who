@@ -79,11 +79,11 @@ class Satellite(Manager):
             raise SatelliteError("Unable to connect to the Satellite server: " % str(e))
         self.logger.debug("Initialized satellite connection")
 
-    def _load_hypervisor(self, hypervisor_uuid, type):
+    def _load_hypervisor(self, hypervisor_uuid, type, force=False):
         systemid_filename = self.HYPERVISOR_SYSTEMID_FILE % hypervisor_uuid
         # attempt to read the existing systemid file for the hypervisor
         try:
-            if self.force_register:
+            if force or self.force_register:
                 raise IOError()
             self.logger.debug("Loading system id info from %s", systemid_filename)
             new_system = pickle.load(open(systemid_filename, "rb"))
@@ -173,8 +173,14 @@ class Satellite(Manager):
             plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=report.config.type)
 
             try:
-                self.logger.debug("Sending plan: %s", plan)
-                self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
+                try:
+                    self.logger.debug("Sending plan: %s", plan)
+                    self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
+                except xmlrpclib.Fault as e:
+                    if e.faultCode == -9:
+                        self.logger.warn("System was deleted from Satellite 5, reregistering")
+                        hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=report.config.type, force=True)
+                        self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
             except Exception as e:
                 self.logger.exception("Unable to send host/guest association to the satellite:")
                 raise SatelliteError("Unable to send host/guest association to the satellite: %s" % str(e))

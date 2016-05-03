@@ -675,7 +675,7 @@ def close_file_descriptor_if_open(fd):
         else:
             error = DaemonOSEnvironmentError(
                 "Failed to close file descriptor %(fd)d"
-                " (%(exc)s)" % { 'fd': fd, 'exc': exc })
+                " (%(exc)s)" % {'fd': fd, 'exc': exc})
             raise error
 
 

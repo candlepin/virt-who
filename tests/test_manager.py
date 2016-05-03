@@ -27,13 +27,9 @@ from base import TestBase
 from config import Config
 from manager import Manager, ManagerError
 
-from virt import Guest, Virt, Hypervisor, HostGuestAssociationReport, DomainListReport
+from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
 
 import rhsm.config as rhsm_config
-import rhsm.certificate
-import rhsm.connection
-
-import xmlrpclib
 
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
@@ -88,9 +84,9 @@ class TestSubscriptionManager(TestManager):
         manager = Manager.fromOptions(self.logger, self.options, config)
         manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
-                ANY,
-                guest_uuids=[guest.toDict() for guest in self.guestInfo],
-                hypervisor_id=self.hypervisor_id)
+            ANY,
+            guest_uuids=[guest.toDict() for guest in self.guestInfo],
+            hypervisor_id=self.hypervisor_id)
 
     @patch("rhsm.connection.UEPConnection")
     @patch("rhsm.certificate.create_from_file")
@@ -103,9 +99,18 @@ class TestSubscriptionManager(TestManager):
         self.options.owner = "OWNER"
         manager.hypervisorCheckIn(self.host_guest_report, self.options)
         manager.connection.hypervisorCheckIn.assert_called_with(
-                self.options.owner,
-                self.options.env,
-                dict((host.hypervisorId, [guest.toDict() for guest in host.guestIds]) for host in self.host_guest_report.association['hypervisors']), options=self.options)
+            self.options.owner,
+            self.options.env,
+            dict(
+                (
+                    host.hypervisorId,
+                    [
+                        guest.toDict()
+                        for guest in host.guestIds
+                    ]
+                )
+                for host in self.host_guest_report.association['hypervisors']),
+            options=self.options)
 
 
 class TestSatellite(TestManager):

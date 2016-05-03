@@ -18,16 +18,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import logging
-import urllib2
-import suds
 from mock import MagicMock
 
 from base import TestBase
 from config import Config
 from virt.vdsm import Vdsm
-from virt import VirtError, Guest
-import xmlrpclib
 
 
 class TestVdsm(TestBase):

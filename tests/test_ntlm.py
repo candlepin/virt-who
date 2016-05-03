@@ -44,9 +44,7 @@ class TestNtlm(TestBase):
         user = 'User'
         domain = 'Domain'
         password = 'Password'
-        server_name = 'Server'
         workstation = 'COMPUTER'
-        random_session_key = '\x55' * 16
         time = '\x00' * 8
         client_challenge = from_hex('aa aa aa aa aa aa aa aa')
         server_challenge = from_hex('01 23 45 67 89 ab cd ef')

@@ -22,14 +22,13 @@ import sys
 
 from base import TestBase
 
-import logging
 import threading
 import tempfile
 import pickle
 import shutil
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 
-from mock import MagicMock, patch, ANY
+from mock import MagicMock, patch
 
 from config import Config, ConfigManager
 from manager import Manager
@@ -265,7 +264,3 @@ sat_server=sat.example.com
         manager = Manager.fromOptions(self.logger, MagicMock(), config)
         self.assertTrue(isinstance(manager, Satellite))
         self.assertEqual(config.sat_server, 'sat.example.com')
-
-
-if __name__ == '__main__':
-    unittest.main()

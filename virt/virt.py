@@ -198,8 +198,12 @@ class DomainListReport(AbstractVirtReport):
 
     @property
     def hash(self):
-        return hashlib.md5(json.dumps([g.toDict() for g in self.guests], sort_keys=True) +
-            str(self.hypervisor_id)).hexdigest()
+        return hashlib.md5(
+            json.dumps(
+                [g.toDict() for g in self.guests],
+                sort_keys=True) +
+            str(self.hypervisor_id)
+        ).hexdigest()
 
 
 class HostGuestAssociationReport(AbstractVirtReport):

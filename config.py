@@ -357,6 +357,8 @@ class ConfigManager(object):
             self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
             return
         for conf in config_dir_content:
+            if conf.startswith('.'):
+                continue
             try:
                 filename = parser.read(os.path.join(config_dir, conf))
                 if len(filename) == 0:

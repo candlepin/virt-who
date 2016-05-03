@@ -795,7 +795,7 @@ def _main(virtWho):
                     return 0
 
     if virtWho.options.print_:
-        if len(result) == 0:
+        if not result:
             virtWho.logger.error("No hypervisor reports found")
             return 1
         hypervisors = []

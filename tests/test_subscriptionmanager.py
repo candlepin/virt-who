@@ -191,7 +191,7 @@ rhsm_password=passwd
             proxy_password='proxy_password',
             insecure='1')
 
-    @unittest.expectedFailure
+    @unittest.skip("skip until rhsm is fixed")
     @patch('rhsm.connection.RhsmProxyHTTPSConnection')
     @patch('M2Crypto.httpslib.HTTPSConnection')
     @patch('rhsm.config.initConfig')

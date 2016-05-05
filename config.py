@@ -218,6 +218,12 @@ class Config(GeneralConfig):
         'is_hypervisor',
         'simplified_vim',
     )
+    PASSWORD_OPTIONS = (
+        ('encrypted_password', 'password'),
+        ('rhsm_encrypted_password', 'rhsm_password'),
+        ('rhsm_encrypted_proxy_password', 'rhsm_proxy_password'),
+        ('sat_encrypted_password', 'sat_password'),
+    )
 
     def __init__(self, name, type, defaults=None, **kwargs):
         super(Config, self).__init__(defaults=defaults, **kwargs)
@@ -227,6 +233,18 @@ class Config(GeneralConfig):
         if self._type not in VIRTWHO_TYPES:
             raise InvalidOption('Invalid type "%s", must be one of following %s' %
                                 (self._type, ", ".join(VIRTWHO_TYPES)))
+
+        for password_option, decrypted_option in self.PASSWORD_OPTIONS:
+            try:
+                pwd = self._options[password_option]
+            except KeyError:
+                continue
+            try:
+                self._options[decrypted_option] = Password.decrypt(unhexlify(pwd))
+            except (TypeError, IndexError):
+                raise InvalidPasswordFormat(
+                    "Option \"{option}\" in config named \"{name}\" can't be decrypted, possibly corrupted"
+                    .format(option=password_option, name=name))
 
     @property
     def smType(self):
@@ -307,34 +325,6 @@ class Config(GeneralConfig):
     def type(self):
         return self._type
 
-    def _get_password(self, option_name, encryped_option_name):
-        pwd = self._options.get(option_name, None)
-        if pwd is None:
-            encrypted_password = self._options.get(encryped_option_name, None)
-            if encrypted_password is None:
-                return None
-            try:
-                pwd = Password.decrypt(unhexlify(encrypted_password))
-            except TypeError:
-                raise InvalidPasswordFormat("Password can't be decrypted, possibly corrupted")
-        return pwd
-
-    @property
-    def password(self):
-        return self._get_password('password', 'encrypted_password')
-
-    @property
-    def rhsm_password(self):
-        return self._get_password('rhsm_password', 'rhsm_encrypted_password')
-
-    @property
-    def rhsm_proxy_password(self):
-        return self._get_password('rhsm_proxy_password', 'rhsm_encrypted_proxy_password')
-
-    @property
-    def sat_password(self):
-        return self._get_password('sat_password', 'sat_encrypted_password')
-
 
 class ConfigManager(object):
     def __init__(self, logger, config_dir=None, defaults=None):
@@ -369,7 +359,6 @@ class ConfigManager(object):
         self._readConfig(parser)
 
     def _readConfig(self, parser):
-        self._configs = []
         for section in parser.sections():
             try:
                 config = Config.fromParser(section, parser, self._defaults)

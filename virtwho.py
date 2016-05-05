@@ -257,8 +257,9 @@ class VirtWho(object):
         self.oneshot_remaining = set(virt.config.name for virt in self.virts)
 
         if len(self.virts) == 0:
-            self.logger.error("No suitable virt backend found")
-            return
+            err = "virt-who can't be started: no suitable virt backend found"
+            self.logger.error(err)
+            exit(1, err)
 
         # queued reports depend on OrderedDict feature that if key exists
         # when setting an item, it will remain in the same order
@@ -744,6 +745,10 @@ def main():
     for conffile in options.configs:
         try:
             virtWho.configManager.readFile(conffile)
+        except InvalidPasswordFormat as e:
+            err = "virt-who can't be started: %s" % str(e)
+            logger.error(err)
+            exit(1, err)
         except Exception as e:
             logger.error('Config file "%s" skipped because of an error: %s', conffile, str(e))
             has_error = True

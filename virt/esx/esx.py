@@ -224,7 +224,10 @@ class Esx(virt.Virt):
         self._cancel_wait()
 
         if self.filter is not None:
-            self.client.service.DestroyPropertyFilter(self.filter)
+            try:
+                self.client.service.DestroyPropertyFilter(self.filter)
+            except suds.filter_host_uuids:
+                pass
             self.filter = None
 
         self.logout()

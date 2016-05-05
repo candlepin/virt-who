@@ -740,12 +740,19 @@ def main():
         config = Config("env/cmdline", options.virtType, virtWho.configManager._defaults, **options)
         config.checkOptions(logger)
         virtWho.configManager.addConfig(config)
+    has_error = False
     for conffile in options.configs:
         try:
             virtWho.configManager.readFile(conffile)
         except Exception as e:
             logger.error('Config file "%s" skipped because of an error: %s', conffile, str(e))
+            has_error = True
+
     if len(virtWho.configManager.configs) == 0:
+        if has_error:
+            err = "virt-who can't be started: no valid configuration found"
+            logger.error(err)
+            exit(1, err)
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
         logger.info("No configurations found, using libvirt as backend")

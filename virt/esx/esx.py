@@ -226,7 +226,7 @@ class Esx(virt.Virt):
         if self.filter is not None:
             try:
                 self.client.service.DestroyPropertyFilter(self.filter)
-            except suds.filter_host_uuids:
+            except suds.WebFault:
                 pass
             self.filter = None
 

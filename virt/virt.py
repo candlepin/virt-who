@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import time
 import logging
+from operator import itemgetter
 from datetime import datetime
 from multiprocessing import Process, Event
 import json
@@ -118,7 +119,7 @@ class Hypervisor(object):
         d = OrderedDict((
             ('hypervisorId', {'hypervisorId': self.hypervisorId}),
             ('name', self.name),
-            ('guestIds', [g.toDict() for g in self.guestIds])
+            ('guestIds', sorted([g.toDict() for g in self.guestIds], key=itemgetter('guestId')))
         ))
         if self.name is None:
             del d['name']
@@ -200,7 +201,7 @@ class DomainListReport(AbstractVirtReport):
     def hash(self):
         return hashlib.md5(
             json.dumps(
-                [g.toDict() for g in self.guests],
+                sorted([g.toDict() for g in self.guests], key=itemgetter('guestId')),
                 sort_keys=True) +
             str(self.hypervisor_id)
         ).hexdigest()
@@ -235,7 +236,9 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
     @property
     def serializedAssociation(self):
-        return {'hypervisors': [h.toDict() for h in self.association['hypervisors']]}
+        return {
+            'hypervisors': sorted([h.toDict() for h in self.association['hypervisors']], key=itemgetter('hypervisorId'))
+        }
 
     @property
     def hash(self):

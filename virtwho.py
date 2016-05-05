@@ -664,7 +664,6 @@ def parseOptions():
     if options.print_:
         options.oneshot = True
 
-    logger.info("Using reporter_id='%s'", options.reporter_id)
     return (logger, options)
 
 
@@ -769,6 +768,7 @@ def main():
         else:
             logger.info('Using configuration "%s" ("%s" mode)', config.name, config.type)
 
+    logger.info("Using reporter_id='%s'", options.reporter_id)
     log.closeLogger(logger)
     if options.background:
         locker = lambda: daemon.DaemonContext(pidfile=lock)  # flake8: noqa

@@ -843,7 +843,13 @@ def exit(code, status=None):
         sd_notify("STATUS=%s" % status)
 
     if virtWho:
-        virtWho.terminate()
+        try:
+            virtWho.terminate()
+        except KeyboardInterrupt:
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            for v in virtWho.virts:
+                v.terminate()
+                v.join()
     if log.hasQueueLogger():
         queueLogger = log.getQueueLogger()
         queueLogger.terminate()

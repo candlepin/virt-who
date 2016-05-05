@@ -249,7 +249,7 @@ class Config(GeneralConfig):
                 raise InvalidOption("Option `server` needs to be set in config `%s`" % (self.name))
 
         # Check for env and owner options, it must be present for SAM
-        if (self.smType is not None and self.smType == 'sam' and (
+        if ((self.smType is None or self.smType == 'sam') and (
                 (self.type in ('esx', 'rhevm', 'hyperv')) or
                 (self.type == 'libvirt' and self.server) or
                 (self.type == 'fake' and self.fake_is_hypervisor))):

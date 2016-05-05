@@ -67,7 +67,7 @@ class FakeVirt(Process):
     def run(self):
         for i in range(100):
             try:
-                print "Starting FakeSam on port", self.port
+                print("Starting {cls} on port {port}".format(cls=self.__class__.__name__, port=self.port))
                 self.server.serve_forever()
                 break
             except AssertionError:

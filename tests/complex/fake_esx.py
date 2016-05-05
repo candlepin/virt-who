@@ -1,4 +1,5 @@
 
+import sys
 import time
 
 from xml.etree import ElementTree
@@ -57,3 +58,12 @@ class FakeEsx(FakeVirt):
     def __init__(self, port=None):
         super(FakeEsx, self).__init__(EsxHandler, port=port)
         self.server._data_version = self._data_version
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 2:
+        port = int(sys.argv[1])
+    else:
+        port = None
+
+    esx = FakeEsx(port)
+    esx.run()

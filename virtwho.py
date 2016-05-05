@@ -658,7 +658,7 @@ def parseOptions():
         if not options.interval or options.interval == parser.defaults['interval']:
             logger.info("Interval set to the default of %d seconds.", DefaultInterval)
         else:
-            logger.warning("Interval value may not be set below the default of %d seconds. Will use default value.", MinimumSendInterval)
+            logger.warning("Interval value can't be lower than {min} seconds. Default value of {min} seconds will be used.".format(min=MinimumSendInterval))
         options.interval = MinimumSendInterval
 
     if options.print_:

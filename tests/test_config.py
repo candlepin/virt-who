@@ -450,6 +450,38 @@ env=staging
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0, "Hidden config file shouldn't be read")
 
+    def testFilterHostOld(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+env=staging
+filter_host_uuids=12345
+""")
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0].filter_hosts, ['12345'])
+
+    def testFilterHostNew(self):
+            with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+                f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+env=staging
+filter_hosts=12345
+""")
+            manager = ConfigManager(self.logger, self.config_dir)
+            self.assertEqual(len(manager.configs), 1)
+            self.assertEqual(manager.configs[0].filter_hosts, ['12345'])
+
 
 class TestGeneralConfig(TestBase):
     """

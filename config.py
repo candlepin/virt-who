@@ -209,7 +209,9 @@ class Config(GeneralConfig):
         'hypervisor_id': 'uuid',
     }
     LIST_OPTIONS = (
+        'filter_hosts',
         'filter_host_uuids',
+        'exclude_hosts',
         'exclude_host_uuids',
         'filter_host_parents'
         'exclude_host_parents',
@@ -223,6 +225,10 @@ class Config(GeneralConfig):
         ('rhsm_encrypted_password', 'rhsm_password'),
         ('rhsm_encrypted_proxy_password', 'rhsm_proxy_password'),
         ('sat_encrypted_password', 'sat_password'),
+    )
+    RENAMED_OPTIONS = (
+        ('filter_host_uuids', 'filter_hosts'),
+        ('exclude_host_uuids', 'exclude_hosts'),
     )
 
     def __init__(self, name, type, defaults=None, **kwargs):
@@ -245,6 +251,12 @@ class Config(GeneralConfig):
                 raise InvalidPasswordFormat(
                     "Option \"{option}\" in config named \"{name}\" can't be decrypted, possibly corrupted"
                     .format(option=password_option, name=name))
+
+        for old_name, new_name in self.RENAMED_OPTIONS:
+            try:
+                self._options[new_name] = self._options[old_name]
+            except KeyError:
+                pass
 
     @property
     def smType(self):

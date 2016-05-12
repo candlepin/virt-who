@@ -1,0 +1,11 @@
+include README.md
+include README.hyperv
+include virt-who-config.5
+include virt-who.8
+include virt-who-password.8
+include LICENSE
+include template.conf
+include template-general.conf
+include virt-who-initscript
+include virt-who.conf
+include virt-who.service

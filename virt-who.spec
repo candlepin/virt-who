@@ -37,10 +37,12 @@ report them to the subscription manager.
 
 %install
 rm -rf $RPM_BUILD_ROOT
+%py2_install
+%{__python2} setup.py install_config --root %{buildroot}
+%{__python2} setup.py install_man_pages --root %{buildroot}
+%{__python2} setup.py install_upstart --root %{buildroot}
 
-make DESTDIR=$RPM_BUILD_ROOT install
-mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}
-mkdir -p %{buildroot}/%{_sysconfdir}/virt-who.d
+mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
 touch %{buildroot}/%{_sharedstatedir}/%{name}/key
 
 # Don't run test suite in check section, because it need the system to be
@@ -69,7 +71,7 @@ fi
 %doc README.md LICENSE
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
-%{_datadir}/virt-who/
+%{python2_sitelib}/virtwho/*
 %{_sysconfdir}/rc.d/init.d/virt-who
 %{_sysconfdir}/virt-who.conf
 %attr(600, root, root) %dir %{_sysconfdir}/virt-who.d

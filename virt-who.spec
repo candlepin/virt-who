@@ -1,3 +1,5 @@
+%define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
+
 Name:           virt-who
 Version:        0.16
 Release:        1%{?dist}
@@ -19,10 +21,19 @@ Requires:       python-suds
 # m2crypto is required for Hyper-V support
 Requires:       m2crypto
 Requires:       python-requests
+
+%if %{use_systemd}
+Requires: systemd-python
+BuildRequires: systemd
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+%else
 Requires(post): chkconfig
 Requires(preun): chkconfig
 # This is for /sbin/service
 Requires(preun): initscripts
+%endif
 
 %description
 Agent that collects information about virtual guests present in the system and
@@ -33,14 +44,18 @@ report them to the subscription manager.
 
 
 %build
-
+%py2_build
 
 %install
 rm -rf $RPM_BUILD_ROOT
 %py2_install
 %{__python2} setup.py install_config --root %{buildroot}
 %{__python2} setup.py install_man_pages --root %{buildroot}
+%if %{use_systemd}
+%{__python2} setup.py install_systemd --root %{buildroot}
+%else
 %{__python2} setup.py install_upstart --root %{buildroot}
+%endif
 
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
 touch %{buildroot}/%{_sharedstatedir}/%{name}/key
@@ -52,19 +67,32 @@ touch %{buildroot}/%{_sharedstatedir}/%{name}/key
 rm -rf $RPM_BUILD_ROOT
 
 %post
+%if %{use_systemd}
+%systemd_post virt-who.service
+%else
 # This adds the proper /etc/rc*.d links for the script
 /sbin/chkconfig --add virt-who
+%endif
+
 
 %preun
+%if %{use_systemd}
+%systemd_preun virt-who.service
+%else
 if [ $1 -eq 0 ] ; then
     /sbin/service virt-who stop >/dev/null 2>&1
     /sbin/chkconfig --del virt-who
 fi
+%endif
 
 %postun
+%if %{use_systemd}
+%systemd_postun_with_restart virt-who.service
+%else
 if [ "$1" -ge "1" ] ; then
     /sbin/service virt-who condrestart >/dev/null 2>&1 || :
 fi
+%endif
 
 
 %files

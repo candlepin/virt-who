@@ -24,10 +24,11 @@ from multiprocessing import Queue, Event
 import requests
 
 from base import TestBase
-from config import Config
-from virt.hyperv import HyperV
-from virt import VirtError, Guest, Hypervisor
 from proxy import Proxy
+
+from virtwho.config import Config
+from virtwho.virt.hyperv import HyperV
+from virtwho.virt import VirtError, Guest, Hypervisor
 
 
 class HyperVMock(object):

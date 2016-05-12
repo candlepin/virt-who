@@ -26,8 +26,8 @@ import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
 import rhsm.config as rhsm_config
 
-from ..manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
-from virt import AbstractVirtReport
+from virtwho.manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
+from virtwho.virt import AbstractVirtReport
 
 
 class SubscriptionManagerError(ManagerError):

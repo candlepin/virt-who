@@ -9,30 +9,17 @@ from fake_virt import FakeVirt, FakeHandler
 
 class EsxHandler(FakeHandler):
     def do_GET(self):
-        print '[GET] >>>>>>>', self.path
-        '''
-        time.sleep(0.1)
-        base = os.path.dirname(os.path.abspath(__file__))
-        if self.path == '/api/clusters':
-            with open(os.path.join(base, 'data/rhevm/rhevm_clusters.xml'), 'r') as f:
-                self.wfile.write(f.read())
-        if self.path == '/api/hosts':
-            with open(os.path.join(base, 'data/rhevm/rhevm_hosts.xml'), 'r') as f:
-                self.wfile.write(f.read())
-        elif self.path == '/api/vms':
-            vms = 'data/rhevm/rhevm_vms_%d.xml' % self.server._data_version.value
-            with open(os.path.join(base, vms), 'r') as f:
-                self.wfile.write(f.read())
-        '''
+        print '[FakeEsx] GET', self.path
 
     def do_POST(self):
+        print "[FakeEsx] POST", self.path
         if self.path == '/sdk':
             length = int(self.headers.getheader('content-length'))
             data = self.rfile.read(length)
             xml = ElementTree.fromstring(data)
             body = xml.find('{http://schemas.xmlsoap.org/soap/envelope/}Body')
             root = body[0]
-            print ">>>>", self.path, root.tag, self.server._data_version.value
+            print "[FakeEsx] post ", self.path, root.tag, self.server._data_version.value
 
             if 'RetrieveServiceContent' in root.tag:
                 self.write_file('esx', 'esx_retrieveservicecontent.xml')

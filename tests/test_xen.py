@@ -24,11 +24,12 @@ from mock import patch, call, ANY
 from multiprocessing import Queue, Event
 
 from base import TestBase
-from config import Config
-from virt.xen import Xen
-from virt.xen.XenAPI import NewMaster, Failure
-from virt import VirtError, Guest, Hypervisor
 from proxy import Proxy
+
+from virtwho.config import Config
+from virtwho.virt.xen import Xen
+from virtwho.virt.xen.XenAPI import NewMaster, Failure
+from virtwho.virt import VirtError, Guest, Hypervisor
 
 
 class TestXen(TestBase):
@@ -46,7 +47,7 @@ class TestXen(TestBase):
         self.xen._interval = 0
         self.xen._run()
 
-    @patch('virt.xen.XenAPI.Session')
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_connect(self, session):
         session.return_value.xenapi.login_with_password.return_value = None
         self.run_once()
@@ -55,17 +56,17 @@ class TestXen(TestBase):
         self.assertTrue(session.return_value.xenapi.login_with_password.called)
         session.return_value.xenapi.login_with_password.assert_called_with('username', 'password')
 
-    @patch('virt.xen.XenAPI.Session')
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_connection_timeout(self, session):
         session.side_effect = urllib2.URLError('timed out')
         self.assertRaises(VirtError, self.run_once)
 
-    @patch('virt.xen.XenAPI.Session')
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_invalid_login(self, session):
         session.return_value.xenapi.login_with_password.side_effect = Failure('details')
         self.assertRaises(VirtError, self.run_once)
 
-    @patch('virt.xen.XenAPI.Session')
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_getHostGuestMapping(self, session):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
@@ -130,7 +131,7 @@ class TestXen(TestBase):
         result = self.xen.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-    @patch('virt.xen.XenAPI.Session')
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_new_master(self, session):
         session.return_value.xenapi.login_with_password.side_effect = [
             NewMaster('details', 'new.master.xxx'),

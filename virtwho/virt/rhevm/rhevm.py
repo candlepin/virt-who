@@ -22,12 +22,10 @@ import sys
 import urlparse
 import requests
 from requests.auth import HTTPBasicAuth
-
-import virt
-
-from config import Config
-
 from xml.etree import ElementTree
+
+from virtwho import virt
+from virtwho.config import Config
 
 
 RHEVM_STATE_TO_GUEST_STATE = {

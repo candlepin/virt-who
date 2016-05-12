@@ -24,9 +24,9 @@ from mock import patch, ANY, MagicMock, Mock
 from multiprocessing import Queue, Event
 
 from base import TestBase
-from config import Config
-from virt.esx import Esx
-from virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
+from virtwho.config import Config
+from virtwho.virt.esx import Esx
+from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
 from proxy import Proxy
 
 

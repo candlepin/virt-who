@@ -24,10 +24,11 @@ from mock import patch, call, ANY, MagicMock
 from multiprocessing import Queue, Event
 
 from base import TestBase
-from config import Config
-from virt.rhevm import RhevM
-from virt import VirtError, Guest, Hypervisor
 from proxy import Proxy
+
+from virtwho.config import Config
+from virtwho.virt.rhevm import RhevM
+from virtwho.virt import VirtError, Guest, Hypervisor
 
 
 uuids = {

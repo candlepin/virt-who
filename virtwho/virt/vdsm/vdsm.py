@@ -26,7 +26,7 @@ import xmlrpclib
 from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
-from virt import Virt, Guest
+from virtwho.virt import Virt, Guest
 
 
 class VdsmError(Exception):

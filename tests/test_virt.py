@@ -4,8 +4,9 @@ import tempfile
 import shutil
 
 from base import TestBase
-from config import ConfigManager
-from virt import HostGuestAssociationReport, Hypervisor, Guest
+
+from virtwho.config import ConfigManager
+from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest
 
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()

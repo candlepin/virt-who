@@ -23,10 +23,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 from getpass import getpass
-from password import Password, UnwritableKeyFile, InvalidKeyFile
 from binascii import hexlify
 
-if __name__ == '__main__':
+from virtwho.password import Password, UnwritableKeyFile, InvalidKeyFile
+
+
+def main():
     if len(sys.argv) == 2 and sys.argv[1] in ('-h', '--help'):
         print """Utility that encrypts passwords for virt-who.
 
@@ -58,3 +60,7 @@ WARNING: root user can still decrypt encrypted passwords!
         sys.exit(1)
     print >>sys.stderr, "Use following as value for encrypted_password key in the configuration file:"
     print hexlify(enc)
+
+
+if __name__ == '__main__':
+    main()

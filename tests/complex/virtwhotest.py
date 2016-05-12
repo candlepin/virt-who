@@ -9,6 +9,8 @@ from tempfile import TemporaryFile
 
 from fake_sam import FakeSam
 
+import virtwho
+
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version
 if sys.version_info[0] > 2 or sys.version_info[1] > 6:
@@ -16,22 +18,13 @@ if sys.version_info[0] > 2 or sys.version_info[1] > 6:
 else:
     from unittest2 import TestCase
 
-try:
-    import virtwho
-    import config
-except ImportError:
-    sys.path.append("/usr/share/virt-who/")
-    import virtwho
-    import config
-
-config.VIRTWHO_CONF_DIR = '/this/does/not/exist'
-virtwho.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
-
 
 class TestBase(TestCase):
     @classmethod
     def setUpClass(cls):
         TestCase.setUpClass()
+        virtwho.parser.VIRTWHO_CONF_DIR = '/this/does/not/exist'
+        virtwho.parser.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
         cls.queue = Queue()
         cls.sam = FakeSam(cls.queue)
         cls.sam.start()
@@ -69,8 +62,9 @@ class TestBase(TestCase):
         virt-who process (or None if `background` is True) and stdout is
         stdout from the process (or None if `grab_stdout` is False).
         '''
-        oldMinimumSendInterval = virtwho.MinimumSendInterval
-        virtwho.MinimumSendInterval = 2
+        oldMinimumSendInterval = virtwho.executor.MinimumSendInterval
+        virtwho.executor.MinimumSendInterval = 2
+        virtwho.parser.MinimumSendInterval = 2
         virtwho.log.Logger._stream_handler = None
         virtwho.log.Logger._queue_logger = None
         if grab_stdout:
@@ -80,7 +74,7 @@ class TestBase(TestCase):
         code = None
         data = None
         socket.setdefaulttimeout(1)
-        self.process = Process(target=virtwho.main)
+        self.process = Process(target=virtwho.main.main)
         self.process.start()
 
         if not background:
@@ -93,7 +87,8 @@ class TestBase(TestCase):
             sys.stdout.close()
             sys.stdout = old_stdout
 
-        virtwho.MinimumSendInterval = oldMinimumSendInterval
+        virtwho.executor.MinimumSendInterval = oldMinimumSendInterval
+        virtwho.parser.MinimumSendInterval = oldMinimumSendInterval
         return (code, data)
 
     def stop_virtwho(self):

@@ -273,13 +273,13 @@ class Virt(Process):
         """
 
         # Imports can't be top-level, it would be circular dependency
-        import libvirtd  # flake8: noqa
-        import esx  # flake8: noqa
-        import xen  # flake8: noqa
-        import rhevm  # flake8: noqa
-        import vdsm  # flake8: noqa
-        import hyperv  # flake8: noqa
-        import fakevirt  # flake8: noqa
+        import virtwho.virt.libvirtd  # flake8: noqa
+        import virtwho.virt.esx  # flake8: noqa
+        import virtwho.virt.xen  # flake8: noqa
+        import virtwho.virt.rhevm  # flake8: noqa
+        import virtwho.virt.vdsm  # flake8: noqa
+        import virtwho.virt.hyperv  # flake8: noqa
+        import virtwho.virt.fakevirt  # flake8: noqa
 
         for subcls in cls.__subclasses__():
             if config.type == subcls.CONFIG_TYPE:

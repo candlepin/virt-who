@@ -17,11 +17,13 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
-from base import TestBase
 from mock import patch, Mock, sentinel
 import threading
 from multiprocessing import Queue
-import log
+
+from base import TestBase
+
+from virtwho import log
 
 
 class TestLog(TestBase):
@@ -32,7 +34,7 @@ class TestLog(TestBase):
         log.Logger._log_per_config = False
         log.Logger._queue_logger = None
 
-    @patch('log.QueueLogger')
+    @patch('virtwho.log.QueueLogger')
     def test_get_queue_logger(self, queueloggerClass):
         queueloggerClass.return_value = Mock()
 
@@ -45,7 +47,7 @@ class TestLog(TestBase):
         defaultQueueLogger.start_logging.assert_any_call()
 
     @patch('os.path.isdir')
-    @patch('log.Logger.get_queue_logger')
+    @patch('virtwho.log.Logger.get_queue_logger')
     @patch('logging.FileHandler._open')
     def test_get_logger_no_config(self, open, getQueueLogger, isdir):
         open.return_value = None
@@ -69,8 +71,8 @@ class TestLog(TestBase):
         self.assertTrue(len(queue_handlers) == 1)
         self.assertEquals(queue_handlers[0].baseFilename, '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 
-    @patch('log.Logger.get_queue_logger')
-    @patch('log.Logger.get_file_handler')
+    @patch('virtwho.log.Logger.get_queue_logger')
+    @patch('virtwho.log.Logger.get_file_handler')
     def test_get_logger_different_log_file(self, getFileHandler, getQueueLogger):
         queueLogger = log.QueueLogger('virtwho')
         queueLogger.logger.handlers = []

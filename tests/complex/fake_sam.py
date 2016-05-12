@@ -6,13 +6,14 @@ import ssl
 import json
 import shutil
 
-from manager.subscriptionmanager.subscriptionmanager import rhsm_config
 from fake_virt import FakeVirt, FakeHandler
+
+from virtwho.manager.subscriptionmanager.subscriptionmanager import rhsm_config
 
 
 class SamHandler(FakeHandler):
     def do_GET(self):
-        print "GET", self.path
+        print "[FakeSam] GET", self.path
         if self.path.startswith('/status'):
             self.wfile.write(json.dumps({
                 "result": "ok",
@@ -24,7 +25,7 @@ class SamHandler(FakeHandler):
             }))
 
     def do_POST(self):
-        print "POST", self.path
+        print "[FakeSam] POST", self.path
         if self.server.code:
             self.send_response(self.server.code)
             self.send_header("Retry-After", "60")
@@ -32,6 +33,7 @@ class SamHandler(FakeHandler):
         elif self.path.startswith('/hypervisors'):
             size = int(self.headers["Content-Length"])
             data = json.loads(self.rfile.read(size))
+            print "[FakeSam] putting in the queue:", data
             self.server.queue.put(data)
             self.wfile.write(json.dumps({
                 "failedUpdate": [],

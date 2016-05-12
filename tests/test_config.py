@@ -18,17 +18,19 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-
 import os
+import sys
 import shutil
-from config import ConfigManager, InvalidOption, GeneralConfig, NotSetSentinel, GlobalConfig, parse_list
 from tempfile import mkdtemp
-from base import TestBase, unittest
 from binascii import hexlify, unhexlify
 from mock import patch
 import logging
 import random
-import sys
+
+from base import TestBase, unittest
+
+from virtwho.config import ConfigManager, InvalidOption, GeneralConfig, NotSetSentinel, GlobalConfig, parse_list
+from virtwho.password import Password, InvalidKeyFile
 
 
 class TestReadingConfigs(TestBase):
@@ -121,9 +123,8 @@ env=staging
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
-    @patch('password.Password._read_key_iv')
+    @patch('virtwho.password.Password._read_key_iv')
     def testCryptedPassword(self, password):
-        from password import Password
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
         crypted = hexlify(Password.encrypt(passwd))
@@ -143,9 +144,8 @@ env=staging
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].password, passwd)
 
-    @patch('password.Password._read_key_iv')
+    @patch('virtwho.password.Password._read_key_iv')
     def testCryptedRHSMPassword(self, password):
-        from password import Password
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
         crypted = hexlify(Password.encrypt(passwd))
@@ -167,9 +167,8 @@ env=staging
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0].rhsm_password, passwd)
 
-    @patch('password.Password._read_key_iv')
+    @patch('virtwho.password.Password._read_key_iv')
     def testCryptedRHSMProxyPassword(self, password):
-        from password import Password
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
         crypted = hexlify(Password.encrypt(passwd))
@@ -191,7 +190,6 @@ env=staging
         self.assertEqual(manager.configs[0].rhsm_proxy_password, passwd)
 
     def testCryptedPasswordWithoutKey(self):
-        from password import Password, InvalidKeyFile
         Password.KEYFILE = "/some/nonexistant/file"
         # passwd = "TestSecretPassword!"
         with self.assertRaises(InvalidKeyFile):

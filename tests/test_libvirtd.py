@@ -23,8 +23,8 @@ from Queue import Queue
 from base import TestBase
 from mock import patch, ANY, Mock
 
-from config import Config
-from virt import Virt, VirtError
+from virtwho.config import Config
+from virtwho.virt import Virt, VirtError
 
 
 def raiseLibvirtError(*args, **kwargs):

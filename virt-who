@@ -1,9 +1,9 @@
 #!/bin/sh
 
-if [ -f ./virtwho.py ];
+if [ -f ./virtwho/__main__.py ];
 then
     # Run it from local directory when available
-    exec /usr/bin/python ./virtwho.py "$@"
+    exec /usr/bin/python -m virtwho "$@"
 else
     # Run it from /usr/share/virt-who
     exec /usr/bin/python /usr/share/virt-who/virtwho.py "$@"

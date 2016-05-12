@@ -103,6 +103,9 @@ class GeneralConfig(object):
         # a reference to the dictionary to appear
         self.__dict__['_options'] = options
 
+    def __repr__(self):
+        return '{cls}({args!r})'.format(cls=self.__class__.__name__, args=self._options)
+
     def __getattr__(self, name):
         if name.startswith('_'):
             super(GeneralConfig, self).__getattr__(name)

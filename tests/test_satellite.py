@@ -20,24 +20,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import sys
 
-from base import TestBase
-
 import threading
 import tempfile
 import pickle
 import shutil
 import xmlrpclib
 from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
-
+from binascii import hexlify
 from mock import MagicMock, patch
 
-from config import Config, ConfigManager
-from manager import Manager
-from manager.satellite import Satellite, SatelliteError
-from virt import Guest, Hypervisor, HostGuestAssociationReport
-from virtwho import parseOptions
-import password
-from binascii import hexlify
+from base import TestBase
+
+from virtwho.config import Config, ConfigManager
+from virtwho.manager import Manager
+from virtwho.manager.satellite import Satellite, SatelliteError
+from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
+from virtwho.parser import parseOptions
+from virtwho import password
 
 
 TEST_SYSTEM_ID = 'test-system-id'
@@ -224,7 +223,7 @@ class TestSatellite(TestBase):
         self.assertTrue("created" in result)
         self.assertTrue("updated" in result)
 
-    @patch('password.Password._can_write')
+    @patch('virtwho.password.Password._can_write')
     def test_per_config_options_encrypted(self, can_write):
         options = Options(None, None, None)
         options.force_register = True

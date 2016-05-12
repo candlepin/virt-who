@@ -25,7 +25,7 @@ from mock import MagicMock
 
 from base import TestBase
 
-from password import Password
+from virtwho.password import Password
 
 
 class TestPassword(TestBase):

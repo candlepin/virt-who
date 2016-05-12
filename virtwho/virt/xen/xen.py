@@ -5,9 +5,10 @@ from time import time
 import XenAPI
 from XenAPI import NewMaster, Failure
 from collections import defaultdict
-import virt
 import logging
-from util import RequestsXmlrpcTransport
+
+from virtwho import virt
+from virtwho.util import RequestsXmlrpcTransport
 
 
 class Xen(virt.Virt):

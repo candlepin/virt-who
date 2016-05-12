@@ -29,7 +29,8 @@ import json
 from Queue import Empty
 from multiprocessing import Queue
 from threading import Thread
-import util
+
+from virtwho import util
 
 FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
 STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""

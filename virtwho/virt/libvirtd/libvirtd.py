@@ -22,13 +22,14 @@ import time
 import libvirt
 import threading
 import urlparse
-
-import virt
-
 from xml.etree import ElementTree
 
+from virtwho.virt import (
+    Hypervisor, Guest, VirtError, HostGuestAssociationReport,
+    DomainListReport, Virt)
 
-class LibvirtdGuest(virt.Guest):
+
+class LibvirtdGuest(Guest):
     def __init__(self, libvirtd, domain):
         try:
             state = domain.state(0)[0]
@@ -68,7 +69,7 @@ def libvirt_cred_request(credentials, config):
     return 0
 
 
-class Libvirtd(virt.Virt):
+class Libvirtd(Virt):
     """ Class for interacting with libvirt. """
     CONFIG_TYPE = "libvirt"
 
@@ -162,7 +163,7 @@ class Libvirtd(virt.Virt):
                 v = libvirt.openReadOnly(url)
         except libvirt.libvirtError as e:
             self.logger.exception("Error in libvirt backend")
-            raise virt.VirtError(str(e))
+            raise VirtError(str(e))
         v.domainEventRegister(self._callback, None)
         v.setKeepAlive(5, 3)
         return v
@@ -219,9 +220,9 @@ class Libvirtd(virt.Virt):
 
     def _get_report(self):
         if self.isHypervisor():
-            return virt.HostGuestAssociationReport(self.config, self._getHostGuestMapping())
+            return HostGuestAssociationReport(self.config, self._getHostGuestMapping())
         else:
-            return virt.DomainListReport(self.config, self._listDomains(), self._remote_host_id())
+            return DomainListReport(self.config, self._listDomains(), self._remote_host_id())
 
     def _listDomains(self):
         domains = []
@@ -240,7 +241,7 @@ class Libvirtd(virt.Virt):
                 domains.append(LibvirtdGuest(self, domain))
         except libvirt.libvirtError as e:
             self.virt.close()
-            raise virt.VirtError(str(e))
+            raise VirtError(str(e))
         self.logger.debug("Libvirt domains found: %s", ", ".join(guest.uuid for guest in domains))
         return domains
 
@@ -257,8 +258,8 @@ class Libvirtd(virt.Virt):
             elif self.config.hypervisor_id == 'hostname':
                 self._host_uuid = self.virt.getHostname()
             else:
-                raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
-                                     (self.config.hypervisor_id, self.CONFIG_TYPE))
+                raise VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
+                                (self.config.hypervisor_id, self.CONFIG_TYPE))
         return self._host_uuid
 
     def _remote_host_name(self):
@@ -280,13 +281,13 @@ class Libvirtd(virt.Virt):
     def _getHostGuestMapping(self):
         mapping = {'hypervisors': []}
         facts = {
-            virt.Hypervisor.CPU_SOCKET_FACT: self._remote_host_sockets(),
-            virt.Hypervisor.HYPERVISOR_TYPE_FACT: self.virt.getType(),
-            virt.Hypervisor.HYPERVISOR_VERSION_FACT: self.virt.getVersion(),
+            Hypervisor.CPU_SOCKET_FACT: self._remote_host_sockets(),
+            Hypervisor.HYPERVISOR_TYPE_FACT: self.virt.getType(),
+            Hypervisor.HYPERVISOR_VERSION_FACT: self.virt.getVersion(),
         }
-        host = virt.Hypervisor(hypervisorId=self._remote_host_id(),
-                               guestIds=self._listDomains(),
-                               name=self._remote_host_name(),
-                               facts=facts)
+        host = Hypervisor(hypervisorId=self._remote_host_id(),
+                          guestIds=self._listDomains(),
+                          name=self._remote_host_name(),
+                          facts=facts)
         mapping['hypervisors'].append(host)
         return mapping

@@ -32,7 +32,7 @@ else:
 
 class TestBase(unittest.TestCase):
     @classmethod
-    @patch('log.getLogger')
+    @patch('virtwho.log.getLogger')
     def setUpClass(cls, logger):
         cls.logger = logging.getLogger("")
         cls.logger.handlers = []

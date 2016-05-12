@@ -27,8 +27,7 @@ from xml.etree import ElementTree
 from requests.auth import AuthBase
 import requests
 
-import virt
-
+from virtwho import virt
 import ntlm
 
 try:

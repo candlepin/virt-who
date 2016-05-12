@@ -19,12 +19,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import xmlrpclib
-from util import RequestsXmlrpcTransport
 import pickle
 import json
 
-from manager import Manager, ManagerError
-from virt import Guest
+from virtwho.manager import Manager, ManagerError
+from virtwho.util import RequestsXmlrpcTransport
+from virtwho.virt import Guest
 
 
 class SatelliteError(ManagerError):

@@ -24,10 +24,10 @@ import tempfile
 from mock import patch, MagicMock, ANY
 
 from base import TestBase
-from config import Config
-from manager import Manager, ManagerError
 
-from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
+from virtwho.config import Config
+from virtwho.manager import Manager, ManagerError
+from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
 
 import rhsm.config as rhsm_config
 

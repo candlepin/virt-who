@@ -56,12 +56,11 @@ class Manager(object):
     @classmethod
     def fromOptions(cls, logger, options, config=None):
         # Imports can't be top-level, it would be circular dependency
-        import subscriptionmanager
-        import satellite
+        import virtwho.manager.subscriptionmanager
+        import virtwho.manager.satellite
 
         # Silence pyflakes errors
-        assert subscriptionmanager
-        assert satellite
+        assert virtwho
 
         smType = config.smType or options.smType or 'sam'
 

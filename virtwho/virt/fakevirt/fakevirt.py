@@ -1,8 +1,8 @@
 
-from virt import Virt, VirtError, Guest, Hypervisor
-
 import json
-from util import decode
+
+from virtwho.virt import Virt, VirtError, Guest, Hypervisor
+from virtwho.util import decode
 
 
 class FakeVirt(Virt):

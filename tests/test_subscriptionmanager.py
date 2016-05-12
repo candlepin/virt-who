@@ -7,11 +7,11 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from config import Config, ConfigManager
-from manager import Manager
-from manager.subscriptionmanager import SubscriptionManager
-from virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
-from virtwho import parseOptions
+from virtwho.config import Config, ConfigManager
+from virtwho.manager import Manager
+from virtwho.manager.subscriptionmanager import SubscriptionManager
+from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
+from virtwho.parser import parseOptions
 
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()

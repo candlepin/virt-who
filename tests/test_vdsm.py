@@ -21,8 +21,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from mock import MagicMock
 
 from base import TestBase
-from config import Config
-from virt.vdsm import Vdsm
+
+from virtwho.config import Config
+from virtwho.virt.vdsm import Vdsm
 
 
 class TestVdsm(TestBase):

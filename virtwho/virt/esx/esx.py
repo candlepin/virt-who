@@ -35,7 +35,7 @@ import socket
 from collections import defaultdict
 from httplib import HTTPException
 
-import virt
+from virtwho import virt
 
 
 class FileAdapter(requests.adapters.BaseAdapter):

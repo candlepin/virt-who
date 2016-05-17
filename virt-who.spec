@@ -1,7 +1,7 @@
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
 
 Name:           virt-who
-Version:        0.16
+Version:        0.17
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -117,7 +117,10 @@ fi
 %{_sysconfdir}/virt-who.conf
 
 %changelog
-* Thu Dec 17 2015 Radek Novacek <rnovacek@redhat.com> 0.16-1
+* Tue May 17 2017 Radek Novacek <rnovacek@redhat.com> 0.17-1
+- Version 0.17
+
+* Thu Dec 17 2016 Radek Novacek <rnovacek@redhat.com> 0.16-1
 - Version 0.16
 
 * Tue Aug 04 2015 Devan Goodwin <dgoodwin@rm-rf.ca> 0.15-1

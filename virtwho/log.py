@@ -32,9 +32,14 @@ from threading import Thread
 
 from virtwho import util
 
-FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s]  @%(filename)s:%(lineno)d - %(message)s"""
-STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
+try:
+    from systemd import journal
+except ImportError:
+    journal = None
 
+FILE_LOG_FORMAT = """%(asctime)s [%(levelname)s] @%(filename)s:%(lineno)d - %(message)s"""
+STREAM_LOG_FORMAT = """%(asctime)s %(levelname)s: %(message)s"""
+JOURNAL_LOG_FORMAT = """[%(levelname)s] @%(filename)s:%(lineno)d - %(message)s"""
 
 DEBUG_FORMAT = "%(asctime)s [%(name)s %(levelname)s] " \
                "%(processName)s(%(process)d):%(threadName)s " \
@@ -163,6 +168,7 @@ class Logger(object):
     _log_per_config = False
     _logs = {}
     _stream_handler = None
+    _journal_handler = None
     _level = logging.DEBUG
     _queue_logger = None
     _background = False
@@ -198,28 +204,35 @@ class Logger(object):
 
         fileHandler = cls.get_file_handler(name=logger_name, config=config)
 
+        ppid = os.getppid()
+
+        journalHandler = None
+        streamHandler = None
+        if ppid == 1:
+            # we're running under systemd, log to journal
+            journalHandler = cls.get_journal_handler()
+        else:
+            # we're not running under systemd, set up streamHandler if we're not running in the background
+            if not cls._background:
+                streamHandler = cls.get_stream_handler(name)
+
         if queue:
             queueLogger = cls.get_queue_logger()
-            queueHandler = queueLogger.getHandler(cls._level)  # get a QueueHandler that will send to this queuelogger
-            if fileHandler is not None:
-                queueHandler.setFormatter(fileHandler.formatter)
-                queueLogger.addHandler(fileHandler)
-
-            if not cls._background:
-                # set up a streamhandler if we are not running in the background
-                streamHandler = cls.get_stream_handler(name)
-                streamHandler.setLevel(cls._level)
-                queueLogger.addHandler(streamHandler)
-
+            # get a QueueHandler that will send to this queuelogger
+            queueHandler = queueLogger.getHandler(cls._level)
             logger.addHandler(queueHandler)
+            main_logger = queueLogger
         else:
-            if not cls._background:
-                # set up a streamhandler if we are not running in the background
-                streamHandler = cls.get_stream_handler(name)
-                logger.addHandler(streamHandler)
+            main_logger = logger
 
-            if fileHandler is not None:
-                logger.addHandler(fileHandler)
+        if fileHandler:
+            main_logger.addHandler(fileHandler)
+
+        if streamHandler:
+            main_logger.addHandler(streamHandler)
+
+        if journalHandler:
+            main_logger.addHandler(journalHandler)
 
         return logger
 
@@ -256,6 +269,14 @@ class Logger(object):
         streamHandler.addFilter(f)
         cls._stream_handler = streamHandler
         return streamHandler
+
+    @classmethod
+    def get_journal_handler(cls):
+        if cls._journal_handler is None and journal:
+            cls._journal_handler = journal.JournalHandler()
+            cls._journal_handler.setLevel(cls._level)
+            cls._journal_handler.setFormatter(logging.Formatter(JOURNAL_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
+        return cls._journal_handler
 
     @classmethod
     def get_queue_logger(cls):

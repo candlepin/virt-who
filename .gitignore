@@ -5,4 +5,8 @@
 noarch/
 .*
 htmlcov/
+MANIFEST
+build/
+dist/
+virt_who.egg-info/
 

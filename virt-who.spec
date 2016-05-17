@@ -117,10 +117,10 @@ fi
 %{_sysconfdir}/virt-who.conf
 
 %changelog
-* Tue May 17 2017 Radek Novacek <rnovacek@redhat.com> 0.17-1
+* Tue May 17 2016 Radek Novacek <rnovacek@redhat.com> 0.17-1
 - Version 0.17
 
-* Thu Dec 17 2016 Radek Novacek <rnovacek@redhat.com> 0.16-1
+* Thu Dec 17 2015 Radek Novacek <rnovacek@redhat.com> 0.16-1
 - Version 0.16
 
 * Tue Aug 04 2015 Devan Goodwin <dgoodwin@rm-rf.ca> 0.15-1

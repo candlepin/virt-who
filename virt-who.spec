@@ -99,8 +99,12 @@ fi
 %doc README.md LICENSE
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
-%{python2_sitelib}/virtwho/*
+%{python2_sitelib}/*
+%if %{use_systemd}
+%{_unitdir}/virt-who.service
+%else
 %{_sysconfdir}/rc.d/init.d/virt-who
+%endif
 %{_sysconfdir}/virt-who.conf
 %attr(600, root, root) %dir %{_sysconfdir}/virt-who.d
 %attr(700, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who

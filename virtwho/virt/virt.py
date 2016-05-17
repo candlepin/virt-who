@@ -32,7 +32,7 @@ try:
     from collections import OrderedDict
 except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from util import OrderedDict
+    from virtwho.util import OrderedDict
 
 
 class VirtError(Exception):

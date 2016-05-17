@@ -96,7 +96,7 @@ fi
 
 
 %files
-%doc README.md LICENSE
+%doc README.md LICENSE README.hyperv
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
 %{python2_sitelib}/*

@@ -1,6 +1,6 @@
 
 name = virt-who
-version = 0.14
+version = 0.17
 
 .PHONY: pack check install srpm rpm rpmlint upload
 
@@ -14,7 +14,7 @@ check:
 	pyflakes *.py
 
 install:
-	python setup.py sdist
+	python setup.py install
 
 srpm:
 	tito build --srpm --test

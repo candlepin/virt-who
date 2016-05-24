@@ -44,11 +44,11 @@ report them to the subscription manager.
 
 
 %build
-%py2_build
+%{__python2} setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%py2_install
+%{__python2} setup.py install --root %{buildroot}
 %{__python2} setup.py install_config --root %{buildroot}
 %{__python2} setup.py install_man_pages --root %{buildroot}
 %if %{use_systemd}

@@ -147,8 +147,12 @@ class RhevM(virt.Virt):
                     'Reporting of hypervisor %s is not implemented in %s backend',
                     self.config.hypervisor_id, self.CONFIG_TYPE)
 
+            sockets = host.find('cpu').find('topology').get('sockets')
+            if not sockets:
+                sockets = host.find('cpu').find('topology').find('sockets').text
+
             facts = {
-                virt.Hypervisor.CPU_SOCKET_FACT: host.find('cpu').find('topology').get('sockets'),
+                virt.Hypervisor.CPU_SOCKET_FACT: sockets,
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
             }
             try:

@@ -80,6 +80,7 @@ class RhevM(virt.Virt):
         """
         try:
             response = requests.get(url, auth=self.auth, verify=False)
+            response.raise_for_status()
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
         # FIXME: other errors

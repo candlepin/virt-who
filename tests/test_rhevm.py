@@ -91,6 +91,7 @@ class TestRhevM(TestBase):
     @patch('requests.get')
     def test_connect(self, get):
         get.return_value.text = '<xml></xml>'
+        get.return_value.status_code = 200
         self.run_once()
 
         self.assertEqual(get.call_count, 3)

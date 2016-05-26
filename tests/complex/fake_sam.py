@@ -46,8 +46,8 @@ class SamHandler(FakeHandler):
 
 
 class FakeSam(FakeVirt):
-    def __init__(self, queue, port=None, code=None):
-        super(FakeSam, self).__init__(SamHandler, port=port)
+    def __init__(self, queue, port=None, code=None, host='localhost'):
+        super(FakeSam, self).__init__(SamHandler, port=port, host=host)
         self.daemon = True
         self.server.code = code
         base = os.path.dirname(os.path.abspath(__file__))
@@ -90,5 +90,5 @@ if __name__ == '__main__':
         code = None
     from Queue import Queue
     q = Queue()
-    f = FakeSam(q, port=8443, code=code)
+    f = FakeSam(q, port=8443, code=code, host='0.0.0.0')
     f.run()

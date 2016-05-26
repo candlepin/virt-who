@@ -68,9 +68,9 @@ class RhevM(virt.Virt):
         self.username = self.config.username
         self.password = self.config.password
 
-        self.clusters_url = urlparse.urljoin(self.url, "/api/clusters")
-        self.hosts_url = urlparse.urljoin(self.url, "/api/hosts")
-        self.vms_url = urlparse.urljoin(self.url, "/api/vms")
+        self.clusters_url = urlparse.urljoin(self.url, "api/clusters")
+        self.hosts_url = urlparse.urljoin(self.url, "api/hosts")
+        self.vms_url = urlparse.urljoin(self.url, "api/vms")
 
         self.auth = HTTPBasicAuth(self.config.username, self.config.password)
 

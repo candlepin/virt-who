@@ -128,8 +128,11 @@ class SubscriptionManager(Manager):
             kwargs['key_file'] = self.key_file
 
         self.connection = rhsm_connection.UEPConnection(**kwargs)
-        if not self.connection.ping()['result']:
-            raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
+        try:
+            if not self.connection.ping()['result']:
+                raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
 
     def sendVirtGuests(self, report, options=None):
         """

@@ -13,6 +13,8 @@ BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildArch:      noarch
 BuildRequires:  python2-devel
+BuildRequires:  python-setuptools
+Requires:       python-setuptools
 Requires:       libvirt-python
 # python-rhsm 1.10.10 has required call for guestId support
 Requires:       python-rhsm >= 1.10.10

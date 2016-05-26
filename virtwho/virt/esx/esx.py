@@ -83,7 +83,7 @@ class RequestsTransport(suds.transport.Transport):
         self._session.mount('file://', FileAdapter())
 
     def open(self, request):
-        resp = self._session.get(request.url)
+        resp = self._session.get(request.url, headers=request.headers, verify=False)
         resp.raise_for_status()
         return StringIO(resp.content)
 
@@ -374,7 +374,7 @@ class Esx(virt.Virt):
                     if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
                         vm = self.vms[objectSet.obj.value]
                         for change in objectSet.changeSet:
-                            if change.op == 'assign':
+                            if change.op == 'assign' and hasattr(change, 'val'):
                                 vm[change.name] = change.val
                             elif change.op in ['remove', 'indirectRemove']:
                                 try:

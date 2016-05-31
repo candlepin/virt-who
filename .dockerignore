@@ -4,3 +4,8 @@
 */*/*/*.pyc
 *.tar.gz
 .git
+htmlcov/
+.cache/
+dist/
+build/
+

@@ -49,7 +49,10 @@ except ImportError:
 
 
 # Disable Insecure Request warning from requests library
-requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+try:
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+except AttributeError:
+    pass
 
 
 PIDFILE = "/var/run/virt-who.pid"

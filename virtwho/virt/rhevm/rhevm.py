@@ -65,6 +65,9 @@ class RhevM(virt.Virt):
             netloc = parsed[1]
         self.url = urlparse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
 
+        if self.url[-1] != '/':
+            self.url += '/'
+
         self.username = self.config.username
         self.password = self.config.password
 

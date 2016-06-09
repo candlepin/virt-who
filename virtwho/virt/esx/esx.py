@@ -268,6 +268,9 @@ class Esx(virt.Virt):
                     if 'config.uuid' not in vm:
                         self.logger.debug("Guest '%s' doesn't have 'config.uuid' property", vm_id.value)
                         continue
+                    if not vm['config.uuid'].strip():
+                        self.logger.debug("Guest '%s' has empty 'config.uuid' property", vm_id.value)
+                        continue
                     state = virt.Guest.STATE_UNKNOWN
                     try:
                         if vm['runtime.powerState'] == 'poweredOn':

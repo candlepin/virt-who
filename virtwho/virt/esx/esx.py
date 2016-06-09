@@ -92,6 +92,7 @@ class RequestsTransport(suds.transport.Transport):
             request.url,
             data=request.message,
             headers=request.headers,
+            timeout=self.options.timeout,
             verify=False
         )
         ct = resp.headers.get('content-type')
@@ -106,7 +107,7 @@ class RequestsTransport(suds.transport.Transport):
 
 class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
-    MAX_WAIT_TIME = 1800  # 30 minutes
+    MAX_WAIT_TIME = 300  # 5 minutes
 
     def __init__(self, logger, config):
         super(Esx, self).__init__(logger, config)

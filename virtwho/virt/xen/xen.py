@@ -64,7 +64,9 @@ class Xen(virt.Virt):
         assert hasattr(self, 'session'), "Login was not called"
         hosts = self.session.xenapi.host.get_all()
 
-        mapping = {}
+        mapping = {
+            'hypervisors': [],
+        }
 
         for host in hosts:
 
@@ -106,13 +108,12 @@ class Xen(virt.Virt):
             if version:
                 facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
 
-            mapping['hypervisors'] = [
+            mapping['hypervisors'].append(
                 virt.Hypervisor(
                     hypervisorId=record["uuid"],
                     guestIds=guests,
                     name=record["hostname"],
-                    facts=facts)
-            ]
+                    facts=facts))
         return mapping
 
     def _wait(self, token, timeout):

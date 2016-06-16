@@ -132,6 +132,63 @@ class TestXen(TestBase):
         self.assertEqual(expected_result.toDict(), result.toDict())
 
     @patch('virtwho.virt.xen.XenAPI.Session')
+    def test_multiple_hosts(self, session):
+        expected_hostname = 'hostname.domainname'
+        expected_hypervisorId = 'Fake_uuid'
+        expected_guestId = 'guest1UUID'
+        expected_guest_state = Guest.STATE_UNKNOWN
+
+        xenapi = session.return_value.xenapi
+
+        hosts = []
+        for i in range(3):
+            hosts.append({
+                'uuid': expected_hypervisorId + str(i),
+                'hostname': expected_hostname + str(i),
+                'cpu_info': {
+                    'socket_count': '1'
+                },
+                'software_version': {
+                    'product_brand': 'XenServer',
+                    'product_version': '1.2.3',
+                },
+            })
+
+        guest = {
+            'uuid': expected_guestId,
+            'power_state': 'unknown',
+        }
+
+        xenapi.host.get_all.return_value = hosts
+        xenapi.host.get_resident_VMs.return_value = [
+            guest,
+        ]
+        xenapi.host.get_record = lambda x: x
+        xenapi.VM.get_record = lambda x: x
+
+        expected_result = [
+            Hypervisor(
+                hypervisorId=expected_hypervisorId + str(i),
+                name=expected_hostname + str(i),
+                guestIds=[
+                    Guest(
+                        expected_guestId,
+                        self.xen,
+                        expected_guest_state,
+                    )
+                ],
+                facts={
+                    Hypervisor.CPU_SOCKET_FACT: '1',
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'XenServer',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                }
+            ) for i in range(3)]
+        self.xen._prepare()
+        result = self.xen.getHostGuestMapping()['hypervisors']
+        self.assertEqual(len(result), 3, "3 hosts should be reported")
+        self.assertEqual([x.toDict() for x in expected_result], [x.toDict() for x in result])
+
+    @patch('virtwho.virt.xen.XenAPI.Session')
     def test_new_master(self, session):
         session.return_value.xenapi.login_with_password.side_effect = [
             NewMaster('details', 'new.master.xxx'),

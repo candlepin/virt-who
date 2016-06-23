@@ -223,7 +223,14 @@ class SubscriptionManager(Manager):
         job_id = report.job_id
         self._connect(report.config)
         self.logger.debug('Checking status of job %s', job_id)
-        result = self.connection.getJob(job_id)
+        try:
+            result = self.connection.getJob(job_id)
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.ConnectionException as e:
+            if hasattr(e, 'code'):
+                raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
+            raise ManagerError("Communication with subscription manager failed: %s" % str(e))
         state = STATE_MAPPING.get(result['state'], AbstractVirtReport.STATE_FAILED)
         report.state = state
         if state not in (AbstractVirtReport.STATE_FINISHED,

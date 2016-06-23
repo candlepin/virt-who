@@ -341,6 +341,16 @@ class Config(GeneralConfig):
         return self._type
 
 
+class StripQuotesConfigParser(SafeConfigParser):
+    def get(self, section, option):
+        # Don't call super, SafeConfigParser is not inherited from object
+        value = SafeConfigParser.get(self, section, option)
+        for quote in ('"', "'"):
+            if value.startswith(quote) and value.endswith(quote):
+                return value.strip(quote)
+        return value
+
+
 class ConfigManager(object):
     def __init__(self, logger, config_dir=None, defaults=None):
         if not defaults:
@@ -353,7 +363,7 @@ class ConfigManager(object):
             self._defaults = defaults
         if config_dir is None:
             config_dir = VIRTWHO_CONF_DIR
-        parser = SafeConfigParser()
+        parser = StripQuotesConfigParser()
         self._configs = []
         self.logger = logger
         try:

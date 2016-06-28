@@ -330,7 +330,7 @@ class Config(GeneralConfig):
 
     @property
     def hash(self):
-        return hashlib.md5(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
+        return hashlib.sha256(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
 
     @property
     def name(self):

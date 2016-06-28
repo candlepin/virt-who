@@ -132,7 +132,7 @@ class Hypervisor(object):
 
     def getHash(self):
         sortedRepresentation = json.dumps(self.toDict(), sort_keys=True)
-        return hashlib.md5(sortedRepresentation).hexdigest()
+        return hashlib.sha256(sortedRepresentation).hexdigest()
 
 
 class AbstractVirtReport(object):
@@ -199,7 +199,7 @@ class DomainListReport(AbstractVirtReport):
 
     @property
     def hash(self):
-        return hashlib.md5(
+        return hashlib.sha256(
             json.dumps(
                 sorted([g.toDict() for g in self.guests], key=itemgetter('guestId')),
                 sort_keys=True) +
@@ -242,7 +242,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
     @property
     def hash(self):
-        return hashlib.md5(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
+        return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
 
 
 class Virt(Process):

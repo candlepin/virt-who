@@ -53,7 +53,8 @@ class Satellite(Manager):
 
     def __init__(self, logger, options):
         self.logger = logger
-        self.server = None
+        self.server_xmlrpc = None
+        self.server_rpcapi = None
         self.options = options
 
     def _connect(self, config):
@@ -73,13 +74,79 @@ class Satellite(Manager):
 
         self.logger.debug("Initializing satellite connection to %s", server)
         try:
-            self.server = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
+            # We need two API endpoints: /XMLRPC and /rpc/api
+            self.server_xmlrpc = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
+            server_api = server.replace('/XMLRPC', '/rpc/api')
+            self.server_rpcapi = xmlrpclib.ServerProxy(server_api, verbose=0, transport=RequestsXmlrpcTransport(server_api))
         except Exception as e:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server: " % str(e))
         self.logger.debug("Initialized satellite connection")
 
-    def _load_hypervisor(self, hypervisor_uuid, type, force=False):
+    def _register_system(self, hypervisor_uuid, hypervisor_type, systemid_filename):
+        try:
+            session = self.server_rpcapi.auth.login(self.username, self.password)
+        except Exception as e:
+            self.logger.exception("Unable to login to satellite5 server")
+            raise SatelliteError("Unable to login to satellite5 server: %s" % str(e))
+
+        try:
+            hypervisor_base_channel = self.server_rpcapi.channel.software.getDetails(session, 'hypervisor-base')
+            self.logger.debug("Using existing hypervisor-base channel")
+        except xmlrpclib.Fault as e:
+            if e.faultCode == -210:
+                # The channel doesn't exist yet
+                hypervisor_base_channel = None
+            else:
+                self.logger.exception("Unable to find info about hypervisor-base channel")
+                raise SatelliteError("Unable to find info about hypervisor-base channel: %s" % str(e))
+
+        if not hypervisor_base_channel:
+            self.logger.debug("hypervisor-base channel was not found, creating one")
+            # Create the channel
+            try:
+                result = self.server_rpcapi.channel.software.create(
+                    session, 'hypervisor-base', 'Hypervisor Base',
+                    'Channel used by virt-who for hypervisor registration',
+                    'channel-x86_64', '')
+            except Exception as e:
+                self.logger.exception("Unable to create hypervisor-base channel")
+                raise SatelliteError("Unable to create hypervisor-base channel: %s" % str(e))
+            if result != 1:
+                raise SatelliteError("Unable to create hypervisor-base channel, satellite returned code %s" % result)
+
+            try:
+                result = self.server_rpcapi.distchannel.setMapForOrg(session, 'Hypervisor OS', 'unknown', 'x86_64', 'hypervisor-base')
+            except Exception as e:
+                self.logger.exception("Unable to create mapping for hypervisor-base channel")
+                raise SatelliteError("Unable to create mapping for hypervisor-base channel: %s" % str(e))
+            if result != 1:
+                raise SatelliteError("Unable to create mapping for hypervisor-base channel, satellite returned code %s" % result)
+
+        try:
+            new_system = self.server_xmlrpc.registration.new_system_user_pass(
+                "%s hypervisor %s" % (hypervisor_type, hypervisor_uuid),
+                "Hypervisor OS", "unknown", "x86_64", self.username, self.password, {})
+        except Exception as e:
+            self.logger.exception("Unable to register system:")
+            raise SatelliteError("Unable to register system: %s" % str(e))
+
+        try:
+            self.server_xmlrpc.registration.refresh_hw_profile(new_system['system_id'], [])
+        except Exception as e:
+            self.logger.exception("Unable to refresh HW profile:")
+            raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
+        # save the hypervisor systemid
+        try:
+            with open(systemid_filename, "w") as f:
+                pickle.dump(new_system, f)
+        except (OSError, IOError) as e:
+            self.logger.exception("Unable to write system id to %s: %s", systemid_filename, str(e))
+
+        self.logger.debug("New system created in satellite, system id saved in %s", systemid_filename)
+        return new_system
+
+    def _load_hypervisor(self, hypervisor_uuid, hypervisor_type, force=False):
         systemid_filename = self.HYPERVISOR_SYSTEMID_FILE % hypervisor_uuid
         # attempt to read the existing systemid file for the hypervisor
         try:
@@ -89,28 +156,7 @@ class Satellite(Manager):
             new_system = pickle.load(open(systemid_filename, "rb"))
         except IOError:
             # assume file was not found, create a new hypervisor
-            try:
-                # TODO: what to do here? 6Server will consume subscription
-                new_system = self.server.registration.new_system_user_pass(
-                    "%s hypervisor %s" % (type, hypervisor_uuid),
-                    "unknown", "6Server", "x86_64", self.username, self.password, {})
-                self.server.registration.refresh_hw_profile(new_system['system_id'], [])
-            except xmlrpclib.Fault as e:
-                if e.faultCode == -70:
-                    raise SatelliteError("Unable to find channel to register to. Make sure that satellite-sync was ran on the Satellite 5 server")
-                self.logger.exception("Unable to refresh HW profile:")
-                raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
-            except Exception as e:
-                self.logger.exception("Unable to refresh HW profile:")
-                raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
-            # save the hypervisor systemid
-            try:
-                with open(systemid_filename, "w") as f:
-                    pickle.dump(new_system, f)
-            except (OSError, IOError) as e:
-                self.logger.error("Unable to write system id to %s: %s", systemid_filename, str(e))
-
-            self.logger.debug("New system created in satellite, system id saved in %s", systemid_filename)
+            new_system = self._register_system(hypervisor_uuid, hypervisor_type, systemid_filename)
 
         if new_system is None:
             raise SatelliteError("Unable to register hypervisor %s" % hypervisor_uuid)
@@ -123,7 +169,7 @@ class Satellite(Manager):
         """
         pass
 
-    def _assemble_plan(self, guests, hypervisor_uuid, type):
+    def _assemble_plan(self, guests, hypervisor_uuid, hypervisor_type):
 
         events = []
 
@@ -141,7 +187,7 @@ class Satellite(Manager):
         events.append([0, 'crawl_began', 'system', {}])
         for guest in guests:
             stub_instance_info['uuid'] = guest.uuid.replace("-", "")
-            stub_instance_info['name'] = "VM %s from %s hypervisor %s" % (guest.uuid, type, hypervisor_uuid)
+            stub_instance_info['name'] = "VM %s from %s hypervisor %s" % (guest.uuid, hypervisor_type, hypervisor_uuid)
             stub_instance_info['state'] = GUEST_STATE_TO_SATELLITE.get(guest.state, "nostate")
             events.append([0, 'exists', 'domain', stub_instance_info.copy()])
 
@@ -167,20 +213,20 @@ class Satellite(Manager):
 
         for hypervisor in mapping['hypervisors']:
             self.logger.debug("Loading systemid for %s", hypervisor.hypervisorId)
-            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=report.config.type)
+            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, hypervisor_type=report.config.type)
 
             self.logger.debug("Building plan for hypervisor %s: %s", hypervisor.hypervisorId, hypervisor.guestIds)
-            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, type=report.config.type)
+            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, hypervisor_type=report.config.type)
 
             try:
                 try:
                     self.logger.debug("Sending plan: %s", plan)
-                    self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
+                    self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
                 except xmlrpclib.Fault as e:
                     if e.faultCode == -9:
                         self.logger.warn("System was deleted from Satellite 5, reregistering")
-                        hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, type=report.config.type, force=True)
-                        self.server.registration.virt_notify(hypervisor_systemid["system_id"], plan)
+                        hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, hypervisor_type=report.config.type, force=True)
+                        self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
             except Exception as e:
                 self.logger.exception("Unable to send host/guest association to the satellite:")
                 raise SatelliteError("Unable to send host/guest association to the satellite: %s" % str(e))

@@ -134,7 +134,7 @@ class TestSatellite(TestManager):
         options.env = "ENV"
         options.owner = "OWNER"
         manager.hypervisorCheckIn(self.host_guest_report, options)
-        manager.server.registration.virt_notify.assert_called_with(ANY, [
+        manager.server_xmlrpc.registration.virt_notify.assert_called_with(ANY, [
             [0, "exists", "system", {"identity": "host", "uuid": "0000000000000000"}],
             [0, "crawl_began", "system", {}],
             [0, "exists", "domain", {

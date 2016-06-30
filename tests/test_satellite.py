@@ -44,21 +44,41 @@ TEST_PORT = 8090
 
 
 class RequestHandler(SimpleXMLRPCRequestHandler):
-    rpc_paths = ('/XMLRPC',)
+    rpc_paths = ('/XMLRPC', '/rpc/api')
 
 
 class FakeSatellite(SimpleXMLRPCServer):
+    AUTH_TOKEN = 'This is auth session'
+
     def __init__(self):
         SimpleXMLRPCServer.__init__(self, ("localhost", TEST_PORT), requestHandler=RequestHandler)
+        # /XMLRPC interface
         self.register_function(self.new_system_user_pass, "registration.new_system_user_pass")
         self.register_function(self.refresh_hw_profile, "registration.refresh_hw_profile")
         self.register_function(self.virt_notify, "registration.virt_notify")
+        # /xml/api interface
+        self.register_function(self.auth_login, "auth.login")
+        self.register_function(self.get_channel_details, "channel.software.getDetails")
+        self.register_function(self.create_channel, "channel.software.create")
+        self.register_function(self.set_map_for_org, "distchannel.setMapForOrg")
+
+        self.channel_created = False
+        self.created_system = None
 
     def new_system_user_pass(self, profile_name, os_release_name, version, arch, username, password, options):
         if username != "username":
             raise Exception("Wrong username")
         if password != "password":
             raise Exception("Wrong password")
+        self.created_system = {
+            'profile_name': profile_name,
+            'os_release_name': os_release_name,
+            'version': version,
+            'arch': arch,
+            'username': username,
+            'password': password,
+            'options': options,
+        }
         return {'system_id': TEST_SYSTEM_ID}
 
     def refresh_hw_profile(self, system_id, profile):
@@ -86,6 +106,27 @@ class FakeSatellite(SimpleXMLRPCServer):
             if not item[3]['uuid'].startswith("guest"):
                 raise Exception("Wrong value for virt_notify: invalid format uuid item")
         return 0
+
+    def auth_login(self, username, password):
+        return self.AUTH_TOKEN
+
+    def get_channel_details(self, session, channelLabel):
+        assert session == self.AUTH_TOKEN
+        if self.channel_created:
+            return {
+                'id': 42
+            }
+        else:
+            raise xmlrpclib.Fault(faultCode=-210, faultString='Not found')
+
+    def create_channel(self, session, label, name, summary, archLabel, parentLabel):
+        assert session == self.AUTH_TOKEN
+        self.channel_created = True
+        return 1
+
+    def set_map_for_org(self, session, os, release, archName, channelLabel):
+        assert session == self.AUTH_TOKEN
+        return 1
 
 
 class Options(object):
@@ -210,6 +251,31 @@ class TestSatellite(TestBase):
         with open(filename, "rb") as f:
             data = pickle.load(f)
         self.assertEqual(data['system_id'], TEST_SYSTEM_ID)
+
+    def test_creating_channel(self):
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
+        options.force_register = True
+        s = Satellite(self.logger, options)
+
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        result = s.hypervisorCheckIn(report, options)
+        self.assertTrue(self.fake_server.channel_created)
+        self.assertIsNotNone(self.fake_server.created_system)
+        self.assertTrue("created" in result)
+
+    def test_using_existing_channel(self):
+        options = Options("http://localhost:%s" % TEST_PORT, "username", "password")
+        options.force_register = True
+        s = Satellite(self.logger, options)
+        self.fake_server.channel_created = True
+
+        config = Config('test', 'libvirt')
+        report = HostGuestAssociationReport(config, self.mapping)
+        result = s.hypervisorCheckIn(report, options)
+        self.assertTrue(self.fake_server.channel_created)
+        self.assertIsNotNone(self.fake_server.created_system)
+        self.assertTrue("created" in result)
 
     def test_per_config_options(self):
         options = Options(None, None, None)

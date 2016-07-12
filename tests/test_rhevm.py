@@ -37,6 +37,7 @@ uuids = {
     'vm': '00000000-0000-0000-0000-000000000003',
 }
 
+
 CLUSTERS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <clusters>
     <cluster href="/api/clusters/{cluster}" id="{cluster}">
@@ -45,6 +46,7 @@ CLUSTERS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
     </cluster>
 </clusters>
 '''.format(**uuids)
+
 
 HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <hosts>
@@ -59,6 +61,7 @@ HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 </hosts>
 '''.format(**uuids)
 
+
 VMS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <vms>
     <vm href="/api/vms/{vm}" id="{vm}">
@@ -66,6 +69,18 @@ VMS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <status>
             <state>down</state>
         </status>
+        <host href="/api/hosts/{host}" id="{host}"/>
+        <cluster href="/api/clusters/{cluster}" id="{cluster}"/>
+    </vm>
+</vms>
+'''.format(**uuids)
+
+
+VMS_XML_STATUS = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<vms>
+    <vm href="/api/vms/{vm}" id="{vm}">
+        <name>atomic1</name>
+        <status>up</status>
         <host href="/api/hosts/{host}" id="{host}"/>
         <cluster href="/api/clusters/{cluster}" id="{cluster}"/>
     </vm>
@@ -171,3 +186,35 @@ class TestRhevM(TestBase):
         self.assertRaises(VirtError, self.run_once)
         self.assertIsNotNone(proxy.last_path, "Proxy was not called")
         self.assertEqual(proxy.last_path, 'localhost:8443')
+
+    @patch('requests.get')
+    def test_new_status(self, get):
+        expected_hostname = 'hostname.domainname'
+        expected_hypervisorId = uuids['host']
+        expected_guestId = uuids['vm']
+        expected_guest_state = Guest.STATE_RUNNING
+
+        get.side_effect = [
+            MagicMock(text=CLUSTERS_XML),
+            MagicMock(text=HOSTS_XML),
+            MagicMock(text=VMS_XML_STATUS),
+        ]
+
+        expected_result = Hypervisor(
+            hypervisorId=expected_hypervisorId,
+            name=expected_hostname,
+            guestIds=[
+                Guest(
+                    expected_guestId,
+                    self.rhevm,
+                    expected_guest_state,
+                )
+            ],
+            facts={
+                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+            }
+        )
+        result = self.rhevm.getHostGuestMapping()['hypervisors'][0]
+        self.assertEqual(expected_result.toDict(), result.toDict())

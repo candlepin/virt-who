@@ -180,10 +180,15 @@ class RhevM(virt.Virt):
                     "Guest %s claims that it belongs to host %s which doesn't exist",
                     guest_id, host_id)
                 continue
+
             try:
-                state = RHEVM_STATE_TO_GUEST_STATE.get(
-                    vm.find('status').find('state').text.lower(),
-                    virt.Guest.STATE_UNKNOWN)
+                status = vm.find('status')
+                try:
+                    state_text = status.find('state').text.lower()
+                except AttributeError:
+                    # RHEVM 4.0 reports the state differently
+                    state_text = status.text.lower()
+                state = RHEVM_STATE_TO_GUEST_STATE.get(state_text, virt.Guest.STATE_UNKNOWN)
             except AttributeError:
                 self.logger.warning(
                     "Guest %s doesn't report any status",

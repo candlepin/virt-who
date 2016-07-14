@@ -54,8 +54,9 @@ class InstallManPages(install):
             outfile = '{dirname}/{name}.{number}.gz'.format(
                 dirname=dirname, name=name, number=number)
 
-            with open(filename, 'rb') as f_in, gzip.open(outfile, 'wb') as f_out:
-                copyfileobj(f_in, f_out)
+            with open(filename, 'rb') as f_in:
+                with gzip.open(outfile, 'wb') as f_out:
+                    copyfileobj(f_in, f_out)
 
 
 class InstallConfig(install):

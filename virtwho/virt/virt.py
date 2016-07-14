@@ -289,7 +289,7 @@ class Virt(Process):
     def start(self, queue, terminate_event, interval=None, oneshot=False):  # pylint: disable=W0221
         '''
         Start obtaining data from the hypervisor/host system. The data will
-        be fetched (as instances of AbstracVirtReport subclasses) to the
+        be fetched (as instances of AbstractVirtReport subclasses) to the
         `queue` parameter (which should be instance of `Queue.Queue` object.
 
         `terminate_event` is `multiprocessing.Event` instance and will be set when

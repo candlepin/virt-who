@@ -1,5 +1,5 @@
 """
-Module for communcating with Satellite (RHN Classic), part of virt-who
+Module for communication with Satellite (RHN Classic), part of virt-who
 
 Copyright (C) 2013 Radek Novacek <rnovacek@redhat.com>
 

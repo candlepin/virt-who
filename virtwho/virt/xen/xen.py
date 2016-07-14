@@ -31,7 +31,7 @@ class Xen(virt.Virt):
         self.password = config.password
         self.config = config
 
-        # Url must contain protocol (usualy https://)
+        # Url must contain protocol (usually https://)
         if "://" not in self.url:
             self.url = "https://%s" % self.url
 

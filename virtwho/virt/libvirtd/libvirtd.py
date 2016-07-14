@@ -1,5 +1,5 @@
 """
-Module for communcating with libvirt, part of virt-who
+Module for communication with libvirt, part of virt-who
 
 Copyright (C) 2014 Radek Novacek <rnovacek@redhat.com>
 

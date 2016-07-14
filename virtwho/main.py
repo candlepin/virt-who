@@ -190,7 +190,7 @@ def _main(executor):
         executor.logger.exception("Fatal error:")
         if not executor.options.oneshot:
             executor.logger.info("Waiting for reload signal")
-            # Wait indefinately until we get reload or exit signal
+            # Wait indefinitely until we get reload or exit signal
             while True:
                 report = executor.queue.get(block=True)
                 if report == 'reload':

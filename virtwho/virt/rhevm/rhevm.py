@@ -1,5 +1,5 @@
 """
-Module for communcating with RHEV-M, part of virt-who
+Module for communication with RHEV-M, part of virt-who
 
 Copyright (C) 2012 Radek Novacek <rnovacek@redhat.com>
 

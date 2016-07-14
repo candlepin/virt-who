@@ -1,5 +1,5 @@
 """
-Module for communcating with subscription-manager, part of virt-who
+Module for communication with subscription-manager, part of virt-who
 
 Copyright (C) 2011 Radek Novacek <rnovacek@redhat.com>
 
@@ -199,7 +199,7 @@ class SubscriptionManager(Manager):
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm
-                self.logger.debug("hypervisorCheckIn method in python-rhsm doesn't understand options paramenter, ignoring")
+                self.logger.debug("hypervisorCheckIn method in python-rhsm doesn't understand options parameter, ignoring")
                 result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")

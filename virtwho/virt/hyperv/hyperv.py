@@ -60,7 +60,7 @@ class HyperVAuth(AuthBase):
         response.raw.release_conn()
         return response.request.copy()
 
-    def retry_ntlm_negotitate(self, response, **kwargs):
+    def retry_ntlm_negotiate(self, response, **kwargs):
         self.logger.debug("Using NTLM authentication")
 
         request = self.prepare_resend(response)
@@ -179,7 +179,7 @@ Content-Type: application/octet-stream\r
         if response.status_code == 401:
             authenticate_header = response.headers.get('www-authenticate', '').lower()
             if 'negotiate' in authenticate_header and not self.ignore_ntlm:
-                return self.retry_ntlm_negotitate(response, **kwargs)
+                return self.retry_ntlm_negotiate(response, **kwargs)
             elif 'basic' in authenticate_header:
                 return self.retry_basic(response, **kwargs)
             else:

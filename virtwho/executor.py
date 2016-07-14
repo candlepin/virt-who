@@ -206,7 +206,7 @@ class Executor(object):
         # List of reports that are being processed by server
         self.reports_in_progress = []
 
-        # Send the first report immediatelly
+        # Send the first report immediately
         self.send_after = time.time()
 
         while not self.terminate_event.is_set():

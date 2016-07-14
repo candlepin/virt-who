@@ -36,7 +36,7 @@ class OptionParserEpilog(OptionParser):
 def parseOptions():
     parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]",
                                 description="Agent for reporting virtual guest IDs to subscription manager",
-                                epilog="virt-who also reads enviroment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
+                                epilog="virt-who also reads environment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
     parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
     parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
     parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
@@ -117,7 +117,7 @@ def parseOptions():
 
     options.update(**parser.defaults)
 
-    # Handle enviroment variables
+    # Handle environment variables
 
     env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
     if env in ["1", "true"]:
@@ -211,7 +211,7 @@ def parseOptions():
     # Check Env
     def checkEnv(variable, option, name, required=True):
         """
-        If `option` is empty, check enviroment `variable` and return its value.
+        If `option` is empty, check environment `variable` and return its value.
         Exit if it's still empty
         """
         if not option or len(option) == 0:

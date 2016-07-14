@@ -60,7 +60,7 @@ class InstallManPages(install):
 
 
 class InstallConfig(install):
-    description = 'install configuration filees'
+    description = 'install configuration files'
 
     FILES = (
         ('virt-who.conf', '{root}/etc/sysconfig/virt-who'),

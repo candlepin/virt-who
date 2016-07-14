@@ -39,7 +39,6 @@ from virtwho.parser import parseOptions, OptionError
 from virtwho.password import InvalidKeyFile
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
 
-import logging
 
 try:
     from systemd.daemon import notify as sd_notify
@@ -121,6 +120,7 @@ def main():
         exit(1, status=msg)
 
     global executor
+    logger = options = None
     try:
         executor = Executor(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
@@ -182,6 +182,7 @@ def main():
 
 
 def _main(executor):
+    result = None
     try:
         result = executor.run()
     except ManagerFatalError:

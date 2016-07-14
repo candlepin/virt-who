@@ -353,7 +353,6 @@ class Virt(Process):
     def enqueue(self, report):
         if self.is_terminated():
             sys.exit(0)
-            return
         self.logger.debug('Report for config "%s" gathered, putting to queue for sending', report.config.name)
         self._queue.put(report)
 

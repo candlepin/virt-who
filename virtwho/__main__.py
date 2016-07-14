@@ -15,9 +15,10 @@ def main():
         logger = logging.getLogger("virtwho.main")
         logger.exception("Fatal error:")
         virtwho.main.exit(1, "virt-who failed: %s" % str(e))
-    logger = logging.getLogger("virtwho.main")
-    logger.debug("virt-who terminated")
-    virtwho.main.exit(res)
+    else:
+        logger = logging.getLogger("virtwho.main")
+        logger.debug("virt-who terminated")
+        virtwho.main.exit(res)
 
 if __name__ == '__main__':
     main()

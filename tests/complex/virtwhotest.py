@@ -67,6 +67,7 @@ class TestBase(TestCase):
         virtwho.parser.MinimumSendInterval = 2
         virtwho.log.Logger._stream_handler = None
         virtwho.log.Logger._queue_logger = None
+        old_stdout = None
         if grab_stdout:
             old_stdout = sys.stdout
             sys.stdout = TemporaryFile()

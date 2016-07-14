@@ -508,6 +508,7 @@ class HyperV(virt.Virt):
         guests = []
         connection = self.connect()
         hypervsoap = HyperVSoap(self.url, connection, self.logger)
+        uuid = None
         if not self.useNewApi:
             try:
                 # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots

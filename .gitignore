@@ -1,6 +1,7 @@
 *.pyc
 *~
 *.rpm
+*.conf
 *.tar.gz
 noarch/
 .*

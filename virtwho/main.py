@@ -107,6 +107,7 @@ def reload(signal, stackframe):
 
 
 def main():
+    logger = options = None
     try:
         logger, options = parseOptions()
     except OptionError as e:
@@ -120,7 +121,6 @@ def main():
         exit(1, status=msg)
 
     global executor
-    logger = options = None
     try:
         executor = Executor(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:

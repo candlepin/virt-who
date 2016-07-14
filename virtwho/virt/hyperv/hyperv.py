@@ -592,7 +592,7 @@ if __name__ == '__main__':  # pragma: no cover
     import logging
     logger = logging.Logger("virtwho.hyperv.main")
     logger.addHandler(logging.StreamHandler())
-    from config import Config
+    from virtwho.config import Config
     config = Config('test', 'hyperv', server=sys.argv[1], username=sys.argv[2],
                     password=sys.argv[3])
     hyperv = HyperV(logger, config)

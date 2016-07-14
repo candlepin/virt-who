@@ -166,7 +166,7 @@ class Xen(virt.Virt):
 
 if __name__ == "__main__":  # pragma: no cover
     # First acquire a valid session by logging in:
-    from config import Config
+    from virtwho.config import Config
     if len(sys.argv) < 4:
         print("Usage: %s url username password" % sys.argv[0])
         sys.exit(0)

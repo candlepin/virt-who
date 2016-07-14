@@ -474,7 +474,7 @@ if __name__ == '__main__':  # pragma: no cover
 
     logger = logging.getLogger('virtwho.esx')
     logger.addHandler(logging.StreamHandler())
-    from config import Config
+    from virtwho.config import Config
     config = Config('esx', 'esx', server=sys.argv[1], username=sys.argv[2],
                     password=sys.argv[3])
     vsphere = Esx(logger, config)

@@ -279,7 +279,7 @@ class Config(GeneralConfig):
             if self.type in ['libvirt', 'vdsm', 'fake']:
                 self._options['server'] = ''
             else:
-                raise InvalidOption("Option `server` needs to be set in config `%s`" % (self.name))
+                raise InvalidOption("Option `server` needs to be set in config `%s`" % self.name)
 
         # Check for env and owner options, it must be present for SAM
         if ((self.smType is None or self.smType == 'sam') and (
@@ -288,9 +288,9 @@ class Config(GeneralConfig):
                 (self.type == 'fake' and self.fake_is_hypervisor))):
 
             if not self.env:
-                raise InvalidOption("Option `env` needs to be set in config `%s`" % (self.name))
+                raise InvalidOption("Option `env` needs to be set in config `%s`" % self.name)
             elif not self.owner:
-                raise InvalidOption("Option `owner` needs to be set in config `%s`" % (self.name))
+                raise InvalidOption("Option `owner` needs to be set in config `%s`" % self.name)
 
         if self.type != 'esx':
             if self.filter_host_parents is not None:

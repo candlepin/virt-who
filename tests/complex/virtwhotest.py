@@ -89,7 +89,7 @@ class TestBase(TestCase):
 
         virtwho.executor.MinimumSendInterval = oldMinimumSendInterval
         virtwho.parser.MinimumSendInterval = oldMinimumSendInterval
-        return (code, data)
+        return code, data
 
     def stop_virtwho(self):
         self.process.terminate()

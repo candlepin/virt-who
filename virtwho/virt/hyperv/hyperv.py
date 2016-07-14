@@ -500,7 +500,7 @@ class HyperV(virt.Virt):
         vmmsVersion = ""
         data = hypervsoap.Enumerate("select * from CIM_Datafile where FileName='vmms'", "root/cimv2")
         for instance in hypervsoap.Pull(data, "root/cimv2"):
-            if (instance['Path'] == '\\windows\\system32\\'):
+            if instance['Path'] == '\\windows\\system32\\':
                 vmmsVersion = instance['Version']
         return vmmsVersion
 

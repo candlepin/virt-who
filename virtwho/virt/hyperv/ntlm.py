@@ -49,7 +49,7 @@ def ntlm_compute_response(flags, response_key_nt, response_key_lm,
     nt_challenge_response = nt_proof_str + temp
     lm_challenge_response = hmac.new(response_key_lm, server_challenge + client_challenge).digest() + client_challenge
     session_base_key = hmac.new(response_key_nt, nt_proof_str).digest()
-    return (nt_challenge_response, lm_challenge_response, session_base_key)
+    return nt_challenge_response, lm_challenge_response, session_base_key
 
 
 def ntowfv2(passwd, user, domain):
@@ -505,7 +505,7 @@ class Ntlm(object):
         sealed_message = self.outgoing_seal_handle.update(message)
         signature = mac(self.outgoing_seal_handle, self.outgoing_signing_key, self.outgoing_seq_number, message)
         self.outgoing_seq_number += 1
-        return (sealed_message, signature)
+        return sealed_message, signature
 
     def decrypt(self, sealed_message, signature):
         '''

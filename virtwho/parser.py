@@ -282,4 +282,4 @@ def parseOptions():
     if options.print_:
         options.oneshot = True
 
-    return (logger, options)
+    return logger, options

@@ -9,3 +9,4 @@ include template-general.conf
 include virt-who-initscript
 include virt-who.conf
 include virt-who.service
+include virt-who-zsh

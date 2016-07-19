@@ -62,6 +62,9 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
 touch %{buildroot}/%{_sharedstatedir}/%{name}/key
 
+mkdir -p %{buildroot}/%{_datadir}/zsh/site-functions
+install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-who
+
 # Don't run test suite in check section, because it need the system to be
 # registered to subscription-manager server
 
@@ -115,6 +118,7 @@ fi
 %{_mandir}/man5/virt-who-config.5.gz
 %attr(700, root, root) %{_sharedstatedir}/%{name}
 %ghost %{_sharedstatedir}/%{name}/key
+%{_datadir}/zsh/site-functions/_virt-who
 %{_sysconfdir}/virt-who.d/template.conf
 %{_sysconfdir}/virt-who.conf
 

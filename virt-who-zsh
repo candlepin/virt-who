@@ -1,0 +1,60 @@
+#compdef virt-who
+
+local exargs="-h --help"
+
+_arguments -s -w \
+  '(- *)'{-h,--help}'[print help information and exit]' \
+  "(-d --debug $exargs)"{-d,--debug}'[enable debugging output]' \
+  "(-o --one-shot -i --interval -p --print $exargs)"{-o,--one-shot}'[one-shot mode]' \
+  "(-i --interval -o --one-shot -p --print $exargs)"{-i+,--interval}'[specify reporting interval]:interval:' \
+  "(-p --print -o --one-shot -i --interval $exargs)"{-p,--print}'[print host/guest information]' \
+  "($exargs)"\*{-c+,--config}'[specify configuration file]:file:_files' \
+  "(--sam --satellite5 --satellite6 $exargs)"--sam'[report to SAM]' \
+  "(--satellite6 --sam --satellite5 $exargs)"--satellite6'[report to Satellite 6]' \
+  "(--satellite5 --sam --satellite5 $exargs)"--satellite5'[report to Satellite 5]' \
+  "(--satellite-server --sam --satellite6 $exargs)"--satellite-server=+'[specify server URL]:URL:' \
+  "(--satellite-username --sam --satellite6 $exargs)"--satellite-username=+'[specify username]:username:' \
+  "(--satellite-password --sam --satellite6 $exargs)"--satellite-password=+'[specify password]:password:' \
+  - set1 \
+  "(--libvirt $exargs)"--libvirt'[use libvirt to list guests]' \
+  "(--libvirt-owner $exargs)"--libvirt-owner=+'[specify owner]:owner:' \
+  "(--libvirt-env $exargs)"--libvirt-env=+'[specify environment]:env:' \
+  "(--libvirt-server $exargs)"--libvirt-server=+'[specify server URL]:URL:' \
+  "(--libvirt-username $exargs)"--libvirt-username=+'[specify username]:username:' \
+  "(--libvirt-password $exargs)"--libvirt-password=+'[specify password]:password:' \
+  - set2 \
+  "(--vdsm $exargs)"--vdsm'[use vdsm to list virtual guests]' \
+  "(--vdsm-owner $exargs)"--vdsm-owner=+'[specify owner]:owner:' \
+  "(--vdsm-env $exargs)"--vdsm-env=+'[specify environment]:env:' \
+  "(--vdsm-server $exargs)"--vdsm-server=+'[specify server URL]:URL:' \
+  "(--vdsm-username $exargs)"--vdsm-username=+'[specify username]:username:' \
+  "(--vdsm-password $exargs)"--vdsm-password=+'[specify password]:password:' \
+  - set3 \
+  "(--esx $exargs)"--esx'[register guests using vCenter]' \
+  "(--esx-owner $exargs)"--esx-owner=+'[specify owner]:owner:' \
+  "(--esx-env $exargs)"--esx-env=+'[specify environment]:env:' \
+  "(--esx-server $exargs)"--esx-server=+'[specify server URL]:URL:' \
+  "(--esx-username $exargs)"--esx-username=+'[specify username]:username:' \
+  "(--esx-password $exargs)"--esx-password=+'[specify password]:password:' \
+  - set4 \
+  "(--rhevm $exargs)"--rhevm'[register guests using RHEV-M]' \
+  "(--rhevm-owner $exargs)"--rhevm-owner=+'[specify owner]:owner:' \
+  "(--rhevm-env $exargs)"--rhevm-env=+'[specify environment]:env:' \
+  "(--rhevm-server $exargs)"--rhevm-server=+'[specify server URL]:URL:' \
+  "(--rhevm-username $exargs)"--rhevm-username=+'[specify username]:username:' \
+  "(--rhevm-password $exargs)"--rhevm-password=+'[specify password]:password:' \
+  - set5 \
+  "(--hyperv $exargs)"--hyperv'[register guests using Hyper-V]' \
+  "(--hyperv-owner $exargs)"--hyperv-owner=+'[specify owner]:owner:' \
+  "(--hyperv-env $exargs)"--hyperv-env=+'[specify environment]:env:' \
+  "(--hyperv-server $exargs)"--hyperv-server=+'[specify server URL]:URL:' \
+  "(--hyperv-username $exargs)"--hyperv-username=+'[specify username]:username:' \
+  "(--hyperv-password $exargs)"--hyperv-password=+'[specify password]:password:' \
+  - set6 \
+  "(--xen $exargs)"--xen'[register guests using XenServer]' \
+  "(--xen-owner $exargs)"--xen-owner=+'[specify owner]:owner:' \
+  "(--xen-env $exargs)"--xen-env=+'[specify environment]:env:' \
+  "(--xen-server $exargs)"--xen-server=+'[specify server URL]:URL:' \
+  "(--xen-username $exargs)"--xen-username=+'[specify username]:username:' \
+  "(--xen-password $exargs)"--xen-password=+'[specify password]:password:' \
+  && return 0

@@ -18,7 +18,7 @@ Send the list of guest IDs and exit immediately
 Acquire and send guest information each N seconds; note that this option is recommendation only, requested interval might not been honoured and the actual interval might be longer or shorter depending on backend that is used.
 .TP
 \fB\-p\fR, \fB\-\-print\fR
-Print the host/guests association in JSON format to stdout
+Print the host/guests association in JSON format to standard output
 .TP
 \fB\-c\fR, \fB\-\-config\fR
 Use configuration file directly, can be used multiple times. See virt-who-config(5) for details about configuration file format.
@@ -265,7 +265,7 @@ System must be registered using subscription-manager prior to using virt-who. Co
 This option can't be used for monitoring local guests, use rhn-virtualization-host instead.
 
 .SH LOGGING
-virt-who always writes error output to file /var/log/rhsm/rhsm.log. In all modes, excluding background ("-b"), it writes same output also to the standard error output.
+virt-who always writes error output to file /var/log/rhsm/rhsm.log. It also writes the same output to standard error output when started from command line.
 
 virt-who can be started with option "-d" in all modes and with all backends. This option will enable verbose output with more information.
 

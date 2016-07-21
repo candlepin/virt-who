@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Test reading and writing configuration files as well as configuration objects.
 
@@ -502,6 +503,27 @@ env='"staging"'
         self.assertEqual(config.owner, " root ")
         self.assertEqual(config.env, '"staging"')
 
+    def testUnicode(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=žluťoučký servřík
+username=αβγδ
+password=¼ÈÇÑàÿþ€
+owner=здравствуйте
+env=العَرَبِيَّة
+""")
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0]
+        self.assertEqual(config.name, "test1")
+        self.assertEqual(config.type, "esx")
+        self.assertEqual(config.server, "žluťoučký servřík")
+        self.assertEqual(config.username, "αβγδ")
+        self.assertEqual(config.password, "¼ÈÇÑàÿþ€")
+        self.assertEqual(config.owner, "здравствуйте")
+        self.assertEqual(config.env, 'العَرَبِيَّة')
 
 class TestGeneralConfig(TestBase):
     """

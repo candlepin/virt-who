@@ -253,9 +253,9 @@ class Esx(virt.Virt):
                 elif self.config.hypervisor_id == 'hostname':
                     uuid = "%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s" % host
                 else:
-                    raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' % (
-                        self.config.hypervisor_id,
-                        self.CONFIG_TYPE))
+                    raise virt.VirtError(
+                        'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
+                        self.config.hypervisor_id)
             except KeyError:
                 self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_id)
                 continue

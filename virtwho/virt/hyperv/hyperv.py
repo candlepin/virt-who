@@ -571,8 +571,9 @@ class HyperV(virt.Virt):
         elif self.config.hypervisor_id == 'hostname':
             host = hostname
         else:
-            raise virt.VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
-                                 (self.config.hypervisor_id, self.CONFIG_TYPE))
+            raise virt.VirtError(
+                'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
+                self.config.hypervisor_id)
         facts = {
             virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
             virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',

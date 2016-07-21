@@ -258,8 +258,9 @@ class Libvirtd(Virt):
             elif self.config.hypervisor_id == 'hostname':
                 self._host_uuid = self.virt.getHostname()
             else:
-                raise VirtError('Reporting of hypervisor %s is not implemented in %s backend' %
-                                (self.config.hypervisor_id, self.CONFIG_TYPE))
+                raise virt.VirtError(
+                    'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
+                    self.config.hypervisor_id)
         return self._host_uuid
 
     def _remote_host_name(self):

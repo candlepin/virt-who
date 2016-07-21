@@ -147,8 +147,8 @@ class RhevM(virt.Virt):
                 host_id = host.find('name').text
             else:
                 raise virt.VirtError(
-                    'Reporting of hypervisor %s is not implemented in %s backend',
-                    self.config.hypervisor_id, self.CONFIG_TYPE)
+                    'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
+                    self.config.hypervisor_id)
 
             sockets = host.find('cpu').find('topology').get('sockets')
             if not sockets:

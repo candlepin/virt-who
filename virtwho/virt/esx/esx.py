@@ -251,7 +251,10 @@ class Esx(virt.Virt):
                 elif self.config.hypervisor_id == 'hwuuid':
                     uuid = host_id
                 elif self.config.hypervisor_id == 'hostname':
-                    uuid = "%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s" % host
+                    uuid = host['config.network.dnsConfig.hostName']
+                    domain_name = host['config.network.dnsConfig.domainName']
+                    if domain_name:
+                        uuid = '{0}.{1}'.format(uuid, domain_name)
                 else:
                     raise virt.VirtError(
                         'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
@@ -283,7 +286,10 @@ class Esx(virt.Virt):
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property", vm_id.value)
                     guests.append(virt.Guest(vm['config.uuid'], self, state))
             try:
-                name = '%(config.network.dnsConfig.hostName)s.%(config.network.dnsConfig.domainName)s' % host
+                name = host['config.network.dnsConfig.hostName']
+                domain_name = host['config.network.dnsConfig.domainName']
+                if domain_name:
+                    name = '{0}.{1}'.format(name, domain_name)
             except KeyError:
                 self.logger.debug("Unable to determine hostname for host '%s'", uuid)
                 name = ''

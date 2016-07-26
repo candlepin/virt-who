@@ -346,7 +346,9 @@ class StripQuotesConfigParser(SafeConfigParser):
         # Don't call super, SafeConfigParser is not inherited from object
         value = SafeConfigParser.get(self, section, option)
         for quote in ('"', "'"):
-            if value.startswith(quote) and value.endswith(quote):
+            # Strip the quotes only when the value starts with quote,
+            # ends with quote but doesn't contain it inside
+            if value.startswith(quote) and value.endswith(quote) and quote not in value[1:-1]:
                 return value.strip(quote)
         return value
 
@@ -393,7 +395,7 @@ class ConfigManager(object):
                 self.logger.error(str(e))
 
     def readFile(self, filename):
-        parser = SafeConfigParser()
+        parser = StripQuotesConfigParser()
         fname = parser.read(filename)
         if len(fname) == 0:
             self.logger.error("Unable to read configuration file %s", filename)
@@ -427,7 +429,7 @@ def getSections(parser):
 def parseFile(filename, logger=None):
     # Parse a file into a dict of section_name: options_dict
     # options_dict is a dict of option_name: value
-    parser = SafeConfigParser()
+    parser = StripQuotesConfigParser()
     fname = parser.read(filename)
     if len(fname) == 0 and logger:
         logger.error("Unable to read configuration file %s", filename)

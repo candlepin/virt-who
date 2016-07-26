@@ -214,6 +214,10 @@ def _main(executor):
                         ('uuid', hypervisor.hypervisorId),
                         ('guests', [guest.toDict() for guest in hypervisor.guestIds])
                     ))
+                    if hypervisor.facts:
+                        h['facts'] = hypervisor.facts
+                    if hypervisor.name:
+                        h['name'] = hypervisor.name
                     hypervisors.append(h)
         data = json.dumps({
             'hypervisors': hypervisors

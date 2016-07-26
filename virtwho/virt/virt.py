@@ -370,11 +370,13 @@ class Virt(Process):
                 try:
                     self._run()
                 except VirtError as e:
-                    self.logger.error("Virt backend '%s' fails with error: %s", self.config.name, str(e))
-                    has_error = True
+                    if not self.is_terminated():
+                        self.logger.error("Virt backend '%s' fails with error: %s", self.config.name, str(e))
+                        has_error = True
                 except Exception:
-                    self.logger.exception("Virt backend '%s' fails with exception:", self.config.name)
-                    has_error = True
+                    if not self.is_terminated():
+                        self.logger.exception("Virt backend '%s' fails with exception:", self.config.name)
+                        has_error = True
 
                 if self._oneshot:
                     if has_error:

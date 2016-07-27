@@ -24,7 +24,7 @@ import json
 
 from virtwho.manager import Manager, ManagerError
 from virtwho.util import RequestsXmlrpcTransport
-from virtwho.virt import Guest
+from virtwho.virt import Guest, AbstractVirtReport
 
 
 class SatelliteError(ManagerError):
@@ -232,6 +232,7 @@ class Satellite(Manager):
                 raise SatelliteError("Unable to send host/guest association to the satellite: %s" % str(e))
 
         self.logger.info("Mapping for config \"%s\" updated", report.config.name)
+        report.state = AbstractVirtReport.STATE_FINISHED
 
         # TODO: figure out what to populate here
         result = {}

@@ -97,35 +97,6 @@ class NewMaster(Exception):
 _RECONNECT_AND_RETRY = (lambda _: ())
 
 
-class UDSHTTPConnection(httplib.HTTPConnection):
-    """HTTPConnection subclass to allow HTTP over Unix domain sockets. """
-    def connect(self):
-        path = self.host.replace("_", "/")
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(path)
-
-
-class UDSHTTP(httplib.HTTP):
-    _connection_class = UDSHTTPConnection
-
-
-class UDSTransport(xmlrpclib.Transport):
-    def __init__(self, use_datetime=0):
-        self._use_datetime = use_datetime
-        self._extra_headers = []
-
-    def add_extra_header(self, key, value):
-        self._extra_headers += [(key, value)]
-
-    def make_connection(self, host):
-        return UDSHTTP(host)
-
-    def send_request(self, connection, handler, request_body):
-        connection.putrequest("POST", handler)
-        for key, value in self._extra_headers:
-            connection.putheader(key, value)
-
-
 class Session(xmlrpclib.ServerProxy):
     """A server proxy and session manager for communicating with xapi using
     the Xen-API.
@@ -209,10 +180,6 @@ class Session(xmlrpclib.ServerProxy):
             return lambda *params: self._login(name, params)
         else:
             return xmlrpclib.ServerProxy.__getattr__(self, name)
-
-
-def xapi_local():
-    return Session("http://_var_xapi_xapi/", transport=UDSTransport())
 
 
 def _parse_result(result):

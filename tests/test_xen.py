@@ -50,6 +50,7 @@ class TestXen(TestBase):
     @patch('virtwho.virt.xen.XenAPI.Session')
     def test_connect(self, session):
         session.return_value.xenapi.login_with_password.return_value = None
+        session.return_value.xenapi.event_from.return_value = {}
         self.run_once()
 
         session.assert_called_with('https://localhost', transport=ANY)
@@ -190,6 +191,7 @@ class TestXen(TestBase):
 
     @patch('virtwho.virt.xen.XenAPI.Session')
     def test_new_master(self, session):
+        session.return_value.xenapi.event_from.return_value = {}
         session.return_value.xenapi.login_with_password.side_effect = [
             NewMaster('details', 'new.master.xxx'),
             NewMaster('details', 'http://new2.master.xxx'),

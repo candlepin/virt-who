@@ -118,13 +118,22 @@ class Xen(virt.Virt):
 
     def _wait(self, token, timeout):
         try:
-            return self.session.xenapi.event_from(
-                self.event_types,
-                token,
-                float(timeout))
-        except Failure as e:
-            if 'timeout' not in e.details:
-                self.logger.exception("Waiting on XEN events failed: ")
+            # Do an active waiting because current thread might get terminated
+            end_time = time() + timeout
+            while time() < end_time and not self.is_terminated():
+                try:
+                    response = self.session.xenapi.event_from(
+                        self.event_types,
+                        token,
+                        1.0)
+                    token = response['token']
+                    if len(response['events']) == 0:
+                        # No events, continue to wait
+                        continue
+                    return response
+                except Failure as e:
+                    if 'timeout' not in e.details:
+                        raise
         except Exception:
             self.logger.exception("Waiting on XEN events failed: ")
         return None

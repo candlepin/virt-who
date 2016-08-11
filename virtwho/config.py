@@ -283,7 +283,7 @@ class Config(GeneralConfig):
 
         # Check for env and owner options, it must be present for SAM
         if ((self.smType is None or self.smType == 'sam') and (
-                (self.type in ('esx', 'rhevm', 'hyperv')) or
+                (self.type in ('esx', 'rhevm', 'hyperv', 'xen')) or
                 (self.type == 'libvirt' and self.server) or
                 (self.type == 'fake' and self.fake_is_hypervisor))):
 

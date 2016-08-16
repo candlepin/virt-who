@@ -170,6 +170,7 @@ class Logger(object):
     _stream_handler = None
     _journal_handler = None
     _level = logging.DEBUG
+    _rhsm_level = logging.WARN
     _queue_logger = None
     _background = False
 
@@ -183,6 +184,8 @@ class Logger(object):
         if options.log_per_config:
             cls._log_per_config = True
         cls._level = logging.DEBUG if options.debug else logging.INFO
+        # We don't want INFO message from RHSM in non-debug mode
+        cls._rhsm_level = logging.DEBUG if options.debug else logging.WARN
         cls._background = options.background
 
     @classmethod
@@ -201,6 +204,10 @@ class Logger(object):
         cls._logs[logger_name] = logger
         logger.propagate = False  # Because we are using or own queue logger we don't want any of the loggers to propagate
         logger.setLevel(logging.DEBUG)
+
+        # Show logging from RHSM in the log when DEBUG is enabled
+        rhsm_logger = logging.getLogger("rhsm")
+        rhsm_logger.setLevel(cls._rhsm_level)
 
         fileHandler = cls.get_file_handler(name=logger_name, config=config)
 
@@ -227,12 +234,15 @@ class Logger(object):
 
         if fileHandler:
             main_logger.addHandler(fileHandler)
+            rhsm_logger.addHandler(fileHandler)
 
         if streamHandler:
             main_logger.addHandler(streamHandler)
+            rhsm_logger.addHandler(streamHandler)
 
         if journalHandler:
             main_logger.addHandler(journalHandler)
+            rhsm_logger.addHandler(journalHandler)
 
         return logger
 

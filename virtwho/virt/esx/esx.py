@@ -320,7 +320,6 @@ class Esx(virt.Virt):
         try:
             self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
         except requests.RequestException as e:
-            self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
 
         self.client.set_options(timeout=self.MAX_WAIT_TIME)
@@ -333,7 +332,6 @@ class Esx(virt.Virt):
         try:
             self.sc = self.client.service.RetrieveServiceContent(_this=self.moRef)
         except requests.RequestException as e:
-            self.logger.exception("Unable to connect to ESX")
             raise virt.VirtError(str(e))
 
         # Login to server using given credentials
@@ -342,6 +340,8 @@ class Esx(virt.Virt):
             logging.getLogger('suds.client').setLevel(logging.CRITICAL)
             self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
             logging.getLogger('suds.client').setLevel(logging.ERROR)
+        except requests.RequestException as e:
+            raise virt.VirtError(str(e))
         except suds.WebFault as e:
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))
@@ -375,7 +375,10 @@ class Esx(virt.Virt):
                                                    "config.network.dnsConfig.domainName"])
         ]
 
-        return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)
+        try:
+            return self.client.service.CreateFilter(_this=self.sc.propertyCollector, spec=pfs, partialUpdates=0)
+        except requests.RequestException as e:
+            raise virt.VirtError(str(e))
 
     def applyUpdates(self, updateSet):
         for filterSet in updateSet.filterSet:

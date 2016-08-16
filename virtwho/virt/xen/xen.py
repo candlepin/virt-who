@@ -6,6 +6,7 @@ import XenAPI
 from XenAPI import NewMaster, Failure
 from collections import defaultdict
 import logging
+import requests
 
 from virtwho import virt
 from virtwho.util import RequestsXmlrpcTransport
@@ -56,6 +57,8 @@ class Xen(virt.Virt):
                 url = '%s://%s' % (self.url.partition(":")[0], url)
             self.logger.debug("Switching to new master: %s", url)
             return self.login(url)
+        except requests.ConnectionError as e:
+            raise virt.VirtError(str(e))
         except Exception as e:
             self.logger.exception("Unable to login to XENserver %s" % self.url)
             raise virt.VirtError(str(e))

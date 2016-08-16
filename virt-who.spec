@@ -110,9 +110,8 @@ fi
 %else
 %{_sysconfdir}/rc.d/init.d/virt-who
 %endif
-%{_sysconfdir}/virt-who.conf
-%attr(600, root, root) %dir %{_sysconfdir}/virt-who.d
-%attr(700, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
+%attr(600, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
+%attr(700, root, root) %dir %{_sysconfdir}/virt-who.d
 %{_mandir}/man8/virt-who.8.gz
 %{_mandir}/man8/virt-who-password.8.gz
 %{_mandir}/man5/virt-who-config.5.gz
@@ -121,6 +120,7 @@ fi
 %{_datadir}/zsh/site-functions/_virt-who
 %{_sysconfdir}/virt-who.d/template.conf
 %{_sysconfdir}/virt-who.conf
+
 
 %changelog
 * Tue May 17 2016 Radek Novacek <rnovacek@redhat.com> 0.17-1

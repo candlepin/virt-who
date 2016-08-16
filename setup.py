@@ -32,7 +32,7 @@ class InstallUpstart(install):
 
     def run(self, *args, **kwargs):
         root = self.root or ''
-        install_file('virt-who-initscript', '{root}/etc/rc.d/init.d/virt-who'.format(root=root))
+        install_file('virt-who-initscript', '{root}/etc/rc.d/init.d/virt-who'.format(root=root), file_mode=0755)
 
 
 class InstallManPages(install):
@@ -46,17 +46,26 @@ class InstallManPages(install):
 
     def run(self, *args, **kwargs):
         root = self.root or ''
+        # gzip embeds output filename and it breaks rpmbuild
+        # we need to use relative name
+        old_wd = os.getcwd()
+        os.chdir(root)
         for name, number in self.MAN_PAGES:
-            filename = '{name}.{number}'.format(name=name, number=number)
-            dirname = '{root}/usr/share/man/man{number}'.format(root=root, number=number)
+            filename = '{old_wd}/{name}.{number}'.format(old_wd=old_wd, name=name, number=number)
+            dirname = 'usr/share/man/man{number}'.format(number=number)
             if not os.path.isdir(dirname):
                 os.makedirs(dirname, 0755)
             outfile = '{dirname}/{name}.{number}.gz'.format(
                 dirname=dirname, name=name, number=number)
 
             with open(filename, 'rb') as f_in:
-                with gzip.open(outfile, 'wb') as f_out:
+                # gzip in py26 doesn't support contextmanager
+                f_out = gzip.open(outfile, 'wb')
+                try:
                     copyfileobj(f_in, f_out)
+                finally:
+                    f_out.close()
+        os.chdir(old_wd)
 
 
 class InstallConfig(install):

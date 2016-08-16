@@ -31,6 +31,7 @@ class Xen(virt.Virt):
         self.username = config.username
         self.password = config.password
         self.config = config
+        self.ignored_guests = set()
 
         # Url must contain protocol (usually https://)
         if "://" not in self.url:
@@ -78,13 +79,18 @@ class Xen(virt.Virt):
 
             for resident in self.session.xenapi.host.get_resident_VMs(host):
                 vm = self.session.xenapi.VM.get_record(resident)
+                uuid = vm['uuid']
 
                 if vm.get('is_control_domain', False):
-                    self.logger.debug("Control Domain %s is ignored", vm['uuid'])
+                    if uuid not in self.ignored_guests:
+                        self.ignored_guests.add(uuid)
+                        self.logger.debug("Control Domain %s is ignored", uuid)
                     continue
 
                 if vm.get('is_a_snapshot', False) or vm.get('is_a_template', False):
-                    self.logger.debug("Guest %s is snapshot or template, ignoring", vm['uuid'])
+                    if uuid not in self.ignored_guests:
+                        self.ignored_guests.add(uuid)
+                        self.logger.debug("Guest %s is snapshot or template, ignoring", uuid)
                     continue
 
                 if vm['power_state'] == 'Running':
@@ -98,7 +104,7 @@ class Xen(virt.Virt):
                 else:
                     state = virt.Guest.STATE_UNKNOWN
 
-                guests.append(virt.Guest(uuid=vm["uuid"], virt=self, state=state))
+                guests.append(virt.Guest(uuid=uuid, virt=self, state=state))
 
             facts = {}
             sockets = record.get('cpu_info', {}).get('socket_count')
@@ -150,7 +156,10 @@ class Xen(virt.Virt):
                         raise
         except Exception:
             self.logger.exception("Waiting on XEN events failed: ")
-        return None
+        return {
+            'events': [],
+            'token': token
+        }
 
     def _run(self):
         self._prepare()

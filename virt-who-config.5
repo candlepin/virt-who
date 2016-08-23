@@ -7,6 +7,7 @@ virt-who-config - configuration for virt-who
 .SH DESCRIPTION
 Configuration format is ini-like.
 The configuration files located at /etc/virt-who.d/ are called virtualization backend configurations.
+All non-hidden files in this directory are considered configuration files. If no section (name in square brackets) is present in the configuration file, it will be ignored and warning will be shown.
 The configuration located at /etc/virt-who.conf is the main configuration for virt-who.
 Below are descriptions of both the required and optional options for both kinds of configs and how they are used.
 .SH GENERAL CONFIGURATION

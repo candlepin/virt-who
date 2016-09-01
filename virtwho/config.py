@@ -233,6 +233,10 @@ class Config(GeneralConfig):
         ('filter_host_uuids', 'filter_hosts'),
         ('exclude_host_uuids', 'exclude_hosts'),
     )
+    LATIN1_OPTIONS = (
+        'username', 'password', 'rhsm_username', 'rhsm_password',
+        'rhsm_proxy_user', 'rhsm_proxy_password', 'sat_username', 'sat_password',
+    )
 
     def __init__(self, name, type, defaults=None, **kwargs):
         super(Config, self).__init__(defaults=defaults, **kwargs)
@@ -260,6 +264,15 @@ class Config(GeneralConfig):
                 self._options[new_name] = self._options[old_name]
             except KeyError:
                 pass
+
+        for option in self.LATIN1_OPTIONS:
+            value = self._options.get(option)
+            if not value:
+                continue
+            try:
+                value.encode('latin1')
+            except UnicodeDecodeError:
+                raise InvalidOption("Option '{}' is not in latin1 encoding".format(option))
 
     @property
     def smType(self):

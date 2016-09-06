@@ -31,7 +31,7 @@ except ImportError:
     from util import OrderedDict
 
 from virtwho import log
-from virtwho.config import Config, InvalidPasswordFormat
+from virtwho.config import Config, InvalidPasswordFormat, InvalidOption
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
 from virtwho.manager import ManagerFatalError
@@ -129,7 +129,12 @@ def main():
 
     if options.virtType is not None:
         config = Config("env/cmdline", options.virtType, executor.configManager._defaults, **options)
-        config.checkOptions(logger)
+        try:
+            config.checkOptions(logger)
+        except InvalidOption as e:
+            err = "virt-who can't be started: %s" % str(e)
+            logger.error(err)
+            exit(1, err)
         executor.configManager.addConfig(config)
     has_error = False
     for conffile in options.configs:

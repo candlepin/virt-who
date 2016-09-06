@@ -509,8 +509,8 @@ env='"staging"'
 [test1]
 type=esx
 server=žluťoučký servřík
-username=αβγδ
-password=¼ÈÇÑàÿþ€
+username=username
+password=password
 owner=здравствуйте
 env=العَرَبِيَّة
 """)
@@ -520,10 +520,12 @@ env=العَرَبِيَّة
         self.assertEqual(config.name, "test1")
         self.assertEqual(config.type, "esx")
         self.assertEqual(config.server, "žluťoučký servřík")
-        self.assertEqual(config.username, "αβγδ")
-        self.assertEqual(config.password, "¼ÈÇÑàÿþ€")
+        # Username and password can't be unicode, they has to be latin1 for HTTP Basic auth
+        self.assertEqual(config.username, "username")
+        self.assertEqual(config.password, "password")
         self.assertEqual(config.owner, "здравствуйте")
         self.assertEqual(config.env, 'العَرَبِيَّة')
+
 
 class TestGeneralConfig(TestBase):
     """

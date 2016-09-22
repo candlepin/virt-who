@@ -224,12 +224,33 @@ class Libvirtd(Virt):
         else:
             return DomainListReport(self.config, self._listDomains(), self._remote_host_id())
 
+    def _lookupDomain(self, method, domain):
+        '''
+        Attempt to find the domain using given method.
+
+        Returns None if the domain does not exist (it was probably just destroyed)
+        '''
+        try:
+            return method(domain)
+        except libvirt.libvirtError as e:
+            if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+                # Domain not found, most likely it was just destroyed
+                return None
+            else:
+                # All other exceptions should be forwarded
+                raise
+
     def _listDomains(self):
         domains = []
         try:
             # Active domains
             for domainID in self.virt.listDomainsID():
-                domain = self.virt.lookupByID(domainID)
+                domain = self._lookupDomain(self.virt.lookupByID, domainID)
+                if domain is None:
+                    # Domain not found, most likely it was just destroyed, ignoring
+                    self.logger.debug("Lookup for domain by ID %s failed, probably it was just destroyed, ignoring" % domainID)
+                    continue
+
                 if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
                     # Don't send Domain-0 on xen (zeroed uuid)
                     continue
@@ -237,7 +258,12 @@ class Libvirtd(Virt):
 
             # Non active domains
             for domainName in self.virt.listDefinedDomains():
-                domain = self.virt.lookupByName(domainName)
+                domain = self._lookupDomain(self.virt.lookupByName, domainName)
+                if domain is None:
+                    # Domain not found, most likely it was just destroyed, ignoring
+                    self.logger.debug("Lookup for domain by name '%s' failed, probably it was just destroyed, ignoring" % domainName)
+                    continue
+
                 domains.append(LibvirtdGuest(self, domain))
         except libvirt.libvirtError as e:
             self.virt.close()

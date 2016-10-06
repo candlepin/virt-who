@@ -2,6 +2,7 @@ import time
 from multiprocessing import Event, Queue
 from Queue import Empty
 import errno
+import socket
 
 from virtwho import log, MinimumSendInterval
 
@@ -146,6 +147,10 @@ class Executor(object):
             raise
         except ManagerThrottleError:
             raise
+        except socket.error as e:
+            if e.errno == errno.EINTR:
+                self.logger.debug("Communication with subscription manager interrupted")
+            return False
         except Exception as e:
             if self.reloading:
                 # We want to skip error reporting when reloading,

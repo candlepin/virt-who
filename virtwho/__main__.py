@@ -1,5 +1,8 @@
 import sys
 import logging
+import threading
+import gc
+
 import virtwho.main
 
 
@@ -19,6 +22,13 @@ def main():
         logger = logging.getLogger("virtwho.main")
         logger.debug("virt-who terminated")
         virtwho.main.exit(res)
+    finally:
+        # Work around multiprocessing not cleaning up after itself.
+        # http://bugs.python.org/issue4106
+        gc.collect()
+        for x in threading.enumerate():
+            if x.name == 'QueueFeederThread' and x.ident is not None:
+                x.join(1)
 
 if __name__ == '__main__':
     main()

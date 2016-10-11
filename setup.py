@@ -85,7 +85,7 @@ class InstallConfig(install):
 
 setup(
     name='virt-who',
-    version='0.17',
+    version='0.18',
     description='virt-who is agent for reporting virtual guest IDs to subscription manager.',
     # long_description=open('README.md').read(),
     author='Radek Novacek',

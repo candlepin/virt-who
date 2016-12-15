@@ -117,7 +117,7 @@ class Executor(object):
 
     def report_done(self, report):
         name = report.config.name
-        self.send_after = time.time() + self.retry_after
+        self.send_after = time.time() + self.options.interval
         if report.state == AbstractVirtReport.STATE_FINISHED:
             self.last_reports_hash[name] = report.hash
 

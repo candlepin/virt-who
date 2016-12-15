@@ -391,7 +391,7 @@ class TestSend(TestBase):
         virtwho.check_reports_state()
 
         virtwho.send.assert_called_with(report)
-        self.assertEquals(virtwho.send_after, initial + 60)
+        self.assertEquals(virtwho.send_after, initial + options.interval)
 
     @patch('time.time')
     @patch('virtwho.log.getLogger')
@@ -443,7 +443,7 @@ class TestSend(TestBase):
         virtwho.send_current_report()
         retry_after = 60
         self.assertEquals(virtwho.retry_after, retry_after)
-        self.assertEquals(virtwho.send_after, initial + retry_after)
+        self.assertEquals(virtwho.send_after, initial + options.interval)
         self.assertEquals(len(virtwho.queued_reports), 0)
 
 

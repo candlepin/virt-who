@@ -2,10 +2,12 @@
 .SH NAME
 virt-who-config - configuration for virt-who
 .SH SYNOPISIS
+/etc/sysconfig/virt-who
 /etc/virt-who.conf
 /etc/virt-who.d/*
 .SH DESCRIPTION
-Configuration format is ini-like.
+Configuration format is ini-like for files /etc/virt-who.conf and /etc/virt-who.d/*.
+The contents of /etc/sysconfig/virt-who are environment variables to be used when virt-who is run as a service.
 The configuration files located at /etc/virt-who.d/ are called virtualization backend configurations.
 All non-hidden files in this directory are considered configuration files. If no section (name in square brackets) is present in the configuration file, it will be ignored and warning will be shown.
 The configuration located at /etc/virt-who.conf is the main configuration for virt-who.
@@ -43,6 +45,11 @@ The file name to write logs to (used only if log_per_config=False)
 A list of files containing configurations for virt-who
 Used to specify locations other than default
 
+.SH VARIABLES UNIQUE TO SYSCONFIG
+.TP
+\fBNO_PROXY\fR
+A comma-separated list of hostnames or domains or ip addresses to ignore proxy settings for.
+Optionally this may be set to '*' to bypass proxy settings for all hostnames domains or ip addresses.
 
 .SH VIRTUALIZATION BACKEND CONFIGURATION
 Each section (or group), denoted by an arbitrary name for the configuration (in square brackets), is read in

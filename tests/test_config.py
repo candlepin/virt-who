@@ -526,6 +526,70 @@ env=العَرَبِيَّة
         self.assertEqual(config.owner, "здравствуйте")
         self.assertEqual(config.env, 'العَرَبِيَّة')
 
+    def testConfigFileExtensions(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+env=staging
+rhsm_username=rhsm_admin1
+rhsm_password=rhsm_password1
+rhsm_hostname=host1
+rhsm_port=12341
+rhsm_prefix=prefix1
+rhsm_proxy_hostname=proxyhost1
+rhsm_proxy_port=43211
+rhsm_proxy_user=proxyuser1
+rhsm_proxy_password=proxypass1
+rhsm_insecure=1
+""")
+        with open(os.path.join(self.config_dir, "test2.conf.bk"), "w") as f:
+            f.write("""
+[test2]
+type=hyperv
+server=1.2.3.5
+username=admin
+password=password
+owner=root
+env=staging
+rhsm_username=rhsm_admin2
+rhsm_password=rhsm_password2
+rhsm_hostname=host2
+rhsm_port=12342
+rhsm_prefix=prefix2
+rhsm_proxy_hostname=proxyhost2
+rhsm_proxy_port=43212
+rhsm_proxy_user=proxyuser2
+rhsm_proxy_password=proxypass2
+rhsm_insecure=2
+""")
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0]
+
+        self.assertEqual(config.name, "test1")
+        self.assertEqual(config.type, "esx")
+        self.assertEqual(config.server, "1.2.3.4")
+        self.assertEqual(config.username, "admin")
+        self.assertEqual(config.password, "password")
+        self.assertEqual(config.owner, "root")
+        self.assertEqual(config.env, "staging")
+        self.assertEqual(config.rhsm_username, 'rhsm_admin1')
+        self.assertEqual(config.rhsm_password, 'rhsm_password1')
+        self.assertEqual(config.rhsm_hostname, 'host1')
+        self.assertEqual(config.rhsm_port, '12341')
+        self.assertEqual(config.rhsm_prefix, 'prefix1')
+        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost1')
+        self.assertEqual(config.rhsm_proxy_port, '43211')
+        self.assertEqual(config.rhsm_proxy_user, 'proxyuser1')
+        self.assertEqual(config.rhsm_proxy_password, 'proxypass1')
+        self.assertEqual(config.rhsm_insecure, '1')
+
 
 class TestGeneralConfig(TestBase):
     """

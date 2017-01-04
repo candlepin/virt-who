@@ -382,7 +382,7 @@ class ConfigManager(object):
         self._configs = []
         self.logger = logger
         try:
-            config_dir_content = os.listdir(config_dir)
+            config_dir_content = [s for s in os.listdir(config_dir) if s.endswith('.conf')]
         except OSError:
             self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
             return

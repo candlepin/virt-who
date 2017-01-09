@@ -1,4 +1,4 @@
 
 # Default interval for sending list of UUIDs
-DefaultInterval = 60  # One per minute
+DefaultInterval = 3600  # One per hour
 MinimumSendInterval = 60  # One minute

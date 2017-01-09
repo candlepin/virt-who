@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
+from virtwho import DefaultInterval
 from password import Password
 from binascii import unhexlify
 import hashlib
@@ -178,7 +179,7 @@ class GlobalConfig(GeneralConfig):
         'configs': '',
         'reporter_id': util.generateReporterId(),
         'smType': None,
-        'interval': 60
+        'interval': DefaultInterval
     }
     LIST_OPTIONS = (
         'configs',

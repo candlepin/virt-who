@@ -154,12 +154,14 @@ def parseOptions():
 
     env = os.getenv("VIRTWHO_INTERVAL")
     if env:
-        env = env.strip().lower()
-    try:
-        if env and int(env) >= MinimumSendInterval:
-            options.interval = int(env)
-    except ValueError:
-        logger.warning("Interval is not number, ignoring")
+        try:
+            env = int(env.strip().lower())
+            if env >= MinimumSendInterval:
+                options.interval = env
+            elif env < MinimumSendInterval:
+                options.interval = MinimumSendInterval
+        except ValueError:
+            logger.warning("Interval is not number, ignoring")
 
     env = os.getenv("VIRTWHO_SAM", "0").strip().lower()
     if env in ["1", "true"]:
@@ -272,11 +274,11 @@ def parseOptions():
         if not options.env:
             raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
 
-    if options.interval < MinimumSendInterval:
-        if not options.interval or options.interval == parser.defaults['interval']:
-            logger.info("Interval set to the default of %d seconds.", DefaultInterval)
-        else:
-            logger.warning("Interval value can't be lower than {min} seconds. Default value of {min} seconds will be used.".format(min=MinimumSendInterval))
+    if not options.interval or options.interval == parser.defaults['interval']:
+        logger.info("Interval set to the default of %d seconds.", DefaultInterval)
+        options.interval = DefaultInterval
+    elif options.interval < MinimumSendInterval:
+        logger.warning("Interval value can't be lower than {min} seconds. Default value of {min} seconds will be used.".format(min=MinimumSendInterval))
         options.interval = MinimumSendInterval
 
     if options.print_:

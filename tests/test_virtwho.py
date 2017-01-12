@@ -60,7 +60,7 @@ class TestOptions(TestBase):
         self.assertFalse(options.debug)
         self.assertFalse(options.background)
         self.assertFalse(options.oneshot)
-        self.assertEqual(options.interval, 60)
+        self.assertEqual(options.interval, 3600)
         self.assertEqual(options.smType, 'sam')
         self.assertEqual(options.virtType, None)
         self.assertEqual(options.reporter_id, util.generateReporterId())

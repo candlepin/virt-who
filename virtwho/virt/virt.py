@@ -34,6 +34,7 @@ except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
     from virtwho.util import OrderedDict
 
+from virtwho import DefaultInterval
 
 class VirtError(Exception):
     pass
@@ -307,8 +308,7 @@ class Virt(Process):
         if interval is not None:
             self._interval = interval
         else:
-            # TODO: get this value from somewhere
-            self._interval = 3600
+            self._interval = DefaultInterval
         self._oneshot = oneshot
         super(Virt, self).start()
 
@@ -324,8 +324,7 @@ class Virt(Process):
         if interval is not None:
             self._interval = interval
         else:
-            # TODO: get this value from somewhere
-            self._interval = 3600
+            self._interval = DefaultInterval
         self._oneshot = oneshot
         self._run()
 

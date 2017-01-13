@@ -383,37 +383,45 @@ class Esx(virt.Virt):
     def applyUpdates(self, updateSet):
         for filterSet in updateSet.filterSet:
             for objectSet in filterSet.objectSet:
-                if objectSet.kind in ['enter', 'modify']:
-                    if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
-                        vm = self.vms[objectSet.obj.value]
-                        for change in objectSet.changeSet:
-                            if change.op == 'assign' and hasattr(change, 'val'):
-                                vm[change.name] = change.val
-                            elif change.op in ['remove', 'indirectRemove']:
-                                try:
-                                    del vm[change.name]
-                                except KeyError:
-                                    pass
-                            elif change.op == 'add':
-                                vm[change.name].append(change.val)
-                            else:
-                                self.logger.error("Unknown change operation: %s", change.op)
-                    elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
-                        host = self.hosts[objectSet.obj.value]
-                        for change in objectSet.changeSet:
-                            if change.op == 'indirectRemove':
-                                # Host has been added but without sufficient data
-                                # It will be filled in next update
-                                pass
-                            elif change.op == 'assign':
-                                host[change.name] = change.val
-                elif objectSet.kind == 'leave':
-                    if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
-                        del self.vms[objectSet.obj.value]
-                    elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
-                        del self.hosts[objectSet.obj.value]
+                if objectSet.obj._type == 'VirtualMachine':  # pylint: disable=W0212
+                    self.applyVirtualMachineUpdate(objectSet)
+                elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
+                    self.applyHostSystemUpdate(objectSet)
+
+    def applyVirtualMachineUpdate(self, objectSet):
+        if objectSet.kind in ['enter', 'modify']:
+            vm = self.vms[objectSet.obj.value]
+            for change in objectSet.changeSet:
+                if change.op == 'assign' and hasattr(change, 'val'):
+                    vm[change.name] = change.val
+                elif change.op in ['remove', 'indirectRemove']:
+                    try:
+                        del vm[change.name]
+                    except KeyError:
+                        pass
+                elif change.op == 'add':
+                    vm[change.name].append(change.val)
                 else:
-                    self.logger.error("Unkown update objectSet type: %s", objectSet.kind)
+                    self.logger.error("Unknown change operation: %s", change.op)
+        elif objectSet.kind == 'leave':
+            del self.vms[objectSet.obj.value]
+        else:
+            self.logger.error("Unknown update objectSet type: %s", objectSet.kind)
+
+    def applyHostSystemUpdate(self, objectSet):
+        if objectSet.kind in ['enter', 'modify']:
+            host = self.hosts[objectSet.obj.value]
+            for change in objectSet.changeSet:
+                if change.op == 'indirectRemove':
+                    # Host has been added but without sufficient data
+                    # It will be filled in next update
+                    pass
+                elif change.op == 'assign' and hasattr(change, 'val'):
+                    host[change.name] = change.val
+        elif objectSet.kind == 'leave':
+            del self.hosts[objectSet.obj.value]
+        else:
+            self.logger.error("Unknown update objectSet type: %s", objectSet.kind)
 
     def objectSpec(self):
         return self.client.factory.create('ns0:ObjectSpec')

@@ -207,3 +207,145 @@ class TestEsx(TestBase):
         self.assertRaises(VirtError, self.run_once)
         self.assertIsNotNone(proxy.last_path, "Proxy was not called")
         self.assertEqual(proxy.last_path, 'localhost:443')
+
+    def test_applyHostSystemUpdate_AttributeError(self):
+        change = Mock(spec=['op', 'name'])
+        change.op = 'assign'
+        change.name = 'test.guest.name'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.hosts = dict()
+        self.esx.hosts[objectSet.obj.value] = dict()
+
+        try:
+            self.esx.applyHostSystemUpdate(objectSet)
+        except AttributeError:
+            self.fail('applyHostSystemUpdate raised AttributeError unexpectedly')
+        self.assertDictEqual(self.esx.hosts[objectSet.obj.value], dict())
+
+
+    def test_applyHostSystemUpdate_leave(self):
+        objectSet = Mock()
+        objectSet.kind = 'leave'
+        objectSet.obj.value = 'test.host.name'
+
+        self.esx.hosts = dict()
+        self.esx.hosts[objectSet.obj.value] = dict()
+
+        self.esx.applyHostSystemUpdate(objectSet)
+        self.assertDictEqual(self.esx.hosts, dict())
+
+    def test_applyHostSystemUpdate_modify(self):
+        change = Mock(spec=['op', 'name', 'val'])
+        change.op = 'assign'
+        change.name = 'test.guest.name'
+        change.val = 'test'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.hosts = dict()
+        self.esx.hosts[objectSet.obj.value] = dict()
+
+        self.esx.applyHostSystemUpdate(objectSet)
+
+        expected = dict()
+        expected[change.name] = change.val
+        self.assertDictEqual(self.esx.hosts[objectSet.obj.value], expected)
+
+    def test_applyVirtualMachineUpdate_AttributeError(self):
+        change = Mock(spec=['op', 'name'])
+        change.op = 'assign'
+        change.name = 'test.guest.name'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.vms = dict()
+        self.esx.vms[objectSet.obj.value] = dict()
+
+        try:
+            self.esx.applyVirtualMachineUpdate(objectSet)
+        except AttributeError:
+            self.fail('applyHostSystemUpdate raised AttributeError unexpectedly')
+        self.assertDictEqual(self.esx.vms[objectSet.obj.value], dict())
+
+    def test_applyVirtualMachineUpdate_leave(self):
+        objectSet = Mock()
+        objectSet.kind = 'leave'
+        objectSet.obj.value = 'test.host.name'
+
+        self.esx.vms = dict()
+        self.esx.vms[objectSet.obj.value] = dict()
+
+        self.esx.applyVirtualMachineUpdate(objectSet)
+        self.assertDictEqual(self.esx.vms, dict())
+
+    def test_applyVirtualMachineUpdate_modify(self):
+        change = Mock(spec=['op', 'name', 'val'])
+        change.op = 'assign'
+        change.name = 'test.guest.name'
+        change.val = 'test'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.vms = dict()
+        self.esx.vms[objectSet.obj.value] = dict()
+
+        self.esx.applyVirtualMachineUpdate(objectSet)
+
+        expected = dict()
+        expected[change.name] = change.val
+        self.assertDictEqual(self.esx.vms[objectSet.obj.value], expected)
+
+    def test_applyVirtualMachineUpdate_add(self):
+        change = Mock(spec=['op', 'name', 'val'])
+        change.op = 'add'
+        change.name = 'test.guest.name'
+        change.val = 'test'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.vms = dict()
+        self.esx.vms[objectSet.obj.value] = dict()
+        self.esx.vms[objectSet.obj.value][change.name] = []
+
+        self.esx.applyVirtualMachineUpdate(objectSet)
+
+        expected = dict()
+        expected[change.name] = [change.val]
+        self.assertDictEqual(self.esx.vms[objectSet.obj.value], expected)
+
+    def test_applyVirtualMachineUpdate_remove(self):
+        change = Mock(spec=['op', 'name', 'val'])
+        change.op = 'remove'
+        change.name = 'test.guest.name'
+        change.val = 'test'
+
+        objectSet = Mock()
+        objectSet.kind = 'modify'
+        objectSet.obj.value = 'test.host.name'
+        objectSet.changeSet = [change]
+
+        self.esx.vms = dict()
+        self.esx.vms[objectSet.obj.value] = dict()
+        self.esx.vms[objectSet.obj.value][change.name] = 'test'
+
+        self.esx.applyVirtualMachineUpdate(objectSet)
+
+        expected = dict()
+        self.assertDictEqual(self.esx.vms[objectSet.obj.value], expected)

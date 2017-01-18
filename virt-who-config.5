@@ -129,6 +129,12 @@ Only hosts which uuid (or hostname or hwuuid, based on \fBhypervisor_id\fR) is s
 \fBexclude_hosts\fR
 Hosts which uuid (or hostname or hwuuid, based on \fBhypervisor_id\fR) is specified in comma-separated list in this option will \fBNOT\fR be reported. Put the value into the double-quotes if it contains special characters (like comma). \fBexclude_host_uuids\fR is deprecated alias for this option.
 .TP
+\fBfilter_hosts_regex\fR
+This option acts like filter_hosts, except it takes a comma seperated list of regular expressions of hosts to include.
+.TP
++\fBexclude_hosts_regex\fR
+This option acts like exclude_hosts, except it takes a comma seperated list of regular expressions of hosts to exclude.
+.TP
 \fBhypervisor_id\fR
 Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. \fBhwuuid\fR is applicable to esx and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
 

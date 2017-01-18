@@ -28,6 +28,7 @@ import json
 import hashlib
 import signal
 import re
+import fnmatch
 
 try:
     from collections import OrderedDict
@@ -222,11 +223,17 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
     def _filter(self,host,filterlist):
         for i in filterlist:
-            if re.search(i,host):
+            if fnmatch.fnmatch(host.lower(), i.lower()):
                 # match is found
-                return 0
+                return True
+            try:
+                if re.match("^" + i + "$", host, re.IGNORECASE):
+                    # match is found
+                    return True
+            except:
+                pass
         # no match
-        return 1
+        return False
 
     @property
     def association(self):
@@ -234,21 +241,13 @@ class HostGuestAssociationReport(AbstractVirtReport):
         logger = logging.getLogger("virtwho")
         assoc = []
         for host in self._assoc['hypervisors']:
-            if self._config.exclude_hosts is not None and host.hypervisorId in self._config.exclude_hosts:
+            if self._config.exclude_hosts is not None and self._filter(host.hypervisorId,self._config.exclude_hosts):
                 logger.debug("Skipping host '%s' because its uuid is excluded", host.hypervisorId)
                 continue
 
-            if self._config.filter_hosts is not None and host.hypervisorId not in self._config.filter_hosts:
+            if self._config.filter_hosts is not None and not self._filter(host.hypervisorId,self._config.filter_hosts):
                 logger.debug("Skipping host '%s' because its uuid is not included", host.hypervisorId)
                 continue
-
-            if self._config.exclude_hosts_regex is not None and self._filter(host.hypervisorId,self._config.exclude_hosts_regex) == 0:
-                logger.debug("Skipping host '%s' because its uuid is excluded by regex", host.hypervisorId)
-                continue 
-
-            if self._config.filter_hosts_regex is not None and self._filter(host.hypervisorId,self._config.filter_hosts_regex) != 0:
-                logger.debug("Skipping host '%s' because its uuid is excluded by regex", host.hypervisorId)
-                continue 
 
             assoc.append(host)
         return {'hypervisors': assoc}

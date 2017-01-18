@@ -214,10 +214,8 @@ class Config(GeneralConfig):
     }
     LIST_OPTIONS = (
         'filter_hosts',
-        'filter_hosts_regex',
         'filter_host_uuids',
         'exclude_hosts',
-        'exclude_hosts_regex',
         'exclude_host_uuids',
         'filter_host_parents'
         'exclude_host_parents',

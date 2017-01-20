@@ -19,6 +19,26 @@ class TestVirtInclude(TestBase):
     def test_exclude_hosts(self):
         self.filter_hosts('exclude_hosts=00000')
 
+    def test_filter_hosts_glob(self):
+        self.filter_hosts('filter_hosts=12*')
+        self.filter_hosts('filter_hosts=12?45')
+        self.filter_hosts('filter_hosts=12[36]45')
+
+    def test_exclude_hosts_glob(self):
+        self.filter_hosts('exclude_hosts=00*')
+        self.filter_hosts('exclude_hosts=00?00')
+        self.filter_hosts('exclude_hosts=00[03]00')
+
+    def test_filter_hosts_regex(self):
+        self.filter_hosts('filter_hosts=12.*')
+        self.filter_hosts('filter_hosts=12.+45')
+        self.filter_hosts('filter_hosts=12[36]45')
+
+    def test_exclude_hosts_regex(self):
+        self.filter_hosts('exclude_hosts=00.*')
+        self.filter_hosts('exclude_hosts=00.+00')
+        self.filter_hosts('exclude_hosts=00[03]00')
+
     def test_filter_host_uuids(self):
         self.filter_hosts('filter_host_uuids=12345')
 

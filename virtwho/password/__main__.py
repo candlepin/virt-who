@@ -27,10 +27,15 @@ from binascii import hexlify
 
 from virtwho.password import Password, UnwritableKeyFile, InvalidKeyFile
 
+from optparse import OptionParser
 
-def main():
-    if len(sys.argv) == 2 and sys.argv[1] in ('-h', '--help'):
-        print """Utility that encrypts passwords for virt-who.
+class RawDescriptionOptionParser(OptionParser):
+    def format_description(self, description):
+        return self.description or ""
+
+def parseOptions():
+    parser = RawDescriptionOptionParser(usage="virt-who-password",
+                                        description="""Utility that encrypts passwords for virt-who.
 
 Enter password that should be encrypted. This encrypted password then can be
 supplied to virt-who configuration.
@@ -38,15 +43,19 @@ supplied to virt-who configuration.
 This command must be executed as root!
 
 WARNING: root user can still decrypt encrypted passwords!
-"""
-        sys.exit(0)
+    """)
+    parser.add_option("-p", "--password", dest="password", help="Password")
+    return parser.parse_args()
+
+def main():
+    options, _args = parseOptions()
 
     if os.getuid() != 0:
         print >>sys.stderr, "Only root can encrypt passwords"
         sys.exit(1)
 
     try:
-        pwd = getpass("Password: ")
+        pwd = options.password or getpass("Password: ")
     except (KeyboardInterrupt, EOFError):
         print
         sys.exit(1)

@@ -91,7 +91,17 @@ class Satellite(Manager):
             raise SatelliteError("Unable to login to satellite5 server: %s" % str(e))
 
         try:
-            hypervisor_base_channel = self.server_rpcapi.channel.software.getDetails(session, 'hypervisor-base')
+            userdetail = self.server_rpcapi.user.getDetails(session, self.username)
+            org_id = userdetail["org_id"]
+        except Exception as e:
+            self.logger.exception("Unable to get user details")
+            raise SatelliteError("Unable to get user details: %s" % str(e))
+
+        base_channel_name = 'hypervisor-base-%s' % org_id
+        base_channel_label = 'Hypervisor Base - %s' % org_id
+
+        try:
+            hypervisor_base_channel = self.server_rpcapi.channel.software.getDetails(session, base_channel_name)
             self.logger.debug("Using existing hypervisor-base channel")
         except xmlrpclib.Fault as e:
             if e.faultCode == -210:
@@ -106,7 +116,7 @@ class Satellite(Manager):
             # Create the channel
             try:
                 result = self.server_rpcapi.channel.software.create(
-                    session, 'hypervisor-base', 'Hypervisor Base',
+                    session, base_channel_name, base_channel_label,
                     'Channel used by virt-who for hypervisor registration',
                     'channel-x86_64', '')
             except Exception as e:
@@ -116,7 +126,7 @@ class Satellite(Manager):
                 raise SatelliteError("Unable to create hypervisor-base channel, satellite returned code %s" % result)
 
             try:
-                result = self.server_rpcapi.distchannel.setMapForOrg(session, 'Hypervisor OS', 'unknown', 'x86_64', 'hypervisor-base')
+                result = self.server_rpcapi.distchannel.setMapForOrg(session, 'Hypervisor OS', 'unknown', 'x86_64', base_channel_name)
             except Exception as e:
                 self.logger.exception("Unable to create mapping for hypervisor-base channel")
                 raise SatelliteError("Unable to create mapping for hypervisor-base channel: %s" % str(e))

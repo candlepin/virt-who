@@ -61,6 +61,7 @@ class FakeSatellite(SimpleXMLRPCServer):
         self.register_function(self.get_channel_details, "channel.software.getDetails")
         self.register_function(self.create_channel, "channel.software.create")
         self.register_function(self.set_map_for_org, "distchannel.setMapForOrg")
+        self.register_function(self.get_user_details, "user.getDetails")
 
         self.channel_created = False
         self.created_system = None
@@ -128,6 +129,9 @@ class FakeSatellite(SimpleXMLRPCServer):
         assert session == self.AUTH_TOKEN
         return 1
 
+    def get_user_details(self, session, login):
+        assert session == self.AUTH_TOKEN
+        return dict(org_id=101)
 
 class Options(object):
     def __init__(self, server, username, password):

@@ -21,7 +21,8 @@ import os
 import requests
 import suds
 from mock import patch, ANY, MagicMock, Mock
-from multiprocessing import Queue, Event
+from threading import Event
+from Queue import Queue
 
 from base import TestBase
 from virtwho.config import Config

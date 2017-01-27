@@ -20,7 +20,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 from mock import patch, MagicMock, ANY
-from multiprocessing import Queue, Event
+from threading import Event
+from Queue import Queue
 import requests
 
 from base import TestBase

@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
-from Queue import Empty
-from multiprocessing import Queue
+from Queue import Empty, Queue
 from mock import patch, Mock, sentinel, ANY, call
 
 from base import TestBase
@@ -463,7 +462,7 @@ class TestReload(TestBase):
     def assertStartStop(self, fromConfig):
         ''' Make sure that Virt was started and stopped. '''
         self.assertTrue(fromConfig.return_value.start.called)
-        self.assertTrue(fromConfig.return_value.terminate.called)
+        self.assertTrue(fromConfig.return_value.stop.called)
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.virt.Virt.fromConfig')

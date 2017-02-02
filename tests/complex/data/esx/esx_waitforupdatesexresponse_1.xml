@@ -8,7 +8,7 @@
                     <filter type="PropertyFilter">session[35da441b-d9b8-18e1-e184-b3191cafd598]523b902b-a574-590d-ae2d-3ed86be1d341</filter>
                     <objectSet>
                         <kind>enter</kind>
-                        <obj type="VirtualMachine">1</obj>
+                        <obj type="VirtualMachine">1百</obj>
                         <changeSet>
                             <name>config.uuid</name>
                             <op>assign</op>
@@ -22,7 +22,7 @@
                     </objectSet>
                     <objectSet>
                         <kind>enter</kind>
-                        <obj type="VirtualMachine">2</obj>
+                        <obj type="VirtualMachine">2百</obj>
                         <changeSet>
                             <name>config.uuid</name>
                             <op>assign</op>
@@ -36,7 +36,7 @@
                     </objectSet>
                     <objectSet>
                         <kind>enter</kind>
-                        <obj type="VirtualMachine">3</obj>
+                        <obj type="VirtualMachine">3百</obj>
                         <changeSet>
                             <name>config.uuid</name>
                             <op>assign</op>
@@ -59,7 +59,7 @@
                         <changeSet>
                             <name>config.network.dnsConfig.hostName</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost</val>
+                            <val xsi:type="xsd:string">localhost百度</val>
                         </changeSet>
                         <changeSet>
                             <name>config.network.dnsConfig.domainName</name>
@@ -69,7 +69,7 @@
                         <changeSet>
                             <name>name</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                            <val xsi:type="xsd:string">localhost百度.localdomain</val>
                         </changeSet>
                         <changeSet>
                             <name>parent</name>
@@ -80,8 +80,8 @@
                             <name>vm</name>
                             <op>assign</op>
                             <val xsi:type="ArrayOfManagedObjectReference">
-                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">2</ManagedObjectReference>
-                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">3</ManagedObjectReference>
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">2百</ManagedObjectReference>
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">3百</ManagedObjectReference>
                             </val>
                         </changeSet>
                     </objectSet>
@@ -96,7 +96,7 @@
                         <changeSet>
                             <name>config.network.dnsConfig.hostName</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost</val>
+                            <val xsi:type="xsd:string">localhost百度</val>
                         </changeSet>
                         <changeSet>
                             <name>config.network.dnsConfig.domainName</name>
@@ -106,7 +106,7 @@
                         <changeSet>
                             <name>name</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                            <val xsi:type="xsd:string">localhost百度.localdomain</val>
                         </changeSet>
                         <changeSet>
                             <name>parent</name>
@@ -117,7 +117,7 @@
                             <name>vm</name>
                             <op>assign</op>
                             <val xsi:type="ArrayOfManagedObjectReference">
-                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">1</ManagedObjectReference>
+                                <ManagedObjectReference type="VirtualMachine" xsi:type="ManagedObjectReference">1百</ManagedObjectReference>
                             </val>
                         </changeSet>
                     </objectSet>
@@ -132,7 +132,7 @@
                         <changeSet>
                             <name>config.network.dnsConfig.hostName</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost</val>
+                            <val xsi:type="xsd:string">localhost百度</val>
                         </changeSet>
                         <changeSet>
                             <name>config.network.dnsConfig.domainName</name>
@@ -142,7 +142,7 @@
                         <changeSet>
                             <name>name</name>
                             <op>assign</op>
-                            <val xsi:type="xsd:string">localhost.localdomain</val>
+                            <val xsi:type="xsd:string">localhost百度.localdomain</val>
                         </changeSet>
                         <changeSet>
                             <name>parent</name>

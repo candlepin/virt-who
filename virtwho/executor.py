@@ -1,6 +1,6 @@
 import time
-from multiprocessing import Event, Queue
-from Queue import Empty
+from threading import Event
+from Queue import Empty, Queue
 import errno
 import socket
 
@@ -300,7 +300,6 @@ class Executor(object):
     def stop_virts(self):
         for virt in self.virts:
             virt.stop()
-            virt.terminate()
             virt.join()
         self.virts = []
 

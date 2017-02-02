@@ -23,7 +23,7 @@ import time
 import logging
 from operator import itemgetter
 from datetime import datetime
-from multiprocessing import Process, Event
+from threading import Thread, Event
 import json
 import hashlib
 import signal
@@ -176,7 +176,7 @@ class AbstractVirtReport(object):
 class ErrorReport(AbstractVirtReport):
     '''
     Report that virt backend fails. Used in oneshot mode to inform
-    main process that no data are coming.
+    main thread that no data are coming.
     '''
 
 
@@ -263,7 +263,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
         return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
 
 
-class Virt(Process):
+class Virt(Thread):
     '''
     Virtualization backend abstract class.
 
@@ -272,7 +272,7 @@ class Virt(Process):
     Run `start` method to start obtaining data about virtual guests. The data
     will be pushed to the `queue` that is parameter of the `start` method.
 
-    Note that this class is a subclass of `multiprocessing.Process` class.
+    Note that this class is a subclass of `threading.Thread` class.
     '''
     def __init__(self, logger, config):
         self.logger = logger
@@ -310,15 +310,15 @@ class Virt(Process):
         be fetched (as instances of AbstractVirtReport subclasses) to the
         `queue` parameter (which should be instance of `Queue.Queue` object.
 
-        `terminate_event` is `multiprocessing.Event` instance and will be set when
-        the process should be terminated.
+        `terminate_event` is `threading.Event` instance and will be set when
+        the thread should be terminated.
 
         `interval` parameter determines maximal interval, how ofter should
         the data be reported. If the virt backend supports events, it might
         be less often.
 
         If `oneshot` parameter is True, the data will be reported only once
-        and the process will be terminated after that.
+        and the thread will be terminated after that.
         '''
         self._queue = queue
         self._terminate_event = terminate_event
@@ -332,7 +332,7 @@ class Virt(Process):
     def start_sync(self, queue, terminate_event, interval=None, oneshot=False):
         '''
         This method is same as `start()` but runs synchronously, it does NOT
-        create new process.
+        create new thread.
 
         Use it only in specific cases!
         '''
@@ -377,9 +377,6 @@ class Virt(Process):
         Wrapper around `_run` method that just catches the error messages.
         '''
         self.logger.debug("Virt backend '%s' started", self.config.name)
-        # Reset the signal handlers, we'll handle them only in the main thread
-        signal.signal(signal.SIGHUP, signal.SIG_DFL)
-        signal.signal(signal.SIGTERM, lambda *a: self.cleanup())
         try:
             while not self.is_terminated():
                 has_error = False

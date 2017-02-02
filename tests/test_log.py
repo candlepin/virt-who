@@ -19,7 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 from mock import patch, Mock, sentinel
 import threading
-from multiprocessing import Queue
+from Queue import Queue
 
 from base import TestBase
 
@@ -128,7 +128,7 @@ class TestLog(TestBase):
 
 class TestQueueLogger(TestBase):
 
-    @patch('multiprocessing.queues.Queue')
+    @patch('virtwho.log.Queue')
     @patch('logging.getLogger')
     def test_queue_logger(self, getLogger, queue):
         fake_queue = sentinel.queue

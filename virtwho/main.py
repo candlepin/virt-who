@@ -249,7 +249,7 @@ def exit(code, status=None):
         except KeyboardInterrupt:
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             for v in executor.virts:
-                v.terminate()
+                v.stop()
                 v.join()
     if log.hasQueueLogger():
         queueLogger = log.getQueueLogger()

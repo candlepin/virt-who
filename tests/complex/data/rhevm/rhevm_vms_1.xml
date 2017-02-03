@@ -1210,7 +1210,7 @@
             <ips>
                 <ip address="10.10.182.231"/>
             </ips>
-            <fqdn>vm1.domain.local</fqdn>
+            <fqdn>vm1百.domain.local</fqdn>
         </guest_info>
         <usb>
             <enabled>false</enabled>

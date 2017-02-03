@@ -105,7 +105,7 @@ class TestRhevM(TestBase):
 
     @patch('requests.get')
     def test_connect(self, get):
-        get.return_value.text = '<xml></xml>'
+        get.return_value.content = '<xml></xml>'
         get.return_value.status_code = 200
         self.run_once()
 
@@ -133,13 +133,13 @@ class TestRhevM(TestBase):
 
     @patch('requests.get')
     def test_404(self, get):
-        get.return_value.text = ''
+        get.return_value.content = ''
         get.return_value.status_code = 404
         self.assertRaises(VirtError, self.run_once)
 
     @patch('requests.get')
     def test_500(self, get):
-        get.return_value.text = ''
+        get.return_value.content = ''
         get.return_value.status_code = 500
         self.assertRaises(VirtError, self.run_once)
 
@@ -151,9 +151,9 @@ class TestRhevM(TestBase):
         expected_guest_state = Guest.STATE_SHUTOFF
 
         get.side_effect = [
-            MagicMock(text=CLUSTERS_XML),
-            MagicMock(text=HOSTS_XML),
-            MagicMock(text=VMS_XML),
+            MagicMock(content=CLUSTERS_XML),
+            MagicMock(content=HOSTS_XML),
+            MagicMock(content=VMS_XML),
         ]
 
         expected_result = Hypervisor(
@@ -195,9 +195,9 @@ class TestRhevM(TestBase):
         expected_guest_state = Guest.STATE_RUNNING
 
         get.side_effect = [
-            MagicMock(text=CLUSTERS_XML),
-            MagicMock(text=HOSTS_XML),
-            MagicMock(text=VMS_XML_STATUS),
+            MagicMock(content=CLUSTERS_XML),
+            MagicMock(content=HOSTS_XML),
+            MagicMock(content=VMS_XML_STATUS),
         ]
 
         expected_result = Hypervisor(

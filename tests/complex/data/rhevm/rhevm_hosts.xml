@@ -20,10 +20,10 @@
         <link href="/api/hosts/4172853d-e72a-493a-883b-8761f5daa5eb/permissions" rel="permissions"/>
         <link href="/api/hosts/4172853d-e72a-493a-883b-8761f5daa5eb/statistics" rel="statistics"/>
         <link href="/api/hosts/4172853d-e72a-493a-883b-8761f5daa5eb/hooks" rel="hooks"/>
-        <address>host1.domain.local</address>
+        <address>host1百.domain.local</address>
         <certificate>
             <organization>Red Hat</organization>
-            <subject>O=Red Hat,CN=host1.domain.local</subject>
+            <subject>O=Red Hat,CN=host1百.domain.local</subject>
         </certificate>
         <status>
             <state>up</state>
@@ -49,7 +49,7 @@
         </hardware_information>
         <power_management type="ipmilan">
             <enabled>true</enabled>
-            <address>somehost.domain.local</address>
+            <address>somehost百.domain.local</address>
             <username>USERID</username>
             <options/>
             <pm_proxies>
@@ -62,7 +62,7 @@
             </pm_proxies>
             <agents>
                 <agent type="ipmilan">
-                    <address>somehost.domain.local</address>
+                    <address>somehost百.domain.local</address>
                     <username>USERID</username>
                     <options/>
                     <order>1</order>
@@ -130,10 +130,10 @@
         <link href="/api/hosts/a2c85a15-9b53-493d-9731-8b5cccdd8951/permissions" rel="permissions"/>
         <link href="/api/hosts/a2c85a15-9b53-493d-9731-8b5cccdd8951/statistics" rel="statistics"/>
         <link href="/api/hosts/a2c85a15-9b53-493d-9731-8b5cccdd8951/hooks" rel="hooks"/>
-        <address>host2.domain.local</address>
+        <address>host2百.domain.local</address>
         <certificate>
             <organization>Red Hat</organization>
-            <subject>O=Red Hat,CN=host2.domain.local</subject>
+            <subject>O=Red Hat,CN=host2百.domain.local</subject>
         </certificate>
         <status>
             <state>up</state>
@@ -217,10 +217,10 @@
         <link href="/api/hosts/5627a268-f036-4f5d-b9a3-0183ec736913/permissions" rel="permissions"/>
         <link href="/api/hosts/5627a268-f036-4f5d-b9a3-0183ec736913/statistics" rel="statistics"/>
         <link href="/api/hosts/5627a268-f036-4f5d-b9a3-0183ec736913/hooks" rel="hooks"/>
-        <address>host3.domain.local</address>
+        <address>host3百.domain.local</address>
         <certificate>
             <organization>Red Hat</organization>
-            <subject>O=Red Hat,CN=host3.domain.local</subject>
+            <subject>O=Red Hat,CN=host3百.domain.local</subject>
         </certificate>
         <status>
             <state>up</state>
@@ -246,7 +246,7 @@
         </hardware_information>
         <power_management type="ipmilan">
             <enabled>true</enabled>
-            <address>somehost.domain.local</address>
+            <address>somehost百.domain.local</address>
             <username>USERID</username>
             <options/>
             <pm_proxies>
@@ -259,7 +259,7 @@
             </pm_proxies>
             <agents>
                 <agent type="ipmilan">
-                    <address>somehost.domain.local</address>
+                    <address>somehost百.domain.local</address>
                     <username>USERID</username>
                     <options/>
                     <order>1</order>
@@ -326,10 +326,10 @@
         <link href="/api/hosts/35ed6507-9800-4cd6-a860-0f05a1f09fbb/permissions" rel="permissions"/>
         <link href="/api/hosts/35ed6507-9800-4cd6-a860-0f05a1f09fbb/statistics" rel="statistics"/>
         <link href="/api/hosts/35ed6507-9800-4cd6-a860-0f05a1f09fbb/hooks" rel="hooks"/>
-        <address>host3.domain.local</address>
+        <address>host3百.domain.local</address>
         <certificate>
             <organization>Red Hat</organization>
-            <subject>O=Red Hat,CN=host3.domain.local</subject>
+            <subject>O=Red Hat,CN=host3百.domain.local</subject>
         </certificate>
         <status>
             <state>up</state>
@@ -355,7 +355,7 @@
         </hardware_information>
         <power_management type="ipmilan">
             <enabled>true</enabled>
-            <address>somehost.domain.local</address>
+            <address>somehost百.domain.local</address>
             <username>USERID</username>
             <options/>
             <pm_proxies>
@@ -368,7 +368,7 @@
             </pm_proxies>
             <agents>
                 <agent type="ipmilan">
-                    <address>somehost.domain.local</address>
+                    <address>somehost百.domain.local</address>
                     <username>USERID</username>
                     <options/>
                     <order>1</order>

@@ -221,6 +221,9 @@ class Esx(virt.Virt):
 
         self.cleanup()
 
+    def _format_hostname(self, host, domain):
+        return u'{0}.{1}'.format(host, domain)
+
     def cleanup(self):
         self._cancel_wait()
 
@@ -254,7 +257,7 @@ class Esx(virt.Virt):
                     uuid = host['config.network.dnsConfig.hostName']
                     domain_name = host['config.network.dnsConfig.domainName']
                     if domain_name:
-                        uuid = '{0}.{1}'.format(uuid, domain_name)
+                        uuid = self._format_hostname(uuid, domain_name)
                 else:
                     raise virt.VirtError(
                         'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
@@ -289,7 +292,7 @@ class Esx(virt.Virt):
                 name = host['config.network.dnsConfig.hostName']
                 domain_name = host['config.network.dnsConfig.domainName']
                 if domain_name:
-                    name = '{0}.{1}'.format(name, domain_name)
+                    name = self._format_hostname(name, domain_name)
             except KeyError:
                 self.logger.debug("Unable to determine hostname for host '%s'", uuid)
                 name = ''

@@ -87,7 +87,7 @@ class RhevM(virt.Virt):
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
         # FIXME: other errors
-        return response.text
+        return response.content
 
     def get_xml(self, url):
         """

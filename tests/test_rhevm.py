@@ -92,7 +92,10 @@ class TestRhevM(TestBase):
     def setUp(self):
         config = Config('test', 'rhevm', server='localhost', username='username',
                         password='password', owner='owner', env='env')
+
         self.rhevm = RhevM(self.logger, config)
+        self.rhevm.major_version = '3'
+        self.rhevm.build_urls()
 
     def run_once(self, queue=None):
         ''' Run RHEV-M in oneshot mode '''

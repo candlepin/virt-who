@@ -87,6 +87,112 @@ class NotSetSentinel(object):
     pass
 
 
+class Info(object):
+    """
+    A class containing keys with values.
+    If the kwargs passed to the init of this class do not include all
+    required_args, init will fail with a ValueError.
+
+    All required and optional kwargs will be accessible on an instance of
+    this object as attributes.
+    No required or optional kwargs can start with an '_'.
+
+    This class is used as a base for creating entities that are constituted
+    entirely by a set of named values. In the case of virt-who we subclass
+    this for all destination objects in order to attempt to pull all required
+    info for a given type of destination out of configs and to help determine
+    what unique destinations exist across all configurations.
+    """
+    required_kwargs = ()
+    optional_kwargs = ()
+
+    def __init__(self, **kwargs):
+        self.__dict__["_options"] = {}
+        attributes_to_add = []
+        attributes_to_add.extend(type(self).required_kwargs)
+        if type(self).optional_kwargs:
+            attributes_to_add.extend(type(self).optional_kwargs)
+
+        for arg in attributes_to_add:
+            try:
+                self._options[arg] = kwargs[arg]
+            except KeyError:
+                if arg in type(self).required_kwargs:
+                    raise ValueError("Missing required option: %s" % arg)
+
+    def __hash__(self):
+        to_hash = []
+        for item in self._options.values():
+            if isinstance(item, list):
+                to_hash.append(tuple(item))
+            else:
+                to_hash.append(item)
+        return hash(tuple(to_hash))
+
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            super(object, self).__setattr__(name, value)
+            return
+        self._set_option(name, value)
+
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            return super(object, self).__getattr__(name)
+        item = self._options.get(name, NotSetSentinel)
+        if item is NotSetSentinel:
+            raise AttributeError("No attribute '%s'" % name)
+        else:
+            return item
+
+    def __getitem__(self, item):
+        try:
+            return self.__dict__["_options"][item]
+        except KeyError:
+            pass
+        return NotSetSentinel
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.__dict__['_options'] == self.__dict__['_options']
+
+    def __ne__(self, other):
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return NotImplemented
+        return not result
+
+# Should this be defined in the manager that actually requires these values?
+class Satellite5DestinationInfo(Info):
+    required_kwargs = (
+        'sat_server',
+        'sat_username',
+        'sat_password',
+    )
+    optional_kwargs = ("filter_hosts",
+                       "exclude_hosts")
+
+
+# Should this be defined in the manager that actually requires these values?
+class Satellite6DestinationInfo(Info):
+    required_kwargs = (
+        "env",
+        "owner",
+        "rhsm_username",
+        "rhsm_password"
+    )
+    optional_kwargs = ("rhsm_hostname",
+                       "rhsm_port",
+                       "rhsm_prefix",
+                       "rhsm_proxy_hostname",
+                       "rhsm_proxy_port",
+                       "rhsm_proxy_user",
+                       "rhsm_proxy_password",
+                       "rhsm_insecure",
+                       "filter_hosts",
+                       "exclude_hosts")
+
+
 class GeneralConfig(object):
     # This dictionary should be filled in for subclasses with option_name: default_value
     DEFAULTS = {}
@@ -158,6 +264,19 @@ class GeneralConfig(object):
 
     def __contains__(self, name):
         return name in self._options
+
+    def has_options(self, options):
+        """
+        @param options: A list of strings of options. Returns True if all
+        options are included in this config
+        @type options: list
+
+        @rtype: bool
+        """
+        for option in options:
+            if not option in self:
+                return False
+        return True
 
     @classmethod
     def fromFile(cls, filename, logger):
@@ -382,6 +501,9 @@ class ConfigManager(object):
         parser = StripQuotesConfigParser()
         self._configs = []
         self.logger = logger
+        self.sources = set()
+        self.dests = set()
+        self.dest_to_sources_map = {}
         try:
             config_dir_content = [s for s in os.listdir(config_dir) if s.endswith('.conf')]
         except OSError:
@@ -398,6 +520,11 @@ class ConfigManager(object):
                 self.logger.error("Configuration file %s contains no section headers", conf)
 
         self._readConfig(parser)
+        sources, dests, d_to_s = ConfigManager.map_destinations_to_sources(
+                self._configs)
+        self.sources = sources
+        self.dests = dests
+        self.dest_to_sources_map = d_to_s
 
     def _readConfig(self, parser):
         for section in parser.sections():
@@ -414,6 +541,52 @@ class ConfigManager(object):
         if len(fname) == 0:
             self.logger.error("Unable to read configuration file %s", filename)
         self._readConfig(parser)
+
+    @staticmethod
+    def map_destinations_to_sources(configs, dest_classes=(Satellite5DestinationInfo, Satellite6DestinationInfo)):
+        """
+        Create a mapping of destinations to sources, given all the collected
+        and parsed configuration objects.
+
+        @param configs: A list of Config objects to analyze
+        @type configs: list
+
+        @param dest_classes: An iterable of classes to try to pull out of a
+        config object
+        @type dest_classes: Iterable
+
+        @rtype: (set, set, dict)
+        """
+        # Will include the names of the configs
+        sources = set()
+        # Will include all dest info objects from all configs
+        dests = set()
+        dest_classes = dest_classes or (Satellite5DestinationInfo,
+                                        Satellite6DestinationInfo)
+        # We could expand this to include other specific sources
+        # For now all configs are considered to define a source at a minimum
+        # As such we will consider each config section name to be unique
+        dest_to_source_map = {}  # The resultant
+        # mapping
+        # of destination to
+        # sources
+        for config in configs:
+            sources.add(config.name)
+            for dest_class in dest_classes:
+                dest = None
+                try:
+                    # Bad, do not use private instance attributes
+                    dest = dest_class(**config._options)
+                except ValueError as e:
+                    # If we can't make this dest from the config, ignore
+                    print e
+                if dest:
+                    dests.add(dest)
+                    current_sources = dest_to_source_map.get(dest, set())
+                    current_sources.symmetric_difference_update(
+                            set([config.name]))
+                    dest_to_source_map[dest] = current_sources
+        return sources, dests, dest_to_source_map
 
     @property
     def configs(self):

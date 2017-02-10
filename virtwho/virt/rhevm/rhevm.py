@@ -71,18 +71,76 @@ class RhevM(virt.Virt):
         self.username = self.config.username
         self.password = self.config.password
 
-        self.clusters_url = urlparse.urljoin(self.url, "api/clusters")
-        self.hosts_url = urlparse.urljoin(self.url, "api/hosts")
-        self.vms_url = urlparse.urljoin(self.url, "api/vms")
-
         self.auth = HTTPBasicAuth(self.config.username, self.config.password)
+        self.prepared = False
+
+    def prepare(self):
+        if not self.prepared:
+            if not hasattr(self, 'major_version'):
+                self.get_version()
+            self.build_urls()
+            self.prepared = True
+
+    def build_urls(self):
+        """
+        Builds the URL's based on Rhev version
+        """
+        clusters_endpoint = 'clusters'
+        hosts_endpoint = 'hosts'
+        vms_endpoint = 'vms'
+
+        if self.major_version == "4":
+            api_base = 'ovirt-engine/api/'
+        else:
+            api_base = 'api/'
+
+        self.clusters_url = urlparse.urljoin(self.url, api_base + clusters_endpoint)
+        self.hosts_url = urlparse.urljoin(self.url, api_base + hosts_endpoint)
+        self.vms_url = urlparse.urljoin(self.url, api_base + vms_endpoint)
+
+    def get_version(self):
+        """
+        Gets the major version from the Rhevm server
+        """
+        try:
+            response = requests.get(urlparse.urljoin(self.url, 'api'),
+                                    auth=self.auth,
+                                    verify=False)
+            if response.status_code == 404 and 'ovirt-engine' not in self.url:
+                response = requests.get(urlparse.urljoin(self.url, 'ovirt-engine/api'),
+                                        auth=self.auth,
+                                        verify=False)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
+
+        try:
+            api = ElementTree.fromstring(response.content)
+        except Exception as e:
+            self.logger.debug("Invalid xml file: %s" % response)
+            raise virt.VirtError("Invalid XML file returned from RHEV-M: %s" % str(e))
+        version = api.find('.//version')
+        if version is not None:
+            major = version.attrib['major']
+            self.major_version = major
+        else:
+            self.logger.info("Could not determine version")
 
     def get(self, url):
         """
         Call RHEV-M server and retrieve what's on given url.
         """
         try:
-            response = requests.get(url, auth=self.auth, verify=False)
+            if self.major_version == '4':
+                # If we are talking to a Rhev4 system, we need to specifically request
+                # the Rhev 3 version of the api.  To minimize code impact, we do this
+                # by setting a 'Version' header, as outlined in Rhev 4's "Version 3
+                # REST API Guide"
+                headers = dict()
+                headers['Version'] = '3'
+                response = requests.get(url, auth=self.auth, verify=False, headers=headers)
+            else:
+                response = requests.get(url, auth=self.auth, verify=False)
             response.raise_for_status()
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))

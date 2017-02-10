@@ -8,9 +8,11 @@ class RhevmHandler(FakeHandler):
     def do_GET(self):
         time.sleep(0.1)
         print("DO GET", self.path)
-        if self.path == '/api/clusters':
+        if self.path == '/api':
+            self.write_file('rhevm', 'rhev3_api.xml')
+        elif self.path == '/api/clusters':
             self.write_file('rhevm', 'rhevm_clusters.xml')
-        if self.path == '/api/hosts':
+        elif self.path == '/api/hosts':
             self.write_file('rhevm', 'rhevm_hosts.xml')
         elif self.path == '/api/vms':
             self.write_file('rhevm', 'rhevm_vms_%d.xml' % self.server._data_version.value)

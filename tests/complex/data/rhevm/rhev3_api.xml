@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<api>
+    <link href="/ovirt-engine/api/capabilities" rel="capabilities"/>
+    <link href="/ovirt-engine/api/clusters" rel="clusters"/>
+    <link href="/ovirt-engine/api/clusters?search={query}" rel="clusters/search"/>
+    <link href="/ovirt-engine/api/datacenters" rel="datacenters"/>
+    <link href="/ovirt-engine/api/datacenters?search={query}" rel="datacenters/search"/>
+    <link href="/ovirt-engine/api/events" rel="events"/>
+    <link href="/ovirt-engine/api/events;from={event_id}?search={query}" rel="events/search"/>
+    <link href="/ovirt-engine/api/hosts" rel="hosts"/>
+    <link href="/ovirt-engine/api/hosts?search={query}" rel="hosts/search"/>
+    <link href="/ovirt-engine/api/networks" rel="networks"/>
+    <link href="/ovirt-engine/api/networks?search={query}" rel="networks/search"/>
+    <link href="/ovirt-engine/api/roles" rel="roles"/>
+    <link href="/ovirt-engine/api/storagedomains" rel="storagedomains"/>
+    <link href="/ovirt-engine/api/storagedomains?search={query}" rel="storagedomains/search"/>
+    <link href="/ovirt-engine/api/tags" rel="tags"/>
+    <link href="/ovirt-engine/api/bookmarks" rel="bookmarks"/>
+    <link href="/ovirt-engine/api/icons" rel="icons"/>
+    <link href="/ovirt-engine/api/templates" rel="templates"/>
+    <link href="/ovirt-engine/api/templates?search={query}" rel="templates/search"/>
+    <link href="/ovirt-engine/api/instancetypes" rel="instancetypes"/>
+    <link href="/ovirt-engine/api/instancetypes?search={query}" rel="instancetypes/search"/>
+    <link href="/ovirt-engine/api/users" rel="users"/>
+    <link href="/ovirt-engine/api/users?search={query}" rel="users/search"/>
+    <link href="/ovirt-engine/api/groups" rel="groups"/>
+    <link href="/ovirt-engine/api/groups?search={query}" rel="groups/search"/>
+    <link href="/ovirt-engine/api/domains" rel="domains"/>
+    <link href="/ovirt-engine/api/vmpools" rel="vmpools"/>
+    <link href="/ovirt-engine/api/vmpools?search={query}" rel="vmpools/search"/>
+    <link href="/ovirt-engine/api/vms" rel="vms"/>
+    <link href="/ovirt-engine/api/vms?search={query}" rel="vms/search"/>
+    <link href="/ovirt-engine/api/disks" rel="disks"/>
+    <link href="/ovirt-engine/api/disks?search={query}" rel="disks/search"/>
+    <link href="/ovirt-engine/api/jobs" rel="jobs"/>
+    <link href="/ovirt-engine/api/storageconnections" rel="storageconnections"/>
+    <link href="/ovirt-engine/api/vnicprofiles" rel="vnicprofiles"/>
+    <link href="/ovirt-engine/api/diskprofiles" rel="diskprofiles"/>
+    <link href="/ovirt-engine/api/cpuprofiles" rel="cpuprofiles"/>
+    <link href="/ovirt-engine/api/schedulingpolicyunits" rel="schedulingpolicyunits"/>
+    <link href="/ovirt-engine/api/schedulingpolicies" rel="schedulingpolicies"/>
+    <link href="/ovirt-engine/api/permissions" rel="permissions"/>
+    <link href="/ovirt-engine/api/macpools" rel="macpools"/>
+    <link href="/ovirt-engine/api/operatingsystems" rel="operatingsystems"/>
+    <link href="/ovirt-engine/api/externalhostproviders" rel="externalhostproviders"/>
+    <link href="/ovirt-engine/api/openstackimageproviders" rel="openstackimageproviders"/>
+    <link href="/ovirt-engine/api/openstackvolumeproviders" rel="openstackvolumeproviders"/>
+    <link href="/ovirt-engine/api/openstacknetworkproviders" rel="openstacknetworkproviders"/>
+    <link href="/ovirt-engine/api/katelloerrata" rel="katelloerrata"/>
+    <special_objects>
+        <link href="/ovirt-engine/api/templates/00000000-0000-0000-0000-000000000000" rel="templates/blank"/>
+        <link href="/ovirt-engine/api/tags/00000000-0000-0000-0000-000000000000" rel="tags/root"/>
+    </special_objects>
+    <product_info>
+        <name>Red Hat Enterprise Virtualization Manager</name>
+        <vendor>Red Hat</vendor>
+        <version major="3" minor="6" build="10" revision="0"/>
+        <full_version>3.6.10.2-0.2.el6</full_version>
+    </product_info>
+    <summary>
+        <vms>
+            <total>0</total>
+            <active>0</active>
+        </vms>
+        <hosts>
+            <total>0</total>
+            <active>0</active>
+        </hosts>
+        <users>
+            <total>1</total>
+            <active>1</active>
+        </users>
+        <storage_domains>
+            <total>1</total>
+            <active>0</active>
+        </storage_domains>
+    </summary>
+    <time>2017-02-03T10:40:15.311-05:00</time>
+</api>

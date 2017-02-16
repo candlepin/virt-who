@@ -133,7 +133,7 @@ class Info(object):
         if name.startswith('_'):
             super(object, self).__setattr__(name, value)
             return
-        self._set_option(name, value)
+        self._options[name] = value
 
     def __getattr__(self, name):
         if name.startswith('_'):

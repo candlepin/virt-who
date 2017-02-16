@@ -26,7 +26,6 @@ from datetime import datetime
 from threading import Thread, Event
 import json
 import hashlib
-import signal
 import re
 import fnmatch
 

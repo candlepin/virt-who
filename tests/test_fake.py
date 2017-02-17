@@ -91,7 +91,7 @@ file=%s
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.fromConfig(self.logger, manager.configs[0])
+        virt = Virt.from_config(self.logger, manager.configs[0], None)
         self.assertEquals(type(virt), FakeVirt)
         mapping = virt.getHostGuestMapping()
         self.assertTrue("hypervisors" in mapping)
@@ -119,7 +119,7 @@ file=%s
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.fromConfig(self.logger, manager.configs[0])
+        virt = Virt.from_config(self.logger, manager.configs[0], None)
         self.assertEquals(type(virt), FakeVirt)
         self.assertRaises(VirtError, virt.getHostGuestMapping)
 
@@ -137,7 +137,7 @@ file=%s
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.fromConfig(self.logger, manager.configs[0])
+        virt = Virt.from_config(self.logger, manager.configs[0], None)
         self.assertEquals(type(virt), FakeVirt)
         guests = virt.listDomains()
         self.assertEquals(len(guests), 1)
@@ -159,6 +159,6 @@ file=%s
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.fromConfig(self.logger, manager.configs[0])
+        virt = Virt.from_config(self.logger, manager.configs[0], None)
         self.assertEquals(type(virt), FakeVirt)
         self.assertRaises(VirtError, virt.listDomains)

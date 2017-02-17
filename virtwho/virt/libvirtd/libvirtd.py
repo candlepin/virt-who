@@ -73,8 +73,12 @@ class Libvirtd(Virt):
     """ Class for interacting with libvirt. """
     CONFIG_TYPE = "libvirt"
 
-    def __init__(self, logger, config, registerEvents=True):
-        super(Libvirtd, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False ,registerEvents=True):
+        super(Libvirtd, self).__init__(logger, config, dest,
+                                       terminate_event=terminate_event,
+                                       interval=interval,
+                                       oneshot=oneshot)
         self.changedCallback = None
         self.registerEvents = registerEvents
         self._host_capabilities_xml = None
@@ -195,9 +199,9 @@ class Libvirtd(Virt):
 
             if initial:
                 report = self._get_report()
-                self.enqueue(report)
+                self._send_data(report)
                 initial = False
-                self.next_update = time.time() + self._interval
+                self.next_update = time.time() + self.interval
 
             if self._oneshot:
                 break
@@ -205,8 +209,8 @@ class Libvirtd(Virt):
             time.sleep(1)
             if time.time() > self.next_update:
                 report = self._get_report()
-                self.enqueue(report)
-                self.next_update = time.time() + self._interval
+                self._send_data(report)
+                self.next_update = time.time() + self.interval
 
         if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
             self.eventLoopThread.terminate()
@@ -215,8 +219,8 @@ class Libvirtd(Virt):
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()
-        self.enqueue(report)
-        self.next_update = time.time() + self._interval
+        self._send_data(report)
+        self.next_update = time.time() + self.interval
 
     def _get_report(self):
         if self.isHypervisor():

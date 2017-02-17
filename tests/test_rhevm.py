@@ -94,14 +94,14 @@ class TestRhevM(TestBase):
         config = Config('test', 'rhevm', server='localhost', username='username',
                         password='password', owner='owner', env='env')
 
-        self.rhevm = RhevM(self.logger, config)
+        self.rhevm = RhevM(self.logger, config, None)
         self.rhevm.major_version = '3'
         self.rhevm.build_urls()
 
     def run_once(self, queue=None):
         ''' Run RHEV-M in oneshot mode '''
         self.rhevm._oneshot = True
-        self.rhevm._queue = queue or Queue()
+        self.rhevm.dest = queue or Queue()
         self.rhevm._terminate_event = Event()
         self.rhevm._oneshot = True
         self.rhevm._interval = 0

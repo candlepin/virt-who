@@ -41,8 +41,7 @@ class TestLibvirtd(TestBase):
         pass
 
     def run_virt(self, config, in_queue=None):
-        v = Virt.fromConfig(self.logger, config)
-        v._queue = in_queue or Queue()
+        v = Virt.from_config(self.logger, config, in_queue or Queue())
         v._terminate_event = Event()
         v._interval = 3600
         v._oneshot = True

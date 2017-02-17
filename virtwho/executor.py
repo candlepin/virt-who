@@ -3,6 +3,7 @@ from threading import Event
 from Queue import Empty, Queue
 import errno
 import socket
+import sys
 
 from virtwho import log, MinimumSendInterval
 
@@ -184,12 +185,15 @@ class Executor(object):
         for config in self.configManager.configs:
             try:
                 logger = log.getLogger(config=config)
-                virt = Virt.fromConfig(logger, config)
+                virt = Virt.from_config(logger, config, self.queue,
+                                        terminate_event=self.terminate_event,
+                                        interval=self.options.interval,
+                                        oneshot=self.options.oneshot)
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s', config.name, str(e))
                 continue
-            # Run the process
-            virt.start(self.queue, self.terminate_event, self.options.interval, self.options.oneshot)
+            # Run the thread
+            virt.start()
             self.virts.append(virt)
 
         # This set is used both for oneshot mode and to bypass rate-limit
@@ -199,7 +203,7 @@ class Executor(object):
         if len(self.virts) == 0:
             err = "virt-who can't be started: no suitable virt backend found"
             self.logger.error(err)
-            exit(1, err)
+            sys.exit(err)
 
         # queued reports depend on OrderedDict feature that if key exists
         # when setting an item, it will remain in the same order

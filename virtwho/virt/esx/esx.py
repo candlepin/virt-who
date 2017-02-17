@@ -109,8 +109,12 @@ class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
     MAX_WAIT_TIME = 300  # 5 minutes
 
-    def __init__(self, logger, config):
-        super(Esx, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False):
+        super(Esx, self).__init__(logger, config, dest,
+                                  terminate_event=terminate_event,
+                                  interval=interval,
+                                  oneshot=oneshot)
         self.url = config.server
         self.username = config.username
         self.password = config.password
@@ -212,8 +216,8 @@ class Esx(virt.Virt):
 
             if last_version != version or time() > next_update:
                 assoc = self.getHostGuestMapping()
-                self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
-                next_update = time() + self._interval
+                self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+                next_update = time() + self.interval
                 last_version = version
 
             if self._oneshot:

@@ -138,12 +138,12 @@ class TestHyperV(TestBase):
     def setUp(self):
         config = Config('test', 'hyperv', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.hyperv = HyperV(self.logger, config)
+        self.hyperv = HyperV(self.logger, config, None)
 
     def run_once(self, queue=None):
         ''' Run Hyper-V in oneshot mode '''
         self.hyperv._oneshot = True
-        self.hyperv._queue = queue or Queue()
+        self.hyperv.dest = queue or Queue()
         self.hyperv._terminate_event = Event()
         self.hyperv._interval = 0
         self.hyperv._run()

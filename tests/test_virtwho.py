@@ -234,10 +234,10 @@ class TestOptions(TestBase):
                         self.assertRaises(OptionError, parseOptions)
 
     @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
+    @patch('virtwho.virt.Virt.from_config')
     @patch('virtwho.manager.Manager.fromOptions')
     @patch('virtwho.config.parseFile')
-    def test_sending_guests(self, parseFile, fromOptions, fromConfig, getLogger):
+    def test_sending_guests(self, parseFile, fromOptions, from_config, getLogger):
         self.setUpParseFile(parseFile)
         options = Mock()
         options.oneshot = True
@@ -250,17 +250,24 @@ class TestOptions(TestBase):
         options.log_dir = ''
         options.log_file = ''
         getLogger.return_value = sentinel.logger
-        fromConfig.return_value.config.name = 'test'
+
         virtwho = Executor(self.logger, options, config_dir="/nonexistant")
         config = Config("test", "esx", server="localhost", username="username",
                         password="password", owner="owner", env="env")
+        expected_virt = Mock()
+        expected_virt.config = config
+        from_config.return_value = expected_virt
         virtwho.configManager.addConfig(config)
-        virtwho.queue = Queue()
+        test_queue = Queue()
+        virtwho.queue = test_queue
         virtwho.queue.put(HostGuestAssociationReport(config, association))
         virtwho.run()
 
-        fromConfig.assert_called_with(sentinel.logger, config)
-        self.assertTrue(fromConfig.return_value.start.called)
+        from_config.assert_called_with(sentinel.logger, config, test_queue,
+                                       terminate_event=virtwho.terminate_event,
+                                       interval=options.interval,
+                                       oneshot=options.oneshot)
+        self.assertTrue(from_config.return_value.start.called)
         fromOptions.assert_called_with(self.logger, options, ANY)
 
 
@@ -283,15 +290,15 @@ class TestSend(TestBase):
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_report_hash_added_after_send(self, fromConfig, fromOptions, getLogger):
-        # Side effect for fromConfig
-        def fake_virts(logger, config):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_report_hash_added_after_send(self, from_config, fromOptions, getLogger):
+        # Side effect for from_config
+        def fake_virts(logger, config, dest, **kwargs):
             new_fake_virt = Mock()
             new_fake_virt.config.name = config.name
             return new_fake_virt
 
-        fromConfig.side_effect = fake_virts
+        from_config.side_effect = fake_virts
         options = Mock()
         options.interval = 0
         options.oneshot = True
@@ -319,14 +326,14 @@ class TestSend(TestBase):
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_same_report_filtering(self, fromConfig, fromOptions, getLogger):
-        def fake_virts(logger, config):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_same_report_filtering(self, from_config, fromOptions, getLogger):
+        def fake_virts(logger, config, dest, **kwargs):
             new_fake_virt = Mock()
             new_fake_virt.config.name = config.name
             return new_fake_virt
 
-        fromConfig.side_effect = fake_virts
+        from_config.side_effect = fake_virts
         options = Mock()
         options.interval = 0
         options.oneshot = True
@@ -357,8 +364,8 @@ class TestSend(TestBase):
     @patch('time.time')
     @patch('virtwho.log.getLogger')
     @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_send_current_report(self, fromConfig, fromOptions, getLogger, time):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_send_current_report(self, from_config, fromOptions, getLogger, time):
         initial = 10
         time.side_effect = [initial, initial]
 
@@ -395,8 +402,8 @@ class TestSend(TestBase):
     @patch('time.time')
     @patch('virtwho.log.getLogger')
     @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_send_current_report_with_429(self, fromConfig, fromOptions, getLogger, time):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_send_current_report_with_429(self, from_config, fromOptions, getLogger, time):
         initial = 10
         retry_after = 2
         time.return_value = initial
@@ -459,14 +466,14 @@ class TestReload(TestBase):
         virtwho.send = Mock()
         return virtwho
 
-    def assertStartStop(self, fromConfig):
+    def assertStartStop(self, from_config):
         ''' Make sure that Virt was started and stopped. '''
-        self.assertTrue(fromConfig.return_value.start.called)
-        self.assertTrue(fromConfig.return_value.stop.called)
+        self.assertTrue(from_config.return_value.start.called)
+        self.assertTrue(from_config.return_value.stop.called)
 
     @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_start_unregistered(self, fromConfig, getLogger):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_start_unregistered(self, from_config, getLogger):
         virtwho = self.mock_virtwho()
         virtwho.queue.get.side_effect = [DomainListReport(virtwho.configManager.configs[0], []), Empty, 'reload']
         virtwho.send.side_effect = ManagerFatalError
@@ -477,11 +484,11 @@ class TestReload(TestBase):
         self.assertEqual(virtwho.queue.get.call_count, 3)
         # It should wait blocking for the reload
         virtwho.queue.get.assert_has_calls([call(block=True)])
-        self.assertStartStop(fromConfig)
+        self.assertStartStop(from_config)
 
     @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_exit_after_unregister(self, fromConfig, getLogger):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_exit_after_unregister(self, from_config, getLogger):
         virtwho = self.mock_virtwho()
         report = DomainListReport(virtwho.configManager.configs[0], [])
         # Send two reports and then 'exit'
@@ -490,11 +497,11 @@ class TestReload(TestBase):
         virtwho.send.side_effect = [True, ManagerFatalError]
         # _main should exit normally
         _main(virtwho)
-        self.assertStartStop(fromConfig)
+        self.assertStartStop(from_config)
 
     @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_reload_after_unregister(self, fromConfig, getLogger):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_reload_after_unregister(self, from_config, getLogger):
         virtwho = self.mock_virtwho()
         report = DomainListReport(virtwho.configManager.configs[0], [])
         # Send two reports and then 'reload'
@@ -503,11 +510,11 @@ class TestReload(TestBase):
         virtwho.send.side_effect = [True, ManagerFatalError]
         # _main should throw ReloadRequest
         self.assertRaises(ReloadRequest, _main, virtwho)
-        self.assertStartStop(fromConfig)
+        self.assertStartStop(from_config)
 
     @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_reload_after_register(self, fromConfig, getLogger):
+    @patch('virtwho.virt.Virt.from_config')
+    def test_reload_after_register(self, from_config, getLogger):
         virtwho = self.mock_virtwho()
         report = DomainListReport(virtwho.configManager.configs[0], [])
         # Send report and then 'reload'
@@ -520,4 +527,4 @@ class TestReload(TestBase):
         self.assertEqual(virtwho.queue.get.call_count, 3)
         # It should wait blocking for the reload
         virtwho.queue.get.assert_has_calls([call(block=True)])
-        self.assertStartStop(fromConfig)
+        self.assertStartStop(from_config)

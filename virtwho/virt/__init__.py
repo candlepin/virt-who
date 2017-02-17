@@ -2,8 +2,8 @@
 
 from virt import (Virt, VirtError, Guest, AbstractVirtReport, DomainListReport,
                   HostGuestAssociationReport, ErrorReport,
-                  Hypervisor)
+                  Hypervisor, DestinationThread)
 
 __all__ = ['Virt', 'VirtError', 'Guest', 'AbstractVirtReport',
            'DomainListReport', 'HostGuestAssociationReport',
-           'ErrorReport', 'Hypervisor']
+           'ErrorReport', 'Hypervisor', 'DestinationThread']

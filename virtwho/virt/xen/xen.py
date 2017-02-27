@@ -210,19 +210,30 @@ if __name__ == "__main__":  # pragma: no cover
     logger.addHandler(logging.StreamHandler())
     url, username, password = sys.argv[1:4]
     config = Config('xen', 'xen', server=url, username=username, password=password)
-    xenserver = Xen(logger, config)
-    from Queue import Queue
+    from virtwho.datastore import Datastore
     from threading import Event, Thread
-    q = Queue()
+    printer_terminate_event = Event()
+    datastore = Datastore()
+
+    xenserver = Xen(logger, config, datastore)
 
     class Printer(Thread):
         def run(self):
-            while True:
-                print q.get(True).association
+            last_hash = None
+            while not printer_terminate_event.is_set():
+                try:
+                    report = datastore.get(config.name)
+                    if report and report.hash != last_hash:
+                        print report.association
+                        last_hash = report.hash
+                except KeyError:
+                    pass
     p = Printer()
     p.daemon = True
     p.start()
     try:
-        xenserver.start_sync(q, Event())
+        xenserver.start_sync()
     except KeyboardInterrupt:
+        printer_terminate_event.set()
+        p.join()
         sys.exit(1)

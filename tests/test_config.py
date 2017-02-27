@@ -322,8 +322,8 @@ type=esx
                 **TestReadingConfigs.dest_options_2)
 
         expected_mapping = {
-            expected_dest_1: set([config_1['name']]),
-            expected_dest_2: set([config_2['name']])
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]
         }
 
         manager = ConfigManager(self.logger, self.config_dir)
@@ -352,8 +352,8 @@ type=esx
         expected_dest = Satellite6DestinationInfo(
                 **TestReadingConfigs.dest_options_1)
 
-        expected_mapping = {expected_dest: set([config_1['name'],
-                                                config_2['name']])}
+        expected_mapping = {expected_dest: [config_1['name'],
+                                            config_2['name']]}
 
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
@@ -387,8 +387,8 @@ type=esx
         expected_dest_2 = Satellite6DestinationInfo(
                 **TestReadingConfigs.dest_options_2)
         expected_mapping = {
-            expected_dest_1: set([config_1['name']]),
-            expected_dest_2: set([config_2['name']])  # config_2['name'] ==
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]  # config_2['name'] ==
                                                  # config_1['name']
         }
 
@@ -405,7 +405,7 @@ type=esx
         expected_dest_1 = Satellite6DestinationInfo(
                 **TestReadingConfigs.dest_options_1)
         expected_mapping = {
-            expected_dest_1: set([config_1['name']])
+            expected_dest_1: [config_1['name']]
         }
 
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -424,8 +424,8 @@ type=esx
         expected_dest_2 = Satellite6DestinationInfo(
                 **TestReadingConfigs.dest_options_2)
         expected_mapping = {
-            expected_dest_1: set([config_1['name']]),
-            expected_dest_2: set([config_2['name']])
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]
         }
 
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -464,9 +464,9 @@ type=esx
         expected_dest_3 = Satellite6DestinationInfo(**dest_options_3)
 
         expected_mapping = {
-            expected_dest_1: set([config_1['name']]),
-            expected_dest_2: set([config_2['name'], config_3['name']]),
-            expected_dest_3: set([config_4['name']])
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name'], config_3['name']],
+            expected_dest_3: [config_4['name']]
         }
 
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -477,7 +477,6 @@ type=esx
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEquals(manager.dest_to_sources_map, expected_mapping)
-
 
     def testLibvirtConfig(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:

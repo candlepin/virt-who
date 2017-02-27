@@ -74,7 +74,7 @@ class Libvirtd(Virt):
     CONFIG_TYPE = "libvirt"
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False ,registerEvents=True):
+                 interval=None, oneshot=False, registerEvents=True):
         super(Libvirtd, self).__init__(logger, config, dest,
                                        terminate_event=terminate_event,
                                        interval=interval,

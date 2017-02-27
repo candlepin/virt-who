@@ -499,21 +499,30 @@ if __name__ == '__main__':  # pragma: no cover
     logger = logging.getLogger('virtwho.esx')
     logger.addHandler(logging.StreamHandler())
     from virtwho.config import Config
+    from virtwho.datastore import Datastore
+    from threading import Thread, Event
     config = Config('esx', 'esx', server=sys.argv[1], username=sys.argv[2],
                     password=sys.argv[3])
-    vsphere = Esx(logger, config)
-    from Queue import Queue
-    from threading import Event, Thread
-    q = Queue()
+    datastore = Datastore()
+    vsphere = Esx(logger, config, datastore)
+    printer_terminate_event = Event()
 
     class Printer(Thread):
         def run(self):
-            while True:
-                print(q.get(True).association)
+            last_hash = None
+            while not printer_terminate_event.is_set():
+                try:
+                    report = datastore.get(config.name)
+                    if report and report.hash != last_hash:
+                        print(report.association)
+                        last_hash = report.hash
+                except KeyError:
+                    pass
     p = Printer()
-    p.daemon = True
     p.start()
     try:
-        vsphere.start_sync(q, Event())
+        vsphere.start_sync()
     except KeyboardInterrupt:
+        printer_terminate_event.set()
+        p.join()
         sys.exit(1)

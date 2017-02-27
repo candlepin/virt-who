@@ -1,4 +1,6 @@
 
+import os
+import signal
 import sys
 import socket
 from Queue import Empty
@@ -246,3 +248,53 @@ class VirtBackendTestMixin(object):
 
         assoc = self.wait_for_assoc(5)
         self.check_assoc_updated(assoc)
+
+    def test_exit_on_SIGTERM(self):
+        """
+        This test shows that virt-who exits cleanly in response to the
+        SIGTERM signal
+        """
+        self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
+        self.addCleanup(self.stop_virtwho)
+        self.assertEquals(self.process.is_alive(), True)
+        os.kill(self.process.pid, signal.SIGTERM)
+        self.process.join(timeout=3)
+        self.assertEquals(self.process.is_alive(), False)
+
+    def test_reload_on_SIGHUP(self):
+        """
+        This tests that the rhsm.conf is read once again when the process
+        receives the reload signal
+        """
+        rhsm_conf_path = os.path.join(self.sam.tempdir, 'rhsm.conf')
+        good_rhsm_conf = ''
+        with open(rhsm_conf_path, 'r') as f:
+            good_rhsm_conf = ''.join(line for line in f.readlines())
+        bad_conf = """
+[server]
+hostname = BADHOSTNAME
+prefix = /nogood
+port = {port}1337
+insecure = 1
+proxy_hostname =
+""".format(port=self.sam.port)
+        with open(os.path.join(self.sam.tempdir, 'rhsm.conf'), 'w') as \
+                rhsm_conf_file:
+            rhsm_conf_file.write(bad_conf)
+            rhsm_conf_file.flush()
+        self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
+        self.addCleanup(self.stop_virtwho)
+        self.assertEquals(self.process.is_alive(), True)
+
+        # We expect the queue to be empty until we the appropriate
+        # configuration file is added
+        self.assertRaises(AssertionError, self.wait_for_assoc)
+
+        # Update the configuration file with the good one that came from
+        # fake_sam
+        with open(os.path.join(self.sam.tempdir, 'rhsm.conf'), 'w') as \
+                rhsm_conf_file:
+            rhsm_conf_file.write(good_rhsm_conf)
+        os.kill(self.process.pid, signal.SIGHUP)
+        self.wait_for_assoc(4)
+        self.assertEquals(self.process.is_alive(), True)

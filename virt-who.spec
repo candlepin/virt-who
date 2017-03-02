@@ -1,7 +1,7 @@
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
 
 Name:           virt-who
-Version:        0.18
+Version:        0.19
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -123,6 +123,21 @@ fi
 
 
 %changelog
+* Thu Mar 02 2017 Christopher Snyder <csnyder@redhat.com> 0.19-1
+- 1415497: Support rhev4 auto detection and usage (pcreech@redhat.com)
+- 1388577: Adding UTF-8 support (pcreech@redhat.com)
+- 1410000: Include org_id in hv base channel (pcreech@redhat.com)
+- 1400431: Fix AttributeError where val is missing (pcreech@redhat.com)
+- 1405967: Filter host via glob or regex (pcreech@redhat.com)
+- Adds --password option to virt-who-pasword (tstrachota@redhat.com)
+- 1392390 Fix default interval handling (pcreech@redhat.com)
+- BZ1405967  Add filter_hosts_regex, and exclude_hosts_regex to allow filtering
+  large numbers of hosts easily (chris@chrisprocter.co.uk)
+- 1369107: Only load files with .conf extension (pcreech@redhat.com)
+- 1383436: Obey the interval setting (csnyder@redhat.com)
+- 1299643: Update virt-who-config man page to include NO_PROXY
+  (csnyder@redhat.com)
+
 * Tue Oct 11 2016 Radek Novacek <rnovacek@redhat.com> 0.18-1
 - Version 0.18
 

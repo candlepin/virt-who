@@ -309,27 +309,6 @@ class TestEsx(TestBase):
         expected[change.name] = change.val
         self.assertDictEqual(self.esx.vms[objectSet.obj.value], expected)
 
-    def test_applyVirtualMachineUpdate_add(self):
-        change = Mock(spec=['op', 'name', 'val'])
-        change.op = 'add'
-        change.name = 'test.guest.name'
-        change.val = 'test'
-
-        objectSet = Mock()
-        objectSet.kind = 'modify'
-        objectSet.obj.value = 'test.host.name'
-        objectSet.changeSet = [change]
-
-        self.esx.vms = dict()
-        self.esx.vms[objectSet.obj.value] = dict()
-        self.esx.vms[objectSet.obj.value][change.name] = []
-
-        self.esx.applyVirtualMachineUpdate(objectSet)
-
-        expected = dict()
-        expected[change.name] = [change.val]
-        self.assertDictEqual(self.esx.vms[objectSet.obj.value], expected)
-
     def test_applyVirtualMachineUpdate_remove(self):
         change = Mock(spec=['op', 'name', 'val'])
         change.op = 'remove'

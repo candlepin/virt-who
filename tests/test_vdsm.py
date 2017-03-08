@@ -33,7 +33,7 @@ class TestVdsm(TestBase):
         def fakeSecureConnect(self):
             return MagicMock()
         Vdsm._secureConnect = fakeSecureConnect
-        self.vdsm = Vdsm(self.logger, config)
+        self.vdsm = Vdsm(self.logger, config, None)
         self.vdsm.prepare()
 
     def test_connect(self):

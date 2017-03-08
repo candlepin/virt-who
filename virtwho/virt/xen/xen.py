@@ -25,8 +25,12 @@ class Xen(virt.Virt):
     # Register for events on all classes
     event_types = ["host", "vm"]
 
-    def __init__(self, logger, config):
-        super(Xen, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False):
+        super(Xen, self).__init__(logger, config, dest,
+                                  terminate_event=terminate_event,
+                                  interval=interval,
+                                  oneshot=oneshot)
         self.url = config.server
         self.username = config.username
         self.password = config.password
@@ -186,8 +190,8 @@ class Xen(virt.Virt):
 
             if initial or len(events) > 0 or delta > 0:
                 assoc = self.getHostGuestMapping()
-                self.enqueue(virt.HostGuestAssociationReport(self.config, assoc))
-                next_update = time() + self._interval
+                self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+                next_update = time() + self.interval
                 initial = False
 
             if self._oneshot:

@@ -35,12 +35,14 @@ class TestEsx(TestBase):
     def setUp(self):
         config = Config('test', 'esx', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.esx = Esx(self.logger, config)
+        self.esx = Esx(self.logger, config, None)  #  No dest given here
 
     def run_once(self, queue=None):
         ''' Run ESX in oneshot mode '''
         self.esx._oneshot = True
-        self.esx._queue = queue or Queue()
+        if queue is None:
+            queue = Mock(spec=Queue())
+        self.esx.dest = queue
         self.esx._terminate_event = Event()
         self.esx._oneshot = True
         self.esx._interval = 0

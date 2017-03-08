@@ -53,8 +53,12 @@ RHEVM_STATE_TO_GUEST_STATE = {
 class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
-    def __init__(self, logger, config):
-        super(RhevM, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False):
+        super(RhevM, self).__init__(logger, config, dest,
+                                    terminate_event=terminate_event,
+                                    interval=interval,
+                                    oneshot=oneshot)
         self.url = self.config.server
         if "//" not in self.url:
             self.url = "//" + self.config.server

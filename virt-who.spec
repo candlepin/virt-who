@@ -1,4 +1,8 @@
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
+%if !%{use_systemd}
+%global __python2 %{__python}
+%global python2_sitelib %{python_sitelib}
+%endif
 
 Name:           virt-who
 Version:        0.19

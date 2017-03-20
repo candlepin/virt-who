@@ -284,7 +284,7 @@ class Libvirtd(Virt):
             elif self.config.hypervisor_id == 'hostname':
                 self._host_uuid = self.virt.getHostname()
             else:
-                raise virt.VirtError(
+                raise VirtError(
                     'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
                     self.config.hypervisor_id)
         return self._host_uuid

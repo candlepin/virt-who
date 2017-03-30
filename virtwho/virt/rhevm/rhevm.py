@@ -103,12 +103,16 @@ class RhevM(virt.Virt):
         Gets the major version from the Rhevm server
         """
         try:
+            headers = dict()
+            headers['Version'] = '3'
             response = requests.get(urlparse.urljoin(self.url, 'api'),
                                     auth=self.auth,
+                                    headers=headers,
                                     verify=False)
             if response.status_code == 404 and 'ovirt-engine' not in self.url:
                 response = requests.get(urlparse.urljoin(self.url, 'ovirt-engine/api'),
                                         auth=self.auth,
+                                        headers=headers,
                                         verify=False)
             response.raise_for_status()
         except requests.RequestException as e:

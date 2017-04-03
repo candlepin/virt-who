@@ -21,7 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import urllib2
 from mock import patch, call, ANY
-from multiprocessing import Queue, Event
+from threading import Event
+from Queue import Queue
 
 from base import TestBase
 from proxy import Proxy
@@ -36,12 +37,12 @@ class TestXen(TestBase):
     def setUp(self):
         config = Config('test', 'xen', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.xen = Xen(self.logger, config)
+        self.xen = Xen(self.logger, config, None)
 
     def run_once(self, queue=None):
         ''' Run XEN in oneshot mode '''
         self.xen._oneshot = True
-        self.xen._queue = queue or Queue()
+        self.xen.dest = queue or Queue()
         self.xen._terminate_event = Event()
         self.xen._oneshot = True
         self.xen._interval = 0

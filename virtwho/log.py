@@ -26,8 +26,7 @@ import cStringIO
 import os
 import sys
 import json
-from Queue import Empty
-from multiprocessing import Queue
+from Queue import Empty, Queue
 from threading import Thread
 
 from virtwho import util

@@ -21,10 +21,12 @@ import os
 import requests
 import suds
 from mock import patch, ANY, MagicMock, Mock
-from multiprocessing import Queue, Event
+from threading import Event
+from Queue import Queue
 
 from base import TestBase
 from virtwho.config import Config
+from virtwho.datastore import Datastore
 from virtwho.virt.esx import Esx
 from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
 from proxy import Proxy
@@ -34,12 +36,15 @@ class TestEsx(TestBase):
     def setUp(self):
         config = Config('test', 'esx', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.esx = Esx(self.logger, config)
+        self.esx = Esx(self.logger, config, None)  #  No dest given here
 
-    def run_once(self, queue=None):
+    def run_once(self, datastore=None):
         ''' Run ESX in oneshot mode '''
         self.esx._oneshot = True
-        self.esx._queue = queue or Queue()
+        if datastore is None:
+            datastore = Mock(spec=Datastore())
+
+        self.esx.dest = datastore
         self.esx._terminate_event = Event()
         self.esx._oneshot = True
         self.esx._interval = 0
@@ -184,14 +189,13 @@ class TestEsx(TestBase):
         updateSet.version = 'some_new_version_string'
         updateSet.truncated = False
         mock_client.return_value.service.WaitForUpdatesEx.return_value = updateSet
-        queue = Queue()
+        datastore = Datastore()
         self.esx.applyUpdates = Mock()
         getHostGuestMappingMock = Mock()
         getHostGuestMappingMock.return_value = expected_assoc
         self.esx.getHostGuestMapping = getHostGuestMappingMock
-        self.run_once(queue)
-        self.assertEqual(queue.qsize(), 1)
-        result_report = queue.get(block=True, timeout=1)
+        self.run_once(datastore)
+        result_report = datastore.get(self.esx.config.name)
         self.assertEqual(expected_report.config.hash, result_report.config.hash)
         self.assertEqual(expected_report._assoc, result_report._assoc)
 

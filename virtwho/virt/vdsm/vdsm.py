@@ -51,8 +51,12 @@ VDSM_STATE_TO_GUEST_STATE = {
 class Vdsm(Virt):
     CONFIG_TYPE = "vdsm"
 
-    def __init__(self, logger, config):
-        super(Vdsm, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False):
+        super(Vdsm, self).__init__(logger, config, dest,
+                                   terminate_event=terminate_event,
+                                   interval=interval,
+                                   oneshot=oneshot)
         self._readConfig("/etc/vdsm/vdsm.conf")
 
     def isHypervisor(self):

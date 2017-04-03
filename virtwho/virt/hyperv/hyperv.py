@@ -442,8 +442,12 @@ class HyperVCallFailed(HyperVException):
 class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
-    def __init__(self, logger, config):
-        super(HyperV, self).__init__(logger, config)
+    def __init__(self, logger, config, dest, terminate_event=None,
+                 interval=None, oneshot=False):
+        super(HyperV, self).__init__(logger, config, dest,
+                                     terminate_event=terminate_event,
+                                     interval=interval,
+                                     oneshot=oneshot)
         url = config.server
         self.username = config.username
         self.password = config.password

@@ -30,45 +30,115 @@ import random
 
 from base import TestBase, unittest
 
-from virtwho.config import ConfigManager, InvalidOption, GeneralConfig, NotSetSentinel, GlobalConfig, parse_list
+from virtwho.config import ConfigManager, InvalidOption, GeneralConfig, \
+    NotSetSentinel, GlobalConfig, parse_list, Satellite6DestinationInfo
 from virtwho.password import Password, InvalidKeyFile
+
+default_config_values = {
+    "name":"test",
+    "type": "esx",
+    "server": "1.2.3.4",
+    "username": "admin",
+    "password": "password",
+    "owner": "root",
+    "env": "staging",
+    "rhsm_username": "admin",
+    "rhsm_password": "password",
+    "rhsm_hostname": "host",
+    "rhsm_port": "1234",
+    "rhsm_prefix": "prefix",
+    "rhsm_proxy_hostname": "proxy host",
+    "rhsm_proxy_port": "4321",
+    "rhsm_proxy_user": "proxyuser",
+    "rhsm_proxy_password": "proxypass",
+    "rhsm_insecure": "1"
+}
+
+
+def combine_dicts(*args):
+    """
+    A utility method to combine all dictionaries passed into one
+    @param args: One or more dicts
+    @type args: dict
+
+    @return: dict with the combined values from all args. NOTE: The value
+    for any key in more than one dict will be the value of the last dict
+    in the arg list that has that key.
+    @rtype: dict
+    """
+    result = {}
+    for arg in args:
+        result.update(arg)
+    return result
+
+
+def append_number_to_all(in_dict, number):
+    result = {}
+    for key, value in in_dict.iteritems():
+        result[key] = value + str(number)
+    return result
 
 
 class TestReadingConfigs(TestBase):
+    source_options_1 = {
+        "name": "test1",
+        "type": "esx",
+        "server": "1.2.3.4",
+        "username": "admin",
+        "password": "password",
+    }
+    source_options_2 = {
+        "name": "test2",
+        "type": "hyperv",
+        "server": "1.2.3.5",
+        "username": "admin",
+        "password": "password",
+    }
+    dest_options = {
+        "owner": "root",
+        "env": "staging",
+        "rhsm_username": "rhsm_admin",
+        "rhsm_password": "rhsm_password",
+        "rhsm_hostname": "host",
+        "rhsm_port": "1234",
+        "rhsm_prefix": "prefix",
+        "rhsm_proxy_hostname": "proxyhost",
+        "rhsm_proxy_port": "4321",
+        "rhsm_proxy_user": "proxyuser",
+        "rhsm_proxy_password": "proxypass",
+        "rhsm_insecure": ""
+    }
+    dest_options_1 = append_number_to_all(dest_options, 1)
+    dest_options_2 = append_number_to_all(dest_options, 2)
+
     def setUp(self):
         self.config_dir = mkdtemp()
         self.addCleanup(shutil.rmtree, self.config_dir)
         self.logger = logging.getLogger("virtwho.main")
 
+    @staticmethod
+    def dict_to_ini(in_dict):
+        """
+        A utility method that formats the given dict as a section of an ini
+
+        @param in_dict: The dictionary containing the keys and values to be
+        made ini-like. The section name returned by this method will be the
+        value of the "name" key in this dict.
+        @type in_dict: dict
+
+        @return: A string formatted like an ini file section
+        @rtype: str
+        """
+        header = "[%s]\n" % in_dict.get("name", "test")
+        body = "\n".join(["%s=%s" % (key, val) for key, val in
+                          in_dict.iteritems() if key is not "name"])
+        return header + body + "\n"
+
     def testEmptyConfig(self):
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 0)
 
-    def testBasicConfig(self):
-        with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
-            f.write("""
-[test]
-type=esx
-server=1.2.3.4
-username=admin
-password=password
-owner=root
-env=staging
-rhsm_username=admin
-rhsm_password=password
-rhsm_hostname=host
-rhsm_port=1234
-rhsm_prefix=prefix
-rhsm_proxy_hostname=proxy host
-rhsm_proxy_port=4321
-rhsm_proxy_user=proxyuser
-rhsm_proxy_password=proxypass
-rhsm_insecure=1
-""")
-
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
+    def assertConfigEqualsDefault(self, config):
         self.assertEqual(config.name, "test")
         self.assertEqual(config.type, "esx")
         self.assertEqual(config.server, "1.2.3.4")
@@ -87,6 +157,20 @@ rhsm_insecure=1
         self.assertEqual(config.rhsm_proxy_password, 'proxypass')
         self.assertEqual(config.rhsm_insecure, '1')
         self.assertEqual(config.simplified_vim, True)
+
+    def assert_config_contains_all(self, config, options):
+        for key in options:
+            config_value = getattr(config, key)
+            self.assertEquals(config_value, options[key])
+
+    def testBasicConfig(self):
+        with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(default_config_values))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0]
+        self.assertConfigEqualsDefault(config)
 
     def testInvalidConfig(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
@@ -205,170 +289,194 @@ type=esx
         self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
 
     def testMultipleConfigsInFile(self):
-        with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
-            f.write("""
-[test1]
-type=esx
-server=1.2.3.4
-username=admin
-password=password
-owner=root1
-env=staging1
-rhsm_username=rhsm_admin1
-rhsm_password=rhsm_password1
-rhsm_hostname=host1
-rhsm_port=12341
-rhsm_prefix=prefix1
-rhsm_proxy_hostname=proxyhost1
-rhsm_proxy_port=43211
-rhsm_proxy_user=proxyuser1
-rhsm_proxy_password=proxypass1
-rhsm_insecure=1
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        config_2 = combine_dicts(TestReadingConfigs.source_options_2,
+                                 TestReadingConfigs.dest_options_2)
 
-[test2]
-type=hyperv
-server=1.2.3.5
-username=admin
-password=password
-owner=root2
-env=staging2
-rhsm_username=rhsm_admin2
-rhsm_password=rhsm_password2
-rhsm_hostname=host2
-rhsm_port=12342
-rhsm_prefix=prefix2
-rhsm_proxy_hostname=proxyhost2
-rhsm_proxy_port=43212
-rhsm_proxy_user=proxyuser2
-rhsm_proxy_password=proxypass2
-rhsm_insecure=2
-""")
+        with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1) +
+                    TestReadingConfigs.dict_to_ini(config_2))
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 2)
         config = manager.configs[0]
-        self.assertEqual(config.name, "test1")
-        self.assertEqual(config.type, "esx")
-        self.assertEqual(config.server, "1.2.3.4")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root1")
-        self.assertEqual(config.env, "staging1")
-        self.assertEqual(config.rhsm_username, 'rhsm_admin1')
-        self.assertEqual(config.rhsm_password, 'rhsm_password1')
-        self.assertEqual(config.rhsm_hostname, 'host1')
-        self.assertEqual(config.rhsm_port, '12341')
-        self.assertEqual(config.rhsm_prefix, 'prefix1')
-        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost1')
-        self.assertEqual(config.rhsm_proxy_port, '43211')
-        self.assertEqual(config.rhsm_proxy_user, 'proxyuser1')
-        self.assertEqual(config.rhsm_proxy_password, 'proxypass1')
-        self.assertEqual(config.rhsm_insecure, '1')
+        self.assert_config_contains_all(config, config_1)
         config = manager.configs[1]
-        self.assertEqual(config.name, "test2")
-        self.assertEqual(config.type, "hyperv")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.server, "1.2.3.5")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root2")
-        self.assertEqual(config.env, "staging2")
-        self.assertEqual(config.rhsm_username, 'rhsm_admin2')
-        self.assertEqual(config.rhsm_password, 'rhsm_password2')
-        self.assertEqual(config.rhsm_hostname, 'host2')
-        self.assertEqual(config.rhsm_port, '12342')
-        self.assertEqual(config.rhsm_prefix, 'prefix2')
-        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost2')
-        self.assertEqual(config.rhsm_proxy_port, '43212')
-        self.assertEqual(config.rhsm_proxy_user, 'proxyuser2')
-        self.assertEqual(config.rhsm_proxy_password, 'proxypass2')
-        self.assertEqual(config.rhsm_insecure, '2')
+        self.assert_config_contains_all(config, config_2)
 
     def testMultipleConfigFiles(self):
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        config_2 = combine_dicts(TestReadingConfigs.source_options_2,
+                                 TestReadingConfigs.dest_options_2)
+
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
-            f.write("""
-[test1]
-type=esx
-server=1.2.3.4
-username=admin
-password=password
-owner=root
-env=staging
-rhsm_username=rhsm_admin1
-rhsm_password=rhsm_password1
-rhsm_hostname=host1
-rhsm_port=12341
-rhsm_prefix=prefix1
-rhsm_proxy_hostname=proxyhost1
-rhsm_proxy_port=43211
-rhsm_proxy_user=proxyuser1
-rhsm_proxy_password=proxypass1
-rhsm_insecure=1
-""")
+            f.write(TestReadingConfigs.dict_to_ini(config_1))
         with open(os.path.join(self.config_dir, "test2.conf"), "w") as f:
-            f.write("""
-[test2]
-type=hyperv
-server=1.2.3.5
-username=admin
-password=password
-owner=root
-env=staging
-rhsm_username=rhsm_admin2
-rhsm_password=rhsm_password2
-rhsm_hostname=host2
-rhsm_port=12342
-rhsm_prefix=prefix2
-rhsm_proxy_hostname=proxyhost2
-rhsm_proxy_port=43212
-rhsm_proxy_user=proxyuser2
-rhsm_proxy_password=proxypass2
-rhsm_insecure=2
-""")
+            f.write(TestReadingConfigs.dict_to_ini(config_2))
+
+        expected_dest_1 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+        expected_dest_2 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_2)
+
+        expected_mapping = {
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]
+        }
 
         manager = ConfigManager(self.logger, self.config_dir)
         self.assertEqual(len(manager.configs), 2)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dests, set([expected_dest_1, expected_dest_2]))
+        self.assertEqual(manager.sources,
+                         set([config_1['name'], config_2['name']]))
 
-        config2, config1 = manager.configs
+        result2, result1 = manager.configs
 
-        self.assertIn(config1.name, ("test1", "test2"))
-        if config1.name == "test2":
-            config2, config1 = config1, config2
+        self.assertIn(result1.name, ("test1", "test2"))
+        if result1.name == "test2":
+            result2, result1 = result1, result2
 
-        self.assertEqual(config1.name, "test1")
-        self.assertEqual(config1.type, "esx")
-        self.assertEqual(config1.server, "1.2.3.4")
-        self.assertEqual(config1.username, "admin")
-        self.assertEqual(config1.password, "password")
-        self.assertEqual(config1.owner, "root")
-        self.assertEqual(config1.env, "staging")
-        self.assertEqual(config1.rhsm_username, 'rhsm_admin1')
-        self.assertEqual(config1.rhsm_password, 'rhsm_password1')
-        self.assertEqual(config1.rhsm_hostname, 'host1')
-        self.assertEqual(config1.rhsm_port, '12341')
-        self.assertEqual(config1.rhsm_prefix, 'prefix1')
-        self.assertEqual(config1.rhsm_proxy_hostname, 'proxyhost1')
-        self.assertEqual(config1.rhsm_proxy_port, '43211')
-        self.assertEqual(config1.rhsm_proxy_user, 'proxyuser1')
-        self.assertEqual(config1.rhsm_proxy_password, 'proxypass1')
-        self.assertEqual(config1.rhsm_insecure, '1')
+        self.assert_config_contains_all(result1, config_1)
+        self.assert_config_contains_all(result2, config_2)
 
-        self.assertEqual(config2.name, "test2")
-        self.assertEqual(config2.type, "hyperv")
-        self.assertEqual(config2.server, "1.2.3.5")
-        self.assertEqual(config2.username, "admin")
-        self.assertEqual(config2.password, "password")
-        self.assertEqual(config2.owner, "root")
-        self.assertEqual(config2.env, "staging")
-        self.assertEqual(config2.rhsm_username, 'rhsm_admin2')
-        self.assertEqual(config2.rhsm_password, 'rhsm_password2')
-        self.assertEqual(config2.rhsm_hostname, 'host2')
-        self.assertEqual(config2.rhsm_port, '12342')
-        self.assertEqual(config2.rhsm_prefix, 'prefix2')
-        self.assertEqual(config2.rhsm_proxy_hostname, 'proxyhost2')
-        self.assertEqual(config2.rhsm_proxy_port, '43212')
-        self.assertEqual(config2.rhsm_proxy_user, 'proxyuser2')
-        self.assertEqual(config2.rhsm_proxy_password, 'proxypass2')
-        self.assertEqual(config2.rhsm_insecure, '2')
+    def test_many_sources_to_one_dest(self):
+        # This tests that there can be multiple configs that specify to
+        # report to the same destination
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        config_2 = combine_dicts(TestReadingConfigs.source_options_2,
+                                 TestReadingConfigs.dest_options_1)
+        expected_dest = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+
+        expected_mapping = {expected_dest: [config_1['name'],
+                                            config_2['name']]}
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1) +
+                    TestReadingConfigs.dict_to_ini(config_2))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEqual(manager.dests, set([expected_dest]))
+        self.assertEqual(manager.sources,
+                         set([config_1['name'], config_2['name']]))
+
+        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+
+    def test_one_source_to_many_dests(self):
+        # This tests that there can be one source that specifies
+        # information for different destinations and that the correct mapping
+        # is created.
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+
+        # NOTE: virt-who today does not support config sections having the same
+        # name. Hence the only way to have one source go to multiple
+        # destinations (without new config options) is to have two sections
+        # with the same information but different section names
+        config_options_2 = TestReadingConfigs.source_options_1.copy()
+        config_options_2['name'] = 'test2'
+        config_2 = combine_dicts(config_options_2,
+                                 TestReadingConfigs.dest_options_2)
+
+        expected_dest_1 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+        expected_dest_2 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_2)
+        expected_mapping = {
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]  # config_2['name'] ==
+                                                 # config_1['name']
+        }
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1) +
+                    TestReadingConfigs.dict_to_ini(config_2))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+
+    def test_one_source_to_one_dest(self):
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        expected_dest_1 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+        expected_mapping = {
+            expected_dest_1: [config_1['name']]
+        }
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+
+    def test_two_sources_to_two_dests(self):
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        config_2 = combine_dicts(TestReadingConfigs.source_options_2,
+                                 TestReadingConfigs.dest_options_2)
+        expected_dest_1 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+        expected_dest_2 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_2)
+        expected_mapping = {
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name']]
+        }
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1) +
+                    TestReadingConfigs.dict_to_ini(config_2))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+
+    def test_many_sources_to_many_dests(self):
+        config_1 = combine_dicts(TestReadingConfigs.source_options_1,
+                                 TestReadingConfigs.dest_options_1)
+        config_2 = combine_dicts(TestReadingConfigs.source_options_2,
+                                 TestReadingConfigs.dest_options_2)
+
+        # Create another source config that is slightly different
+        source_3_options = TestReadingConfigs.source_options_2.copy()
+        source_3_options['name'] = 'test3'
+        source_4_options = TestReadingConfigs.source_options_1.copy()
+        source_4_options['name'] = 'test4'
+
+        # Create another dest config that is slightly different
+        dest_options_3 = TestReadingConfigs.dest_options_2.copy()
+        dest_options_3['owner'] = 'some_cool_owner_person'
+
+        config_3 = combine_dicts(source_3_options,
+                                 TestReadingConfigs.dest_options_2)
+
+        config_4 = combine_dicts(source_4_options,
+                                 dest_options_3)
+
+        expected_dest_1 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_1)
+        expected_dest_2 = Satellite6DestinationInfo(
+                **TestReadingConfigs.dest_options_2)
+        expected_dest_3 = Satellite6DestinationInfo(**dest_options_3)
+
+        expected_mapping = {
+            expected_dest_1: [config_1['name']],
+            expected_dest_2: [config_2['name'], config_3['name']],
+            expected_dest_3: [config_4['name']]
+        }
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write(TestReadingConfigs.dict_to_ini(config_1) +
+                    TestReadingConfigs.dict_to_ini(config_2) +
+                    TestReadingConfigs.dict_to_ini(config_3) +
+                    TestReadingConfigs.dict_to_ini(config_4))
+
+        manager = ConfigManager(self.logger, self.config_dir)
+        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
 
     def testLibvirtConfig(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:

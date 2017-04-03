@@ -37,6 +37,13 @@ class ManagerThrottleError(Exception):
 
 
 class Manager(object):
+    """
+    This class is an abstract representation of an object that, given info
+    to be used to connect, can transform reports from virt-who internal format
+    to the format necessary for the endpoint. In addition these classes must be
+    able to establish and maintain a connection to the given "destination"
+    backend.
+    """
     def __repr__(self):
         return '{0.__class__.__name__}({0.logger!r}, {0.options!r})'.format(self)
 
@@ -62,10 +69,40 @@ class Manager(object):
         # Silence pyflakes errors
         assert virtwho
 
-        smType = config.smType or options.smType or 'sam'
+        config_smType = config.smType if config else None
+        smType = config_smType or options.smType or 'sam'
 
         for subcls in cls.__subclasses__():
             if subcls.smType == smType:
                 return subcls(logger, options)
 
         raise KeyError("Invalid config type: %s" % smType)
+
+    @classmethod
+    def fromInfo(cls, logger, options, info):
+        """
+        @param logger: The logging object to pass into the new manager object
+        @type logger: logger
+
+        @param options: The options object to create a manager with.
+
+        @param info: The config.Info object to be used to determine which
+        manager object to create
+        @type info: virtwho.config.Info
+
+        @return: An initialized Manager subclass for the given info object
+        @rtype: manager.Manager
+        """
+        from virtwho.manager.subscriptionmanager import SubscriptionManager
+        from virtwho.manager.satellite import Satellite
+
+        from virtwho.config import Satellite6DestinationInfo, \
+            Satellite5DestinationInfo, DefaultDestinationInfo
+
+        info_to_manager_map = {
+            Satellite5DestinationInfo: Satellite,
+            Satellite6DestinationInfo: SubscriptionManager,
+            DefaultDestinationInfo: SubscriptionManager,
+        }
+
+        return info_to_manager_map[type(info)](logger, options)

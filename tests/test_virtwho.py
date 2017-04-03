@@ -20,14 +20,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import os
-from Queue import Empty
-from multiprocessing import Queue
+from Queue import Empty, Queue
 from mock import patch, Mock, sentinel, ANY, call
 
 from base import TestBase
 
 from virtwho import util
-from virtwho.config import Config
+from virtwho.config import Config, ConfigManager
 from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import (
     HostGuestAssociationReport, Hypervisor, Guest,
@@ -42,6 +41,10 @@ class TestOptions(TestBase):
 
     def setUp(self):
         self.clearEnv()
+
+    def tearDown(self):
+        self.clearEnv()
+        super(TestBase, self).tearDown()
 
     def clearEnv(self):
         for key in os.environ.keys():
@@ -234,291 +237,40 @@ class TestOptions(TestBase):
                             continue
                         self.assertRaises(OptionError, parseOptions)
 
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.config.parseFile')
-    def test_sending_guests(self, parseFile, fromOptions, fromConfig, getLogger):
-        self.setUpParseFile(parseFile)
-        options = Mock()
-        options.oneshot = True
-        options.interval = 0
-        options.print_ = False
-        fake_virt = Mock()
-        fake_virt.CONFIG_TYPE = 'esx'
-        test_hypervisor = Hypervisor('test', guestIds=[Guest('guest1', fake_virt, 1)])
-        association = {'hypervisors': [test_hypervisor]}
-        options.log_dir = ''
-        options.log_file = ''
-        getLogger.return_value = sentinel.logger
-        fromConfig.return_value.config.name = 'test'
-        virtwho = Executor(self.logger, options, config_dir="/nonexistant")
-        config = Config("test", "esx", server="localhost", username="username",
-                        password="password", owner="owner", env="env")
-        virtwho.configManager.addConfig(config)
-        virtwho.queue = Queue()
-        virtwho.queue.put(HostGuestAssociationReport(config, association))
-        virtwho.run()
+class TestExecutor(TestBase):
 
-        fromConfig.assert_called_with(sentinel.logger, config)
-        self.assertTrue(fromConfig.return_value.start.called)
-        fromOptions.assert_called_with(self.logger, options, ANY)
+    @patch.object(Executor, 'terminate_threads')
+    @patch('virtwho.executor.time')
+    def test_wait_on_threads(self, mock_time, mock_terminate_threads):
+        """
+        Tests that, given no kwargs, the wait_on_threads method will wait until
+        all threads is_terminated method returns True.
+        Please note that a possible consequence of something going wrong in
+        the wait on threads method (with no kwargs) could cause this test to
+        never quit.
+        """
+        # Create a few mock threads
+        # The both will return False the first time is_terminated is called
+        # Only the second mock thread will wait not return True until the
+        # third call of is_terminated
+        mock_thread1 = Mock()
+        mock_thread1.is_terminated = Mock(side_effect=[False, True])
+        mock_thread2 = Mock()
+        mock_thread2.is_terminated = Mock(side_effect=[False, False, True])
 
+        threads = [mock_thread1, mock_thread2]
 
-class TestSend(TestBase):
-    def setUp(self):
-        self.config = Config('config', 'esx', server='localhost',
-                             username='username', password='password',
-                             owner='owner', env='env', log_dir='', log_file='')
-        self.second_config = Config('second_config', 'esx', server='localhost',
-                                    username='username', password='password',
-                                    owner='owner', env='env', log_dir='',
-                                    log_file='')
-        fake_virt = Mock()
-        fake_virt.CONFIG_TYPE = 'esx'
-        guests = [Guest('guest1', fake_virt, 1)]
-        test_hypervisor = Hypervisor('test', guestIds=[Guest('guest1', fake_virt, 1)])
-        assoc = {'hypervisors': [test_hypervisor]}
-        self.fake_domain_list = DomainListReport(self.second_config, guests)
-        self.fake_report = HostGuestAssociationReport(self.config, assoc)
+        mock_time.sleep = Mock()
+        Executor.wait_on_threads(threads)
+        mock_time.sleep.assert_has_calls([
+            call(1),
+            call(1),
+        ])
+        mock_terminate_threads.assert_not_called()
 
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_report_hash_added_after_send(self, fromConfig, fromOptions, getLogger):
-        # Side effect for fromConfig
-        def fake_virts(logger, config):
-            new_fake_virt = Mock()
-            new_fake_virt.config.name = config.name
-            return new_fake_virt
-
-        fromConfig.side_effect = fake_virts
-        options = Mock()
-        options.interval = 0
-        options.oneshot = True
-        options.print_ = False
-        options.log_file = ''
-        options.log_dir = ''
-        virtwho = Executor(self.logger, options, config_dir="/nonexistant")
-
-        def send(report):
-            report.state = AbstractVirtReport.STATE_FINISHED
-            return True
-        virtwho.send = Mock(side_effect=send)
-        queue = Queue()
-        virtwho.queue = queue
-        virtwho.retry_after = 1
-        virtwho.configManager.addConfig(self.config)
-        virtwho.configManager.addConfig(self.second_config)
-        queue.put(self.fake_report)
-        queue.put(self.fake_domain_list)
-        virtwho.run()
-
-        self.assertEquals(virtwho.send.call_count, 2)
-        self.assertEqual(virtwho.last_reports_hash[self.config.name], self.fake_report.hash)
-        self.assertEqual(virtwho.last_reports_hash[self.second_config.name], self.fake_domain_list.hash)
-
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_same_report_filtering(self, fromConfig, fromOptions, getLogger):
-        def fake_virts(logger, config):
-            new_fake_virt = Mock()
-            new_fake_virt.config.name = config.name
-            return new_fake_virt
-
-        fromConfig.side_effect = fake_virts
-        options = Mock()
-        options.interval = 0
-        options.oneshot = True
-        options.print_ = False
-        options.log_dir = ''
-        options.log_file = ''
-        virtwho = Executor(self.logger, options, config_dir="/nonexistant")
-
-        queue = Queue()
-        # Create another report with same hash
-        report2 = HostGuestAssociationReport(self.config, self.fake_report.association)
-        self.assertEqual(self.fake_report.hash, report2.hash)
-
-        def send(report):
-            report.state = AbstractVirtReport.STATE_FINISHED
-            # Put second report when the first is done
-            queue.put(report2)
-            return True
-        virtwho.send = Mock(side_effect=send)
-        virtwho.queue = queue
-        virtwho.retry_after = 1
-        virtwho.configManager.addConfig(self.config)
-        queue.put(self.fake_report)
-        virtwho.run()
-
-        self.assertEquals(virtwho.send.call_count, 1)
-
-    @patch('time.time')
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_send_current_report(self, fromConfig, fromOptions, getLogger, time):
-        initial = 10
-        time.side_effect = [initial, initial]
-
-        fromOptions.return_value = Mock()
-        options = Mock()
-        options.interval = 6
-        options.oneshot = True
-        options.print_ = False
-        options.log_dir = ''
-        options.log_file = ''
-        virtwho = Executor(Mock(), options, config_dir="/nonexistant")
-        virtwho.oneshot_remaining = ['config_name']
-
-        config = Mock()
-        config.hash = "config_hash"
-        config.name = "config_name"
-
-        virtwho.send = Mock()
-        virtwho.send.return_value = True
-        report = HostGuestAssociationReport(config, {'hypervisors': {}})
-        report.state = AbstractVirtReport.STATE_PROCESSING
-        virtwho.queued_reports[config.name] = report
-
-        virtwho.send_current_report()
-
-        def check_report_state(report):
-            report.state = AbstractVirtReport.STATE_FINISHED
-        virtwho.check_report_state = Mock(side_effect=check_report_state)
-        virtwho.check_reports_state()
-
-        virtwho.send.assert_called_with(report)
-        self.assertEquals(virtwho.send_after, initial + options.interval)
-
-    @patch('time.time')
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.manager.Manager.fromOptions')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_send_current_report_with_429(self, fromConfig, fromOptions, getLogger, time):
-        initial = 10
-        retry_after = 2
-        time.return_value = initial
-
-        fromOptions.return_value = Mock()
-        options = Mock()
-        options.interval = 6
-        options.oneshot = True
-        options.print_ = False
-        options.log_dir = ''
-        options.log_file = ''
-        virtwho = Executor(Mock(), options, config_dir="/nonexistant")
-
-        config = Mock()
-        config.hash = "config_hash"
-        config.name = "config_name"
-
-        report = HostGuestAssociationReport(config, {'hypervisors': []})
-        report.state = AbstractVirtReport.STATE_PROCESSING
-        virtwho.queued_reports[config.name] = report
-
-        virtwho.send = Mock()
-        virtwho.send.return_value = False
-        virtwho.send.side_effect = ManagerThrottleError(retry_after)
-
-        virtwho.send_current_report()
-
-        virtwho.send.assert_called_with(report)
-        self.assertEquals(virtwho.send_after, initial + 60)
-        self.assertEquals(len(virtwho.queued_reports), 1)
-
-        retry_after = 120
-        virtwho.send.side_effect = ManagerThrottleError(retry_after)
-        virtwho.send_current_report()
-        virtwho.send.assert_called_with(report)
-        self.assertEquals(virtwho.send_after, initial + retry_after * 2)
-        self.assertEquals(len(virtwho.queued_reports), 1)
-
-        def finish(x):
-            report.state = AbstractVirtReport.STATE_FINISHED
-            return True
-        virtwho.send.side_effect = finish
-        virtwho.send_current_report()
-        retry_after = 60
-        self.assertEquals(virtwho.retry_after, retry_after)
-        self.assertEquals(virtwho.send_after, initial + options.interval)
-        self.assertEquals(len(virtwho.queued_reports), 0)
-
-
-class TestReload(TestBase):
-    def mock_virtwho(self):
-        options = Mock()
-        options.interval = 6
-        options.oneshot = False
-        options.print_ = False
-        virtwho = Executor(Mock(), options, config_dir="/nonexistant")
-        config = Config("env/cmdline", 'libvirt')
-        virtwho.configManager.addConfig(config)
-        virtwho.queue = Mock()
-        virtwho.send = Mock()
-        return virtwho
-
-    def assertStartStop(self, fromConfig):
-        ''' Make sure that Virt was started and stopped. '''
-        self.assertTrue(fromConfig.return_value.start.called)
-        self.assertTrue(fromConfig.return_value.terminate.called)
-
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_start_unregistered(self, fromConfig, getLogger):
-        virtwho = self.mock_virtwho()
-        virtwho.queue.get.side_effect = [DomainListReport(virtwho.configManager.configs[0], []), Empty, 'reload']
-        virtwho.send.side_effect = ManagerFatalError
-        # When not registered, it should throw ReloadRequest
-        self.assertRaises(ReloadRequest, _main, virtwho)
-        # queue.get should be called 3 times: report, nonblocking reading
-        # of remaining reports and after ManagerFatalError wait indefinately
-        self.assertEqual(virtwho.queue.get.call_count, 3)
-        # It should wait blocking for the reload
-        virtwho.queue.get.assert_has_calls([call(block=True)])
-        self.assertStartStop(fromConfig)
-
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_exit_after_unregister(self, fromConfig, getLogger):
-        virtwho = self.mock_virtwho()
-        report = DomainListReport(virtwho.configManager.configs[0], [])
-        # Send two reports and then 'exit'
-        virtwho.queue.get.side_effect = [report, Empty, report, Empty, 'exit']
-        # First report will be successful, second one will throw ManagerFatalError
-        virtwho.send.side_effect = [True, ManagerFatalError]
-        # _main should exit normally
-        _main(virtwho)
-        self.assertStartStop(fromConfig)
-
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_reload_after_unregister(self, fromConfig, getLogger):
-        virtwho = self.mock_virtwho()
-        report = DomainListReport(virtwho.configManager.configs[0], [])
-        # Send two reports and then 'reload'
-        virtwho.queue.get.side_effect = [report, Empty, report, Empty, 'reload']
-        # First report will be successful, second one will throw ManagerFatalError
-        virtwho.send.side_effect = [True, ManagerFatalError]
-        # _main should throw ReloadRequest
-        self.assertRaises(ReloadRequest, _main, virtwho)
-        self.assertStartStop(fromConfig)
-
-    @patch('virtwho.log.getLogger')
-    @patch('virtwho.virt.Virt.fromConfig')
-    def test_reload_after_register(self, fromConfig, getLogger):
-        virtwho = self.mock_virtwho()
-        report = DomainListReport(virtwho.configManager.configs[0], [])
-        # Send report and then 'reload'
-        virtwho.queue.get.side_effect = [report, Empty, 'reload']
-        # First report will be successful, second one will throw ManagerFatalError
-        virtwho.send.side_effect = [ManagerFatalError, True]
-        # _main should throw ReloadRequest
-        self.assertRaises(ReloadRequest, _main, virtwho)
-
-        self.assertEqual(virtwho.queue.get.call_count, 3)
-        # It should wait blocking for the reload
-        virtwho.queue.get.assert_has_calls([call(block=True)])
-        self.assertStartStop(fromConfig)
+    def test_terminate_threads(self):
+        threads = [Mock(), Mock()]
+        Executor.terminate_threads(threads)
+        for mock_thread in threads:
+            mock_thread.stop.assert_called()
+            mock_thread.join.assert_called()

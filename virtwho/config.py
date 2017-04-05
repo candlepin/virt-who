@@ -606,7 +606,7 @@ class ConfigManager(object):
                                                             dest_classes):
                 dests.add(dest)
                 current_sources = dest_to_source_map.get(dest, set())
-                current_sources.symmetric_difference_update(set([config.name]))
+                current_sources.update(set([config.name]))
                 sources_without_destinations.difference_update(
                         set([config.name]))
                 dest_to_source_map[dest] = current_sources

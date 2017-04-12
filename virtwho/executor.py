@@ -139,7 +139,8 @@ class Executor(object):
     def terminate_threads(threads):
         for thread in threads:
             thread.stop()
-            thread.join()
+            if thread.ident:
+                thread.join()
 
     def run_oneshot(self):
         # Start all sources

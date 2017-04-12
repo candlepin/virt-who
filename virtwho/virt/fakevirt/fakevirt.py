@@ -17,7 +17,7 @@ class FakeVirt(Virt):
         self.logger = logger
         self.config = config
 
-    def _get_data(self):
+    def _read_data(self):
         # TODO: do some checking of the file content
         try:
             with open(self.config.file, 'r') as f:
@@ -47,14 +47,14 @@ class FakeVirt(Virt):
     def getHostGuestMapping(self):
         assoc = {'hypervisors': []}
         try:
-            for hypervisor in self._get_data()['hypervisors']:
+            for hypervisor in self._read_data()['hypervisors']:
                 assoc['hypervisors'].append(self._process_hypervisor(hypervisor))
         except KeyError as e:
             raise VirtError("Fake virt file '%s' is not properly formed: %s" % (self.config.file, str(e)))
         return assoc
 
     def listDomains(self):
-        hypervisor = self._get_data()['hypervisors'][0]
+        hypervisor = self._read_data()['hypervisors'][0]
         if 'uuid' in hypervisor:
             raise VirtError("Fake virt file '%s' is not properly formed: "
                             "uuid key shouldn't be present, try to check is_hypervisor value" %

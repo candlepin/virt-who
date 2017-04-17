@@ -113,7 +113,7 @@ class RhevM(virt.Virt):
                                     auth=self.auth,
                                     headers=headers,
                                     verify=False)
-            if response.status_code == 404 and 'ovirt-engine' not in self.url:
+            if response.status_code == 404:
                 response = requests.get(urlparse.urljoin(self.url, 'ovirt-engine/api'),
                                         auth=self.auth,
                                         headers=headers,

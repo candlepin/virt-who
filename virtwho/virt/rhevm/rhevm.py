@@ -60,6 +60,7 @@ class RhevM(virt.Virt):
                                     interval=interval,
                                     oneshot=oneshot)
         self.url = self.config.server
+        self.api_base = 'api'
         if "//" not in self.url:
             self.url = "//" + self.config.server
         parsed = urlparse.urlsplit(self.url, "https")
@@ -89,18 +90,13 @@ class RhevM(virt.Virt):
         """
         Builds the URL's based on Rhev version
         """
-        clusters_endpoint = 'clusters'
-        hosts_endpoint = 'hosts'
-        vms_endpoint = 'vms'
+        clusters_endpoint = '/clusters'
+        hosts_endpoint = '/hosts'
+        vms_endpoint = '/vms'
 
-        if self.major_version == "4":
-            api_base = 'ovirt-engine/api/'
-        else:
-            api_base = 'api/'
-
-        self.clusters_url = urlparse.urljoin(self.url, api_base + clusters_endpoint)
-        self.hosts_url = urlparse.urljoin(self.url, api_base + hosts_endpoint)
-        self.vms_url = urlparse.urljoin(self.url, api_base + vms_endpoint)
+        self.clusters_url = urlparse.urljoin(self.url, self.api_base + clusters_endpoint)
+        self.hosts_url = urlparse.urljoin(self.url, self.api_base + hosts_endpoint)
+        self.vms_url = urlparse.urljoin(self.url, self.api_base + vms_endpoint)
 
     def get_version(self):
         """
@@ -109,12 +105,14 @@ class RhevM(virt.Virt):
         try:
             headers = dict()
             headers['Version'] = '3'
-            response = requests.get(urlparse.urljoin(self.url, 'api'),
+            # We will store the api_base that seems to work and use that for future requests
+            response = requests.get(urlparse.urljoin(self.url, self.api_base),
                                     auth=self.auth,
                                     headers=headers,
                                     verify=False)
-            if response.status_code == 404 and 'ovirt-engine' not in self.url:
-                response = requests.get(urlparse.urljoin(self.url, 'ovirt-engine/api'),
+            if response.status_code == 404:
+                self.api_base = 'ovirt-engine/api'
+                response = requests.get(urlparse.urljoin(self.url, self.api_base),
                                         auth=self.auth,
                                         headers=headers,
                                         verify=False)
@@ -218,7 +216,10 @@ class RhevM(virt.Virt):
 
             sockets = host.find('cpu').find('topology').get('sockets')
             if not sockets:
-                sockets = host.find('cpu').find('topology').find('sockets').text
+                try:
+                    sockets = host.find('cpu').find('topology').find('sockets').text
+                except AttributeError:
+                    sockets = "unknown"
 
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,

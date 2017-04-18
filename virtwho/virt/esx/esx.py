@@ -228,6 +228,11 @@ class Esx(virt.Virt):
     def _format_hostname(self, host, domain):
         return u'{0}.{1}'.format(host, domain)
 
+    def stop(self):
+        # We need to ensure that when we stop the thread, we clean up and exit the wait
+        self.cleanup()
+        super(Esx, self).stop()
+
     def cleanup(self):
         self._cancel_wait()
 

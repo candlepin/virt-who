@@ -114,6 +114,7 @@ class TestDestinationThread(TestBase):
                                                interval=interval,
                                                terminate_event=terminate_event,
                                                oneshot=True, options=options)
+        destination_thread.is_initial_run = False
         result_data = destination_thread._get_data()
         self.assertEquals(result_data, datastore)
 
@@ -148,6 +149,7 @@ class TestDestinationThread(TestBase):
                                                terminate_event=terminate_event,
                                                oneshot=True,
                                                options=options)
+        destination_thread.is_initial_run = False
         destination_thread.last_report_for_source = last_report_for_source
         result_data = destination_thread._get_data()
         self.assertEquals(result_data, expected_data)
@@ -497,6 +499,7 @@ class TestDestinationThread(TestBase):
                                                interval=interval,
                                                terminate_event=terminate_event,
                                                oneshot=False, options=options)
+        destination_thread.is_initial_run = False
         destination_thread._send_data(data_to_send=data_to_send)
 
         expected_hashes = {}

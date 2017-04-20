@@ -394,9 +394,10 @@ class IntervalThread(Thread):
                     self._internal_terminate_event.set()
                     return
 
+                if has_error:
+                    self._send_data(ErrorReport(self.config))
+
                 if self._oneshot:
-                    if has_error:
-                        self._send_data(ErrorReport(self.config))
                     self.logger.debug("Thread '%s' stopped after running once",
                                       self.config.name)
                     self._internal_terminate_event.set()
@@ -449,6 +450,7 @@ class DestinationThread(IntervalThread):
         """
         if not isinstance(source_keys, list):
             raise ValueError("Source keys must be a list")
+        self.is_initial_run = True
         self.source_keys = source_keys
         self.last_report_for_source = {}  # Source_key to hash of last report
         self.options = options
@@ -478,18 +480,51 @@ class DestinationThread(IntervalThread):
         Gets the latest report from the source for each source_key
         @return: dict
         """
+        if self.is_initial_run:
+            return self._get_data_initial()
+        return self._get_data_common(self.source_keys)
+
+    def _get_data_common(self, source_keys, ignore_duplicates=True, log_missing_reports=True):
         reports = {}
-        for source_key in self.source_keys:
+        for source_key in source_keys:
             report = self.source.get(source_key, NotSetSentinel)
 
             if report is None or report is NotSetSentinel:
-                self.logger.debug("No report available for source: %s" %
-                                  source_key)
+                if log_missing_reports:
+                    self.logger.debug("No report available for source: %s" %
+                                      source_key)
                 continue
-            if report.hash == self.last_report_for_source.get(source_key, None):
+            if ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
+                                                                                    None):
                 self.logger.debug('Duplicate report found, ignoring')
                 continue
             reports[source_key] = report
+        return reports
+
+    def _get_data_initial(self):
+        """
+        Waits for each source in self.source_keys to have a value returned from the datastore. This
+        does not check to see if the data has been previously sent. This method will wait for a
+        maximum of the self.interval period of time, then return whatever it has gathered thus far.
+        If data for each source key is gathered before the interval has expired, this method will
+        return.
+        @return: dict
+        """
+        reports = {}
+        while not reports and not self.is_terminated():
+            source_keys_remaining = set(self.source_keys)
+            time_waited = 0
+            while len(source_keys_remaining) > 0 and time_waited < self.interval and not self.is_terminated():
+                found_reports = self._get_data_common(source_keys_remaining,
+                                                      ignore_duplicates=False,
+                                                      log_missing_reports=False)
+                reports.update(found_reports)
+                source_keys_remaining.difference_update(found_reports.keys())
+                if len(source_keys_remaining) > 0:
+                    sleep_time = 1
+                    time.sleep(sleep_time)
+                    time_waited += sleep_time
+        self.is_initial_run = False
         return reports
 
     def _send_data(self, data_to_send):

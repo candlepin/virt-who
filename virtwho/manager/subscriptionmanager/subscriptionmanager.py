@@ -46,6 +46,7 @@ STATE_MAPPING = {
     'FAILED': AbstractVirtReport.STATE_FAILED,
     'RUNNING': AbstractVirtReport.STATE_PROCESSING,
     'WAITING': AbstractVirtReport.STATE_PROCESSING,
+    'CREATED': AbstractVirtReport.STATE_PROCESSING,
 }
 
 

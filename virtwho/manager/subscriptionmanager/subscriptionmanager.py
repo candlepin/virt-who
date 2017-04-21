@@ -149,7 +149,7 @@ class SubscriptionManager(Manager):
         `guests` is a list of `Guest` instances (or it children).
         """
         guests = report.guests
-        self._connect()
+        self._connect(report.config)
 
         # Sort the list
         guests.sort(key=lambda item: item.uuid)

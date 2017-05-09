@@ -305,6 +305,7 @@ class TestDestinationThread(TestBase):
         # In this test we want to see that the wait method is called when we
         # expect and with what parameters we expect
         destination_thread.wait = Mock()
+        destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
         # We expect there two be two calls to wait with the value of the
         # polling_interval attr because we'd like to wait one polling
@@ -339,7 +340,7 @@ class TestDestinationThread(TestBase):
                         'source2': report2}
         config = Mock()
         config.polling_interval = 10
-        error_to_throw = ManagerThrottleError(retry_after=20)
+        error_to_throw = ManagerThrottleError(retry_after=62)
 
         manager = Mock()
         manager.hypervisorCheckIn.return_value = report1
@@ -374,8 +375,9 @@ class TestDestinationThread(TestBase):
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=False, options=options)
         destination_thread.wait = Mock()
+        destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
         destination_thread.wait.assert_has_calls(expected_wait_calls)
 
@@ -412,6 +414,7 @@ class TestDestinationThread(TestBase):
                                                terminate_event=terminate_event,
                                                oneshot=True, options=options)
         destination_thread.wait = Mock()
+        destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
         manager.sendVirtGuests.assert_has_calls([call(report1,
                                                       options=destination_thread.options)])
@@ -436,7 +439,7 @@ class TestDestinationThread(TestBase):
         config.polling_interval = 10
         logger = Mock()
 
-        error_to_throw = ManagerThrottleError(retry_after=21)
+        error_to_throw = ManagerThrottleError(retry_after=62)
 
         manager = Mock()
         manager.sendVirtGuests = Mock(side_effect=[error_to_throw, report1])
@@ -450,12 +453,11 @@ class TestDestinationThread(TestBase):
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=False, options=options)
         destination_thread.wait = Mock()
+        destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
         manager.sendVirtGuests.assert_has_calls([call(report1,
-                                                      options=destination_thread.options),
-                                                 call(report1,
                                                       options=destination_thread.options)])
         destination_thread.wait.assert_has_calls([call(
                 wait_time=error_to_throw.retry_after)])
@@ -500,6 +502,7 @@ class TestDestinationThread(TestBase):
                                                terminate_event=terminate_event,
                                                oneshot=False, options=options)
         destination_thread.is_initial_run = False
+        destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send=data_to_send)
 
         expected_hashes = {}

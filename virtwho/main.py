@@ -161,7 +161,8 @@ def main():
             exit(1, err)
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
-        logger.info("No configurations found, using libvirt as backend")
+        logger.info("No configurations found (are there any '.conf' files in /etc/virt-who.d?), "
+                    "using libvirt as backend")
         executor.configManager.addConfig(Config("env/cmdline", "libvirt"))
 
     executor.configManager.update_dest_to_source_map()

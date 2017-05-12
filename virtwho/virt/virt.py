@@ -496,7 +496,8 @@ class DestinationThread(IntervalThread):
                 continue
             if ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
                                                                                     None):
-                self.logger.debug('Duplicate report found, ignoring')
+                self.logger.debug('Duplicate report found for config "%s", ignoring',
+                                  report.config.name)
                 continue
             reports[source_key] = report
         return reports

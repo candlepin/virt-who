@@ -524,12 +524,26 @@ class ConfigManager(object):
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
+        all_dir_content = None
+        conf_files = None
+        non_conf_files = None
         try:
-            config_dir_content = [s for s in os.listdir(config_dir) if s.endswith('.conf')]
+            all_dir_content = set(os.listdir(config_dir))
+            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+            non_conf_files = all_dir_content - conf_files
         except OSError:
             self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
             return
-        for conf in config_dir_content:
+        if not all_dir_content:
+            self.logger.warn("Configuration directory '%s' appears empty", config_dir)
+        elif not conf_files:
+            self.logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
+                             "is not empty", config_dir)
+        elif non_conf_files:
+            self.logger.debug("There are files in '%s' not ending in '*.conf' is this "
+                              "intentional?", config_dir)
+
+        for conf in conf_files:
             if conf.startswith('.'):
                 continue
             try:

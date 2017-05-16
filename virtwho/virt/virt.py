@@ -537,8 +537,9 @@ class DestinationThread(IntervalThread):
             self.logger.debug('No data to send, waiting for next interval')
             return
         if isinstance(data_to_send, ErrorReport):
-            self.logger.info('Error report received, shutting down')
-            self.stop()
+            self.logger.info('Error report received')
+            if data_to_send.config.name != self.config.name:
+                self.stop()
             return
         all_hypervisors = [] # All the Host-guest mappings together
         domain_list_reports = []  # Source_keys of DomainListReports

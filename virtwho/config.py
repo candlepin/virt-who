@@ -575,6 +575,8 @@ class ConfigManager(object):
                 self._configs.append(config)
             except NoOptionError as e:
                 self.logger.error(str(e))
+            except InvalidPasswordFormat as e:
+                self.logger.error(str(e))
 
     def readFile(self, filename):
         parser = StripQuotesConfigParser()

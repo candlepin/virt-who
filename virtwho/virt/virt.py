@@ -31,6 +31,7 @@ import fnmatch
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
+from virtwho import MinimumSendInterval
 
 try:
     from collections import OrderedDict
@@ -424,6 +425,27 @@ class IntervalThread(Thread):
         """
         pass
 
+    @staticmethod
+    def handle_429(retry_after, number_of_failures):
+        """
+        @param retry_after: The value of the Retry-After header (if included)
+        @type retry_after: int
+        @param number_of_failures: The number of failures that have happened attempting the same
+        request.
+        @type retry_after: int
+
+        @return: The number of seconds that should be waited before retrying
+        @rtype: int
+        """
+        wait_time = retry_after
+        if wait_time and wait_time >= MinimumSendInterval:
+            return wait_time
+        if number_of_failures > 0:
+            wait_time = MinimumSendInterval * number_of_failures
+        else:
+            wait_time = MinimumSendInterval
+        return wait_time
+
 
 class DestinationThread(IntervalThread):
     """
@@ -579,32 +601,41 @@ class DestinationThread(IntervalThread):
             result = None
             # Try to actually do the checkin whilst being mindful of the
             # rate limit (retrying where necessary)
-            while result is None:
+            num_429_received = 0
+            while result is None and not self.is_terminated():
                 try:
                     result = self.dest.hypervisorCheckIn(
                             batch_host_guest_report,
                             options=self.options)
                     break
                 except ManagerThrottleError as e:
+                    if self._oneshot:
+                        self.logger.debug('429 encountered while performing hypervisor checkin in '
+                                          'oneshot mode, not retrying')
+                        sources_erred.extend(reports_batched)
+                        break
+                    num_429_received += 1
+                    retry_after = self.handle_429(e.retry_after, num_429_received)
                     self.logger.debug("429 encountered while performing "
                                       "hypervisor check in.\n"
                                       "Trying again in "
-                                      "%s" % e.retry_after)
-                    self.interval_modifier = e.retry_after
+                                      "%s", retry_after)
+                    self.interval_modifier = retry_after
                 except (ManagerError, ManagerFatalError):
                     self.logger.exception("Error during hypervisor "
-                                        "checkin: ")
+                                          "checkin: ")
                     if self._oneshot:
                         sources_erred.extend(reports_batched)
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
             initial_job_check = True
+            num_429_received = 0
             # Poll for async results if async (retrying where necessary)
             while result and batch_host_guest_report.state not in [
                 AbstractVirtReport.STATE_CANCELED,
                 AbstractVirtReport.STATE_FAILED,
-                AbstractVirtReport.STATE_FINISHED]:
+                AbstractVirtReport.STATE_FINISHED] and not self.is_terminated():
                 if self.interval_modifier != 0:
                     wait_time = self.interval_modifier
                     self.interval_modifier = 0
@@ -615,9 +646,15 @@ class DestinationThread(IntervalThread):
                 try:
                     self.dest.check_report_state(batch_host_guest_report)
                 except ManagerThrottleError as e:
+                    if self._oneshot:
+                        self.logger.debug('429 encountered when checking job state in '
+                                          'oneshot mode, not retrying')
+                        sources_sent.extend(reports_batched)
+                        break
+                    retry_after = self.handle_429(e.retry_after, num_429_received)
                     self.logger.debug('429 encountered while checking job '
-                                      'state, checking again later')
-                    self.interval_modifier = e.retry_after
+                                      'state, checking again in "%s"', retry_after)
+                    self.interval_modifier = retry_after
                 except (ManagerError, ManagerFatalError):
                     self.logger.exception("Error during job check: ")
                     if self._oneshot:
@@ -641,7 +678,8 @@ class DestinationThread(IntervalThread):
             report = data_to_send[source_key]
             if not self.options.print_:
                 retry = True
-                while retry:  # Retry if we encounter a 429
+                num_429_received = 0
+                while retry and not self.is_terminated():  # Retry if we encounter a 429
                     try:
                         self.dest.sendVirtGuests(report, options=self.options)
                         sources_sent.append(source_key)
@@ -649,10 +687,17 @@ class DestinationThread(IntervalThread):
                             source_key].hash
                         retry = False
                     except ManagerThrottleError as e:
+                        if self._oneshot:
+                            self.logger.debug('429 encountered when sending virt guests in '
+                                             'oneshot mode, not retrying')
+                            sources_erred.append(source_key)
+                            break
+                        num_429_received += 1
+                        retry_after = self.handle_429(e.retry_after, num_429_received)
                         self.logger.debug('429 encountered when sending virt '
                                           'guests.'
-                                          'Retrying after: %s' % e.retry_after)
-                        self.wait(wait_time=e.retry_after)
+                                          'Retrying after: %s', retry_after)
+                        self.wait(wait_time=retry_after)
                     except (ManagerError, ManagerFatalError):
                         self.logger.exception("Fatal error during send virt "
                                               "guests: ")
@@ -715,7 +760,8 @@ class Satellite5DestinationThread(DestinationThread):
                 # one communication via Satellite 5. As such we'll just do a
                 # hypervisor check in for each report of that type.
                 result = None
-                while result is None:
+                num_429_received = 0
+                while result is None and not self.is_terminated():
                     try:
                         result = self.dest.hypervisorCheckIn(
                                 report,
@@ -724,11 +770,18 @@ class Satellite5DestinationThread(DestinationThread):
                         sources_sent.append(source_key)
                         break
                     except ManagerThrottleError as e:
+                        if self._oneshot:
+                            self.logger.debug('429 encountered during hypervisor checkin in '
+                                             'oneshot mode, not retrying')
+                            sources_erred.append(source_key)
+                            break
+                        num_429_received += 1
+                        retry_after = self.handle_429(e.retry_after, num_429_received)
                         self.logger.debug("429 encountered while performing "
                                           "hypervisor check in.\n"
                                           "Trying again in "
-                                          "%s" % e.retry_after)
-                        self.interval_modifier = e.retry_after
+                                          "%s", retry_after)
+                        self.interval_modifier = retry_after
                     except ManagerFatalError:
                         self.logger.exception("Fatal error during hypervisor "
                                               "checkin: ")

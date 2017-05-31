@@ -178,7 +178,7 @@ class Esx(virt.Virt):
                     version=version,
                     options=options)
                 initial = False
-            except (socket.error, URLError):
+            except (socket.error, URLError, requests.exceptions.Timeout):
                 self.logger.debug("Wait for ESX event finished, timeout")
                 self._cancel_wait()
                 # Get the initial update again

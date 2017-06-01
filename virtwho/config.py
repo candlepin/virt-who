@@ -577,6 +577,10 @@ class ConfigManager(object):
                 self.logger.error(str(e))
             except InvalidPasswordFormat as e:
                 self.logger.error(str(e))
+            except InvalidOption as e:
+                # When a configuration section has an Invalid Option, continue
+                # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
+                self.logger.warn("Invalid configuration detected: %s", str(e))
 
     def readFile(self, filename):
         parser = StripQuotesConfigParser()

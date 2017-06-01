@@ -189,7 +189,13 @@ type=invalid
 server=1.2.3.4
 username=test
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
+        # Instantiating the ConfigManager with an invalid config should not fail
+        # instead we expect that the list of configs managed by the ConfigManager does not
+        # include the invalid one
+        config_manager = ConfigManager(self.logger, self.config_dir)
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
 
     @unittest.skipIf(os.getuid() == 0, "Can't create unreadable file when running as root")
     def testUnreadableConfig(self):
@@ -286,7 +292,13 @@ env=staging
 [test]
 type=esx
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
+        # Instantiating the ConfigManager with an invalid config should not fail
+        # instead we expect that the list of configs managed by the ConfigManager does not
+        # include the invalid one
+        config_manager = ConfigManager(self.logger, self.config_dir)
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
 
     def testMultipleConfigsInFile(self):
         config_1 = combine_dicts(TestReadingConfigs.source_options_1,
@@ -528,7 +540,13 @@ password=password
 owner=root
 rhsm_hostname=abc
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
+        # Instantiating the ConfigManager with an invalid config should not fail
+        # instead we expect that the list of configs managed by the ConfigManager does not
+        # include the invalid one
+        config_manager = ConfigManager(self.logger, self.config_dir)
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
 
     def testMissingOwnerOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -541,7 +559,39 @@ password=password
 env=env
 rhsm_hostname=abc
 """)
-        self.assertRaises(InvalidOption, ConfigManager, self.logger, self.config_dir)
+        # Instantiating the ConfigManager with an invalid config should not fail
+        # instead we expect that the list of configs managed by the ConfigManager does not
+        # include the invalid one
+        config_manager = ConfigManager(self.logger, self.config_dir)
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
+
+    def testInvalidAndValidConfigs(self):
+        valid_config_name = "valid_config"
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[%(valid_config_name)s]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=owner
+env=env
+rhsm_hostname=abc
+
+[invalid_missing_owner]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+env=env
+rhsm_hostname=abc
+""" % {'valid_config_name': valid_config_name})
+        config_manager = ConfigManager(self.logger, self.config_dir)
+        # There should be only one config, and that should be the one that is valid
+        self.assertEqual(len(config_manager.configs), 1)
+        self.assertEquals(config_manager.configs[0].name, valid_config_name)
 
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:

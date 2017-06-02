@@ -412,6 +412,7 @@ class Esx(virt.Virt):
                     except KeyError:
                         pass
                 elif change.op == 'add':
+                    self.logger.debug('ESX Add op: %s : %s', change.name, change.val)
                     vm[change.name].append(change.val)
                 else:
                     self.logger.error("Unknown change operation: %s", change.op)

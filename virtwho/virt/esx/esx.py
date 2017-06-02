@@ -412,7 +412,7 @@ class Esx(virt.Virt):
                     except KeyError:
                         pass
                 elif change.op == 'add':
-                    vm[change.name].append(change.val)
+                    pass
                 else:
                     self.logger.error("Unknown change operation: %s", change.op)
         elif objectSet.kind == 'leave':

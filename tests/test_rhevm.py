@@ -53,6 +53,7 @@ HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <hosts>
     <host href="/api/hosts/{host}" id="{host}">
         <name>hostname.domainname</name>
+        <address>hostname.domainname</address>
         <cluster href="/api/clusters/{cluster}" id="{cluster}"/>
         <cpu>
             <topology sockets="1" cores="6" threads="2"/>

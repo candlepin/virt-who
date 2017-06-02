@@ -208,7 +208,7 @@ class RhevM(virt.Virt):
                     self.logger.warn("Host %s doesn't have hardware uuid", id)
                     continue
             elif self.config.hypervisor_id == 'hostname':
-                host_id = host.find('name').text
+                host_id = host.find('address').text
             else:
                 raise virt.VirtError(
                     'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
@@ -232,7 +232,7 @@ class RhevM(virt.Virt):
             except AttributeError:
                 pass
 
-            hosts[id] = virt.Hypervisor(hypervisorId=host_id, name=host.find('name').text, facts=facts)
+            hosts[id] = virt.Hypervisor(hypervisorId=host_id, name=host.find('address').text, facts=facts)
             mapping[id] = []
         for vm in vms_xml.findall('vm'):
             guest_id = vm.get('id')

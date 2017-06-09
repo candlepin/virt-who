@@ -101,30 +101,29 @@ class TestSubscriptionManager(TestBase):
         self.sm.check_report_state(report)
         self.assertEqual(report.state, AbstractVirtReport.STATE_PROCESSING)
 
-        def host_guest(host, guests):
+        def host(host):
             return {
-                'uuid': host,
-                'guestIds': [{'guestId': guest} for guest in guests]
+                'uuid': host
             }
         rhsmconnection.return_value.getJob.return_value = {
             'state': 'FINISHED',
             'resultData': {
                 'failedUpdate': ["failed"],
                 'updated': [
-                    host_guest('123', ['111', '222'])
+                    host('123')
                 ],
                 'created': [
-                    host_guest('456', ['333', '444'])
+                    host('456')
                 ],
                 'unchanged': [
-                    host_guest('789', ['555', '666'])
+                    host('789')
                 ]
             }
         }
         self.sm.logger = MagicMock()
         self.sm.check_report_state(report)
-        # calls: authenticating + checking job status + 3 host guest lines
-        self.assertEqual(self.sm.logger.debug.call_count, 5)
+        # calls: authenticating + checking job status + 1 line about the number of unchanged
+        self.assertEqual(self.sm.logger.debug.call_count, 3)
         self.assertEqual(report.state, AbstractVirtReport.STATE_FINISHED)
 
 

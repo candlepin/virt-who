@@ -5,7 +5,7 @@
 %endif
 
 Name:           virt-who
-Version:        0.19
+Version:        0.20
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -127,6 +127,41 @@ fi
 
 
 %changelog
+* Fri Jun 09 2017 Christopher Snyder <csnyder@redhat.com> 0.20-1
+- 1389729: Add missing xml section for test (fran@caosdigital.com)
+- 1389729: virt-who incorrectly reports 'name' instead of 'hostname' for RHEV
+  hosts (fran@caosdigital.com)
+- 1450747: Continue running destination threads on internal failure
+  (csnyder@redhat.com)
+- 1444718: Log name of config when duplicate reports are retrieved
+  (csnyder@redhat.com)
+- 1447264: Keep running on InvalidPasswordFormat given other valid configs
+  (csnyder@redhat.com)
+- 1448267: Fix polling behavior for oneshot, CTRL-C, 429 responses
+  (csnyder@redhat.com)
+- 1369107: Update docs and log messages to show the *.conf requirement
+  (csnyder@redhat.com)
+- 1436517: Fix api base detection for rhevm version 3 and 4
+  (csnyder@redhat.com)
+- 1442337: Send updates immediately the first run (csnyder@redhat.com)
+- Do not join threads not started, fix up fake backend (csnyder@redhat.com)
+- 1439317: Ensure reports are still sent despite duplicate configurations
+  (csnyder@redhat.com)
+- DestinationThreads now send all reports (csnyder@redhat.com)
+- Adds IntervalThread base class and refactors Virt classes
+  (csnyder@redhat.com)
+- Remove reference to nonexistant method _set_option (csnyder@redhat.com)
+- Update ConfigManager to produce destination and source mappings.
+  (csnyder@redhat.com)
+- Implemements a threadsafe datastore (csnyder@redhat.com)
+- Move from using processes to threads (csnyder@redhat.com)
+- 1436517: Set Version header for version detect (pcreech@redhat.com)
+- 1403640: Fix syntax error in exception handling (pcreech@redhat.com)
+- Update the spec file for builds on more downstream platforms
+  (csnyder@redhat.com)
+- Add releaser for rhel-7.4 (khowell@redhat.com)
+- 1391512: Handle utf-8 within Xmlrpc transport (pcreech@redhat.com)
+
 * Thu Mar 02 2017 Christopher Snyder <csnyder@redhat.com> 0.19-1
 - 1415497: Support rhev4 auto detection and usage (pcreech@redhat.com)
 - 1388577: Adding UTF-8 support (pcreech@redhat.com)

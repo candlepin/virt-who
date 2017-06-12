@@ -373,15 +373,19 @@ class Config(GeneralConfig):
         ('filter_host_uuids', 'filter_hosts'),
         ('exclude_host_uuids', 'exclude_hosts'),
     )
+    # It is usually required to have username in latin1 encoding
     LATIN1_OPTIONS = (
-        'username', 'password', 'rhsm_username', 'rhsm_password',
-        'rhsm_proxy_user', 'rhsm_proxy_password', 'sat_username', 'sat_password',
+        'username', 'rhsm_username', 'rhsm_proxy_user', 'sat_username',
+    )
+    # Password can be usually anything
+    UTF8_OPTIONS = (
+        'password', 'rhsm_password', 'rhsm_proxy_password', 'sat_password',
     )
 
-    def __init__(self, name, type, defaults=None, **kwargs):
+    def __init__(self, name, virtwho_type, defaults=None, **kwargs):
         super(Config, self).__init__(defaults=defaults, **kwargs)
         self._name = name
-        self._type = type
+        self._type = virtwho_type
 
         if self._type not in VIRTWHO_TYPES:
             raise InvalidOption('Invalid type "%s", must be one of following %s' %
@@ -412,7 +416,16 @@ class Config(GeneralConfig):
             try:
                 value.encode('latin1')
             except UnicodeDecodeError:
-                raise InvalidOption("Option '{}' is not in latin1 encoding".format(option))
+                raise InvalidOption("Value: {0} of option '{1}': is not in latin1 encoding".format(value, option))
+
+        for option in self.UTF8_OPTIONS:
+            value = self._options.get(option)
+            if not value or value is NotSetSentinel:
+                continue
+            try:
+                value.decode('UTF-8')
+            except UnicodeDecodeError:
+                raise InvalidOption("Value: {0} of option '{1}': is not in UTF-8 encoding".format(value, option))
 
     @property
     def smType(self):

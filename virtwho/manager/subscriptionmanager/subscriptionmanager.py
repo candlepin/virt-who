@@ -60,6 +60,7 @@ class SubscriptionManager(Manager):
         self.cert_uuid = None
         self.rhsm_config = None
         self.readConfig()
+        self.connection = None
 
     def readConfig(self):
         """ Parse rhsm.conf in order to obtain consumer
@@ -142,6 +143,8 @@ class SubscriptionManager(Manager):
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
 
+        return self.connection
+
     def sendVirtGuests(self, report, options=None):
         """
         Update consumer facts with info about virtual guests.
@@ -172,42 +175,25 @@ class SubscriptionManager(Manager):
 
     def hypervisorCheckIn(self, report, options=None):
         """ Send hosts to guests mapping to subscription manager. """
-        mapping = report.association
-        serialized_mapping = {}
+        connection = self._connect(report.config)
 
-        self._connect(report.config)
-        self.logger.debug("Checking if server has capability 'hypervisor_async'")
-        is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
-        if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
-            self.logger.info("Async reports are supported but explicitly disabled")
-            is_async = False
-
-        if is_async:
-            self.logger.debug("Server has capability 'hypervisors_async'")
-            # Transform the mapping into the async version
-            serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
-
-        else:
-            self.logger.debug("Server does not have 'hypervisors_async' capability")
-            # Reformat the data from the mapping to make it fit with
-            # the old api.
-            for hypervisor in mapping['hypervisors']:
-                guests = [g.toDict() for g in hypervisor.guestIds]
-                serialized_mapping[hypervisor.hypervisorId] = guests
-
-        hypervisor_count = len(mapping['hypervisors'])
-        guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
-        self.logger.info('Sending update in hosts-to-guests mapping for config '
-                         '"%s": %d hypervisors and %d guests found',
-                         report.config.name, hypervisor_count, guest_count)
+        is_async = self._is_rhsm_server_async(report, connection)
+        serialized_mapping = self._hypervisor_mapping(report, is_async, connection)
         self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
+
         try:
             try:
-                result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping, options=options)  # pylint:disable=unexpected-keyword-arg
+                result = self.connection.hypervisorCheckIn(
+                    report.config.owner,
+                    report.config.env,
+                    serialized_mapping,
+                    options=options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm
-                self.logger.debug("hypervisorCheckIn method in python-rhsm doesn't understand options parameter, ignoring")
+                self.logger.debug(
+                    "hypervisorCheckIn method in python-rhsm doesn't understand options parameter, ignoring"
+                )
                 result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
@@ -220,12 +206,56 @@ class SubscriptionManager(Manager):
             if hasattr(e, 'code'):
                 raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
+
         if is_async is True:
             report.state = AbstractVirtReport.STATE_PROCESSING
             report.job_id = result['id']
         else:
             report.state = AbstractVirtReport.STATE_FINISHED
         return result
+
+    def _is_rhsm_server_async(self, report, connection=None):
+        """
+        Check if server has capability 'hypervisor_async'.
+        """
+        if connection is None:
+            self._connect(report.config)
+
+        self.logger.debug("Checking if server has capability 'hypervisor_async'")
+        is_async = hasattr(self.connection, 'has_capability') and self.connection.has_capability('hypervisors_async')
+
+        if is_async:
+            self.logger.debug("Server has capability 'hypervisors_async'")
+        else:
+            self.logger.debug("Server does not have 'hypervisors_async' capability")
+
+        if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
+            self.logger.info("Async reports are supported but explicitly disabled")
+            is_async = False
+
+        return is_async
+
+    def _hypervisor_mapping(self, report, is_async, connection=None):
+        """
+        Return mapping of hypervisor
+        """
+        if connection is None:
+            self._connect(report.config)
+
+        mapping = report.association
+        serialized_mapping = {}
+
+        if is_async:
+            # Transform the mapping into the async version
+            serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
+        else:
+            # Reformat the data from the mapping to make it fit with
+            # the old api.
+            for hypervisor in mapping['hypervisors']:
+                guests = [g.toDict() for g in hypervisor.guestIds]
+                serialized_mapping[hypervisor.hypervisorId] = guests
+
+        return serialized_mapping
 
     def check_report_state(self, report):
         job_id = report.job_id
@@ -247,23 +277,23 @@ class SubscriptionManager(Manager):
             self.logger.debug('Job %s not finished', job_id)
         else:
             # log completed job status
-            resultData = result.get('resultData', {})
-            if not resultData:
+            result_data = result.get('resultData', {})
+            if not result_data:
                 self.logger.warning("Job status report without resultData: %s", result)
                 return
-            for fail in resultData.get('failedUpdate', []):
+            for fail in result_data.get('failedUpdate', []):
                 self.logger.error("Error during update list of guests: %s", str(fail))
-            for updated in resultData.get('updated', []):
+            for updated in result_data.get('updated', []):
                 guests = [x['guestId'] for x in updated['guestIds']]
                 self.logger.debug("Updated host %s with guests: [%s]",
                                   updated['uuid'],
                                   ", ".join(guests))
-            for created in resultData.get('created', []):
+            for created in result_data.get('created', []):
                 guests = [x['guestId'] for x in created['guestIds']]
                 self.logger.debug("Created host: %s with guests: [%s]",
                                   created['uuid'],
                                   ", ".join(guests))
-            self.logger.debug("Number of mappings unchanged: %d", len(resultData.get('unchanged', [])))
+            self.logger.debug("Number of mappings unchanged: %d", len(result_data.get('unchanged', [])))
             self.logger.info("Mapping for config \"%s\" updated", report.config.name)
 
     def uuid(self):

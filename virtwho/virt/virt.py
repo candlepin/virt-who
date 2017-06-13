@@ -564,11 +564,13 @@ class DestinationThread(IntervalThread):
             if data_to_send.config.name != self.config.name:
                 self.stop()
             return
-        all_hypervisors = [] # All the Host-guest mappings together
+
+        all_hypervisors = []  # All the Host-guest mappings together
         domain_list_reports = []  # Source_keys of DomainListReports
         reports_batched = []  # Source_keys of reports to be sent as one
         sources_sent = []  # Sources we have dealt with this run
-        sources_erred = []
+        sources_erred = []  # Sources with some problems
+
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
             if isinstance(report, DomainListReport):
@@ -580,6 +582,12 @@ class DestinationThread(IntervalThread):
                 all_hypervisors.extend(report.association['hypervisors'])
                 # Keep track of those reports that we have
                 reports_batched.append(source_key)
+                # Print information about host-to-quest mapping for this report
+                mapping = report.association
+                hypervisor_count = len(mapping['hypervisors'])
+                guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
+                self.logger.info('Hosts-to-guests mapping for config "%s": %d hypervisors and %d guests found',
+                                 report.config.name, hypervisor_count, guest_count)
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -592,12 +600,12 @@ class DestinationThread(IntervalThread):
                     # Consider this source dealt with if we are in oneshot mode
                     sources_erred.append(source_key)
 
+        # Modify the batched dict to be in the form expected for
+        # HostGuestAssociationReports
+        all_hypervisors_dict = {'hypervisors': all_hypervisors}
+        batch_host_guest_report = HostGuestAssociationReport(self.config, all_hypervisors_dict)
+
         if all_hypervisors:
-            # Modify the batched dict to be in the form expected for
-            # HostGuestAssociationReports
-            all_hypervisors = {'hypervisors': all_hypervisors}
-            batch_host_guest_report = HostGuestAssociationReport(self.config,
-                                                                 all_hypervisors)
             result = None
             # Try to actually do the checkin whilst being mindful of the
             # rate limit (retrying where necessary)
@@ -629,6 +637,7 @@ class DestinationThread(IntervalThread):
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
+
             initial_job_check = True
             num_429_received = 0
             # Poll for async results if async (retrying where necessary)
@@ -673,6 +682,7 @@ class DestinationThread(IntervalThread):
                     self.last_report_for_source[source_key] = data_to_send[
                         source_key].hash
                     sources_sent.append(source_key)
+
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
             report = data_to_send[source_key]
@@ -689,7 +699,7 @@ class DestinationThread(IntervalThread):
                     except ManagerThrottleError as e:
                         if self._oneshot:
                             self.logger.debug('429 encountered when sending virt guests in '
-                                             'oneshot mode, not retrying')
+                                              'oneshot mode, not retrying')
                             sources_erred.append(source_key)
                             break
                         num_429_received += 1
@@ -705,16 +715,18 @@ class DestinationThread(IntervalThread):
                             sources_erred.append(source_key)
                         retry = False  # Only retry on 429
 
+        # Were all sources handled at lease by one report?
+        all_sources_handled = all((source_key in sources_sent or source_key in sources_erred)
+                                  for source_key in self.source_keys)
+
         # Terminate this thread if we have sent one report for each source
-        if all((source_key in sources_sent or source_key in sources_erred)
-               for source_key in self.source_keys) and self._oneshot:
-            if not self.options.print_:
-                self.logger.debug('At least one report for each connected '
-                                  'source has been sent. Terminating.')
-            else:
-                self.logger.debug('All info to print has been gathered. '
-                                  'Terminating.')
-            self.stop()
+        if all_sources_handled and self._oneshot:
+                if not self.options.print_:
+                    self.logger.debug('At least one report for each connected source has been sent. Terminating.')
+                else:
+                    self.logger.debug('All info to print has been gathered. Terminating.')
+                self.stop()
+
         if self._oneshot:
             # Remove sources we have sent (or dealt with) so that we don't
             # do extra work on the next run, should we have missed any sources

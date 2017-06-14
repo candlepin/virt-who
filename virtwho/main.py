@@ -35,7 +35,7 @@ from virtwho.config import Config, InvalidPasswordFormat, InvalidOption
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
 from virtwho.manager import ManagerFatalError
-from virtwho.parser import parseOptions, OptionError
+from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
 
@@ -112,7 +112,7 @@ def reload(signal, stackframe):
 def main():
     logger = options = None
     try:
-        logger, options = parseOptions()
+        logger, options = parse_options()
     except OptionError as e:
         print >> sys.stderr, str(e)
         exit(1, status="virt-who can't be started: %s" % str(e))

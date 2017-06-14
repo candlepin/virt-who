@@ -834,12 +834,7 @@ class Virt(IntervalThread):
                                    interval=interval, oneshot=oneshot)
 
     @classmethod
-    def from_config(cls, logger, config, dest,
-                    terminate_event=None, interval=None, oneshot=False):
-        """
-        Create instance of inherited class based on the config.
-        """
-
+    def __subclasses_list(cls):
         # Imports can't be top-level, it would be circular dependency
         import virtwho.virt.libvirtd  # flake8: noqa
         import virtwho.virt.esx  # flake8: noqa
@@ -849,12 +844,29 @@ class Virt(IntervalThread):
         import virtwho.virt.hyperv  # flake8: noqa
         import virtwho.virt.fakevirt  # flake8: noqa
 
-        for subcls in cls.__subclasses__():
+        return [subcls for subcls in cls.__subclasses__()]
+
+    @classmethod
+    def from_config(cls, logger, config, dest,
+                    terminate_event=None, interval=None, oneshot=False):
+        """
+        Create instance of inherited class based on the config.
+        """
+
+        for subcls in cls.__subclasses_list():
             if config.type == subcls.CONFIG_TYPE:
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)
         raise KeyError("Invalid config type: %s" % config.type)
+
+    @classmethod
+    def hypervisor_types(cls):
+        """
+        Return list of textual representations of supported hypervisors
+        """
+
+        return [subcls.CONFIG_TYPE for subcls in cls.__subclasses_list() if subcls.CONFIG_TYPE != 'fake']
 
     def start_sync(self):
         '''

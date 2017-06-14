@@ -31,7 +31,7 @@ from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import (
     HostGuestAssociationReport, Hypervisor, Guest,
     DomainListReport, AbstractVirtReport)
-from virtwho.parser import parseOptions, OptionError
+from virtwho.parser import parse_options, OptionError
 from virtwho.executor import Executor, ReloadRequest
 from virtwho.main import _main
 
@@ -59,7 +59,7 @@ class TestOptions(TestBase):
     def test_default_cmdline_options(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py"]
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertFalse(options.debug)
         self.assertFalse(options.background)
         self.assertFalse(options.oneshot)
@@ -73,21 +73,51 @@ class TestOptions(TestBase):
     def test_minimum_interval_options(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--interval=5"]
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.interval, 60)
 
         sys.argv = ["virtwho.py"]
         os.environ["VIRTWHO_INTERVAL"] = '1'
 
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.interval, 60)
 
         self.clearEnv()
         bad_conf = {'global': {'interval': 1}}
         parseFile.return_value = bad_conf
 
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.interval, 60)
+
+    @patch('virtwho.log.getLogger')
+    @patch('virtwho.config.parseFile')
+    def test_options_consistency(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
+        sys.argv = ["virtwho.py", "--libvirt", "--esx-username=admin"]
+        self.assertRaises(OptionError, parse_options)
+
+    @patch('virtwho.log.getLogger')
+    @patch('virtwho.config.parseFile')
+    def test_options_consistency_reverse_order(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
+        sys.argv = ["virtwho.py", "--esx-username=admin", "--libvirt"]
+        self.assertRaises(OptionError, parse_options)
+
+    @patch('virtwho.log.getLogger')
+    @patch('virtwho.config.parseFile')
+    def test_options_missing_virt_backend(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
+        sys.argv = ["virtwho.py", "--esx-username=admin"]
+        self.assertRaises(OptionError, parse_options)
+
+    @patch('virtwho.log.getLogger')
+    @patch('virtwho.config.parseFile')
+    def test_options_order(self, parseFile, getLogger):
+        self.setUpParseFile(parseFile)
+        sys.argv = ["virtwho.py", "--libvirt-username=admin", "--libvirt"]
+        _, options = parse_options()
+        self.assertEqual(options.virtType, "libvirt")
+        self.assertEqual(options.username, "admin")
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -104,23 +134,23 @@ class TestOptions(TestBase):
         sys.argv = ["virtwho.py", "--reporter-id=cli"]
         # environment var
         os.environ["VIRTWHO_REPORTER_ID"] = "env"
-        _, options = parseOptions()
+        _, options = parse_options()
         # cli option should beat environment vars and virt-who.conf
         self.assertEqual(options.reporter_id, "cli")
 
         sys.argv = ["virtwho.py"]
 
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.reporter_id, "env")
 
         self.clearEnv()
 
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.reporter_id, "/etc/virt-who.conf")
 
         parseFile.return_value = {'global': {}}
 
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertEqual(options.reporter_id, util.generateReporterId())
 
     @patch('virtwho.log.getLogger')
@@ -128,12 +158,12 @@ class TestOptions(TestBase):
     def test_options_debug(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "-d"]
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertTrue(options.debug)
 
         sys.argv = ["virtwho.py"]
         os.environ["VIRTWHO_DEBUG"] = "1"
-        _, options = parseOptions()
+        _, options = parse_options()
         self.assertTrue(options.debug)
 
     @patch('virtwho.log.getLogger')
@@ -146,7 +176,7 @@ class TestOptions(TestBase):
                         "--%s-env=env" % virt, "--%s-server=localhost" % virt,
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
-            _, options = parseOptions()
+            _, options = parse_options()
             self.assertEqual(options.virtType, virt)
             self.assertEqual(options.owner, 'owner')
             self.assertEqual(options.env, 'env')
@@ -162,7 +192,7 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_SERVER" % virt_up] = "xlocalhost"
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
-            _, options = parseOptions()
+            _, options = parse_options()
             self.assertEqual(options.virtType, virt)
             self.assertEqual(options.owner, 'xowner')
             self.assertEqual(options.env, 'xenv')
@@ -185,7 +215,7 @@ class TestOptions(TestBase):
                         "--%s-server=localhost" % virt,
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
-            _, options = parseOptions()
+            _, options = parse_options()
             self.assertEqual(options.virtType, virt)
             self.assertEqual(options.owner, '')
             self.assertEqual(options.env, '')
@@ -203,7 +233,7 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_SERVER" % virt_up] = "xlocalhost"
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
-            _, options = parseOptions()
+            _, options = parse_options()
             self.assertEqual(options.virtType, virt)
             self.assertEqual(options.owner, '')
             self.assertEqual(options.env, '')
@@ -235,7 +265,8 @@ class TestOptions(TestBase):
                     if virt not in ('libvirt', 'vdsm') and missing != 'password':
                         if smType == 'satellite' and missing in ['env', 'owner']:
                             continue
-                        self.assertRaises(OptionError, parseOptions)
+                        self.assertRaises(OptionError, parse_options)
+
 
 class TestExecutor(TestBase):
 

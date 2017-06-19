@@ -123,13 +123,11 @@ class Xen(virt.Virt):
 
             if self.config.hypervisor_id == 'uuid':
                 uuid = record["uuid"]
-            elif self.config.hypervisor_id == 'hwuuid':
-                uuid = record["cpu_info"]['features']
             elif self.config.hypervisor_id == 'hostname':
                 uuid = record["hostname"]
             else:
                 raise virt.VirtError(
-                    'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
+                    'Invalid option %s for hypervisor_id, use one of: uuid or hostname' %
                     self.config.hypervisor_id)
 
             mapping['hypervisors'].append(

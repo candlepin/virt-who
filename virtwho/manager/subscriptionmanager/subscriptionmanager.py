@@ -283,16 +283,6 @@ class SubscriptionManager(Manager):
                 return
             for fail in result_data.get('failedUpdate', []):
                 self.logger.error("Error during update list of guests: %s", str(fail))
-            for updated in result_data.get('updated', []):
-                guests = [x['guestId'] for x in updated['guestIds']]
-                self.logger.debug("Updated host %s with guests: [%s]",
-                                  updated['uuid'],
-                                  ", ".join(guests))
-            for created in result_data.get('created', []):
-                guests = [x['guestId'] for x in created['guestIds']]
-                self.logger.debug("Created host: %s with guests: [%s]",
-                                  created['uuid'],
-                                  ", ".join(guests))
             self.logger.debug("Number of mappings unchanged: %d", len(result_data.get('unchanged', [])))
             self.logger.info("Mapping for config \"%s\" updated", report.config.name)
 

@@ -31,7 +31,7 @@ from mock import MagicMock, patch
 
 from base import TestBase
 
-from virtwho.config import Config, ConfigManager
+from virtwho.config import Config, ConfigManager, VW_ENV_CLI_SECTION_NAME
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
@@ -324,7 +324,8 @@ class TestSatelliteConfig(TestBase):
         }
         sys.argv = ["virt-who"]
         logger, options = parse_options()
-        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
+        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)
         self.assertTrue(isinstance(manager, Satellite))
@@ -337,7 +338,8 @@ class TestSatelliteConfig(TestBase):
                     "--satellite-password=password",
                     "--libvirt"]
         logger, options = parse_options()
-        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
+        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)
         self.assertTrue(isinstance(manager, Satellite))

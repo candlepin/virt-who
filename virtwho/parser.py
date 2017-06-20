@@ -501,3 +501,137 @@ def parse_options():
         options.oneshot = True
 
     return logger, options
+
+
+class EnvParser(object):
+    prefix = "VIRTWHO_"
+    # The list below is all env vars that are read unconditionally each run
+    env_vars_supported = [
+        "VIRTWHO_LOG_PER_CONFIG",
+        "VIRTWHO_LOG_DIR",
+        "VIRTWHO_LOG_FILE",
+        "VIRTWHO_REPORTER_ID",
+        "VIRTWHO_DEBUG",
+        # Used only when starting as service (initscript sets it to 1, systemd to 0)
+        "VIRTWHO_BACKGROUND",
+        "VIRTWHO_ONE_SHOT",
+        "VIRTWHO_INTERVAL",
+    ]
+    # All environment variables that do not follow the following pattern are contained in this map.
+    # It is used to find the internal name for the environment variable.
+    # Expected mapping for all others "VIRTWHO_NAME_HERE" -> "name_here"
+    env_to_internal_map = {
+        "VIRTWHO_ONE_SHOT": "oneshot",
+        "VIRTWHO_SATELLITE_SERVER": "sat_server",
+        "VIRTWHO_SATELLITE_USERNAME": "sat_username",
+        "VIRTWHO_SATELLITE_PASSWORD": "sat_password",
+    }
+    internal_to_env_map = {
+        "smType": (
+            ("VIRTWHO_SAM", SAT6),
+            ("VIRTWHO_SATELLITE6", SAT6),
+            ("VIRTWHO_SATELLITE5", SAT5),
+            ("VIRTWHO_SATELLITE", SAT5)
+        ),
+        "virtType": (
+            ("VIRTWHO_LIBVIRT", "libvirt"),
+            ("VIRTWHO_VDSM", "vdsm"),
+            ("VIRTWHO_ESX", "esx"),
+            ("VIRTWHO_XEN", "xen"),
+            ("VIRTWHO_RHEVM", "rhevm"),
+            ("VIRTWHO_HYPERV", "hyperv"),
+        ),
+    }
+
+    @staticmethod
+    def env_var_to_internal_name(env_var):
+        result = ""
+        try:
+            result = EnvParser.env_to_internal_map[env_var]
+            return result
+        except KeyError:
+            # This env_var likely conforms to our regular naming scheme
+            pass
+        if not env_var.startswith(EnvParser.prefix) or len(env_var) <= len(EnvParser.prefix):
+            # This env_var does not conform to our standard, return empty string
+            return result
+        # Remove the prefix and lowercase the remainder
+        result = env_var[len(EnvParser.prefix):].strip().lower()
+        return result
+
+    @staticmethod
+    def get_env(env_var, default):
+        value = os.getenv(env_var, default)
+        if value:
+            value = value.strip()
+        return value
+
+    @staticmethod
+    def get_boolean(env_var, default):
+        value = EnvParser.get_env(env_var, default)
+        if value:
+            value = value.lower()
+        return value in ["1", "true"]
+
+    @staticmethod
+    def use_first_found(desired_key):
+        """
+        Returns the first value found for the given key from the EnvParser
+        Args:
+            desired_key: The key to find a value for (only valid for keys in
+            EnvParser.internal_to_env_map)
+
+        Returns: The value found, or ""
+        """
+        values = EnvParser.internal_to_env_map.get(desired_key)
+        for env_var, value_to_use in values:
+            if EnvParser.get_boolean(env_var, "0"):
+                return value_to_use
+        return None
+
+    @staticmethod
+    def parse_env_vars():
+        parsed = {}
+
+        for env_var in EnvParser.env_vars_supported:
+            name = EnvParser.env_var_to_internal_name(env_var)
+            value = EnvParser.get_env(env_var, "")  # Default to empty string
+            if name:
+                try:
+                    current_value = parsed[name]
+                    # TODO: Log or append to some warning section that there have been more than one
+                    # variable set and that the value will be overridden
+                    if current_value and value and current_value != value:
+                        print "Value already found for '%s' overriding with value from env var '%s'" % (
+                            name, env_var)
+                except KeyError:
+                    pass
+                if value and value != "":
+                    parsed[name] = value
+
+        # The following parsed values are determined by the first boolean env var which evaluates
+        # to True. All such values are located in EnvParser.internal_to_env_map.keys()
+        virt_type = EnvParser.use_first_found('virtType')
+        sm_type = EnvParser.use_first_found('smType')
+        if virt_type is not None:
+            parsed['virtType'] = virt_type
+            # Parse values for the parameters that are defined per virt type
+            virt_specific = ['owner',
+                             'env',
+                             'server',
+                             'username',
+                             'password']
+            for parameter in virt_specific:
+                env_var = EnvParser.prefix + parsed['virtType'].upper() + "_" + parameter.upper()
+                value = EnvParser.get_env(env_var, None)
+                if value is not None:
+                    parsed[parameter] = value
+        if sm_type is not None:
+            parsed['smType'] = sm_type
+
+        # print "--------PARSED VALUES------------"
+        # for key, value in parsed.iteritems():
+        #     print "%s: %s" % (key, value)
+        #
+        # print "-------END OF PARSED VALUES------"
+        return parsed

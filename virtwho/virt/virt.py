@@ -29,7 +29,7 @@ import hashlib
 import re
 import fnmatch
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
-    Satellite6DestinationInfo, DefaultDestinationInfo
+    Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
 from virtwho import MinimumSendInterval
 
@@ -39,7 +39,6 @@ except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
     from virtwho.util import OrderedDict
 
-from virtwho import DefaultInterval
 
 class VirtError(Exception):
     pass
@@ -142,9 +141,9 @@ class Hypervisor(object):
 
 
 class AbstractVirtReport(object):
-    '''
+    """
     An abstract report from virt backend.
-    '''
+    """
     # The report was just collected, but is not yet being reported
     STATE_CREATED = 1
     # The report is being processed by server
@@ -181,16 +180,16 @@ class AbstractVirtReport(object):
 
 
 class ErrorReport(AbstractVirtReport):
-    '''
+    """
     Report that virt backend fails. Used in oneshot mode to inform
     main thread that no data are coming.
-    '''
+    """
 
 
 class DomainListReport(AbstractVirtReport):
-    '''
+    """
     Report from virt backend about list of virtual guests on given system.
-    '''
+    """
     def __init__(self, config, guests, hypervisor_id=None, state=AbstractVirtReport.STATE_CREATED):
         super(DomainListReport, self).__init__(config, state)
         self._guests = guests
@@ -218,23 +217,23 @@ class DomainListReport(AbstractVirtReport):
 
 
 class HostGuestAssociationReport(AbstractVirtReport):
-    '''
+    """
     Report from virt backend about host/guest association on given hypervisor.
-    '''
+    """
     def __init__(self, config, assoc, state=AbstractVirtReport.STATE_CREATED,
                  exclude_hosts=None, filter_hosts=None):
         super(HostGuestAssociationReport, self).__init__(config, state)
         self._assoc = assoc
         if exclude_hosts is None:
             try:
-                exclude_hosts = self._config.exclude_hosts
-            except AttributeError:
+                exclude_hosts = self._config['exclude_hosts']
+            except KeyError:
                 # We do not have a config that has this attribute
                 pass
         if filter_hosts is None:
             try:
-                filter_hosts = self._config.filter_hosts
-            except AttributeError:
+                filter_hosts = self._config['filter_hosts']
+            except KeyError:
                 # We do not have a config with this attribute
                 pass
         self.exclude_hosts = exclude_hosts
@@ -296,7 +295,7 @@ class IntervalThread(Thread):
         self.dest = dest
         self._internal_terminate_event = Event()
         self.terminate_event = terminate_event or self._internal_terminate_event
-        self.interval = interval or config.interval or DefaultInterval
+        self.interval = interval
         self._oneshot = oneshot
         super(IntervalThread, self).__init__()
 
@@ -686,7 +685,7 @@ class DestinationThread(IntervalThread):
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
             report = data_to_send[source_key]
-            if not self.options.print_:
+            if not self.options[VW_GLOBAL]['print']:
                 retry = True
                 num_429_received = 0
                 while retry and not self.is_terminated():  # Retry if we encounter a 429
@@ -721,7 +720,7 @@ class DestinationThread(IntervalThread):
 
         # Terminate this thread if we have sent one report for each source
         if all_sources_handled and self._oneshot:
-                if not self.options.print_:
+                if not self.options[VW_GLOBAL]['print']:
                     self.logger.debug('At least one report for each connected source has been sent. Terminating.')
                 else:
                     self.logger.debug('All info to print has been gathered. Terminating.')
@@ -813,7 +812,7 @@ class Satellite5DestinationThread(DestinationThread):
         # Terminate this thread if we have sent one report for each source
         if all(source_key in sources_sent for source_key in self.source_keys)\
                 and self._oneshot:
-            if not self.options.print_:
+            if not self.options[VW_GLOBAL]['print']:
                 self.logger.debug('At least one report for each connected '
                                   'source has been sent. Terminating.')
             else:
@@ -866,7 +865,7 @@ class Virt(IntervalThread):
         """
 
         for subcls in cls.__subclasses_list():
-            if config.type == subcls.CONFIG_TYPE:
+            if config['type'] == subcls.CONFIG_TYPE:
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)

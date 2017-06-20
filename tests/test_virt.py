@@ -4,12 +4,14 @@ import tempfile
 import shutil
 
 from base import TestBase
+from stubs import StubEffectiveConfig
 
 from mock import Mock, patch, call
 from threading import Event
 
-from virtwho.config import ConfigManager, Config
-from virtwho.manager import ManagerThrottleError, ManagerFatalError
+from virtwho.config import DestinationToSourceMapper, Config, VW_GLOBAL, EffectiveConfig, parse_file, \
+    VirtConfigSection
+from virtwho.manager import ManagerThrottleError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
     DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport
 
@@ -64,9 +66,18 @@ owner=owner
 env=env
 {config}
 """.format(config=config))
-        config_manager = ConfigManager(self.logger, config_dir)
+        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        test_conf_values = conf.pop('test')
+        effective_config = EffectiveConfig()
+        effective_config['test'] = VirtConfigSection.from_dict(
+            test_conf_values,
+            'test',
+            effective_config
+        )
+        effective_config.validate()
+        config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
-        config = config_manager.configs[0]
+        config = config_manager.configs[0][1]
 
         included_hypervisor = Hypervisor('12345', guestIds=[
             Guest('guest-2', xvirt, Guest.STATE_RUNNING),
@@ -91,6 +102,15 @@ env=env
 
 
 class TestDestinationThread(TestBase):
+
+    def setUp(self):
+        self.options_values = {
+            VW_GLOBAL: {
+                'print': False,
+            },
+        }
+        self.options = StubEffectiveConfig(self.options_values)
+
     def test_get_data(self):
         # Show that get_data accesses the given source and tries to retrieve
         # the right source_keys
@@ -105,15 +125,13 @@ class TestDestinationThread(TestBase):
         config = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=True, options=self.options)
         destination_thread.is_initial_run = False
         result_data = destination_thread._get_data()
         self.assertEquals(result_data, datastore)
@@ -139,8 +157,6 @@ class TestDestinationThread(TestBase):
         config = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -148,7 +164,7 @@ class TestDestinationThread(TestBase):
                                                interval=interval,
                                                terminate_event=terminate_event,
                                                oneshot=True,
-                                               options=options)
+                                               options=self.options)
         destination_thread.is_initial_run = False
         destination_thread.last_report_for_source = last_report_for_source
         result_data = destination_thread._get_data()
@@ -172,8 +188,6 @@ class TestDestinationThread(TestBase):
         config = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -181,7 +195,7 @@ class TestDestinationThread(TestBase):
                                                interval=interval,
                                                terminate_event=terminate_event,
                                                oneshot=True,
-                                               options=options)
+                                               options=self.options)
         destination_thread._send_data(mock_error_report)
         mock_event.set.assert_called()
 
@@ -219,8 +233,6 @@ class TestDestinationThread(TestBase):
         report2.hash = "report2_hash"
         datastore = {'source1': report1, 'source2': report2}
         manager = Mock()
-        options = Mock()
-        options.print_ = False
 
         def check_hypervisorCheckIn(report, options=None):
             self.assertEquals(report.association['hypervisors'],
@@ -237,7 +249,7 @@ class TestDestinationThread(TestBase):
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=True, options=self.options)
         destination_thread._send_data(data_to_send)
 
     def test_send_data_poll_hypervisor_async_result(self):
@@ -293,15 +305,13 @@ class TestDestinationThread(TestBase):
         config.polling_interval = 10
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=True, options=self.options)
         # In this test we want to see that the wait method is called when we
         # expect and with what parameters we expect
         destination_thread.wait = Mock()
@@ -367,15 +377,13 @@ class TestDestinationThread(TestBase):
         logger = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=False, options=options)
+                                               oneshot=False, options=self.options)
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
@@ -404,15 +412,13 @@ class TestDestinationThread(TestBase):
         manager = Mock()
         terminate_event = Mock()
         interval = 10
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=options)
+                                               oneshot=True, options=self.options)
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
@@ -445,15 +451,13 @@ class TestDestinationThread(TestBase):
         manager.sendVirtGuests = Mock(side_effect=[error_to_throw, report1])
         terminate_event = Mock()
         interval = 10
-        options = Mock()
-        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=False, options=options)
+                                               oneshot=False, options=self.options)
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
@@ -470,8 +474,6 @@ class TestDestinationThread(TestBase):
         source_keys = ['source1', 'source2']
         interval = 1
         terminate_event = Mock()
-        options = Mock()
-        options.print_ = False
         config1 = Config('source1', 'esx')
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
@@ -500,7 +502,7 @@ class TestDestinationThread(TestBase):
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=False, options=options)
+                                               oneshot=False, options=self.options)
         destination_thread.is_initial_run = False
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send=data_to_send)

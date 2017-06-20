@@ -5,7 +5,7 @@
 %endif
 
 Name:           virt-who
-Version:        0.20
+Version:        0.20.1
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 

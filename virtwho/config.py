@@ -711,3 +711,68 @@ def parseFile(filename, logger=None):
         logger.error("Unable to read configuration file %s", filename)
     sections = getSections(parser)
     return sections
+
+
+class ConfigHierarchy(object):
+    """
+    This class represents the hierarchy of configuration information. It holds all parsed
+    configuration for the given sources in order of most important to least. An instance of this
+    can be used to ensure that it is clear when a config value is used, where it comes from.
+    """
+
+    def __init__(self):
+        self.hierarchy = []  # The order of precedence for the sources of config info given
+        self.config_sources = {}  # A dict of config_source_name -> parsed dict of items
+
+    def get(self, key, **kwargs):
+        """
+        @param key: The configuration value sought
+        @type key: string
+        @param default: The value to return should we not find a value
+        @return: The value for the given key
+        @raises KeyError: When there is no default given and there is no value found for the
+        given key
+        """
+        # TODO: Allow this or another method to return where the value came from
+        # This way if validation fails for some reason we can output a useful message
+        # as to where the value came from
+        for source in self.hierarchy:
+            if key in self.config_sources[source]:
+                return self.config_sources[source][key]
+        if 'default' not in kwargs:
+            raise KeyError('Value for key "%s" not found' % key)
+        else:
+            return kwargs['default']
+
+    def append(self, source_name, values):
+        """
+        @param source_name: The name used to identify where the values came from
+        @type source_name: string
+        @param values: The parsed (but not validated) dictionary of attributes provided by the
+        source
+        @type values: dict
+
+        @return: True if the source was added successfully, false otherwise
+        @rtype: bool
+
+        @raises ValueError: A ValueError is raised when the source_name is already tracked
+        @raises TypeError: A TypeError is raised when the values provided are not a dict
+        """
+        if source_name in self.hierarchy:
+            raise ValueError("Values have already been added for config source '%s'" % source_name)
+        if not isinstance(values, dict):
+            raise TypeError("The provided values must be a dict")
+
+        self.hierarchy.append(source_name)
+        self.config_sources[source_name] = values
+
+    def remove(self, source_name):
+        """
+        Removes the source_name from this ConfigHierarchy
+        @param source_name: The name used to identify where the values came from
+        @type source_name: string
+        """
+        if source_name in self.hierarchy:
+            self.hierarchy.remove(source_name)
+        if source_name in self.config_sources:
+            del self.config_sources[source_name]

@@ -35,7 +35,7 @@ from virtwho.config import Config, ConfigManager
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
-from virtwho.parser import parseOptions
+from virtwho.parser import parse_options
 from virtwho import password
 
 
@@ -323,7 +323,7 @@ class TestSatelliteConfig(TestBase):
             "VIRTWHO_LIBVIRT": '1'
         }
         sys.argv = ["virt-who"]
-        logger, options = parseOptions()
+        logger, options = parse_options()
         config = Config("env/cmdline", options.virtType, defaults={}, **options)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)
@@ -336,7 +336,7 @@ class TestSatelliteConfig(TestBase):
                     "--satellite-username=username",
                     "--satellite-password=password",
                     "--libvirt"]
-        logger, options = parseOptions()
+        logger, options = parse_options()
         config = Config("env/cmdline", options.virtType, defaults={}, **options)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)

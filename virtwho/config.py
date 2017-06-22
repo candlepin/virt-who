@@ -490,8 +490,8 @@ class Config(GeneralConfig):
         options = {}
         for option in parser.options(name):
             options[option] = parser.get(name, option)
-        type = options.pop('type').lower()
-        config = Config(name, type, defaults, **options)
+        virtwho_type = options.pop('type').lower()
+        config = Config(name, virtwho_type, defaults, **options)
         return config
 
     @property

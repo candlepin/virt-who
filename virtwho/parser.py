@@ -1,124 +1,298 @@
+# -*- coding: utf-8 -*-
+
+# Agent for reporting virtual guest IDs to subscription-manager
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+"""
+This module is used for parsing command line arguments and reading
+configuration from environment variables.
+"""
 
 import os
-from optparse import OptionParser, OptionGroup, SUPPRESS_HELP
+from argparse import ArgumentParser, Action
 
 from virtwho import log, MinimumSendInterval, DefaultInterval
 from virtwho.config import GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH
+from virtwho.virt.virt import Virt
 
 
 SAT5 = "satellite"
 SAT6 = "sam"
+
+# List of supported virtualization backends
+VIRT_BACKENDS = Virt.hypervisor_types()
 
 
 class OptionError(Exception):
     pass
 
 
-class OptionParserEpilog(OptionParser):
-    """ Epilog is new in Python 2.5, we need to support Python 2.4. """
-    def __init__(self, usage="%prog [options]", description=None, epilog=None):
-        self.myepilog = epilog
-        OptionParser.__init__(self, usage=usage, description=description)
+class StoreGroupArgument(Action):
+    """
+    Custom action for storing argument from argument groups (libvirt, esx, ...)
+    """
 
-    def format_help(self, formatter=None):
-        if formatter is None:
-            formatter = self.formatter
-        help = OptionParser.format_help(self, formatter)
-        return help + "\n" + self.format_myepilog(formatter) + "\n"
+    def __init__(self, option_strings, dest, **kwargs):
+        super(StoreGroupArgument, self).__init__(option_strings, dest, **kwargs)
 
-    def format_myepilog(self, formatter=None):
-        if self.myepilog is not None:
-            return formatter.format_description(self.myepilog)
+    def __call__(self, parser, namespace, values, option_string=None):
+        """
+        When the argument from group is used, then this argument has to match
+        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]
+        """
+        options = vars(namespace)
+        virt_type = options['virtType']
+        if virt_type is not None:
+            # When virt_type was specified before this argument, then
+            # group argument has to match the virt type
+            if option_string.startswith('--' + virt_type + '-'):
+                setattr(namespace, self.dest, values)
+            else:
+                raise OptionError("Argument %s does not match virtualization backend: %s" %
+                                  (option_string, virt_type))
         else:
-            return ""
+            # Extract virt type from option_string. It should be always
+            # in this format: --<virt_type>-<self.dest>. Thus following code is safe:
+            temp_virt_type = option_string.lstrip('--').split('-')[0]
+            # Save it in temporary attribute. When real virt_type will be found
+            # in further CLI argument and it will math temp_virt_type, then
+            # it will be saved in namespace.<self.dest> too
+            setattr(namespace, temp_virt_type + '-' + self.dest, values)
 
 
-def parseOptions():
-    parser = OptionParserEpilog(usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]",
-                                description="Agent for reporting virtual guest IDs to subscription manager",
-                                epilog="virt-who also reads environment variables. They have the same name as command line arguments but uppercased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled")
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Enable debugging output")
-    parser.add_option("-o", "--one-shot", action="store_true", dest="oneshot", default=False, help="Send the list of guest IDs and exit immediately")
-    parser.add_option("-i", "--interval", type="int", dest="interval", default=NotSetSentinel(), help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
-    parser.add_option("-p", "--print", action="store_true", dest="print_", default=False, help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
-    parser.add_option("-c", "--config", action="append", dest="configs", default=[], help="Configuration file that will be processed, can be used multiple times")
-    parser.add_option("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(), help="Write one log file per configured virtualization backend.\nImplies a log_dir of %s/virtwho (Default: all messages are written to a single log file)" % log.DEFAULT_LOG_DIR)
-    parser.add_option("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR, help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
-    parser.add_option("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE, help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
-    parser.add_option("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(), help="Label host/guest associations obtained by this instance of virt-who with the provided id.")
+class StoreVirtType(Action):
+    """
+    Custom action for storing type of virtualization backend. This action
+    is similar to "store_const"
+    """
 
-    virtGroup = OptionGroup(parser, "Virtualization backend", "Choose virtualization backend that should be used to gather host/guest associations")
-    virtGroup.add_option("--libvirt", action="store_const", dest="virtType", const="libvirt", default=None, help="Use libvirt to list virtual guests [default]")
-    virtGroup.add_option("--vdsm", action="store_const", dest="virtType", const="vdsm", help="Use vdsm to list virtual guests")
-    virtGroup.add_option("--esx", action="store_const", dest="virtType", const="esx", help="Register ESX machines using vCenter")
-    virtGroup.add_option("--xen", action="store_const", dest="virtType", const="xen", help="Register XEN machines using XenServer")
-    virtGroup.add_option("--rhevm", action="store_const", dest="virtType", const="rhevm", help="Register guests using RHEV-M")
-    virtGroup.add_option("--hyperv", action="store_const", dest="virtType", const="hyperv", help="Register guests using Hyper-V")
-    parser.add_option_group(virtGroup)
+    def __init__(self, option_strings, dest, nargs=0, **kwargs):
+        super(StoreVirtType, self).__init__(option_strings, dest, nargs, **kwargs)
 
-    managerGroup = OptionGroup(parser, "Subscription manager", "Choose where the host/guest associations should be reported")
-    managerGroup.add_option("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6, help="Report host/guest associations to the Subscription Asset Manager [default]")
-    managerGroup.add_option("--satellite6", action="store_const", dest="smType", const=SAT6, help="Report host/guest associations to the Satellite 6 server")
-    managerGroup.add_option("--satellite5", action="store_const", dest="smType", const=SAT5, help="Report host/guest associations to the Satellite 5 server")
-    managerGroup.add_option("--satellite", action="store_const", dest="smType", const=SAT5, help=SUPPRESS_HELP)
-    parser.add_option_group(managerGroup)
+    def __call__(self, parser, namespace, values, option_string=None):
+        options = vars(namespace)
+        virt_type = options['virtType']
+        if virt_type is not None:
+            raise OptionError("Error: setting virtualization backend to: %s. It is already set to: %s." %
+                              (self.const, virt_type))
+        else:
+            setattr(namespace, self.dest, self.const)
+            wrong_virt_prefixes = []
+            if self.const in VIRT_BACKENDS:
+                # Following prefixes of virt backends are not allowed in this case
+                wrong_virt_prefixes = VIRT_BACKENDS[:]
+                wrong_virt_prefixes.remove(self.const)
+            # Check if there are any temporary saved arguments and check their correctness
+            for key, value in options.items():
+                if key.startswith(self.const + '-'):
+                    dest = key.split('-')[1]
+                    setattr(namespace, dest, value)
+                elif wrong_virt_prefixes:
+                    for wrong_virt_prefix in wrong_virt_prefixes:
+                        if key.startswith(wrong_virt_prefix + '-'):
+                            raise OptionError("Argument --%s does not match virtualization backend: %s" %
+                                              (key, self.const))
 
-    libvirtGroup = OptionGroup(parser, "Libvirt options", "Use these options with --libvirt")
-    libvirtGroup.add_option("--libvirt-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products, default is owner of current system")
-    libvirtGroup.add_option("--libvirt-env", action="store", dest="env", default="", help="Environment where the server belongs to, default is environment of current system")
-    libvirtGroup.add_option("--libvirt-server", action="store", dest="server", default="", help="URL of the libvirt server to connect to, default is empty for libvirt on local computer")
-    libvirtGroup.add_option("--libvirt-username", action="store", dest="username", default="", help="Username for connecting to the libvirt daemon")
-    libvirtGroup.add_option("--libvirt-password", action="store", dest="password", default="", help="Password for connecting to the libvirt daemon")
-    parser.add_option_group(libvirtGroup)
 
-    esxGroup = OptionGroup(parser, "vCenter/ESX options", "Use these options with --esx")
-    esxGroup.add_option("--esx-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
-    esxGroup.add_option("--esx-env", action="store", dest="env", default="", help="Environment where the vCenter server belongs to")
-    esxGroup.add_option("--esx-server", action="store", dest="server", default="", help="URL of the vCenter server to connect to")
-    esxGroup.add_option("--esx-username", action="store", dest="username", default="", help="Username for connecting to vCenter")
-    esxGroup.add_option("--esx-password", action="store", dest="password", default="", help="Password for connecting to vCenter")
-    parser.add_option_group(esxGroup)
+def check_argument_consistency(cli_options):
+    """
+    Final check of cli options that can not be done in custom actions.
+    """
 
-    rhevmGroup = OptionGroup(parser, "RHEV-M options", "Use these options with --rhevm")
-    rhevmGroup.add_option("--rhevm-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
-    rhevmGroup.add_option("--rhevm-env", action="store", dest="env", default="", help="Environment where the RHEV-M belongs to")
-    rhevmGroup.add_option("--rhevm-server", action="store", dest="server", default="", help="URL of the RHEV-M server to connect to (preferable use secure connection - https://<ip or domain name>:<secure port, usually 8443>)")
-    rhevmGroup.add_option("--rhevm-username", action="store", dest="username", default="", help="Username for connecting to RHEV-M in the format username@domain")
-    rhevmGroup.add_option("--rhevm-password", action="store", dest="password", default="", help="Password for connecting to RHEV-M")
-    parser.add_option_group(rhevmGroup)
+    virt_type = cli_options['virtType']
 
-    hypervGroup = OptionGroup(parser, "Hyper-V options", "Use these options with --hyperv")
-    hypervGroup.add_option("--hyperv-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
-    hypervGroup.add_option("--hyperv-env", action="store", dest="env", default="", help="Environment where the Hyper-V belongs to")
-    hypervGroup.add_option("--hyperv-server", action="store", dest="server", default="", help="URL of the Hyper-V server to connect to")
-    hypervGroup.add_option("--hyperv-username", action="store", dest="username", default="", help="Username for connecting to Hyper-V")
-    hypervGroup.add_option("--hyperv-password", action="store", dest="password", default="", help="Password for connecting to Hyper-V")
-    parser.add_option_group(hypervGroup)
+    if virt_type is not None:
+        return
 
-    xenGroup = OptionGroup(parser, "XenServer options", "Use these options with --xen")
-    xenGroup.add_option("--xen-owner", action="store", dest="owner", default="", help="Organization who has purchased subscriptions of the products")
-    xenGroup.add_option("--xen-env", action="store", dest="env", default="", help="Environment where the XenServer belongs to")
-    xenGroup.add_option("--xen-server", action="store", dest="server", default="", help="URL of the XenServer server to connect to")
-    xenGroup.add_option("--xen-username", action="store", dest="username", default="", help="Username for connecting to XenServer")
-    xenGroup.add_option("--xen-password", action="store", dest="password", default="", help="Password for connecting to XenServer")
-    parser.add_option_group(xenGroup)
+    for key in cli_options.keys():
+        for prefix in VIRT_BACKENDS:
+            if key.startswith(prefix + '-'):
+                raise OptionError("Argument --%s cannot be set without virtualization backend" % key)
 
-    satelliteGroup = OptionGroup(parser, "Satellite 5 options", "Use these options with --satellite5")
-    satelliteGroup.add_option("--satellite-server", action="store", dest="sat_server", default="", help="Satellite server URL")
-    satelliteGroup.add_option("--satellite-username", action="store", dest="sat_username", default="", help="Username for connecting to Satellite server")
-    satelliteGroup.add_option("--satellite-password", action="store", dest="sat_password", default="", help="Password for connecting to Satellite server")
-    parser.add_option_group(satelliteGroup)
 
-    (cli_options, args) = parser.parse_args()
+def parse_options():
+    """
+    This function parse all options from command line and environment variables
+    :return: Tuple of logger and options
+    """
+    parser = ArgumentParser(
+        usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] "
+              "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]",
+        description="Agent for reporting virtual guest IDs to subscription manager",
+        epilog="virt-who also reads environment variables. They have the same name as "
+               "command line arguments but uppercased, with underscore instead of dash "
+               "and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are "
+               "considered as disabled, non-empty as enabled."
+    )
+    parser.add_argument("-d", "--debug", action="store_true", dest="debug", default=False,
+                        help="Enable debugging output")
+    parser.add_argument("-o", "--one-shot", action="store_true", dest="oneshot", default=False,
+                        help="Send the list of guest IDs and exit immediately")
+    parser.add_argument("-i", "--interval", type=int, dest="interval", default=NotSetSentinel(),
+                        help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
+    parser.add_argument("-p", "--print", action="store_true", dest="print_", default=False,
+                        help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
+    parser.add_argument("-c", "--config", action="append", dest="configs", default=[],
+                        help="Configuration file that will be processed, can be used multiple times")
+    parser.add_argument("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(),
+                        help="Write one log file per configured virtualization backend.\n"
+                             "Implies a log_dir of %s/virtwho (Default: all messages are written to a single log file)"
+                             % log.DEFAULT_LOG_DIR)
+    parser.add_argument("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR,
+                        help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
+    parser.add_argument("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE,
+                        help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
+    parser.add_argument("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(),
+                        help="Label host/guest associations obtained by this instance of virt-who with the provided id.")
 
+    virt_group = parser.add_argument_group(
+        title="Virtualization backend",
+        description="Choose virtualization backend that should be used to gather host/guest associations"
+    )
+    virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virtType", const="libvirt",
+                            default=None, help="Use libvirt to list virtual guests")
+    virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virtType", const="vdsm",
+                            help="Use vdsm to list virtual guests")
+    virt_group.add_argument("--esx", action=StoreVirtType, dest="virtType", const="esx",
+                            help="Register ESX machines using vCenter")
+    virt_group.add_argument("--xen", action=StoreVirtType, dest="virtType", const="xen",
+                            help="Register XEN machines using XenServer")
+    virt_group.add_argument("--rhevm", action=StoreVirtType, dest="virtType", const="rhevm",
+                            help="Register guests using RHEV-M")
+    virt_group.add_argument("--hyperv", action=StoreVirtType, dest="virtType", const="hyperv",
+                            help="Register guests using Hyper-V")
+
+    manager_group = parser.add_argument_group(
+        title="Subscription manager",
+        description="Choose where the host/guest associations should be reported"
+    )
+    manager_group.add_argument("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6,
+                               help="Report host/guest associations to the Subscription Asset Manager [default]")
+    manager_group.add_argument("--satellite6", action="store_const", dest="smType", const=SAT6,
+                               help="Report host/guest associations to the Satellite 6 server")
+    manager_group.add_argument("--satellite5", action="store_const", dest="smType", const=SAT5,
+                               help="Report host/guest associations to the Satellite 5 server")
+    manager_group.add_argument("--satellite", action="store_const", dest="smType", const=SAT5)
+
+    # FIXME: Remove all options of virtualization backend. Adding this wasn't happy design decision.
+    libvirt_group = parser.add_argument_group(
+        title="Libvirt options",
+        description="Use these options with --libvirt"
+    )
+    libvirt_group.add_argument("--libvirt-owner", action=StoreGroupArgument, dest="owner", default="",
+                               help="Organization who has purchased subscriptions of the products, "
+                                    "default is owner of current system")
+    libvirt_group.add_argument("--libvirt-env", action=StoreGroupArgument, dest="env", default="",
+                               help="Environment where the server belongs to, default is environment of current system")
+    libvirt_group.add_argument("--libvirt-server", action=StoreGroupArgument, dest="server", default="",
+                               help="URL of the libvirt server to connect to, default is empty "
+                                    "for libvirt on local computer")
+    libvirt_group.add_argument("--libvirt-username", action=StoreGroupArgument, dest="username", default="",
+                               help="Username for connecting to the libvirt daemon")
+    libvirt_group.add_argument("--libvirt-password", action=StoreGroupArgument, dest="password", default="",
+                               help="Password for connecting to the libvirt daemon")
+
+    esx_group = parser.add_argument_group(
+        title="vCenter/ESX options",
+        description="Use these options with --esx"
+    )
+    esx_group.add_argument("--esx-owner", action=StoreGroupArgument, dest="owner", default="",
+                           help="Organization who has purchased subscriptions of the products")
+    esx_group.add_argument("--esx-env", action=StoreGroupArgument, dest="env", default="",
+                           help="Environment where the vCenter server belongs to")
+    esx_group.add_argument("--esx-server", action=StoreGroupArgument, dest="server", default="",
+                           help="URL of the vCenter server to connect to")
+    esx_group.add_argument("--esx-username", action=StoreGroupArgument, dest="username", default="",
+                           help="Username for connecting to vCenter")
+    esx_group.add_argument("--esx-password", action=StoreGroupArgument, dest="password", default="",
+                           help="Password for connecting to vCenter")
+
+    rhevm_group = parser.add_argument_group(
+        title="RHEV-M options",
+        description="Use these options with --rhevm"
+    )
+    rhevm_group.add_argument("--rhevm-owner", action=StoreGroupArgument, dest="owner", default="",
+                             help="Organization who has purchased subscriptions of the products")
+    rhevm_group.add_argument("--rhevm-env", action=StoreGroupArgument, dest="env", default="",
+                             help="Environment where the RHEV-M belongs to")
+    rhevm_group.add_argument("--rhevm-server", action=StoreGroupArgument, dest="server", default="",
+                             help="URL of the RHEV-M server to connect to (preferable use secure connection"
+                                  "- https://<ip or domain name>:<secure port, usually 8443>)")
+    rhevm_group.add_argument("--rhevm-username", action=StoreGroupArgument, dest="username", default="",
+                             help="Username for connecting to RHEV-M in the format username@domain")
+    rhevm_group.add_argument("--rhevm-password", action=StoreGroupArgument, dest="password", default="",
+                             help="Password for connecting to RHEV-M")
+
+    hyperv_group = parser.add_argument_group(
+        title="Hyper-V options",
+        description="Use these options with --hyperv"
+    )
+    hyperv_group.add_argument("--hyperv-owner", action=StoreGroupArgument, dest="owner", default="",
+                              help="Organization who has purchased subscriptions of the products")
+    hyperv_group.add_argument("--hyperv-env", action=StoreGroupArgument, dest="env", default="",
+                              help="Environment where the Hyper-V belongs to")
+    hyperv_group.add_argument("--hyperv-server", action=StoreGroupArgument, dest="server",
+                              default="", help="URL of the Hyper-V server to connect to")
+    hyperv_group.add_argument("--hyperv-username", action=StoreGroupArgument, dest="username",
+                              default="", help="Username for connecting to Hyper-V")
+    hyperv_group.add_argument("--hyperv-password", action=StoreGroupArgument, dest="password",
+                              default="", help="Password for connecting to Hyper-V")
+
+    xen_group = parser.add_argument_group(
+        title="XenServer options",
+        description="Use these options with --xen"
+    )
+    xen_group.add_argument("--xen-owner", action=StoreGroupArgument, dest="owner", default="",
+                           help="Organization who has purchased subscriptions of the products")
+    xen_group.add_argument("--xen-env", action=StoreGroupArgument, dest="env", default="",
+                           help="Environment where the XenServer belongs to")
+    xen_group.add_argument("--xen-server", action=StoreGroupArgument, dest="server", default="",
+                           help="URL of the XenServer server to connect to")
+    xen_group.add_argument("--xen-username", action=StoreGroupArgument, dest="username", default="",
+                           help="Username for connecting to XenServer")
+    xen_group.add_argument("--xen-password", action=StoreGroupArgument, dest="password", default="",
+                           help="Password for connecting to XenServer")
+
+    satellite_group = parser.add_argument_group(
+        title="Satellite 5 options",
+        description="Use these options with --satellite5"
+    )
+    satellite_group.add_argument("--satellite-server", action="store", dest="sat_server", default="",
+                                 help="Satellite server URL")
+    satellite_group.add_argument("--satellite-username", action="store", dest="sat_username", default="",
+                                 help="Username for connecting to Satellite server")
+    satellite_group.add_argument("--satellite-password", action="store", dest="sat_password", default="",
+                                 help="Password for connecting to Satellite server")
+
+    # Read option from CLI
+    cli_options = vars(parser.parse_args())
+
+    # Final check of CLI arguments
+    check_argument_consistency(cli_options)
+
+    # Get all default options
+    defaults = vars(parser.parse_args([]))
+
+    # Read option from global config file
     options = GlobalConfig.fromFile(VIRTWHO_GENERAL_CONF_PATH)
 
     # Handle defaults from the command line options parser
-
-    options.update(**parser.defaults)
+    options.update(**cli_options)
 
     # Handle environment variables
-
     env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
     if env in ["1", "true"]:
         options.log_per_config = True
@@ -138,7 +312,7 @@ def parseOptions():
         options.reporter_id = env
 
     env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
-    if env in ["1", "true"] or cli_options.debug is True:
+    if env in ["1", "true"] or cli_options['debug'] is True:
         options.debug = True
 
     # Used only when starting as service (initscript sets it to 1, systemd to 0)
@@ -203,15 +377,15 @@ def parseOptions():
     if env in ["1", "true"]:
         options.virtType = "hyperv"
 
-    def getNonDefaultOptions(cli_options, defaults):
-        return dict((option, value) for option, value in cli_options.iteritems()
-                    if defaults.get(option, NotSetSentinel()) != value)
+    def get_non_default_options(_cli_options, _defaults):
+        return dict((option, value) for option, value in _cli_options.iteritems()
+                    if _defaults.get(option, NotSetSentinel()) != value)
 
     # Handle non-default command line options
-    options.update(**getNonDefaultOptions(vars(cli_options), parser.defaults))
+    options.update(**get_non_default_options(cli_options, defaults))
 
     # Check Env
-    def checkEnv(variable, option, name, required=True):
+    def check_env(variable, option, name, required=True):
         """
         If `option` is empty, check environment `variable` and return its value.
         Exit if it's still empty
@@ -223,62 +397,65 @@ def parseOptions():
         return option
 
     if options.smType == SAT5:
-        options.sat_server = checkEnv("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
-        options.sat_username = checkEnv("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
+        options.sat_server = check_env("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
+        options.sat_username = check_env("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
         if len(options.sat_password) == 0:
             options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
 
     if options.virtType == "libvirt":
-        options.owner = checkEnv("VIRTWHO_LIBVIRT_OWNER", options.owner, "owner", required=False)
-        options.env = checkEnv("VIRTWHO_LIBVIRT_ENV", options.env, "env", required=False)
-        options.server = checkEnv("VIRTWHO_LIBVIRT_SERVER", options.server, "server", required=False)
-        options.username = checkEnv("VIRTWHO_LIBVIRT_USERNAME", options.username, "username", required=False)
+        options.owner = check_env("VIRTWHO_LIBVIRT_OWNER", options.owner, "owner", required=False)
+        options.env = check_env("VIRTWHO_LIBVIRT_ENV", options.env, "env", required=False)
+        options.server = check_env("VIRTWHO_LIBVIRT_SERVER", options.server, "server", required=False)
+        options.username = check_env("VIRTWHO_LIBVIRT_USERNAME", options.username, "username", required=False)
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_LIBVIRT_PASSWORD", "")
 
     if options.virtType == "esx":
-        options.owner = checkEnv("VIRTWHO_ESX_OWNER", options.owner, "owner", required=False)
-        options.env = checkEnv("VIRTWHO_ESX_ENV", options.env, "env", required=False)
-        options.server = checkEnv("VIRTWHO_ESX_SERVER", options.server, "server")
-        options.username = checkEnv("VIRTWHO_ESX_USERNAME", options.username, "username")
+        options.owner = check_env("VIRTWHO_ESX_OWNER", options.owner, "owner", required=False)
+        options.env = check_env("VIRTWHO_ESX_ENV", options.env, "env", required=False)
+        options.server = check_env("VIRTWHO_ESX_SERVER", options.server, "server")
+        options.username = check_env("VIRTWHO_ESX_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
 
     if options.virtType == "xen":
-        options.owner = checkEnv("VIRTWHO_XEN_OWNER", options.owner, "owner", required=False)
-        options.env = checkEnv("VIRTWHO_XEN_ENV", options.env, "env", required=False)
-        options.server = checkEnv("VIRTWHO_XEN_SERVER", options.server, "server")
-        options.username = checkEnv("VIRTWHO_XEN_USERNAME", options.username, "username")
+        options.owner = check_env("VIRTWHO_XEN_OWNER", options.owner, "owner", required=False)
+        options.env = check_env("VIRTWHO_XEN_ENV", options.env, "env", required=False)
+        options.server = check_env("VIRTWHO_XEN_SERVER", options.server, "server")
+        options.username = check_env("VIRTWHO_XEN_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_XEN_PASSWORD", "")
 
     if options.virtType == "rhevm":
-        options.owner = checkEnv("VIRTWHO_RHEVM_OWNER", options.owner, "owner", required=False)
-        options.env = checkEnv("VIRTWHO_RHEVM_ENV", options.env, "env", required=False)
-        options.server = checkEnv("VIRTWHO_RHEVM_SERVER", options.server, "server")
-        options.username = checkEnv("VIRTWHO_RHEVM_USERNAME", options.username, "username")
+        options.owner = check_env("VIRTWHO_RHEVM_OWNER", options.owner, "owner", required=False)
+        options.env = check_env("VIRTWHO_RHEVM_ENV", options.env, "env", required=False)
+        options.server = check_env("VIRTWHO_RHEVM_SERVER", options.server, "server")
+        options.username = check_env("VIRTWHO_RHEVM_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_RHEVM_PASSWORD", "")
 
     if options.virtType == "hyperv":
-        options.owner = checkEnv("VIRTWHO_HYPERV_OWNER", options.owner, "owner", required=False)
-        options.env = checkEnv("VIRTWHO_HYPERV_ENV", options.env, "env", required=False)
-        options.server = checkEnv("VIRTWHO_HYPERV_SERVER", options.server, "server")
-        options.username = checkEnv("VIRTWHO_HYPERV_USERNAME", options.username, "username")
+        options.owner = check_env("VIRTWHO_HYPERV_OWNER", options.owner, "owner", required=False)
+        options.env = check_env("VIRTWHO_HYPERV_ENV", options.env, "env", required=False)
+        options.server = check_env("VIRTWHO_HYPERV_SERVER", options.server, "server")
+        options.username = check_env("VIRTWHO_HYPERV_USERNAME", options.username, "username")
         if len(options.password) == 0:
             options.password = os.getenv("VIRTWHO_HYPERV_PASSWORD", "")
 
     if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv', 'xen'):
         if not options.owner:
-            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" %
+                              (options.virtType, options.virtType.upper()))
         if not options.env:
-            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" % (options.virtType, options.virtType.upper()))
+            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" %
+                              (options.virtType, options.virtType.upper()))
 
-    if not options.interval or options.interval == parser.defaults['interval']:
+    if not options.interval or options.interval == defaults['interval']:
         logger.info("Interval set to the default of %d seconds.", DefaultInterval)
         options.interval = DefaultInterval
     elif options.interval < MinimumSendInterval:
-        logger.warning("Interval value can't be lower than {min} seconds. Default value of {min} seconds will be used.".format(min=MinimumSendInterval))
+        logger.warning("Interval value can't be lower than {min} seconds. "
+                       "Default value of {min} seconds will be used.".format(min=MinimumSendInterval))
         options.interval = MinimumSendInterval
 
     if options.print_:

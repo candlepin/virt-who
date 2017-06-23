@@ -629,9 +629,4 @@ class EnvParser(object):
         if sm_type is not None:
             parsed['smType'] = sm_type
 
-        # print "--------PARSED VALUES------------"
-        # for key, value in parsed.iteritems():
-        #     print "%s: %s" % (key, value)
-        #
-        # print "-------END OF PARSED VALUES------"
         return parsed

@@ -685,23 +685,6 @@ class ConfigManager(object):
         self._configs.append(config)
 
 
-def getOptions(section, parser):
-    options = {}
-    for option in parser.options(section):
-        options[option] = parser.get(section, option)
-    return options
-
-
-def getSections(parser):
-    sections = {}
-    for section in parser.sections():
-        try:
-            sections[section] = getOptions(section, parser)
-        except NoOptionError:
-            sections[section] = {}
-    return sections
-
-
 def parseFile(filename, logger=None):
     # Parse a file into a dict of section_name: options_dict
     # options_dict is a dict of option_name: value
@@ -709,70 +692,98 @@ def parseFile(filename, logger=None):
     fname = parser.read(filename)
     if len(fname) == 0 and logger:
         logger.error("Unable to read configuration file %s", filename)
-    sections = getSections(parser)
+    sections = parser._sections
     return sections
 
 
-class ConfigHierarchy(object):
+DEFAULTS = {
+    'global': {
+        'debug': False,
+        'oneshot': False,
+        'print_': False,
+        'log_per_config': False,
+        'background': False,
+        'configs': '',
+        'reporter_id': util.generateReporterId(),
+        'interval': DefaultInterval
+    },
+    'env/cmdline': {},
+}
+
+
+class VWEffectiveConfig(StripQuotesConfigParser):
     """
-    This class represents the hierarchy of configuration information. It holds all parsed
-    configuration for the given sources in order of most important to least. An instance of this
-    can be used to ensure that it is clear when a config value is used, where it comes from.
+    This object represents the total configuration of virt-who including all global parameters
+    and all sections that define a source or destination.
     """
 
-    def __init__(self):
-        self.hierarchy = []  # The order of precedence for the sources of config info given
-        self.config_sources = {}  # A dict of config_source_name -> parsed dict of items
-
-    def get(self, key, **kwargs):
+    def __init__(self, env_args, cli_args):
         """
-        @param key: The configuration value sought
-        @type key: string
-        @param default: The value to return should we not find a value
-        @return: The value for the given key
-        @raises KeyError: When there is no default given and there is no value found for the
-        given key
+        @param env_args: A dictionary of all args parsed from the environment
+        @param cli_args: A dictionary of all args parsed from the CLI
         """
-        # TODO: Allow this or another method to return where the value came from
-        # This way if validation fails for some reason we can output a useful message
-        # as to where the value came from
-        for source in self.hierarchy:
-            if key in self.config_sources[source]:
-                return self.config_sources[source][key]
-        if 'default' not in kwargs:
-            raise KeyError('Value for key "%s" not found' % key)
-        else:
-            return kwargs['default']
+        StripQuotesConfigParser.__init__(self)
 
-    def append(self, source_name, values):
-        """
-        @param source_name: The name used to identify where the values came from
-        @type source_name: string
-        @param values: The parsed (but not validated) dictionary of attributes provided by the
-        source
-        @type values: dict
+        self._sections = {}
+        # Set default configuration sections and values
+        for key, value in DEFAULTS.iteritems():
+            self._sections[key] = value
+        # Split environment variables values into global or non
+        env_globals, env_non_globals = self.globals_only(env_args)
+        # Split environment variables values into global or non
+        cli_globals, cli_non_globals = self.globals_only(cli_args)
+        # Read the virt-who conf file
+        vw_conf = parseFile("/etc/virt-who.conf")
 
-        @return: True if the source was added successfully, false otherwise
-        @rtype: bool
+        global_section = vw_conf.pop("global", {})
+        # NOTE: Might be nice in the future to include the defaults in this object
+        # So that section would still exist in the output
+        defaults_section = vw_conf.pop("defaults", {})
 
-        @raises ValueError: A ValueError is raised when the source_name is already tracked
-        @raises TypeError: A TypeError is raised when the values provided are not a dict
-        """
-        if source_name in self.hierarchy:
-            raise ValueError("Values have already been added for config source '%s'" % source_name)
-        if not isinstance(values, dict):
-            raise TypeError("The provided values must be a dict")
+        self._sections["global"].update(**global_section)
+        self._sections["global"].update(**env_globals)
+        self._sections["global"].update(**cli_globals)
 
-        self.hierarchy.append(source_name)
-        self.config_sources[source_name] = values
+        self._sections["env/cmdline"].update(**env_non_globals)
+        self._sections["env/cmdline"].update(**cli_non_globals)
 
-    def remove(self, source_name):
-        """
-        Removes the source_name from this ConfigHierarchy
-        @param source_name: The name used to identify where the values came from
-        @type source_name: string
-        """
-        if source_name in self.hierarchy:
-            self.hierarchy.remove(source_name)
-        if source_name in self.config_sources:
-            del self.config_sources[source_name]
+        # This will add all sections named something other than 'global' or 'defaults' in
+        # the main configuration file "/etc/virt-who.conf"
+        for section, values in vw_conf.iteritems():
+            self._sections[section] = {}
+            self._sections[section].update(**defaults_section)
+            self._sections[section].update(**values)
+
+        # Add each section of each file in the drop directory
+        drop_dir_config_sections = self.all_config_sections()
+        for section, values in drop_dir_config_sections.iteritems():
+            self._sections[section] = {}
+            self._sections[section].update(**defaults_section)
+            self._sections[section].update(**values)
+
+    @staticmethod
+    def globals_only(parameters):
+        globals = {}
+        non_globals = {}
+        for param, value in parameters.iteritems():
+            if param in DEFAULTS['global']:
+                globals[param] = value
+            else:
+                non_globals[param] = value
+        return globals, non_globals
+
+    @staticmethod
+    def all_config_sections():
+        config_dir = VIRTWHO_CONF_DIR
+        all_dir_content = set(os.listdir(config_dir))
+        conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+
+        all_sections = {}
+
+        for conf in conf_files:
+            if conf.startswith('.'):
+                continue
+            out = parseFile(os.path.join(config_dir, conf))
+            all_sections.update(**out)
+
+        return all_sections

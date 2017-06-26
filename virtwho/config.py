@@ -21,18 +21,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import DefaultInterval
+from virtwho import DefaultInterval, log
 from password import Password
 from binascii import unhexlify
 import hashlib
 import json
 import util
 
+# Module-level logger
+logger = log.getLogger('config', queue=False)
+
 VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
 VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VIRTWHO_GLOBAL_SECTION_NAME = "global"
 VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
+VIRTWHO_ENV_CLI_SECTION_NAME = "env/cmdline"
 
 
 class InvalidOption(Error):
@@ -299,7 +303,7 @@ class GeneralConfig(object):
         return True
 
     @classmethod
-    def fromFile(cls, filename, logger):
+    def fromFile(cls, filename):
         raise NotImplementedError()
 
 
@@ -335,8 +339,8 @@ class GlobalConfig(GeneralConfig):
     )
 
     @classmethod
-    def fromFile(cls, filename, logger=None):
-        global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
+    def fromFile(cls, filename):
+        global_config = parseFile(filename).get(VIRTWHO_GLOBAL_SECTION_NAME)
         if not global_config:
             if logger:
                 logger.warning(
@@ -685,7 +689,7 @@ class ConfigManager(object):
         self._configs.append(config)
 
 
-def parseFile(filename, logger=None):
+def parseFile(filename):
     # Parse a file into a dict of section_name: options_dict
     # options_dict is a dict of option_name: value
     parser = StripQuotesConfigParser()
@@ -693,21 +697,24 @@ def parseFile(filename, logger=None):
     if len(fname) == 0 and logger:
         logger.error("Unable to read configuration file %s", filename)
     sections = parser._sections
+    print sections
     return sections
 
 
 DEFAULTS = {
-    'global': {
+    VIRTWHO_GLOBAL_SECTION_NAME: {
         'debug': False,
         'oneshot': False,
         'print_': False,
         'log_per_config': False,
         'background': False,
-        'configs': '',
+        'configs': [],
         'reporter_id': util.generateReporterId(),
-        'interval': DefaultInterval
+        'interval': DefaultInterval,
+        'log_file': log.DEFAULT_LOG_FILE,
+        'log_dir': log.DEFAULT_LOG_DIR,
     },
-    'env/cmdline': {},
+    VIRTWHO_ENV_CLI_SECTION_NAME: {},
 }
 
 
@@ -723,67 +730,116 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         @param cli_args: A dictionary of all args parsed from the CLI
         """
         StripQuotesConfigParser.__init__(self)
+        global logger
 
         self._sections = {}
         # Set default configuration sections and values
         for key, value in DEFAULTS.iteritems():
             self._sections[key] = value
         # Split environment variables values into global or non
-        env_globals, env_non_globals = self.globals_only(env_args)
+        env_globals, env_non_globals = self.filter_parameters(VIRTWHO_ENV_CLI_SECTION_NAME,
+                                                              env_args)
         # Split environment variables values into global or non
-        cli_globals, cli_non_globals = self.globals_only(cli_args)
-        # Read the virt-who conf file
-        vw_conf = parseFile("/etc/virt-who.conf")
+        cli_globals, cli_non_globals = self.filter_parameters(VIRTWHO_ENV_CLI_SECTION_NAME,
+                                                              cli_args)
+        # Read the virt-who general conf file
+        vw_conf = parseFile(VIRTWHO_GENERAL_CONF_PATH)
 
-        global_section = vw_conf.pop("global", {})
+        global_section = vw_conf.pop(VIRTWHO_GLOBAL_SECTION_NAME, {})
         # NOTE: Might be nice in the future to include the defaults in this object
         # So that section would still exist in the output
-        defaults_section = vw_conf.pop("defaults", {})
+        virt_defaults_section = vw_conf.pop(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME, {})
 
-        self._sections["global"].update(**global_section)
-        self._sections["global"].update(**env_globals)
-        self._sections["global"].update(**cli_globals)
+        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**global_section)
+        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**env_globals)
+        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**cli_globals)
 
-        self._sections["env/cmdline"].update(**env_non_globals)
-        self._sections["env/cmdline"].update(**cli_non_globals)
+        # Initialize the logger with the globals we've gotten from the ENV, CLI, global section
+        # FIXME: What to do for logging before this happens?
+        log.init(self)
+        logger = log.getLogger('config', queue=False)
+
+        self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**env_non_globals)
+        self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**cli_non_globals)
 
         # This will add all sections named something other than 'global' or 'defaults' in
         # the main configuration file "/etc/virt-who.conf"
         for section, values in vw_conf.iteritems():
             self._sections[section] = {}
-            self._sections[section].update(**defaults_section)
+            self._sections[section].update(**virt_defaults_section)
             self._sections[section].update(**values)
 
         # Add each section of each file in the drop directory
-        drop_dir_config_sections = self.all_config_sections()
+        drop_dir_config_sections = self.all_drop_dir_config_sections()
         for section, values in drop_dir_config_sections.iteritems():
             self._sections[section] = {}
-            self._sections[section].update(**defaults_section)
+            self._sections[section].update(**virt_defaults_section)
             self._sections[section].update(**values)
 
     @staticmethod
-    def globals_only(parameters):
-        globals = {}
-        non_globals = {}
+    def filter_parameters(section, parameters):
+        """
+        @param section: The name of the section to check against for defaults
+        @type section: str
+        @param parameters: A dictionary of param_name: value
+        @type parameters: dict
+
+        @return: Two dictionaries the first all parameters that are global in nature. The second 
+        dictionary is all non_global parameters. NOTE: Any parameter that matches a known default
+        will be excluded.
+        """
+        section_defaults = DEFAULTS.get(section, {})
+        global_parameters = {}
+        non_global_parameters = {}
         for param, value in parameters.iteritems():
-            if param in DEFAULTS['global']:
-                globals[param] = value
-            else:
-                non_globals[param] = value
-        return globals, non_globals
+            if value is None:
+                continue
+            if param in DEFAULTS['global'] and value != DEFAULTS['global'][param]:
+                global_parameters[param] = value
+            elif param in section_defaults and value != section_defaults[param]:
+                non_global_parameters[param] = value
+        return global_parameters, non_global_parameters
 
     @staticmethod
-    def all_config_sections():
-        config_dir = VIRTWHO_CONF_DIR
-        all_dir_content = set(os.listdir(config_dir))
-        conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+    def all_drop_dir_config_sections():
+        """
+        Read all configuration sections in the default config directory
+        @return: a dictionary of {section_name: {key: value, ... } ... }
+        """
+        parser = StripQuotesConfigParser()
+        all_dir_content = None
+        conf_files = None
+        non_conf_files = None
+        try:
+            all_dir_content = set(os.listdir(VIRTWHO_CONF_DIR))
+            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+            non_conf_files = all_dir_content - conf_files
+        except OSError:
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VIRTWHO_CONF_DIR)
+            return
 
-        all_sections = {}
+        if not all_dir_content:
+            logger.warn("Configuration directory '%s' appears empty", VIRTWHO_CONF_DIR)
+        elif not conf_files:
+            logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
+                             "is not empty", VIRTWHO_CONF_DIR)
+        elif non_conf_files:
+            logger.debug("There are files in '%s' not ending in '*.conf' is this "
+                              "intentional?", VIRTWHO_CONF_DIR)
 
         for conf in conf_files:
             if conf.startswith('.'):
                 continue
-            out = parseFile(os.path.join(config_dir, conf))
-            all_sections.update(**out)
+            try:
+                filename = parser.read(os.path.join(VIRTWHO_CONF_DIR, conf))
+                if len(filename) == 0:
+                    logger.error("Unable to read configuration file %s", conf)
+            except MissingSectionHeaderError:
+                logger.error("Configuration file %s contains no section headers", conf)
+        return parser._sections
 
-        return all_sections
+    def validate_global_section(self):
+        """
+        Validates the global section. Ensures the values defined there are correct.
+        """
+        pass

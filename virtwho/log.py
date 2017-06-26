@@ -174,18 +174,18 @@ class Logger(object):
     _background = False
 
     @classmethod
-    def initialize(cls, options):
+    def initialize(cls, config):
         # Set defaults if necessary
-        if options.log_dir:
-            cls._log_dir = options.log_dir
-        if options.log_file:
-            cls._log_file = options.log_file
-        if options.log_per_config:
+        if config.get('global', 'log_dir'):
+            cls._log_dir = config.get('global', 'log_dir')
+        if config.get('global', 'log_file'):
+            cls._log_file = config.get('global', 'log_file')
+        if config.getboolean('global', 'log_per_config'):
             cls._log_per_config = True
-        cls._level = logging.DEBUG if options.debug else logging.INFO
+        cls._level = logging.DEBUG if config.getboolean('global', 'debug') else logging.INFO
         # We don't want INFO message from RHSM in non-debug mode
-        cls._rhsm_level = logging.DEBUG if options.debug else logging.WARN
-        cls._background = options.background
+        cls._rhsm_level = logging.DEBUG if config.getboolean('global', 'debug') else logging.WARN
+        cls._background = config.getboolean('global', 'background')
 
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):

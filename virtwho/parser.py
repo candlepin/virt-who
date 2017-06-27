@@ -25,7 +25,7 @@ import os
 from argparse import ArgumentParser, Action
 
 from virtwho import log, MinimumSendInterval, DefaultInterval
-from virtwho.config import GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH
+from virtwho.config import GlobalConfig, NotSetSentinel, VIRTWHO_GENERAL_CONF_PATH, VWEffectiveConfig
 from virtwho.virt.virt import Virt
 
 

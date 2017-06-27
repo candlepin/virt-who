@@ -19,9 +19,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-
+import collections
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import DefaultInterval, log
+from virtwho import DefaultInterval, MinimumSendInterval, log
 from password import Password
 from binascii import unhexlify
 import hashlib
@@ -31,10 +31,10 @@ import util
 # Module-level logger
 logger = log.getLogger('config', queue=False)
 
-VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
+VW_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
 VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
-VIRTWHO_GLOBAL_SECTION_NAME = "global"
+VW_GLOBAL = "global"
 VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 VIRTWHO_ENV_CLI_SECTION_NAME = "env/cmdline"
 
@@ -340,12 +340,12 @@ class GlobalConfig(GeneralConfig):
 
     @classmethod
     def fromFile(cls, filename):
-        global_config = parseFile(filename).get(VIRTWHO_GLOBAL_SECTION_NAME)
+        global_config = parseFile(filename).get(VW_GLOBAL)
         if not global_config:
             if logger:
                 logger.warning(
                     'Unable to find "%s" section in general config file: "%s"\nWill use defaults where required',
-                    VIRTWHO_GLOBAL_SECTION_NAME, filename)
+                    VW_GLOBAL, filename)
             global_config = {}
         return cls(**global_config)
 
@@ -534,7 +534,7 @@ class ConfigManager(object):
         else:
             self._defaults = defaults
         if config_dir is None:
-            config_dir = VIRTWHO_CONF_DIR
+            config_dir = VW_CONF_DIR
         parser = StripQuotesConfigParser()
         self._configs = []
         self.logger = logger
@@ -700,21 +700,85 @@ def parseFile(filename):
     print sections
     return sections
 
-
+# String representations of all the default configuration for virt-who
 DEFAULTS = {
-    VIRTWHO_GLOBAL_SECTION_NAME: {
-        'debug': False,
-        'oneshot': False,
-        'print_': False,
-        'log_per_config': False,
-        'background': False,
-        'configs': [],
+    VW_GLOBAL: {
+        'debug': "False",
+        'oneshot': "False",
+        'print_': "False",
+        'log_per_config': "False",
+        'background': "False",
+        'configs': '',
         'reporter_id': util.generateReporterId(),
-        'interval': DefaultInterval,
+        'interval': str(DefaultInterval),
         'log_file': log.DEFAULT_LOG_FILE,
         'log_dir': log.DEFAULT_LOG_DIR,
     },
     VIRTWHO_ENV_CLI_SECTION_NAME: {},
+}
+
+# Helper methods used to validate parameters given to virt-who
+def str_to_bool(value):
+    if isinstance(value, str):
+        return value.strip().lower() in ['yes', 'true', 'on', '1']
+    raise ValueError("Unable to convert value to boolean")
+
+
+def non_empty_string(value):
+    if not isinstance(value, str):
+        raise TypeError("Value is not a string")
+    if not value:
+        raise ValueError("String is empty")
+    return value
+
+
+def readable(path):
+    if not os.access(path, os.R_OK):
+        raise ValueError("Path '%s' is not accessible" % path)
+    return path
+
+
+def accessible_file(path):
+    readable(path)
+    if not os.path.isfile(path):
+        raise ValueError("Path '%s' does not appear to be a file" % path)
+    return path
+
+
+def accessible_dir(path):
+    readable(path)
+    if not os.path.isdir(path):
+        raise ValueError("Path '%s' does not appear to be a directory" % path)
+
+
+def empty_or_accessible_files(paths):
+    if not isinstance(paths, list):
+        if not isinstance(paths, str):
+            raise TypeError()
+        if len(paths) == 0:
+            return
+        paths = [paths]
+    if len(paths) == 0:
+        return paths
+    for path in paths:
+        accessible_file(path)
+    return paths
+
+
+# A dictionary of validators for values in a particular section
+VALIDATORS = {
+    VW_GLOBAL: {
+        'debug': str_to_bool,
+        'oneshot': str_to_bool,
+        'print_': str_to_bool,
+        'log_per_config': str_to_bool,
+        'background': str_to_bool,
+        'configs': empty_or_accessible_files,
+        'reporter_id': non_empty_string,
+        'interval': int,
+        'log_file': accessible_file,
+        'log_dir': accessible_dir,
+    },
 }
 
 
@@ -733,6 +797,7 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         global logger
 
         self._sections = {}
+        self._parsed = {}
         # Set default configuration sections and values
         for key, value in DEFAULTS.iteritems():
             self._sections[key] = value
@@ -745,19 +810,23 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         # Read the virt-who general conf file
         vw_conf = parseFile(VIRTWHO_GENERAL_CONF_PATH)
 
-        global_section = vw_conf.pop(VIRTWHO_GLOBAL_SECTION_NAME, {})
+        global_section = vw_conf.pop(VW_GLOBAL, {})
         # NOTE: Might be nice in the future to include the defaults in this object
         # So that section would still exist in the output
         virt_defaults_section = vw_conf.pop(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME, {})
 
-        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**global_section)
-        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**env_globals)
-        self._sections[VIRTWHO_GLOBAL_SECTION_NAME].update(**cli_globals)
+        self._sections[VW_GLOBAL].update(**global_section)
+        self._sections[VW_GLOBAL].update(**env_globals)
+        self._sections[VW_GLOBAL].update(**cli_globals)
 
-        # Initialize the logger with the globals we've gotten from the ENV, CLI, global section
-        # FIXME: What to do for logging before this happens?
+        errors = validate_global_section(self)
+
         log.init(self)
         logger = log.getLogger('config', queue=False)
+
+        for log_method, message in errors:
+            if getattr(logger, log_method):
+                getattr(logger, log_method)(message)
 
         self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**env_non_globals)
         self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**cli_non_globals)
@@ -775,6 +844,11 @@ class VWEffectiveConfig(StripQuotesConfigParser):
             self._sections[section] = {}
             self._sections[section].update(**virt_defaults_section)
             self._sections[section].update(**values)
+
+    def set_parsed(self, section, option, parsed_value):
+        section = self._parsed.get(section, {})
+        section[option] = parsed_value
+        self._parsed[section] = section
 
     @staticmethod
     def filter_parameters(section, parameters):
@@ -794,7 +868,8 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         for param, value in parameters.iteritems():
             if value is None:
                 continue
-            if param in DEFAULTS['global'] and value != DEFAULTS['global'][param]:
+            value = str(value)
+            if param in DEFAULTS[VW_GLOBAL] and value != DEFAULTS[VW_GLOBAL][param]:
                 global_parameters[param] = value
             elif param in section_defaults and value != section_defaults[param]:
                 non_global_parameters[param] = value
@@ -811,35 +886,99 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         conf_files = None
         non_conf_files = None
         try:
-            all_dir_content = set(os.listdir(VIRTWHO_CONF_DIR))
+            all_dir_content = set(os.listdir(VW_CONF_DIR))
             conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
             non_conf_files = all_dir_content - conf_files
         except OSError:
-            logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VIRTWHO_CONF_DIR)
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VW_CONF_DIR)
             return
 
         if not all_dir_content:
-            logger.warn("Configuration directory '%s' appears empty", VIRTWHO_CONF_DIR)
+            logger.warn("Configuration directory '%s' appears empty", VW_CONF_DIR)
         elif not conf_files:
             logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                             "is not empty", VIRTWHO_CONF_DIR)
+                             "is not empty", VW_CONF_DIR)
         elif non_conf_files:
             logger.debug("There are files in '%s' not ending in '*.conf' is this "
-                              "intentional?", VIRTWHO_CONF_DIR)
+                              "intentional?", VW_CONF_DIR)
 
         for conf in conf_files:
             if conf.startswith('.'):
                 continue
             try:
-                filename = parser.read(os.path.join(VIRTWHO_CONF_DIR, conf))
+                filename = parser.read(os.path.join(VW_CONF_DIR, conf))
                 if len(filename) == 0:
                     logger.error("Unable to read configuration file %s", conf)
             except MissingSectionHeaderError:
                 logger.error("Configuration file %s contains no section headers", conf)
         return parser._sections
 
-    def validate_global_section(self):
-        """
-        Validates the global section. Ensures the values defined there are correct.
-        """
-        pass
+    def is_default(self, section, option):
+        return self.get(section, option) == DEFAULTS[section][option]
+
+    def get(self, section, option):
+        # First try to return the parsed value if we know it
+        if section in self._parsed and option in self._parsed[section]:
+            return self._parsed[section][option]
+        try:
+            return StripQuotesConfigParser.get(self, section, option)
+        except Exception as e:
+            # Try to rescue with the default
+            if section in DEFAULTS and option in DEFAULTS[section]:
+                return DEFAULTS[section][option]
+            raise e
+
+
+def validate_global_section(configuration):
+    """
+    Validates the global section from the effective configuration. Ensures the values defined there 
+    are correct.
+    """
+    log_messages = []
+    to_reset = []  # A list of (section, option) to reset to default
+
+    for parameter, validator in VALIDATORS[VW_GLOBAL].iteritems():
+        try:
+            if configuration.is_default(VW_GLOBAL, parameter):
+                continue
+            configuration.set_parsed(VW_GLOBAL, parameter, validator(parameter))
+        except (TypeError, ValueError) as e:
+            message = "Invalid value for global parameter '%(param)s', using default '%(default)s' " \
+                      ":" \
+                      "%(message)s" % {'param': parameter,
+                                       'default': DEFAULTS[VW_GLOBAL][parameter],
+                                       'message': str(e)}
+            log_messages.append(("warning", message))
+            to_reset.append((VW_GLOBAL, parameter))
+
+    # Special Cases
+    try:
+        interval = configuration.getint(VW_GLOBAL, 'interval')
+
+        if interval < MinimumSendInterval:
+            message = "Interval value can't be lower than {min} seconds."" \
+            ""Default value of {min} seconds will be used.".format(min=MinimumSendInterval)
+            log_messages.append(("warning", message))
+            to_reset.append((VW_GLOBAL, 'interval'))
+    except (TypeError, ValueError):
+        message = ("warning", "Interval is not number. Using default interval: %s" %
+                   DEFAULTS[VW_GLOBAL]['interval'])
+        log_messages.append(("warning", message))
+        to_reset.append((VW_GLOBAL, 'interval'))
+
+    for section, option in to_reset:
+        configuration.set(section, option, DEFAULTS[section][option])
+
+    if configuration.getboolean(VW_GLOBAL, "print_"):
+        configuration.set(VW_GLOBAL, "oneshot", "true")
+
+    return log_messages
+
+# Problem, Configparser doesn't like holding parsed values
+# I don't want to parse the items over and over again. Should this not be a configparser?
+
+
+
+
+
+

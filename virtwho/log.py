@@ -168,6 +168,7 @@ class Logger(object):
     _logs = {}
     _stream_handler = None
     _journal_handler = None
+    _rhsm_file_handler = None
     _level = logging.DEBUG
     _rhsm_level = logging.WARN
     _queue_logger = None
@@ -192,56 +193,68 @@ class Logger(object):
         if name is None:
             # Remove slashes and periods in the config.name (as that could mess logging up
             name = config.name.replace('.', '').replace('/', '_') if config else 'main'
-        logger_name = 'virtwho.' + name  # The name of the logger instance
+        virt_who_logger_name = 'virtwho.' + name  # The name of the logger instance
+
         try:
             # Try to get an existing log
-            return cls._logs[logger_name]
+            return cls._logs[virt_who_logger_name]
         except KeyError:
             pass
 
-        logger = logging.getLogger(logger_name)
-        cls._logs[logger_name] = logger
-        logger.propagate = False  # Because we are using or own queue logger we don't want any of the loggers to propagate
+        try:
+            return cls._logs["rhsm"]
+        except KeyError:
+            pass
+
+        logger = logging.getLogger(virt_who_logger_name)
+        cls._logs[virt_who_logger_name] = logger
+        # Because we are using or own queue logger we don't want any of the loggers to propagate
+        logger.propagate = False
         logger.setLevel(logging.DEBUG)
 
         # Show logging from RHSM in the log when DEBUG is enabled
         rhsm_logger = logging.getLogger("rhsm")
         rhsm_logger.setLevel(cls._rhsm_level)
 
-        fileHandler = cls.get_file_handler(name=logger_name, config=config)
+        rhsm_file_handler = cls.get_file_handler(name="rhsm", config=config)
+        virt_who_file_handler = cls.get_file_handler(name=virt_who_logger_name, config=config)
 
         ppid = os.getppid()
 
-        journalHandler = None
-        streamHandler = None
+        journal_handler = None
+        stream_handler = None
         if ppid == 1:
             # we're running under systemd, log to journal
-            journalHandler = cls.get_journal_handler()
+            journal_handler = cls.get_journal_handler()
         else:
             # we're not running under systemd, set up streamHandler if we're not running in the background
             if not cls._background:
-                streamHandler = cls.get_stream_handler(name)
+                stream_handler = cls.get_stream_handler(name)
 
         if queue:
-            queueLogger = cls.get_queue_logger()
+            queue_logger = cls.get_queue_logger()
             # get a QueueHandler that will send to this queuelogger
-            queueHandler = queueLogger.getHandler(cls._level)
-            logger.addHandler(queueHandler)
-            main_logger = queueLogger
+            queue_handler = queue_logger.getHandler(cls._level)
+            logger.addHandler(queue_handler)
+            main_logger = queue_logger
         else:
             main_logger = logger
 
-        if fileHandler:
-            main_logger.addHandler(fileHandler)
-            rhsm_logger.addHandler(fileHandler)
+        if virt_who_file_handler:
+            main_logger.addHandler(virt_who_file_handler)
 
-        if streamHandler:
-            main_logger.addHandler(streamHandler)
-            rhsm_logger.addHandler(streamHandler)
+        # We need only one file handler for log from RHSM
+        if rhsm_file_handler and cls._rhsm_file_handler is None:
+            rhsm_logger.addHandler(rhsm_file_handler)
+            cls._rhsm_file_handler = rhsm_file_handler
 
-        if journalHandler:
-            main_logger.addHandler(journalHandler)
-            rhsm_logger.addHandler(journalHandler)
+        if stream_handler:
+            main_logger.addHandler(stream_handler)
+            rhsm_logger.addHandler(stream_handler)
+
+        if journal_handler:
+            main_logger.addHandler(journal_handler)
+            rhsm_logger.addHandler(journal_handler)
 
         return logger
 
@@ -256,28 +269,28 @@ class Logger(object):
         path = os.path.join(cls._log_dir, log_file)
 
         try:
-            fileHandler = logging.handlers.WatchedFileHandler(path)
+            file_handler = logging.handlers.WatchedFileHandler(path)
         except Exception as e:
             sys.stderr.write("Unable to log to %s: %s\n" % (path, e))
             return None
 
-        fileHandler.addFilter(logging.Filter(name))
-        fileHandler.setLevel(cls._level)
-        fileHandler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
-        return fileHandler
+        file_handler.addFilter(logging.Filter(name))
+        file_handler.setLevel(cls._level)
+        file_handler.setFormatter(logging.Formatter(FILE_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
+        return file_handler
 
     @classmethod
     def get_stream_handler(cls, name):
         if cls._stream_handler is not None:
             return cls._stream_handler
-        streamHandler = logging.StreamHandler()
-        streamHandler.setLevel(cls._level)
-        streamHandler.setFormatter(logging.Formatter(STREAM_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
+        stream_handler = logging.StreamHandler()
+        stream_handler.setLevel(cls._level)
+        stream_handler.setFormatter(logging.Formatter(STREAM_LOG_FORMAT if cls._level != logging.DEBUG else DEBUG_FORMAT))
         f = logging.Filter()
         f.filter = lambda record: record.exc_info is None
-        streamHandler.addFilter(f)
-        cls._stream_handler = streamHandler
-        return streamHandler
+        stream_handler.addFilter(f)
+        cls._stream_handler = stream_handler
+        return stream_handler
 
     @classmethod
     def get_journal_handler(cls):

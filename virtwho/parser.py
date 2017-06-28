@@ -35,6 +35,22 @@ SAT6 = "sam"
 # List of supported virtualization backends
 VIRT_BACKENDS = Virt.hypervisor_types()
 
+SAT_VM_DISPATCHER = {
+    'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
+    'esx': {'owner': False, 'env': False, 'server': True, 'username': True},
+    'xen': {'owner': False, 'env': False, 'server': True, 'username': True},
+    'rhevm': {'owner': False, 'env': False, 'server': True, 'username': True},
+    'hyperv': {'owner': False, 'env': False, 'server': True, 'username': True},
+}
+
+SAM_VM_DISPATCHER = {
+    'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
+    'esx': {'owner': True, 'env': True, 'server': True, 'username': True},
+    'xen': {'owner': True, 'env': True, 'server': True, 'username': True},
+    'rhevm': {'owner': True, 'env': True, 'server': True, 'username': True},
+    'hyperv': {'owner': True, 'env': True, 'server': True, 'username': True},
+}
+
 
 class OptionError(Exception):
     pass
@@ -112,21 +128,167 @@ def check_argument_consistency(cli_options):
     Final check of cli options that can not be done in custom actions.
     """
 
+    # These options can be required
+    REQUIRED_OPTIONS = ['owner', 'env', 'server', 'username']
+
     virt_type = cli_options['virtType']
+    sm_type = cli_options['smType']
+
+    if sm_type == 'sam':
+        VM_DISPATCHER = SAM_VM_DISPATCHER
+    elif sm_type == 'satellite':
+        VM_DISPATCHER = SAT_VM_DISPATCHER
+    else:
+        raise OptionError("Report host/guest associations was not specified.")
 
     if virt_type is not None:
-        return
+        for option in REQUIRED_OPTIONS:
+            # If this option is required for given type of virtualization and it wasn't set, then raise exception
+            if VM_DISPATCHER[virt_type][option] is True and option in cli_options and cli_options[option] == "":
+                raise OptionError("Required command line argument: --%s-%s is not set." % (virt_type, option))
+    else:
+        for key in cli_options.keys():
+            for prefix in VIRT_BACKENDS:
+                if key.startswith(prefix + '-'):
+                    raise OptionError("Argument --%s cannot be set without virtualization backend" % key)
 
-    for key in cli_options.keys():
-        for prefix in VIRT_BACKENDS:
-            if key.startswith(prefix + '-'):
-                raise OptionError("Argument --%s cannot be set without virtualization backend" % key)
 
-
-def parse_options():
+def read_config_env_variables(options):
     """
-    This function parse all options from command line and environment variables
-    :return: Tuple of logger and options
+    This function tries to load environment variables and it save them
+    to options.
+    :param options: Dictionary with options of virt-who
+    :return: List of errors for further logging, because logger is not
+    available in this scope.
+    """
+
+    errors = []
+
+    # Function called by dispatcher
+    def store_const(_options, _attr, _env, _const):
+        if _env.lower() in ["1", "true"]:
+            setattr(_options, _attr, _const)
+
+    # Function called by dispatcher
+    def store_value(_options, _attr, _env, _def_value):
+        if _env != _def_value:
+            setattr(_options, _attr, _env)
+
+    # Dispatcher for storing environment values in options object
+    dispatcher = {
+        # environment variable: (attribute_name, default_value, method, const)
+        "VIRTWHO_LOG_PER_CONFIG": ("log_per_config", "0", store_const, True),
+        "VIRTWHO_LOG_FILE": ("log_file", log.DEFAULT_LOG_FILE, store_value),
+        "VIRTWHO_DEBUG": ("debug", "0", store_const, True),
+        "VIRTWHO_BACKGROUND": ("background", "0", store_const, True),
+        "VIRTWHO_ONE_SHOT": ("oneshot", "0", store_const, True),
+        "VIRTWHO_SAM": ("smType", "0", store_const, SAT6),
+        "VIRTWHO_SATELLITE6": ("smType", "0", store_const, SAT6),
+        "VIRTWHO_SATELLITE5": ("smType", "0", store_const, SAT5),
+        "VIRTWHO_SATELLITE": ("smType", "0", store_const, SAT5),
+        "VIRTWHO_LIBVIRT": ("virtType", "0", store_const, "libvirt"),
+        "VIRTWHO_VDSM": ("virtType", "0", store_const, "vdsm"),
+        "VIRTWHO_ESX": ("virtType", "0", store_const, "esx"),
+        "VIRTWHO_XEN": ("virtType", "0", store_const, "xen"),
+        "VIRTWHO_RHEVM": ("virtType", "0", store_const, "rhevm"),
+        "VIRTWHO_HYPERV": ("virtType", "0", store_const, "hyperv")
+    }
+
+    # Store values of environment variables to options using dispatcher
+    for key, values in dispatcher.items():
+        attribute = values[0]
+        default_value = values[1]
+        method = values[2]
+        env = os.getenv(key, default_value).strip()
+        # Try to get const
+        try:
+            value = values[3]
+        except IndexError:
+            method(options, attribute, env, default_value)
+        else:
+            method(options, attribute, env, value)
+
+    # Some special cases is better keep out of dispatcher
+    env = os.getenv("VIRTWHO_REPORTER_ID", "").strip()
+    if len(env) > 0:
+        options.reporter_id = env
+
+    env = os.getenv("VIRTWHO_INTERVAL", "").strip()
+    if env:
+        try:
+            interval = int(env)
+            if interval >= MinimumSendInterval:
+                options.interval = interval
+            elif interval < MinimumSendInterval:
+                options.interval = MinimumSendInterval
+        except ValueError:
+            errors.append(("warning", "Interval: %s is not number, ignoring" % env))
+
+    env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()
+    if env != log.DEFAULT_LOG_DIR:
+        options.log_dir = env
+    elif options.log_per_config:
+        options.log_dir = os.path.join(log.DEFAULT_LOG_DIR, 'virtwho')
+
+    return errors
+
+
+def check_env(variable, option, required=True):
+    """
+    If `option` is empty, check environment `variable` and return its value.
+    Exit if it's still empty
+    """
+    if not option or len(option) == 0:
+        option = os.getenv(variable, "").strip()
+    if required and (not option or len(option) == 0):
+        raise OptionError("Required env. variable: '%s' is not set." % variable)
+    return option
+
+
+def read_vm_backend_env_variables(logger, options):
+    """
+    Try to read environment variables for virtual manager backend
+    :param logger: Object used for logging
+    :param options: Dictionary with options
+    :return: None
+    """
+    if options.smType == SAT5:
+        options.sat_server = check_env("VIRTWHO_SATELLITE_SERVER", options.sat_server)
+        options.sat_username = check_env("VIRTWHO_SATELLITE_USERNAME", options.sat_username)
+        if len(options.sat_password) == 0:
+            options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
+
+    if options.smType == 'sam':
+        VM_DISPATCHER = SAM_VM_DISPATCHER
+    elif options.smType == 'satellite':
+        VM_DISPATCHER = SAT_VM_DISPATCHER
+    else:
+        raise OptionError("Report host/guest associations was not specified.")
+
+    if options.virtType in VM_DISPATCHER.keys():
+        virt_type = options.virtType
+        try:
+            options.owner = check_env("VIRTWHO_" + virt_type.upper() + "_OWNER", options.owner,
+                                      required=VM_DISPATCHER[virt_type]['owner'])
+            options.env = check_env("VIRTWHO_" + virt_type.upper() + "_ENV", options.env,
+                                    required=VM_DISPATCHER[virt_type]['env'])
+            options.server = check_env("VIRTWHO_" + virt_type.upper() + "_SERVER", options.server,
+                                       required=VM_DISPATCHER[virt_type]['server'])
+            options.username = check_env("VIRTWHO_" + virt_type.upper() + "_USERNAME", options.username,
+                                         required=VM_DISPATCHER[virt_type]['username'])
+        except OptionError as err:
+            logger.error("Error: reading environment variables for virt. type: %s: %s" % (options.virtType, err))
+            options.virtType = None
+        else:
+            if len(options.password) == 0:
+                options.password = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
+
+
+def parse_cli_arguments():
+    """
+    Try to parse command line arguments
+    :return: Tuple with two items. First item is dictionary with options and second item is dictionary with
+    default options.
     """
     parser = ArgumentParser(
         usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] "
@@ -286,96 +448,36 @@ def parse_options():
     # Get all default options
     defaults = vars(parser.parse_args([]))
 
+    return cli_options, defaults
+
+
+def parse_options():
+    """
+    This function parses all options from command line and environment variables
+    :return: Tuple of logger and options
+    """
+
+    # Read command line arguments first
+    cli_options, defaults = parse_cli_arguments()
+
     # Read option from global config file
     options = GlobalConfig.fromFile(VIRTWHO_GENERAL_CONF_PATH)
 
     # Handle defaults from the command line options parser
     options.update(**cli_options)
 
-    # Handle environment variables
-    env = os.getenv("VIRTWHO_LOG_PER_CONFIG", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.log_per_config = True
+    # Read configuration env. variables
+    errors = read_config_env_variables(options)
 
-    env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()
-    if env != log.DEFAULT_LOG_DIR:
-        options.log_dir = env
-    elif options.log_per_config:
-        options.log_dir = os.path.join(log.DEFAULT_LOG_DIR, 'virtwho')
-
-    env = os.getenv("VIRTWHO_LOG_FILE", log.DEFAULT_LOG_FILE).strip()
-    if env != log.DEFAULT_LOG_FILE:
-        options.log_file = env
-
-    env = os.getenv("VIRTWHO_REPORTER_ID", "").strip()
-    if len(env) > 0:
-        options.reporter_id = env
-
-    env = os.getenv("VIRTWHO_DEBUG", "0").strip().lower()
-    if env in ["1", "true"] or cli_options['debug'] is True:
-        options.debug = True
-
-    # Used only when starting as service (initscript sets it to 1, systemd to 0)
-    env = os.getenv("VIRTWHO_BACKGROUND", "0").strip().lower()
-    options.background = env in ["1", "true"]
-
+    # It is possible to initialize logger now
     log.init(options)
     logger = log.getLogger(name='init', queue=False)
 
-    env = os.getenv("VIRTWHO_ONE_SHOT", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.oneshot = True
-
-    env = os.getenv("VIRTWHO_INTERVAL")
-    if env:
-        try:
-            env = int(env.strip().lower())
-            if env >= MinimumSendInterval:
-                options.interval = env
-            elif env < MinimumSendInterval:
-                options.interval = MinimumSendInterval
-        except ValueError:
-            logger.warning("Interval is not number, ignoring")
-
-    env = os.getenv("VIRTWHO_SAM", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.smType = SAT6
-
-    env = os.getenv("VIRTWHO_SATELLITE6", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.smType = SAT6
-
-    env = os.getenv("VIRTWHO_SATELLITE5", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.smType = SAT5
-
-    env = os.getenv("VIRTWHO_SATELLITE", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.smType = SAT5
-
-    env = os.getenv("VIRTWHO_LIBVIRT", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "libvirt"
-
-    env = os.getenv("VIRTWHO_VDSM", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "vdsm"
-
-    env = os.getenv("VIRTWHO_ESX", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "esx"
-
-    env = os.getenv("VIRTWHO_XEN", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "xen"
-
-    env = os.getenv("VIRTWHO_RHEVM", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "rhevm"
-
-    env = os.getenv("VIRTWHO_HYPERV", "0").strip().lower()
-    if env in ["1", "true"]:
-        options.virtType = "hyperv"
+    # Log pending errors
+    for err in errors:
+        method = getattr(logger, err[0])
+        if method is not None:
+            method(err[1])
 
     def get_non_default_options(_cli_options, _defaults):
         return dict((option, value) for option, value in _cli_options.iteritems()
@@ -384,71 +486,8 @@ def parse_options():
     # Handle non-default command line options
     options.update(**get_non_default_options(cli_options, defaults))
 
-    # Check Env
-    def check_env(variable, option, name, required=True):
-        """
-        If `option` is empty, check environment `variable` and return its value.
-        Exit if it's still empty
-        """
-        if not option or len(option) == 0:
-            option = os.getenv(variable, "").strip()
-        if required and (not option or len(option) == 0):
-            raise OptionError("Required parameter '%s' is not set, exiting" % name)
-        return option
-
-    if options.smType == SAT5:
-        options.sat_server = check_env("VIRTWHO_SATELLITE_SERVER", options.sat_server, "satellite-server")
-        options.sat_username = check_env("VIRTWHO_SATELLITE_USERNAME", options.sat_username, "satellite-username")
-        if len(options.sat_password) == 0:
-            options.sat_password = os.getenv("VIRTWHO_SATELLITE_PASSWORD", "")
-
-    if options.virtType == "libvirt":
-        options.owner = check_env("VIRTWHO_LIBVIRT_OWNER", options.owner, "owner", required=False)
-        options.env = check_env("VIRTWHO_LIBVIRT_ENV", options.env, "env", required=False)
-        options.server = check_env("VIRTWHO_LIBVIRT_SERVER", options.server, "server", required=False)
-        options.username = check_env("VIRTWHO_LIBVIRT_USERNAME", options.username, "username", required=False)
-        if len(options.password) == 0:
-            options.password = os.getenv("VIRTWHO_LIBVIRT_PASSWORD", "")
-
-    if options.virtType == "esx":
-        options.owner = check_env("VIRTWHO_ESX_OWNER", options.owner, "owner", required=False)
-        options.env = check_env("VIRTWHO_ESX_ENV", options.env, "env", required=False)
-        options.server = check_env("VIRTWHO_ESX_SERVER", options.server, "server")
-        options.username = check_env("VIRTWHO_ESX_USERNAME", options.username, "username")
-        if len(options.password) == 0:
-            options.password = os.getenv("VIRTWHO_ESX_PASSWORD", "")
-
-    if options.virtType == "xen":
-        options.owner = check_env("VIRTWHO_XEN_OWNER", options.owner, "owner", required=False)
-        options.env = check_env("VIRTWHO_XEN_ENV", options.env, "env", required=False)
-        options.server = check_env("VIRTWHO_XEN_SERVER", options.server, "server")
-        options.username = check_env("VIRTWHO_XEN_USERNAME", options.username, "username")
-        if len(options.password) == 0:
-            options.password = os.getenv("VIRTWHO_XEN_PASSWORD", "")
-
-    if options.virtType == "rhevm":
-        options.owner = check_env("VIRTWHO_RHEVM_OWNER", options.owner, "owner", required=False)
-        options.env = check_env("VIRTWHO_RHEVM_ENV", options.env, "env", required=False)
-        options.server = check_env("VIRTWHO_RHEVM_SERVER", options.server, "server")
-        options.username = check_env("VIRTWHO_RHEVM_USERNAME", options.username, "username")
-        if len(options.password) == 0:
-            options.password = os.getenv("VIRTWHO_RHEVM_PASSWORD", "")
-
-    if options.virtType == "hyperv":
-        options.owner = check_env("VIRTWHO_HYPERV_OWNER", options.owner, "owner", required=False)
-        options.env = check_env("VIRTWHO_HYPERV_ENV", options.env, "env", required=False)
-        options.server = check_env("VIRTWHO_HYPERV_SERVER", options.server, "server")
-        options.username = check_env("VIRTWHO_HYPERV_USERNAME", options.username, "username")
-        if len(options.password) == 0:
-            options.password = os.getenv("VIRTWHO_HYPERV_PASSWORD", "")
-
-    if options.smType == 'sam' and options.virtType in ('esx', 'rhevm', 'hyperv', 'xen'):
-        if not options.owner:
-            raise OptionError("Option --%s-owner (or VIRTWHO_%s_OWNER environment variable) needs to be set" %
-                              (options.virtType, options.virtType.upper()))
-        if not options.env:
-            raise OptionError("Option --%s-env (or VIRTWHO_%s_ENV environment variable) needs to be set" %
-                              (options.virtType, options.virtType.upper()))
+    # Read environments variables for virtualization backends
+    read_vm_backend_env_variables(logger, options)
 
     if not options.interval or options.interval == defaults['interval']:
         logger.info("Interval set to the default of %d seconds.", DefaultInterval)

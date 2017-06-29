@@ -703,11 +703,11 @@ def parseFile(filename):
 # String representations of all the default configuration for virt-who
 DEFAULTS = {
     VW_GLOBAL: {
-        'debug': "False",
-        'oneshot': "False",
-        'print_': "False",
-        'log_per_config': "False",
-        'background': "False",
+        'debug': "0",
+        'oneshot': "0",
+        'print_': "0",
+        'log_per_config': "0",
+        'background': "0",
         'configs': '',
         'reporter_id': util.generateReporterId(),
         'interval': str(DefaultInterval),
@@ -819,14 +819,10 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         self._sections[VW_GLOBAL].update(**env_globals)
         self._sections[VW_GLOBAL].update(**cli_globals)
 
-        errors = validate_global_section(self)
+        self.validation_errors = validate_global_section(self)
 
         log.init(self)
         logger = log.getLogger('config', queue=False)
-
-        for log_method, message in errors:
-            if getattr(logger, log_method):
-                getattr(logger, log_method)(message)
 
         self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**env_non_globals)
         self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**cli_non_globals)
@@ -853,12 +849,12 @@ class VWEffectiveConfig(StripQuotesConfigParser):
     @staticmethod
     def filter_parameters(section, parameters):
         """
-        @param section: The name of the section to check against for defaults
-        @type section: str
-        @param parameters: A dictionary of param_name: value
-        @type parameters: dict
+        :param section: The name of the section to check against for defaults
+        :type section: str
+        :param parameters: A dictionary of param_name: value
+        :type parameters: dict
 
-        @return: Two dictionaries the first all parameters that are global in nature. The second 
+        :return: Two dictionaries the first all parameters that are global in nature. The second 
         dictionary is all non_global parameters. NOTE: Any parameter that matches a known default
         will be excluded.
         """
@@ -879,7 +875,7 @@ class VWEffectiveConfig(StripQuotesConfigParser):
     def all_drop_dir_config_sections():
         """
         Read all configuration sections in the default config directory
-        @return: a dictionary of {section_name: {key: value, ... } ... }
+        :return: a dictionary of {section_name: {key: value, ... } ... }
         """
         parser = StripQuotesConfigParser()
         all_dir_content = None
@@ -931,7 +927,8 @@ class VWEffectiveConfig(StripQuotesConfigParser):
 
 def validate_global_section(configuration):
     """
-    Validates the global section from the effective configuration. Ensures the values defined there 
+    :param configuration: The Effective Configuration object whose global section needs validation
+    Validates the global section from the effective configuration. Ensures the values defined there
     are correct.
     """
     log_messages = []

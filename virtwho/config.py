@@ -19,7 +19,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import collections
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import DefaultInterval, MinimumSendInterval, log
 from password import Password
@@ -697,7 +696,6 @@ def parseFile(filename):
     if len(fname) == 0 and logger:
         logger.error("Unable to read configuration file %s", filename)
     sections = parser._sections
-    print sections
     return sections
 
 # String representations of all the default configuration for virt-who
@@ -756,7 +754,7 @@ def empty_or_accessible_files(paths):
         if not isinstance(paths, str):
             raise TypeError()
         if len(paths) == 0:
-            return
+            return []
         paths = [paths]
     if len(paths) == 0:
         return paths
@@ -776,7 +774,7 @@ VALIDATORS = {
         'configs': empty_or_accessible_files,
         'reporter_id': non_empty_string,
         'interval': int,
-        'log_file': accessible_file,
+        'log_file': str,  # Should we do more validation here?
         'log_dir': accessible_dir,
     },
 }
@@ -841,10 +839,10 @@ class VWEffectiveConfig(StripQuotesConfigParser):
             self._sections[section].update(**virt_defaults_section)
             self._sections[section].update(**values)
 
-    def set_parsed(self, section, option, parsed_value):
-        section = self._parsed.get(section, {})
+    def set_parsed(self, section_name, option, parsed_value):
+        section = self._parsed.get(section_name, {})
         section[option] = parsed_value
-        self._parsed[section] = section
+        self._parsed[section_name] = section
 
     @staticmethod
     def filter_parameters(section, parameters):
@@ -913,6 +911,15 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         return self.get(section, option) == DEFAULTS[section][option]
 
     def get(self, section, option):
+        """
+        Return the value of the given option from the given section
+        :param section: The name of the section from which to retrieve an option's value
+        :type section: string
+        :param option: The name of the option whose value to retrieve
+        :type option: string
+
+        :returns: The parsed type of the option, or a string
+        """
         # First try to return the parsed value if we know it
         if section in self._parsed and option in self._parsed[section]:
             return self._parsed[section][option]
@@ -923,6 +930,32 @@ class VWEffectiveConfig(StripQuotesConfigParser):
             if section in DEFAULTS and option in DEFAULTS[section]:
                 return DEFAULTS[section][option]
             raise e
+
+    def get_section(self, section_name):
+        """
+        Return the section (by the given name) unparsed
+        :param section_name: The name of the section to retrieve
+        :type section_name: string
+
+        :returns: dict
+        """
+        return self._sections[section_name]
+
+    def getboolean(self, section_name, option):
+        """
+        :param section_name: the name of the section from which to retrieve the given option
+        :type section_name: string
+        :param option: The name of the option from the section.
+        :type option: string
+
+        :returns: bool
+        """
+        # Check to see if we've already parsed this value
+        value = self.get(section_name, option)
+        if isinstance(value, bool):
+            return value
+        # if not, let our super class deal with it.
+        return StripQuotesConfigParser.getboolean(section_name, option)
 
 
 def validate_global_section(configuration):
@@ -936,9 +969,9 @@ def validate_global_section(configuration):
 
     for parameter, validator in VALIDATORS[VW_GLOBAL].iteritems():
         try:
-            if configuration.is_default(VW_GLOBAL, parameter):
-                continue
-            configuration.set_parsed(VW_GLOBAL, parameter, validator(parameter))
+            value = configuration.get(VW_GLOBAL, parameter)
+            parsed_value = validator(value)
+            configuration.set_parsed(VW_GLOBAL, parameter, parsed_value)
         except (TypeError, ValueError) as e:
             message = "Invalid value for global parameter '%(param)s', using default '%(default)s' " \
                       ":" \
@@ -947,6 +980,7 @@ def validate_global_section(configuration):
                                        'message': str(e)}
             log_messages.append(("warning", message))
             to_reset.append((VW_GLOBAL, parameter))
+
 
     # Special Cases
     try:
@@ -970,9 +1004,6 @@ def validate_global_section(configuration):
         configuration.set(VW_GLOBAL, "oneshot", "true")
 
     return log_messages
-
-# Problem, Configparser doesn't like holding parsed values
-# I don't want to parse the items over and over again. Should this not be a configparser?
 
 
 

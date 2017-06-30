@@ -7,7 +7,7 @@ import sys
 
 from virtwho import log, MinimumSendInterval
 
-from virtwho.config import ConfigManager
+from virtwho.config import ConfigManager, VW_GLOBAL
 from virtwho.datastore import Datastore
 from virtwho.manager import (
     Manager, ManagerThrottleError, ManagerError, ManagerFatalError)
@@ -61,8 +61,8 @@ class Executor(object):
                 logger = log.getLogger(config=config)
                 virt = Virt.from_config(logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
-                                        interval=self.options.interval,
-                                        oneshot=self.options.oneshot)
+                                        interval=self.options.get(VW_GLOBAL, 'interval'),
+                                        oneshot=self.options.get(VW_GLOBAL, 'oneshot'))
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s', config.name, str(e))
                 continue
@@ -91,8 +91,8 @@ class Executor(object):
                               options=self.options,
                               source=self.datastore, dest=manager,
                               terminate_event=self.terminate_event,
-                              interval=self.options.interval,
-                              oneshot=self.options.oneshot)
+                              interval=self.options.get(VW_GLOBAL, 'interval'),
+                              oneshot=self.options.get(VW_GLOBAL, 'oneshot'))
             dests.append(dest)
         return dests
 
@@ -165,7 +165,7 @@ class Executor(object):
 
         Executor.wait_on_threads(self.virts)
 
-        if self.options.print_:
+        if self.options.get(VW_GLOBAL, 'print_'):
             to_print = {}
             for source in self.configManager.sources:
                 try:
@@ -183,7 +183,8 @@ class Executor(object):
         Executor.wait_on_threads(self.destinations)
 
     def run(self):
-        self.logger.debug("Starting infinite loop with %d seconds interval", self.options.interval)
+        self.logger.debug("Starting infinite loop with %d seconds interval",
+                          self.options.get(VW_GLOBAL,'interval'))
 
         # Need to update the dest to source mapping of the configManager object
         # here because of the way that main reads the config from the command

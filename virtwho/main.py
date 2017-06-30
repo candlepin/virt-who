@@ -31,7 +31,7 @@ except ImportError:
     from util import OrderedDict
 
 from virtwho import log
-from virtwho.config import Config, InvalidPasswordFormat, InvalidOption
+from virtwho.config import Config, InvalidPasswordFormat, InvalidOption, VW_GLOBAL, VIRTWHO_ENV_CLI_SECTION_NAME
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
 from virtwho.manager import ManagerFatalError
@@ -130,10 +130,11 @@ def main():
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
         exit(1, "virt-who can't be started: %s" % str(e))
-
-    if options.virtType is not None:
-        config = Config("env/cmdline", options.virtType,
-                        executor.configManager._defaults, **options)
+    # Attempting to create a "Config" object from the global section
+    env_cli_section = options.get_section(VIRTWHO_ENV_CLI_SECTION_NAME)
+    if env_cli_section.get('virtType') is not None:
+        config = Config("env/cmdline", env_cli_section['virtType'],
+                        executor.configManager._defaults, **env_cli_section)
         try:
             config.checkOptions(logger)
         except InvalidOption as e:
@@ -142,7 +143,7 @@ def main():
             exit(1, err)
         executor.configManager.addConfig(config)
     has_error = False
-    for conffile in options.configs:
+    for conffile in options.get(VW_GLOBAL, 'configs'):
         try:
             executor.configManager.readFile(conffile)
         except InvalidPasswordFormat as e:
@@ -182,9 +183,10 @@ def main():
             logger.info('Using configuration "%s" ("%s" mode)', config.name,
                         config.type)
 
-    logger.info("Using reporter_id='%s'", options.reporter_id)
+    logger.info("Using reporter_id='%s'", options.get(VW_GLOBAL, 'reporter_id'))
     log.closeLogger(logger)
-    if options.background:
+    if options.getboolean(VW_GLOBAL, 'background'):
+        # This DaemonContext seems to cause import issues
         locker = lambda: daemon.DaemonContext(pidfile=lock)  # flake8: noqa
     else:
         locker = lambda: lock  # flake8: noqa
@@ -206,10 +208,10 @@ def main():
 
 
 def _main(executor):
-    if executor.options.oneshot:
+    if executor.options.get(VW_GLOBAL, 'oneshot'):
         result = executor.run_oneshot()
 
-        if executor.options.print_:
+        if executor.options.get(VW_GLOBAL, 'print_'):
             if not result:
                 executor.logger.error("No hypervisor reports found")
                 return 1

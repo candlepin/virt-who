@@ -24,8 +24,8 @@ configuration from environment variables.
 import os
 from argparse import ArgumentParser, Action
 
-from virtwho import log, MinimumSendInterval, DefaultInterval
-from virtwho.config import GlobalConfig, NotSetSentinel, VWEffectiveConfig, DEFAULTS, VW_GLOBAL
+from virtwho import log
+from virtwho.config import NotSetSentinel, VWEffectiveConfig, DEFAULTS, VW_GLOBAL
 from virtwho.virt.virt import Virt
 
 

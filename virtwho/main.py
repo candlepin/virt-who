@@ -34,7 +34,6 @@ from virtwho import log
 from virtwho.config import Config, InvalidPasswordFormat, InvalidOption, VW_GLOBAL, VIRTWHO_ENV_CLI_SECTION_NAME
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
-from virtwho.manager import ManagerFatalError
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
 from virtwho.virt import DomainListReport, HostGuestAssociationReport

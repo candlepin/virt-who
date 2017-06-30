@@ -1,20 +1,13 @@
 import time
 from threading import Event
-from Queue import Empty, Queue
-import errno
-import socket
 import sys
 
-from virtwho import log, MinimumSendInterval
+from virtwho import log
 
 from virtwho.config import ConfigManager, VW_GLOBAL
 from virtwho.datastore import Datastore
-from virtwho.manager import (
-    Manager, ManagerThrottleError, ManagerError, ManagerFatalError)
-from virtwho.virt import (
-    AbstractVirtReport, ErrorReport, DomainListReport,
-    HostGuestAssociationReport, Virt, DestinationThread,
-    info_to_destination_class)
+from virtwho.manager import Manager
+from virtwho.virt import Virt, info_to_destination_class
 
 try:
     from collections import OrderedDict

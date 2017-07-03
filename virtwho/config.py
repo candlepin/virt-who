@@ -865,7 +865,10 @@ class VWEffectiveConfig(StripQuotesConfigParser):
             value = str(value)
             if param in DEFAULTS[VW_GLOBAL] and value != DEFAULTS[VW_GLOBAL][param]:
                 global_parameters[param] = value
-            elif param in section_defaults and value != section_defaults[param]:
+            elif (param in section_defaults and value != section_defaults[param]) or param not in\
+                    section_defaults:
+                # Take all parameters and their values for those params that are non-default or
+                # for which a default is unknown
                 non_global_parameters[param] = value
         return global_parameters, non_global_parameters
 
@@ -885,7 +888,7 @@ class VWEffectiveConfig(StripQuotesConfigParser):
             non_conf_files = all_dir_content - conf_files
         except OSError:
             logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VW_CONF_DIR)
-            return
+            return {}
 
         if not all_dir_content:
             logger.warn("Configuration directory '%s' appears empty", VW_CONF_DIR)

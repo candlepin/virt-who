@@ -26,7 +26,7 @@ from mock import patch, Mock, sentinel, ANY, call
 from base import TestBase
 
 from virtwho import util
-from virtwho.config import Config, ConfigManager
+from virtwho.config import Config, ConfigManager, VW_GLOBAL, VIRTWHO_ENV_CLI_SECTION_NAME
 from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import (
     HostGuestAssociationReport, Hypervisor, Guest,
@@ -60,11 +60,11 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py"]
         _, options = parse_options()
-        self.assertFalse(options.debug)
-        self.assertFalse(options.background)
-        self.assertFalse(options.oneshot)
-        self.assertEqual(options.interval, 3600)
-        self.assertEqual(options.smType, 'sam')
+        self.assertFalse(options.getboolean(VW_GLOBAL, 'debug'))
+        self.assertFalse(options.getboolean(VW_GLOBAL, 'background'))
+        self.assertFalse(options.getboolean(VW_GLOBAL, 'oneshot'))
+        self.assertEqual(options.getint(VW_GLOBAL,'interval'), 3600)
+        self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'smType'), 'sam')
         self.assertEqual(options.virtType, None)
         self.assertEqual(options.reporter_id, util.generateReporterId())
 

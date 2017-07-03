@@ -7,7 +7,7 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import Config, ConfigManager
+from virtwho.config import Config, ConfigManager, VIRTWHO_ENV_CLI_SECTION_NAME
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -135,7 +135,8 @@ class TestSubscriptionManagerConfig(TestBase):
         }
         sys.argv = ["virt-who"]
         logger, options = parse_options()
-        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        env_cli_section = options.get_section(VIRTWHO_ENV_CLI_SECTION_NAME)
+        config = Config("env/cmdline", env_cli_section['virtType'], defaults={}, **env_cli_section)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
@@ -144,7 +145,8 @@ class TestSubscriptionManagerConfig(TestBase):
         os.environ = {}
         sys.argv = ["virt-who", "--sam", "--libvirt"]
         logger, options = parse_options()
-        config = Config("env/cmdline", options.virtType, defaults={}, **options)
+        env_cli_section = options.get_section(VIRTWHO_ENV_CLI_SECTION_NAME)
+        config = Config("env/cmdline", env_cli_section['virtType'], defaults={}, **env_cli_section)
         config.checkOptions(logger)
         manager = Manager.fromOptions(logger, options, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))

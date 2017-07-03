@@ -174,18 +174,19 @@ class Logger(object):
     _background = False
 
     @classmethod
-    def initialize(cls, config):
+    def initialize(cls, log_dir=None, log_file=None, log_per_config=None,
+                   debug=None, background=None):
         # Set defaults if necessary
-        if config.get('global', 'log_dir'):
-            cls._log_dir = config.get('global', 'log_dir')
-        if config.get('global', 'log_file'):
-            cls._log_file = config.get('global', 'log_file')
-        if config.getboolean('global', 'log_per_config'):
+        if log_dir:
+            cls._log_dir = log_dir
+        if log_file:
+            cls._log_file = log_file
+        if log_per_config:
             cls._log_per_config = True
-        cls._level = logging.DEBUG if config.getboolean('global', 'debug') else logging.INFO
+        cls._level = logging.DEBUG if debug else logging.INFO
         # We don't want INFO message from RHSM in non-debug mode
-        cls._rhsm_level = logging.DEBUG if config.getboolean('global', 'debug') else logging.WARN
-        cls._background = config.getboolean('global', 'background')
+        cls._rhsm_level = logging.DEBUG if debug else logging.WARN
+        cls._background = bool(background)
 
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):
@@ -299,8 +300,14 @@ class Logger(object):
         return cls._queue_logger is not None
 
 
-def init(options):
-    return Logger.initialize(options)
+def init(config):
+    log_dir = config.get('global', 'log_dir')
+    log_file = config.get('global', 'log_file')
+    log_per_config = config.get('global', 'log_per_config')
+    debug = config.getboolean('global', 'debug')
+    background = config.getboolean('global', 'background')
+    return Logger.initialize(log_dir=log_dir, log_file=log_file, log_per_config=log_per_config,
+                             debug=debug, background=background)
 
 
 def getLogger(name=None, config=None, queue=True):

@@ -19,20 +19,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import DefaultInterval
+from virtwho import log
 from password import Password
 from binascii import unhexlify
 import hashlib
 import json
 import util
 
-VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
+# Module-level logger
+logger = log.getLogger('config', queue=False)
+
+VW_CONF_DIR = "/etc/virt-who.d/"
 VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
 VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
-VIRTWHO_GLOBAL_SECTION_NAME = "global"
+VW_GLOBAL = "global"
 VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
+VIRTWHO_ENV_CLI_SECTION_NAME = "env/cmdline"
+
+# Default interval for sending list of UUIDs
+DefaultInterval = 3600  # One per hour
+MinimumSendInterval = 60  # One minute
 
 
 class InvalidOption(Error):
@@ -299,7 +306,7 @@ class GeneralConfig(object):
         return True
 
     @classmethod
-    def fromFile(cls, filename, logger):
+    def fromFile(cls, filename):
         raise NotImplementedError()
 
 
@@ -335,13 +342,13 @@ class GlobalConfig(GeneralConfig):
     )
 
     @classmethod
-    def fromFile(cls, filename, logger=None):
-        global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
+    def fromFile(cls, filename):
+        global_config = parseFile(filename).get(VW_GLOBAL)
         if not global_config:
             if logger:
                 logger.warning(
                     'Unable to find "%s" section in general config file: "%s"\nWill use defaults where required',
-                    VIRTWHO_GLOBAL_SECTION_NAME, filename)
+                    VW_GLOBAL, filename)
             global_config = {}
         return cls(**global_config)
 
@@ -530,7 +537,7 @@ class ConfigManager(object):
         else:
             self._defaults = defaults
         if config_dir is None:
-            config_dir = VIRTWHO_CONF_DIR
+            config_dir = VW_CONF_DIR
         parser = StripQuotesConfigParser()
         self._configs = []
         self.logger = logger
@@ -685,29 +692,347 @@ class ConfigManager(object):
         self._configs.append(config)
 
 
-def getOptions(section, parser):
-    options = {}
-    for option in parser.options(section):
-        options[option] = parser.get(section, option)
-    return options
-
-
-def getSections(parser):
-    sections = {}
-    for section in parser.sections():
-        try:
-            sections[section] = getOptions(section, parser)
-        except NoOptionError:
-            sections[section] = {}
-    return sections
-
-
-def parseFile(filename, logger=None):
+def parseFile(filename):
     # Parse a file into a dict of section_name: options_dict
     # options_dict is a dict of option_name: value
     parser = StripQuotesConfigParser()
     fname = parser.read(filename)
     if len(fname) == 0 and logger:
         logger.error("Unable to read configuration file %s", filename)
-    sections = getSections(parser)
+    sections = parser._sections
     return sections
+
+# String representations of all the default configuration for virt-who
+DEFAULTS = {
+    VW_GLOBAL: {
+        'debug': "0",
+        'oneshot': "0",
+        'print_': "0",
+        'log_per_config': "0",
+        'background': "0",
+        'configs': '',
+        'reporter_id': util.generateReporterId(),
+        'interval': str(DefaultInterval),
+        'log_file': log.DEFAULT_LOG_FILE,
+        'log_dir': log.DEFAULT_LOG_DIR,
+    },
+    VIRTWHO_ENV_CLI_SECTION_NAME: {
+        'smtype': 'sam',
+    },
+}
+
+# Helper methods used to validate parameters given to virt-who
+def str_to_bool(value):
+    if isinstance(value, str):
+        return value.strip().lower() in ['yes', 'true', 'on', '1']
+    raise ValueError("Unable to convert value to boolean")
+
+
+def non_empty_string(value):
+    if not isinstance(value, str):
+        raise TypeError("Value is not a string")
+    if not value:
+        raise ValueError("String is empty")
+    return value
+
+
+def readable(path):
+    if not os.access(path, os.R_OK):
+        raise ValueError("Path '%s' is not accessible" % path)
+    return path
+
+
+def accessible_file(path):
+    readable(path)
+    if not os.path.isfile(path):
+        raise ValueError("Path '%s' does not appear to be a file" % path)
+    return path
+
+
+def accessible_dir(path):
+    readable(path)
+    if not os.path.isdir(path):
+        raise ValueError("Path '%s' does not appear to be a directory" % path)
+
+
+def empty_or_accessible_files(paths):
+    if not isinstance(paths, list):
+        if not isinstance(paths, str):
+            raise TypeError()
+        if len(paths) == 0:
+            return []
+        paths = [paths]
+    if len(paths) == 0:
+        return paths
+    for path in paths:
+        accessible_file(path)
+    return paths
+
+
+# A dictionary of validators for values in a particular section
+VALIDATORS = {
+    VW_GLOBAL: {
+        'debug': str_to_bool,
+        'oneshot': str_to_bool,
+        'print_': str_to_bool,
+        'log_per_config': str_to_bool,
+        'background': str_to_bool,
+        'configs': empty_or_accessible_files,
+        'reporter_id': non_empty_string,
+        'interval': int,
+        'log_file': str,  # Should we do more validation here?
+        'log_dir': accessible_dir,
+    },
+    VIRTWHO_ENV_CLI_SECTION_NAME: {},
+}
+
+
+class VWEffectiveConfig(StripQuotesConfigParser):
+    """
+    This object represents the total configuration of virt-who including all global parameters
+    and all sections that define a source or destination.
+    """
+
+    def __init__(self, env_args, cli_args):
+        """
+        @param env_args: A dictionary of all args parsed from the environment
+        @param cli_args: A dictionary of all args parsed from the CLI
+        """
+        StripQuotesConfigParser.__init__(self)
+        global logger
+
+        self._sections = {}
+        self._parsed = {}
+        # Set default configuration sections and values
+        for section_name, section in DEFAULTS.iteritems():
+            self._sections[section_name] = {}
+            for param, value in section.iteritems():
+                self._sections[section_name][param] = value
+        # Split environment variables values into global or non
+        env_globals, env_non_globals = self.filter_parameters(VIRTWHO_ENV_CLI_SECTION_NAME,
+                                                              env_args)
+        # Split environment variables values into global or non
+        cli_globals, cli_non_globals = self.filter_parameters(VIRTWHO_ENV_CLI_SECTION_NAME,
+                                                              cli_args)
+        # Read the virt-who general conf file
+        vw_conf = parseFile(VIRTWHO_GENERAL_CONF_PATH)
+
+        global_section = vw_conf.pop(VW_GLOBAL, {})
+        # NOTE: Might be nice in the future to include the defaults in this object
+        # So that section would still exist in the output
+        virt_defaults_section = vw_conf.pop(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME, {})
+        global_section_sources = [global_section, env_globals, cli_globals]
+
+        for global_source in global_section_sources:
+            for key, value in global_source.iteritems():
+                if key:
+                    self._sections[VW_GLOBAL][key.lower()] = value
+
+        self.validation_errors = validate_global_section(self)
+
+        # Initialize logger, the creation of this object is the earliest it can be done
+        log.init(self)
+        logger = log.getLogger('config', queue=False)
+
+        # Create the effective env / cli config from those values we've sorted out as non_global
+        env_cli_sources = [env_non_globals, cli_non_globals]
+        for env_cli_source in env_cli_sources:
+            for key, value in env_cli_source.iteritems():
+                if key:
+                    self._sections[VIRTWHO_ENV_CLI_SECTION_NAME][key.lower()] = value
+
+        # This will add all sections named something other than 'global' or 'defaults' in
+        # the main configuration file "/etc/virt-who.conf"
+        for section, values in vw_conf.iteritems():
+            self._sections[section] = {}
+            self._sections[section].update(**virt_defaults_section)
+            self._sections[section].update(**values)
+
+        # Add each section of each file in the drop directory
+        drop_dir_config_sections = self.all_drop_dir_config_sections()
+        for section, values in drop_dir_config_sections.iteritems():
+            self._sections[section] = {}
+            self._sections[section].update(**virt_defaults_section)
+            self._sections[section].update(**values)
+
+    def set_parsed(self, section_name, option, parsed_value):
+        section = self._parsed.get(section_name, {})
+        section[option] = parsed_value
+        self._parsed[section_name] = section
+
+    @staticmethod
+    def filter_parameters(section, parameters):
+        """
+        :param section: The name of the section to check against for defaults
+        :type section: str
+        :param parameters: A dictionary of param_name: value
+        :type parameters: dict
+
+        :return: Two dictionaries the first all parameters that are global in nature. The second 
+        dictionary is all non_global parameters. NOTE: Any parameter that matches a known default
+        will be excluded.
+        """
+        section_defaults = DEFAULTS.get(section, {})
+        global_parameters = {}
+        non_global_parameters = {}
+        for param, value in parameters.iteritems():
+            if value is None:
+                continue
+            value = str(value)
+            if param in DEFAULTS[VW_GLOBAL] and value != DEFAULTS[VW_GLOBAL][param]:
+                global_parameters[param] = value
+            elif (param in section_defaults and value != section_defaults[param]) or param not in\
+                    section_defaults:
+                # Take all parameters and their values for those params that are non-default or
+                # for which a default is unknown
+                non_global_parameters[param] = value
+        return global_parameters, non_global_parameters
+
+    @staticmethod
+    def all_drop_dir_config_sections():
+        """
+        Read all configuration sections in the default config directory
+        :return: a dictionary of {section_name: {key: value, ... } ... }
+        """
+        parser = StripQuotesConfigParser()
+        all_dir_content = None
+        conf_files = None
+        non_conf_files = None
+        try:
+            all_dir_content = set(os.listdir(VW_CONF_DIR))
+            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+            non_conf_files = all_dir_content - conf_files
+        except OSError:
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VW_CONF_DIR)
+            return {}
+
+        if not all_dir_content:
+            logger.warn("Configuration directory '%s' appears empty", VW_CONF_DIR)
+        elif not conf_files:
+            logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
+                             "is not empty", VW_CONF_DIR)
+        elif non_conf_files:
+            logger.debug("There are files in '%s' not ending in '*.conf' is this "
+                              "intentional?", VW_CONF_DIR)
+
+        for conf in conf_files:
+            if conf.startswith('.'):
+                continue
+            try:
+                filename = parser.read(os.path.join(VW_CONF_DIR, conf))
+                if len(filename) == 0:
+                    logger.error("Unable to read configuration file %s", conf)
+            except MissingSectionHeaderError:
+                logger.error("Configuration file %s contains no section headers", conf)
+        return parser._sections
+
+    def is_default(self, section, option):
+        return self.get(section, option) == DEFAULTS[section][option]
+
+    def get(self, section, option):
+        """
+        Return the value of the given option from the given section
+        :param section: The name of the section from which to retrieve an option's value
+        :type section: string
+        :param option: The name of the option whose value to retrieve
+        :type option: string
+
+        :returns: The parsed type of the option, or a string
+        """
+        # First try to return the parsed value if we know it
+        if section in self._parsed and option in self._parsed[section]:
+            return self._parsed[section][option]
+        try:
+            return StripQuotesConfigParser.get(self, section, option)
+        except Exception as e:
+            # Try to rescue with the default
+            if section in DEFAULTS and option in DEFAULTS[section]:
+                return DEFAULTS[section][option]
+            raise e
+
+    def get_section(self, section_name):
+        """
+        Return the section (by the given name) unparsed
+        :param section_name: The name of the section to retrieve
+        :type section_name: string
+
+        :returns: dict
+        """
+        return self._sections[section_name]
+
+    def getboolean(self, section_name, option):
+        """
+        :param section_name: the name of the section from which to retrieve the given option
+        :type section_name: string
+        :param option: The name of the option from the section.
+        :type option: string
+
+        :returns: bool
+        """
+        # Check to see if we've already parsed this value
+        value = self.get(section_name, option)
+        if isinstance(value, bool):
+            return value
+        # if not, let our super class deal with it.
+        return StripQuotesConfigParser.getboolean(section_name, option)
+
+
+def validate_global_section(configuration):
+    """
+    :param configuration: The Effective Configuration object whose global section needs validation
+    Validates the global section from the effective configuration. Ensures the values defined there
+    are correct.
+    """
+    log_messages = []
+    to_reset = []  # A list of (section, option) to reset to default
+
+    for parameter, validator in VALIDATORS[VW_GLOBAL].iteritems():
+        try:
+            value = configuration.get(VW_GLOBAL, parameter)
+            parsed_value = validator(value)
+            configuration.set_parsed(VW_GLOBAL, parameter, parsed_value)
+        except (TypeError, ValueError) as e:
+            message = "Invalid value for global parameter '%(param)s', using default '%(default)s' " \
+                      ":" \
+                      "%(message)s" % {'param': parameter,
+                                       'default': DEFAULTS[VW_GLOBAL][parameter],
+                                       'message': str(e)}
+            log_messages.append(("warning", message))
+            to_reset.append((VW_GLOBAL, parameter))
+
+
+    # Special Cases
+    try:
+        interval = configuration.getint(VW_GLOBAL, 'interval')
+
+        if interval < MinimumSendInterval:
+            message = "Interval value can't be lower than {min} seconds. Default value of {min} " \
+                      "seconds will be used.".format(min=MinimumSendInterval)
+            configuration.set_parsed(VW_GLOBAL, 'interval', MinimumSendInterval)
+            log_messages.append(("warning", message))
+            to_reset.append((VW_GLOBAL, 'interval'))
+    except (TypeError, ValueError):
+        message = ("warning", "Interval is not number. Using default interval: %s" %
+                   DEFAULTS[VW_GLOBAL]['interval'])
+        log_messages.append(("warning", message))
+        to_reset.append((VW_GLOBAL, 'interval'))
+
+    for section, option in to_reset:
+        configuration.set(section, option, str(DEFAULTS[section][option]))
+
+    if configuration.getboolean(VW_GLOBAL, "print_"):
+        configuration.set(VW_GLOBAL, "oneshot", "true")
+        configuration.set_parsed(VW_GLOBAL, "oneshot", True)
+
+    return log_messages
+
+
+# TODO: Special validation function for env/cli that will output helpful messages about missing
+# parameters
+
+
+
+
+
+
+

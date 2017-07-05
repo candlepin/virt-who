@@ -29,7 +29,7 @@ import hashlib
 import re
 import fnmatch
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
-    Satellite6DestinationInfo, DefaultDestinationInfo
+    Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
 from virtwho import MinimumSendInterval
 
@@ -40,6 +40,7 @@ except ImportError:
     from virtwho.util import OrderedDict
 
 from virtwho import DefaultInterval
+
 
 class VirtError(Exception):
     pass
@@ -686,7 +687,7 @@ class DestinationThread(IntervalThread):
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
             report = data_to_send[source_key]
-            if not self.options.print_:
+            if not self.options.get(VW_GLOBAL, 'print_'):
                 retry = True
                 num_429_received = 0
                 while retry and not self.is_terminated():  # Retry if we encounter a 429
@@ -721,7 +722,7 @@ class DestinationThread(IntervalThread):
 
         # Terminate this thread if we have sent one report for each source
         if all_sources_handled and self._oneshot:
-                if not self.options.print_:
+                if not self.options.get(VW_GLOBAL, 'print_'):
                     self.logger.debug('At least one report for each connected source has been sent. Terminating.')
                 else:
                     self.logger.debug('All info to print has been gathered. Terminating.')
@@ -813,7 +814,7 @@ class Satellite5DestinationThread(DestinationThread):
         # Terminate this thread if we have sent one report for each source
         if all(source_key in sources_sent for source_key in self.source_keys)\
                 and self._oneshot:
-            if not self.options.print_:
+            if not self.options.get(VW_GLOBAL, 'print_'):
                 self.logger.debug('At least one report for each connected '
                                   'source has been sent. Terminating.')
             else:

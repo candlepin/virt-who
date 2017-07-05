@@ -814,7 +814,7 @@ class Satellite5DestinationThread(DestinationThread):
         # Terminate this thread if we have sent one report for each source
         if all(source_key in sources_sent for source_key in self.source_keys)\
                 and self._oneshot:
-            if not self.options.print_:
+            if not self.options.get(VW_GLOBAL, 'print_'):
                 self.logger.debug('At least one report for each connected '
                                   'source has been sent. Terminating.')
             else:

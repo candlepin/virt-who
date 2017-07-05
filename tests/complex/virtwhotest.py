@@ -64,8 +64,8 @@ class TestBase(TestCase):
         virt-who process (or None if `background` is True) and stdout is
         stdout from the process (or None if `grab_stdout` is False).
         '''
-        oldMinimumSendInterval = virtwho.config.DEFAULTS[virtwho.config.VW_GLOBAL]['interval']
-        virtwho.config.DEFAULTS[virtwho.config.VW_GLOBAL]['interval'] = "2"
+        old_minimum_send_interval = virtwho.config.MinimumSendInterval
+        virtwho.config.MinimumSendInterval = 2
         virtwho.log.Logger._stream_handler = None
         virtwho.log.Logger._queue_logger = None
         old_stdout = None
@@ -89,7 +89,7 @@ class TestBase(TestCase):
             sys.stdout.close()
             sys.stdout = old_stdout
 
-        virtwho.config.DEFAULTS[virtwho.config.VW_GLOBAL]['interval'] = oldMinimumSendInterval
+        virtwho.config.MinimumSendInterval = old_minimum_send_interval
 
         return code, data
 

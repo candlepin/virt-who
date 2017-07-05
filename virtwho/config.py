@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import DefaultInterval, MinimumSendInterval, log
+from virtwho import log
 from password import Password
 from binascii import unhexlify
 import hashlib
@@ -36,6 +36,10 @@ VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 VIRTWHO_ENV_CLI_SECTION_NAME = "env/cmdline"
+
+# Default interval for sending list of UUIDs
+DefaultInterval = 3600  # One per hour
+MinimumSendInterval = 60  # One minute
 
 
 class InvalidOption(Error):
@@ -1018,6 +1022,7 @@ def validate_global_section(configuration):
 
     if configuration.getboolean(VW_GLOBAL, "print_"):
         configuration.set(VW_GLOBAL, "oneshot", "true")
+        configuration.set_parsed(VW_GLOBAL, "oneshot", True)
 
     return log_messages
 

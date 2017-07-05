@@ -25,7 +25,8 @@ import os
 from argparse import ArgumentParser, Action
 
 from virtwho import log
-from virtwho.config import NotSetSentinel, VWEffectiveConfig, DEFAULTS, VW_GLOBAL
+from virtwho.config import NotSetSentinel, VWEffectiveConfig, DEFAULTS, VW_GLOBAL,\
+    VIRTWHO_ENV_CLI_SECTION_NAME
 from virtwho.virt.virt import Virt
 
 
@@ -141,6 +142,11 @@ def check_argument_consistency(cli_options):
     elif sm_type is None:
         errors.append(('warning', 'Unable to check cli argument consistency, no destination '
                                   'provided'))
+        return errors
+    else:
+        errors.append(('warning', 'Unable to check cli argument consistency, no known destination '
+                                  'provided'))
+        return errors
 
     if virt_type is not None:
         for option in REQUIRED_OPTIONS:
@@ -229,7 +235,6 @@ def read_config_env_variables():
     #     env_vars.log_dir = env
     # elif env_vars.log_per_config:
     #     env_vars.log_dir = os.path.join(log.DEFAULT_LOG_DIR, 'virtwho')
-
     return env_vars
 
 
@@ -254,7 +259,7 @@ def read_vm_backend_env_variables(env_vars):
     """
     errors = []
 
-    sm_type = env_vars.get('smType')
+    sm_type = env_vars.get('smType', DEFAULTS[VIRTWHO_ENV_CLI_SECTION_NAME]['smtype'])
     if sm_type is None:
         # Just don't read the env vars if there is no smType specified
         return env_vars, errors
@@ -290,7 +295,6 @@ def read_vm_backend_env_variables(env_vars):
         except OptionError as err:
             errors.append(("error", "Error: reading environment variables for virt. type: %s: %s" % (
                 env_vars.get('virtType'), err)))
-            env_vars['virtType'] = None
         else:
             if len(env_vars.get('password', '')) == 0:
                 env_vars['password'] = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
@@ -338,7 +342,7 @@ def parse_cli_arguments():
         description="Choose virtualization backend that should be used to gather host/guest associations"
     )
     virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virtType", const="libvirt",
-                            default=None, help="Use libvirt to list virtual guests")
+                            help="Use libvirt to list virtual guests")
     virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virtType", const="vdsm",
                             help="Use vdsm to list virtual guests")
     virt_group.add_argument("--esx", action=StoreVirtType, dest="virtType", const="esx",

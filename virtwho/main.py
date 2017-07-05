@@ -131,8 +131,8 @@ def main():
         exit(1, "virt-who can't be started: %s" % str(e))
     # Attempting to create a "Config" object from the global section
     env_cli_section = options.get_section(VIRTWHO_ENV_CLI_SECTION_NAME)
-    if env_cli_section.get('virtType') is not None:
-        config = Config("env/cmdline", env_cli_section['virtType'],
+    if env_cli_section.get('virttype') is not None:
+        config = Config("env/cmdline", env_cli_section['virttype'],
                         executor.configManager._defaults, **env_cli_section)
         try:
             config.checkOptions(logger)

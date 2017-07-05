@@ -712,7 +712,9 @@ DEFAULTS = {
         'log_file': log.DEFAULT_LOG_FILE,
         'log_dir': log.DEFAULT_LOG_DIR,
     },
-    VIRTWHO_ENV_CLI_SECTION_NAME: {},
+    VIRTWHO_ENV_CLI_SECTION_NAME: {
+        'smtype': 'sam',
+    },
 }
 
 # Helper methods used to validate parameters given to virt-who
@@ -777,6 +779,7 @@ VALIDATORS = {
         'log_file': str,  # Should we do more validation here?
         'log_dir': accessible_dir,
     },
+    VIRTWHO_ENV_CLI_SECTION_NAME: {},
 }
 
 
@@ -797,8 +800,10 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         self._sections = {}
         self._parsed = {}
         # Set default configuration sections and values
-        for key, value in DEFAULTS.iteritems():
-            self._sections[key] = value
+        for section_name, section in DEFAULTS.iteritems():
+            self._sections[section_name] = {}
+            for param, value in section.iteritems():
+                self._sections[section_name][param] = value
         # Split environment variables values into global or non
         env_globals, env_non_globals = self.filter_parameters(VIRTWHO_ENV_CLI_SECTION_NAME,
                                                               env_args)
@@ -812,18 +817,25 @@ class VWEffectiveConfig(StripQuotesConfigParser):
         # NOTE: Might be nice in the future to include the defaults in this object
         # So that section would still exist in the output
         virt_defaults_section = vw_conf.pop(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME, {})
+        global_section_sources = [global_section, env_globals, cli_globals]
 
-        self._sections[VW_GLOBAL].update(**global_section)
-        self._sections[VW_GLOBAL].update(**env_globals)
-        self._sections[VW_GLOBAL].update(**cli_globals)
+        for global_source in global_section_sources:
+            for key, value in global_source.iteritems():
+                if key:
+                    self._sections[VW_GLOBAL][key.lower()] = value
 
         self.validation_errors = validate_global_section(self)
 
+        # Initialize logger, the creation of this object is the earliest it can be done
         log.init(self)
         logger = log.getLogger('config', queue=False)
 
-        self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**env_non_globals)
-        self._sections[VIRTWHO_ENV_CLI_SECTION_NAME].update(**cli_non_globals)
+        # Create the effective env / cli config from those values we've sorted out as non_global
+        env_cli_sources = [env_non_globals, cli_non_globals]
+        for env_cli_source in env_cli_sources:
+            for key, value in env_cli_source.iteritems():
+                if key:
+                    self._sections[VIRTWHO_ENV_CLI_SECTION_NAME][key.lower()] = value
 
         # This will add all sections named something other than 'global' or 'defaults' in
         # the main configuration file "/etc/virt-who.conf"
@@ -990,8 +1002,9 @@ def validate_global_section(configuration):
         interval = configuration.getint(VW_GLOBAL, 'interval')
 
         if interval < MinimumSendInterval:
-            message = "Interval value can't be lower than {min} seconds."" \
-            ""Default value of {min} seconds will be used.".format(min=MinimumSendInterval)
+            message = "Interval value can't be lower than {min} seconds. Default value of {min} " \
+                      "seconds will be used.".format(min=MinimumSendInterval)
+            configuration.set_parsed(VW_GLOBAL, 'interval', MinimumSendInterval)
             log_messages.append(("warning", message))
             to_reset.append((VW_GLOBAL, 'interval'))
     except (TypeError, ValueError):
@@ -1001,12 +1014,17 @@ def validate_global_section(configuration):
         to_reset.append((VW_GLOBAL, 'interval'))
 
     for section, option in to_reset:
-        configuration.set(section, option, DEFAULTS[section][option])
+        configuration.set(section, option, str(DEFAULTS[section][option]))
 
     if configuration.getboolean(VW_GLOBAL, "print_"):
         configuration.set(VW_GLOBAL, "oneshot", "true")
 
     return log_messages
+
+
+# TODO: Special validation function for env/cli that will output helpful messages about missing
+# parameters
+
 
 
 

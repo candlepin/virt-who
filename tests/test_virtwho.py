@@ -115,8 +115,8 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--libvirt-username=admin", "--libvirt"]
         _, options = parse_options()
-        self.assertEqual(options.virtType, "libvirt")
-        self.assertEqual(options.username, "admin")
+        self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'virttype'), "libvirt")
+        self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'username'), "admin")
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -176,12 +176,12 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
-            self.assertEqual(options.virtType, virt)
-            self.assertEqual(options.owner, 'owner')
-            self.assertEqual(options.env, 'env')
-            self.assertEqual(options.server, 'localhost')
-            self.assertEqual(options.username, 'username')
-            self.assertEqual(options.password, 'password')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'virttype'), virt)
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'owner'), 'owner')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'env'), 'env')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'server'), 'localhost')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'username'), 'username')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'password'), 'password')
 
             sys.argv = ["virtwho.py"]
             virt_up = virt.upper()
@@ -192,12 +192,12 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
             _, options = parse_options()
-            self.assertEqual(options.virtType, virt)
-            self.assertEqual(options.owner, 'xowner')
-            self.assertEqual(options.env, 'xenv')
-            self.assertEqual(options.server, 'xlocalhost')
-            self.assertEqual(options.username, 'xusername')
-            self.assertEqual(options.password, 'xpassword')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'virttype'), virt)
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'owner'), 'xowner')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'env'), 'xenv')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'server'), 'xlocalhost')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'username'), 'xusername')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'password'), 'xpassword')
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -215,12 +215,10 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
-            self.assertEqual(options.virtType, virt)
-            self.assertEqual(options.owner, '')
-            self.assertEqual(options.env, '')
-            self.assertEqual(options.server, 'localhost')
-            self.assertEqual(options.username, 'username')
-            self.assertEqual(options.password, 'password')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'virttype'), virt)
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'server'), 'localhost')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'username'), 'username')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'password'), 'password')
 
             sys.argv = ["virtwho.py"]
             virt_up = virt.upper()
@@ -229,16 +227,18 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_SATELLITE_USERNAME"] = "xusername"
             os.environ["VIRTWHO_SATELLITE_PASSWORD"] = "xpassword"
             os.environ["VIRTWHO_%s" % virt_up] = "1"
+            os.environ["VIRTWHO_%s_OWNER" % virt_up] = 'xowner'
+            os.environ["VIRTWHO_%s_ENV" % virt_up] = 'xenv'
             os.environ["VIRTWHO_%s_SERVER" % virt_up] = "xlocalhost"
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
             _, options = parse_options()
-            self.assertEqual(options.virtType, virt)
-            self.assertEqual(options.owner, '')
-            self.assertEqual(options.env, '')
-            self.assertEqual(options.server, 'xlocalhost')
-            self.assertEqual(options.username, 'xusername')
-            self.assertEqual(options.password, 'xpassword')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'virttype'), virt)
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'server'), 'xlocalhost')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'owner'), 'xowner')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'env'), 'xenv')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'username'), 'xusername')
+            self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'password'), 'xpassword')
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')

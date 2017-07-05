@@ -18,6 +18,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+from virtwho.config import VIRTWHO_ENV_CLI_SECTION_NAME
 
 class ManagerError(Exception):
     pass
@@ -70,7 +71,7 @@ class Manager(object):
         assert virtwho
 
         config_smType = config.smType if config else None
-        smType = config_smType or options['smType'] or 'sam'
+        smType = config_smType or options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'smType') or 'sam'
 
         for subcls in cls.__subclasses__():
             if subcls.smType == smType:

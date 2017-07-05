@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import sys
+import copy
 import os
 from Queue import Empty, Queue
 from mock import patch, Mock, sentinel, ANY, call
@@ -64,9 +65,7 @@ class TestOptions(TestBase):
         self.assertFalse(options.getboolean(VW_GLOBAL, 'background'))
         self.assertFalse(options.getboolean(VW_GLOBAL, 'oneshot'))
         self.assertEqual(options.getint(VW_GLOBAL,'interval'), 3600)
-        self.assertEqual(options.get(VIRTWHO_ENV_CLI_SECTION_NAME, 'smType'), 'sam')
-        self.assertEqual(options.virtType, None)
-        self.assertEqual(options.reporter_id, util.generateReporterId())
+        self.assertEqual(options.get(VW_GLOBAL, 'reporter_id'), util.generateReporterId())
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -74,20 +73,20 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--interval=5"]
         _, options = parse_options()
-        self.assertEqual(options.interval, 60)
+        self.assertEqual(options.getint(VW_GLOBAL, 'interval'), 60)
 
         sys.argv = ["virtwho.py"]
         os.environ["VIRTWHO_INTERVAL"] = '1'
 
         _, options = parse_options()
-        self.assertEqual(options.interval, 60)
+        self.assertEqual(options.getint(VW_GLOBAL, 'interval'), 60)
 
         self.clearEnv()
-        bad_conf = {'global': {'interval': 1}}
+        bad_conf = {'global': {'interval': '1'}}
         parseFile.return_value = bad_conf
 
         _, options = parse_options()
-        self.assertEqual(options.interval, 60)
+        self.assertEqual(options.getint(VW_GLOBAL, 'interval'), 60)
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -107,7 +106,7 @@ class TestOptions(TestBase):
     @patch('virtwho.config.parseFile')
     def test_options_missing_virt_backend(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
-        sys.argv = ["virtwho.py", "--esx-username=admin"]
+        sys.argv = ["virtwho.py", "--sam", "--esx-username=admin"]
         self.assertRaises(OptionError, parse_options)
 
     @patch('virtwho.log.getLogger')
@@ -129,29 +128,29 @@ class TestOptions(TestBase):
                 'reporter_id': "/etc/virt-who.conf"
             }
         }
-        parseFile.return_value = global_conf_dict
+        parseFile.side_effect = lambda x: copy.deepcopy(global_conf_dict)
         # cli option
         sys.argv = ["virtwho.py", "--reporter-id=cli"]
         # environment var
         os.environ["VIRTWHO_REPORTER_ID"] = "env"
         _, options = parse_options()
         # cli option should beat environment vars and virt-who.conf
-        self.assertEqual(options.reporter_id, "cli")
+        self.assertEqual(options.get(VW_GLOBAL, 'reporter_id'), "cli")
 
         sys.argv = ["virtwho.py"]
 
         _, options = parse_options()
-        self.assertEqual(options.reporter_id, "env")
+        self.assertEqual(options.get(VW_GLOBAL, 'reporter_id'), "env")
 
         self.clearEnv()
 
         _, options = parse_options()
-        self.assertEqual(options.reporter_id, "/etc/virt-who.conf")
+        self.assertEqual(options.get(VW_GLOBAL, 'reporter_id'), "/etc/virt-who.conf")
 
-        parseFile.return_value = {'global': {}}
+        parseFile.side_effect = lambda x: {}
 
         _, options = parse_options()
-        self.assertEqual(options.reporter_id, util.generateReporterId())
+        self.assertEqual(options.get(VW_GLOBAL, 'reporter_id'), util.generateReporterId())
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -159,12 +158,12 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "-d"]
         _, options = parse_options()
-        self.assertTrue(options.debug)
+        self.assertTrue(options.getboolean(VW_GLOBAL, 'debug'))
 
         sys.argv = ["virtwho.py"]
         os.environ["VIRTWHO_DEBUG"] = "1"
         _, options = parse_options()
-        self.assertTrue(options.debug)
+        self.assertTrue(options.getboolean(VW_GLOBAL, 'debug'))
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parseFile')
@@ -249,7 +248,7 @@ class TestOptions(TestBase):
             for virt in ['libvirt', 'vdsm', 'xen', 'esx', 'hyperv', 'rhevm']:
                 for missing in ['server', 'username', 'password', 'env', 'owner']:
                     self.clearEnv()
-                    sys.argv = ["virtwho.py", "--%s" % virt]
+                    sys.argv = ["virtwho.py", "--%s" % smType, "--%s" % virt]
                     if virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm']:
                         if missing != 'server':
                             sys.argv.append("--%s-server=localhost" % virt)

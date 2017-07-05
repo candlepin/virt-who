@@ -127,7 +127,7 @@ def check_argument_consistency(cli_options):
     """
     Final check of cli options that can not be done in custom actions.
     """
-
+    errors = []
     # These options can be required
     REQUIRED_OPTIONS = ['owner', 'env', 'server', 'username']
 
@@ -138,8 +138,9 @@ def check_argument_consistency(cli_options):
         VM_DISPATCHER = SAM_VM_DISPATCHER
     elif sm_type == 'satellite':
         VM_DISPATCHER = SAT_VM_DISPATCHER
-    else:
-        raise OptionError("Report host/guest associations was not specified.")
+    elif sm_type is None:
+        errors.append(('warning', 'Unable to check cli argument consistency, no destination '
+                                  'provided'))
 
     if virt_type is not None:
         for option in REQUIRED_OPTIONS:
@@ -151,6 +152,7 @@ def check_argument_consistency(cli_options):
             for prefix in VIRT_BACKENDS:
                 if key.startswith(prefix + '-'):
                     raise OptionError("Argument --%s cannot be set without virtualization backend" % key)
+    return errors
 
 
 def read_config_env_variables():
@@ -352,7 +354,8 @@ def parse_cli_arguments():
         title="Subscription manager",
         description="Choose where the host/guest associations should be reported"
     )
-    manager_group.add_argument("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6,
+    manager_group.add_argument("--sam", action="store_const", dest="smType", const=SAT6,
+                               default=NotSetSentinel(),
                                help="Report host/guest associations to the Subscription Asset Manager [default]")
     manager_group.add_argument("--satellite6", action="store_const", dest="smType", const=SAT6,
                                help="Report host/guest associations to the Satellite 6 server")
@@ -454,7 +457,7 @@ def parse_cli_arguments():
     cli_options = vars(parser.parse_args())
 
     # Final check of CLI arguments
-    check_argument_consistency(cli_options)
+    errors = check_argument_consistency(cli_options)
 
     # Get all default options
     defaults = vars(parser.parse_args([]))
@@ -463,7 +466,7 @@ def parse_cli_arguments():
         return dict((option, value) for option, value in _cli_options.iteritems()
                     if _defaults.get(option, NotSetSentinel()) != value and value is not None)
 
-    return get_non_default_options(cli_options, defaults)
+    return get_non_default_options(cli_options, defaults), errors
 
 
 def parse_options():
@@ -473,13 +476,14 @@ def parse_options():
     """
 
     # Read command line arguments first
-    cli_options = parse_cli_arguments()
+    cli_options, errors = parse_cli_arguments()
 
     # Read configuration env. variables
     env_options = read_config_env_variables()
 
     # Read environments variables for virtualization backends
-    env_options, errors = read_vm_backend_env_variables(env_options)
+    env_options, env_errors = read_vm_backend_env_variables(env_options)
+    errors.extend(env_errors)
     # Create the effective config that virt-who will use to run
     effective_config = VWEffectiveConfig(env_options, cli_options)
     # Ensure validation errors during effective config creation are logged

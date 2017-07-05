@@ -70,7 +70,7 @@ class Manager(object):
         assert virtwho
 
         config_smType = config.smType if config else None
-        smType = config_smType or options.smType or 'sam'
+        smType = config_smType or options['smType'] or 'sam'
 
         for subcls in cls.__subclasses__():
             if subcls.smType == smType:

@@ -9,9 +9,10 @@ from mock import Mock, patch, call
 from threading import Event
 
 from virtwho.config import ConfigManager, Config
-from virtwho.manager import ManagerThrottleError, ManagerFatalError
+from virtwho.manager import ManagerThrottleError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
     DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport
+from virtwho.datastore import Datastore
 
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
@@ -108,6 +109,7 @@ class TestDestinationThread(TestBase):
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -142,6 +144,7 @@ class TestDestinationThread(TestBase):
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -175,6 +178,7 @@ class TestDestinationThread(TestBase):
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -232,6 +236,7 @@ class TestDestinationThread(TestBase):
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -296,6 +301,7 @@ class TestDestinationThread(TestBase):
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -370,6 +376,7 @@ class TestDestinationThread(TestBase):
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -402,11 +409,13 @@ class TestDestinationThread(TestBase):
         logger = Mock()
 
         manager = Mock()
+        manager.uuid = Mock(return_value='12345678-90ab-cdef-1234-567890abcdef')
         terminate_event = Mock()
         interval = 10
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -443,11 +452,13 @@ class TestDestinationThread(TestBase):
 
         manager = Mock()
         manager.sendVirtGuests = Mock(side_effect=[error_to_throw, report1])
+        manager.uuid = Mock(return_value='12345678-90ab-cdef-1234-567890abcdef')
         terminate_event = Mock()
         interval = 10
         options = Mock()
         options.print_ = False
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,
@@ -477,6 +488,7 @@ class TestDestinationThread(TestBase):
         virt1.CONFIG_TYPE = 'esx'
         config = Mock()
         manager = Mock()
+        manager.uuid = Mock(return_value='12345678-90ab-cdef-1234-567890abcdef')
 
         guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
         report1 = DomainListReport(config1, [guest1],
@@ -495,6 +507,7 @@ class TestDestinationThread(TestBase):
         }
         logger = Mock()
         destination_thread = DestinationThread(logger, config,
+                                               shared_data=Datastore(),
                                                source_keys=source_keys,
                                                source=datastore,
                                                dest=manager,

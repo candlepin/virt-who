@@ -32,6 +32,7 @@ from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
 from virtwho import MinimumSendInterval
+from virtwho.datastore import Datastore
 
 try:
     from collections import OrderedDict
@@ -288,10 +289,12 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
 
 class IntervalThread(Thread):
-    def __init__(self, logger, config, source=None, dest=None,
+    def __init__(self, logger, config, shared_data, source=None, dest=None,
                  terminate_event=None, interval=None, oneshot=False):
         self.logger = logger
         self.config = config
+        # Datastore for sharing data between threads
+        self.shared_data = shared_data
         self.source = source
         self.dest = dest
         self._internal_terminate_event = Event()
@@ -301,9 +304,9 @@ class IntervalThread(Thread):
         super(IntervalThread, self).__init__()
 
     def wait(self, wait_time):
-        '''
+        """
         Wait `wait_time` seconds, could be interrupted by setting _terminate_event or _internal_terminate_event.
-        '''
+        """
         for i in range(wait_time):
             if self.is_terminated():
                 break
@@ -311,12 +314,32 @@ class IntervalThread(Thread):
 
     def is_terminated(self):
         """
-
         @return: Returns true if either the internal terminate event is set or
                  the terminate event given in the init is set
         """
         return self._internal_terminate_event.is_set() or \
             self.terminate_event.is_set()
+
+    def is_registered(self):
+        """
+        This function tries to guess if system is registered according last attempt of
+        sending data to candlepin server.
+        :return: Return true, when virt-who was able to send data to candlepin server.
+        """
+
+        consumers = []
+        try:
+            consumers = self.shared_data.get(key='consumers', default=None)
+        except KeyError:
+            # TODO: rename this function or implement full checking of registration status,
+            # because this will not be true in some cases.
+            is_registered = True
+        else:
+            if len(consumers) > 0:
+                is_registered = True
+            else:
+                is_registered = False
+        return is_registered
 
     def stop(self):
         """
@@ -332,8 +355,14 @@ class IntervalThread(Thread):
         self.prepare()
         while not self.is_terminated():
             start_time = datetime.now()
-            data_to_send = self._get_data()
-            self._send_data(data_to_send)
+            if self.is_registered() is True:
+                data_to_send = self._get_data()
+                self._send_data(data_to_send)
+            else:
+                self.logger.debug(
+                    "System is not registered to any candlepin server. "
+                    "No need to do send any data. Waiting."
+                )
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -369,9 +398,9 @@ class IntervalThread(Thread):
         raise NotImplementedError("Should be implemented in subclasses")
 
     def run(self):
-        '''
+        """
         Wrapper around `_run` method that just catches the error messages.
-        '''
+        """
         self.logger.debug("Thread '%s' started", self.config.name)
         try:
             while not self.is_terminated():
@@ -393,6 +422,7 @@ class IntervalThread(Thread):
                     self.logger.debug("Thread '%s' terminated",
                                       self.config.name)
                     self._internal_terminate_event.set()
+                    self.cleanup()
                     return
 
                 if has_error:
@@ -413,9 +443,9 @@ class IntervalThread(Thread):
             sys.exit(1)
 
     def cleanup(self):
-        '''
+        """
         Perform cleaning up actions before termination.
-        '''
+        """
         pass
 
     def prepare(self):
@@ -456,7 +486,7 @@ class DestinationThread(IntervalThread):
     This class should work so long as the destination is a Manager object.
     """
 
-    def __init__(self, logger, config, source_keys=None, options=None,
+    def __init__(self, logger, config, shared_data, source_keys=None, options=None,
                  source=None, dest=None, terminate_event=None, interval=None,
                  oneshot=False):
         """
@@ -469,17 +499,23 @@ class DestinationThread(IntervalThread):
 
         @param dest: The destination object to use to actually send the data
         @type dest: Manager
+
+        @param shared_data: The object for sharing data between threads
+        @type shared_data: Datastore
         """
         if not isinstance(source_keys, list):
             raise ValueError("Source keys must be a list")
         self.is_initial_run = True
         self.source_keys = source_keys
+        self.uuid = None
         self.last_report_for_source = {}  # Source_key to hash of last report
         self.options = options
         self.reports_to_print = []  # A list of reports we would send but are
         #  going to print instead, to be used by the owner of the thread
         # after the thread has been killed
-        super(DestinationThread, self).__init__(logger, config, source=source,
+        super(DestinationThread, self).__init__(logger, config,
+                                                shared_data=shared_data,
+                                                source=source,
                                                 dest=dest,
                                                 terminate_event=terminate_event,
                                                 interval=interval,
@@ -556,6 +592,7 @@ class DestinationThread(IntervalThread):
         @param data_to_send: A dict of source_keys, report
         @type: dict
         """
+
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')
             return
@@ -637,6 +674,7 @@ class DestinationThread(IntervalThread):
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
+                self.config.is_registered = False
 
             initial_job_check = True
             num_429_received = 0
@@ -714,6 +752,18 @@ class DestinationThread(IntervalThread):
                         if self._oneshot:
                             sources_erred.append(source_key)
                         retry = False  # Only retry on 429
+                        consumers = self.shared_data.get('consumers', [])
+                        if len(consumers) == 0:
+                            self.shared_data.put('consumers', [])
+                    else:
+                        # Try to get list of consumers
+                        consumers = self.shared_data.get('consumers', [])
+                        # Get current consumer for this destination thread
+                        self.uuid = self.dest.uuid()
+                        if self.uuid not in consumers:
+                            self.logger.debug('Try to add self.uuid: %s to consumers: %s' % (self.uuid, consumers))
+                            consumers.append(self.uuid)
+                            self.shared_data.put('consumers', consumers)
 
         # Were all sources handled at lease by one report?
         all_sources_handled = all((source_key in sources_sent or source_key in sources_erred)
@@ -839,9 +889,9 @@ class Virt(IntervalThread):
     method.
     """
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(Virt, self).__init__(logger, config, dest=dest,
+        super(Virt, self).__init__(logger, config, shared_data, dest=dest,
                                    terminate_event=terminate_event,
                                    interval=interval, oneshot=oneshot)
 
@@ -859,7 +909,7 @@ class Virt(IntervalThread):
         return [subcls for subcls in cls.__subclasses__()]
 
     @classmethod
-    def from_config(cls, logger, config, dest,
+    def from_config(cls, logger, config, shared_data, dest,
                     terminate_event=None, interval=None, oneshot=False):
         """
         Create instance of inherited class based on the config.
@@ -867,7 +917,7 @@ class Virt(IntervalThread):
 
         for subcls in cls.__subclasses_list():
             if config.type == subcls.CONFIG_TYPE:
-                return subcls(logger, config, dest,
+                return subcls(logger, config, shared_data, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)
         raise KeyError("Invalid config type: %s" % config.type)
@@ -881,12 +931,12 @@ class Virt(IntervalThread):
         return [subcls.CONFIG_TYPE for subcls in cls.__subclasses_list() if subcls.CONFIG_TYPE != 'fake']
 
     def start_sync(self):
-        '''
+        """
         This method is same as `start()` but runs synchronously, it does NOT
         create new thread.
 
         Use it only in specific cases!
-        '''
+        """
         self._run()
 
     def _get_report(self):
@@ -920,19 +970,19 @@ class Virt(IntervalThread):
         return True
 
     def getHostGuestMapping(self):
-        '''
+        """
         If subclass doesn't reimplement the `_run` method, it should
         reimplement either this method or `listDomains` method, based on
         return value of isHypervisor method.
-        '''
+        """
         raise NotImplementedError('This should be reimplemented in subclass')
 
     def listDomains(self):
-        '''
+        """
         If subclass doesn't reimplement the `_run` method, it should
         reimplement either this method or `getHostGuestMapping` method, based on
         return value of isHypervisor method.
-        '''
+        """
         raise NotImplementedError('This should be reimplemented in subclass')
 
 

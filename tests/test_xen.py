@@ -22,7 +22,6 @@ import os
 import urllib2
 from mock import patch, call, ANY
 from threading import Event
-from Queue import Queue
 
 from base import TestBase
 from proxy import Proxy
@@ -31,18 +30,21 @@ from virtwho.config import Config
 from virtwho.virt.xen import Xen
 from virtwho.virt.xen.XenAPI import NewMaster, Failure
 from virtwho.virt import VirtError, Guest, Hypervisor
+from virtwho.datastore import Datastore
 
 
 class TestXen(TestBase):
     def setUp(self):
         config = Config('test', 'xen', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.xen = Xen(self.logger, config, None)
+        self.xen = Xen(self.logger, config, Datastore(), None)
 
-    def run_once(self, queue=None):
-        ''' Run XEN in oneshot mode '''
+    def run_once(self):
+        """
+        Run XEN in oneshot mode
+        """
         self.xen._oneshot = True
-        self.xen.dest = queue or Queue()
+        self.xen.dest = Datastore()
         self.xen._terminate_event = Event()
         self.xen._oneshot = True
         self.xen._interval = 0
@@ -69,16 +71,16 @@ class TestXen(TestBase):
         self.assertRaises(VirtError, self.run_once)
 
     @patch('virtwho.virt.xen.XenAPI.Session')
-    def test_getHostGuestMapping(self, session):
+    def test_get_host_guest_mapping(self, session):
         expected_hostname = 'hostname.domainname'
-        expected_hypervisorId = 'Fake_uuid'
-        expected_guestId = 'guest1UUID'
+        expected_hypervisor_id = 'Fake_uuid'
+        expected_guest_id = 'guest1UUID'
         expected_guest_state = Guest.STATE_UNKNOWN
 
         xenapi = session.return_value.xenapi
 
         host = {
-            'uuid': expected_hypervisorId,
+            'uuid': expected_hypervisor_id,
             'hostname': expected_hostname,
             'cpu_info': {
                 'socket_count': '1'
@@ -97,7 +99,7 @@ class TestXen(TestBase):
             'is_control_domain': True,
         }
         guest = {
-            'uuid': expected_guestId,
+            'uuid': expected_guest_id,
             'power_state': 'unknown',
         }
         snapshot = {
@@ -114,11 +116,11 @@ class TestXen(TestBase):
         xenapi.VM.get_record = lambda x: x
 
         expected_result = Hypervisor(
-            hypervisorId=expected_hypervisorId,
+            hypervisorId=expected_hypervisor_id,
             name=expected_hostname,
             guestIds=[
                 Guest(
-                    expected_guestId,
+                    expected_guest_id,
                     self.xen,
                     expected_guest_state,
                 )
@@ -136,8 +138,8 @@ class TestXen(TestBase):
     @patch('virtwho.virt.xen.XenAPI.Session')
     def test_multiple_hosts(self, session):
         expected_hostname = 'hostname.domainname'
-        expected_hypervisorId = 'Fake_uuid'
-        expected_guestId = 'guest1UUID'
+        expected_hypervisor_id = 'Fake_uuid'
+        expected_guest_id = 'guest1UUID'
         expected_guest_state = Guest.STATE_UNKNOWN
 
         xenapi = session.return_value.xenapi
@@ -145,7 +147,7 @@ class TestXen(TestBase):
         hosts = []
         for i in range(3):
             hosts.append({
-                'uuid': expected_hypervisorId + str(i),
+                'uuid': expected_hypervisor_id + str(i),
                 'hostname': expected_hostname + str(i),
                 'cpu_info': {
                     'socket_count': '1'
@@ -157,7 +159,7 @@ class TestXen(TestBase):
             })
 
         guest = {
-            'uuid': expected_guestId,
+            'uuid': expected_guest_id,
             'power_state': 'unknown',
         }
 
@@ -165,16 +167,16 @@ class TestXen(TestBase):
         xenapi.host.get_resident_VMs.return_value = [
             guest,
         ]
-        xenapi.host.get_record = lambda x: x
-        xenapi.VM.get_record = lambda x: x
+        xenapi.host.get_record = lambda rec: rec
+        xenapi.VM.get_record = lambda rec: rec
 
         expected_result = [
             Hypervisor(
-                hypervisorId=expected_hypervisorId + str(i),
+                hypervisorId=expected_hypervisor_id + str(i),
                 name=expected_hostname + str(i),
                 guestIds=[
                     Guest(
-                        expected_guestId,
+                        expected_guest_id,
                         self.xen,
                         expected_guest_state,
                     )

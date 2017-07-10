@@ -46,6 +46,9 @@ class Executor(object):
         self.datastore = Datastore()
         self.reloading = False
 
+        # Datastore for sharing data between threads
+        self.shared_data = Datastore()
+
         self.configManager = ConfigManager(self.logger, config_dir)
 
         for config in self.configManager.configs:
@@ -59,7 +62,7 @@ class Executor(object):
         for config in self.configManager.configs:
             try:
                 logger = log.getLogger(config=config)
-                virt = Virt.from_config(logger, config, self.datastore,
+                virt = Virt.from_config(logger, config, self.shared_data, self.datastore,
                                         terminate_event=self.terminate_event,
                                         interval=self.options.interval,
                                         oneshot=self.options.oneshot)
@@ -87,6 +90,7 @@ class Executor(object):
             manager = Manager.fromInfo(logger, self.options, info)
             dest_class = info_to_destination_class[type(info)]
             dest = dest_class(config=info, logger=logger,
+                              shared_data=self.shared_data,
                               source_keys=source_keys,
                               options=self.options,
                               source=self.datastore, dest=manager,
@@ -236,3 +240,4 @@ class Executor(object):
         self.stop_threads()
         self.terminate_event.clear()
         self.datastore = Datastore()
+        self.shared_data = Datastore()

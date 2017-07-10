@@ -64,6 +64,6 @@ class Datastore(object):
                 item = pickle.loads(self._datastore[key])
                 return item
             except KeyError:
-                if default:
+                if default is not None:
                     return default
                 raise

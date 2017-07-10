@@ -42,7 +42,7 @@ class TestLibvirtd(TestBase):
         pass
 
     def run_virt(self, config, datastore=None):
-        v = Virt.from_config(self.logger, config, datastore or Datastore())
+        v = Virt.from_config(self.logger, config, Datastore(), datastore or Datastore())
         v._terminate_event = Event()
         v._interval = 3600
         v._oneshot = True

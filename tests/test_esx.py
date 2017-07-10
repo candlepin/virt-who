@@ -22,7 +22,6 @@ import requests
 import suds
 from mock import patch, ANY, MagicMock, Mock
 from threading import Event
-from Queue import Queue
 
 from base import TestBase
 from virtwho.config import Config
@@ -36,10 +35,10 @@ class TestEsx(TestBase):
     def setUp(self):
         config = Config('test', 'esx', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.esx = Esx(self.logger, config, None)  #  No dest given here
+        self.esx = Esx(self.logger, config, Datastore(), None)  #  No dest given here
 
     def run_once(self, datastore=None):
-        ''' Run ESX in oneshot mode '''
+        """Run ESX in oneshot mode"""
         self.esx._oneshot = True
         if datastore is None:
             datastore = Mock(spec=Datastore())

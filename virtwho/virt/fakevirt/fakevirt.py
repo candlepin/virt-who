@@ -8,9 +8,9 @@ from virtwho.util import decode
 class FakeVirt(Virt):
     CONFIG_TYPE = 'fake'
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(FakeVirt, self).__init__(logger, config, dest,
+        super(FakeVirt, self).__init__(logger, config, shared_data, dest,
                                        terminate_event=terminate_event,
                                        interval=interval,
                                        oneshot=oneshot)

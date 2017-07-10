@@ -53,9 +53,9 @@ RHEVM_STATE_TO_GUEST_STATE = {
 class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(RhevM, self).__init__(logger, config, dest,
+        super(RhevM, self).__init__(logger, config, shared_data, dest,
                                     terminate_event=terminate_event,
                                     interval=interval,
                                     oneshot=oneshot)

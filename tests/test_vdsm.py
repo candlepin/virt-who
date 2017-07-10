@@ -24,6 +24,7 @@ from base import TestBase
 
 from virtwho.config import Config
 from virtwho.virt.vdsm import Vdsm
+from virtwho.datastore import Datastore
 
 
 class TestVdsm(TestBase):
@@ -33,7 +34,7 @@ class TestVdsm(TestBase):
         def fakeSecureConnect(self):
             return MagicMock()
         Vdsm._secureConnect = fakeSecureConnect
-        self.vdsm = Vdsm(self.logger, config, None)
+        self.vdsm = Vdsm(self.logger, config, Datastore(), None)
         self.vdsm.prepare()
 
     def test_connect(self):

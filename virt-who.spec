@@ -5,7 +5,7 @@
 %endif
 
 Name:           virt-who
-Version:        0.20.1
+Version:        0.20.2
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -127,6 +127,21 @@ fi
 
 
 %changelog
+* Thu Jul 13 2017 Christopher Snyder <csnyder@redhat.com> 0.20.2-1
+- 1458184: better reading of environment variables (jhnidek@redhat.com)
+- 1401867: Enable logging of rhsm module to rhsm.log (jhnidek@redhat.com)
+- 1404117: Check parameter consistency and refactoring (jhnidek@redhat.com)
+- Adds a patch number to virt-who versioning (csnyder@redhat.com)
+- 1401420: xen supports only uuid/hostname as hypervisor_id
+  (jhnidek@redhat.com)
+- 1458674: Update use of result data to match the new async api
+  (csnyder@redhat.com)
+- 1452436: virt-who prints host-to-quest mapping everytime (jhnidek@redhat.com)
+- 1357761: Do not check passwords to be in latin1 encoding (jhnidek@redhat.com)
+- 1457101: Continue running despite malformed configs (csnyder@redhat.com)
+- 1409984: Retry initial report retrieval on connection timeout
+  (csnyder@redhat.com)
+
 * Fri Jun 09 2017 Christopher Snyder <csnyder@redhat.com> 0.20-1
 - 1389729: Add missing xml section for test (fran@caosdigital.com)
 - 1389729: virt-who incorrectly reports 'name' instead of 'hostname' for RHEV

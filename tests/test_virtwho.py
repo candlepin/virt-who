@@ -27,7 +27,7 @@ from mock import patch, Mock, sentinel, ANY, call
 from base import TestBase
 
 from virtwho import util
-from virtwho.config import Config, ConfigManager, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import Config, DestinationToSourceMapper, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
 from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import (
     HostGuestAssociationReport, Hypervisor, Guest,

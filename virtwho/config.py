@@ -504,6 +504,11 @@ class Config(GeneralConfig):
         config = Config(name, virtwho_type, defaults, **options)
         return config
 
+    @classmethod
+    def from_config_section(cls, name, section):
+        virtwho_type = section.get('type')
+        return Config(name, virtwho_type, **section)
+
     @property
     def hash(self):
         return hashlib.sha256(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
@@ -529,60 +534,19 @@ class StripQuotesConfigParser(SafeConfigParser):
         return value
 
 
-class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, defaults=None):
-        if not defaults:
-            try:
-                defaults_from_config = parse_file(VW_GENERAL_CONF_PATH).get(VW_VIRT_DEFAULTS_SECTION_NAME)
-                self._defaults = defaults_from_config or {}
-            except MissingSectionHeaderError:
-                self._defaults = {}
-        else:
-            self._defaults = defaults
-        if config_dir is None:
-            config_dir = VW_CONF_DIR
-        parser = StripQuotesConfigParser()
-        self._configs = []
+class DestinationToSourceMapper(object):
+    def __init__(self, effective_config):
+        self._configs = effective_config.virt_sections()
         self.logger = logger
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
-        all_dir_content = None
-        conf_files = None
-        non_conf_files = None
-        try:
-            all_dir_content = set(os.listdir(config_dir))
-            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
-            non_conf_files = all_dir_content - conf_files
-        except OSError:
-            self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
-            return
-        if not all_dir_content:
-            self.logger.warn("Configuration directory '%s' appears empty", config_dir)
-        elif not conf_files:
-            self.logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                             "is not empty", config_dir)
-        elif non_conf_files:
-            self.logger.debug("There are files in '%s' not ending in '*.conf' is this "
-                              "intentional?", config_dir)
-
-        for conf in conf_files:
-            if conf.startswith('.'):
-                continue
-            try:
-                filename = parser.read(os.path.join(config_dir, conf))
-                if len(filename) == 0:
-                    self.logger.error("Unable to read configuration file %s", conf)
-            except MissingSectionHeaderError:
-                self.logger.error("Configuration file %s contains no section headers", conf)
-
-        self._readConfig(parser)
+        #self._read_effective_config(effective_config=effective_config)
         self.update_dest_to_source_map()
 
     def update_dest_to_source_map(self):
         sources, dests, d_to_s, orphan_sources = \
-            ConfigManager.map_destinations_to_sources(
-                self._configs)
+            DestinationToSourceMapper.map_destinations_to_sources(self._configs)
         if orphan_sources:
             d_to_s[default_destination_info] = orphan_sources
             dests.add(default_destination_info)
@@ -590,10 +554,14 @@ class ConfigManager(object):
         self.dests = dests
         self.dest_to_sources_map = d_to_s
 
-    def _readConfig(self, parser):
-        for section in parser.sections():
+    def _read_effective_config(self, effective_config):
+        for name, section in effective_config.items():
+            if name == VW_GLOBAL:
+                continue
             try:
-                config = Config.fromParser(section, parser, self._defaults)
+                # TODO: Remove the Config Class entirely
+                # This is intermediary
+                config = Config.from_config_section(name, section)
                 config.checkOptions(self.logger)
                 self._configs.append(config)
             except NoOptionError as e:
@@ -604,13 +572,6 @@ class ConfigManager(object):
                 # When a configuration section has an Invalid Option, continue
                 # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
                 self.logger.warn("Invalid configuration detected: %s", str(e))
-
-    def readFile(self, filename):
-        parser = StripQuotesConfigParser()
-        fname = parser.read(filename)
-        if len(fname) == 0:
-            self.logger.error("Unable to read configuration file %s", filename)
-        self._readConfig(parser)
 
     @staticmethod
     def map_destinations_to_sources(configs, dest_classes=(Satellite5DestinationInfo, Satellite6DestinationInfo)):
@@ -625,7 +586,7 @@ class ConfigManager(object):
         config object
         @type dest_classes: Iterable
 
-        @rtype: (set, set, dict)
+        @rtype: (set, set, dict, set)
         """
 
         # Will include the names of the configs
@@ -642,16 +603,15 @@ class ConfigManager(object):
         # mapping
         # of destination to
         # sources
-        for config in configs:
-            sources.add(config.name)
-            sources_without_destinations.add(config.name)
-            for dest in ConfigManager.parse_dests_from_dict(config._options,
-                                                            dest_classes):
+        for name, config in configs:
+            sources.add(name)
+            sources_without_destinations.add(name)
+            for dest in DestinationToSourceMapper.parse_dests_from_dict(config,
+                                                                        dest_classes):
                 dests.add(dest)
                 current_sources = dest_to_source_map.get(dest, set())
-                current_sources.update(set([config.name]))
-                sources_without_destinations.difference_update(
-                        set([config.name]))
+                current_sources.update(set([name]))
+                sources_without_destinations.difference_update(set([name]))
                 dest_to_source_map[dest] = current_sources
         for dest, source_set in dest_to_source_map.iteritems():
             dest_to_source_map[dest] = sorted(list(source_set))
@@ -691,21 +651,43 @@ class ConfigManager(object):
     def configs(self):
         return self._configs
 
-    def addConfig(self, config):
+    def add_config(self, config):
         self._configs.append(config)
 
 
+def _all_parser_sections(parser):
+    all_sections = {}
+    for section in parser.sections():
+        all_sections[section] = {}
+        for option in parser.options(section):
+            all_sections[section][option] = parser.get(section, option)
+    return all_sections
+
+
 def parse_file(filename):
-    # Parse a file into a dict of section_name: options_dict
+    # Parse a file into a dict of name: options_dict
     # options_dict is a dict of option_name: value
     parser = StripQuotesConfigParser()
-    fname = parser.read(filename)
-    if len(fname) == 0 and logger:
-        logger.error("Unable to read configuration file %s", filename)
-    sections = parser._sections
-    for section in sections:
-        if '__name__' in sections[section]:
-            del sections[section]['__name__']
+    sections = {}
+    try:
+        fname = parser.read(filename)
+        if len(fname) == 0:
+            logger.error("Unable to read configuration file %s", filename)
+        else:
+            sections = _all_parser_sections(parser)
+    except MissingSectionHeaderError:
+        logger.error("Configuration file %s contains no section headers", filename)
+    except NoOptionError as e:
+        logger.error(str(e))
+    except InvalidPasswordFormat as e:
+        logger.error(str(e))
+    except InvalidOption as e:
+        # When a configuration section has an Invalid Option, continue
+        # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
+        logger.warn("Invalid configuration detected: %s", str(e))
+    except Exception as e:
+        logger.error('Config file "%s" skipped because of an error: %s',
+                     filename, str(e))
     return sections
 
 # Helper methods used to validate parameters given to virt-who
@@ -777,7 +759,7 @@ class ConfigSection(collections.MutableMapping):
     __marker = object()
 
     def __init__(self, section_name, wrapper):
-        self.section_name = section_name
+        self.name = section_name
         self._wrapper = wrapper
         self.defaults = dict(self.DEFAULTS)
         # Those properties that have yet to be validated
@@ -799,7 +781,7 @@ class ConfigSection(collections.MutableMapping):
             yield (key, self._values[key])
 
     def items(self):
-        return [(key, self[key]) for key in self]
+        return util.DictItemsIter(self)
 
     def __iter__(self):
         return iter(self._values.keys())
@@ -837,16 +819,29 @@ class ConfigSection(collections.MutableMapping):
     def __getitem__(self, key):
         return self._values[key]
 
-    def validate(self, validation_messages=None):
-        validation_messages = validation_messages or []
+    def validate(self):
+        validation_messages = []
         # Do validation in subclasses
         self.validation_messages = validation_messages
+        if len(self._values) == 0:
+            validation_messages.append(('warning', 'No values provided'))
+
+        if 'virttype' in self._values:
+            self._values['type'] = self._values['virttype']
         # Finally calls _update_state
         self._update_state()
         return validation_messages
 
     def is_default(self, key):
         return self.defaults[key] == self._values[key]
+
+    def is_section_default(self):
+        """
+        :return: This method returns True if this ConfigSection instance has exactly the same 
+        keys and values as the defined defaults (if any).
+        :rtype: bool
+        """
+        return all(self.has_default(key) and self.is_default(key) for key in self)
 
     def has_default(self, key):
         return key in self.defaults
@@ -860,8 +855,8 @@ class ConfigSection(collections.MutableMapping):
             raise e
 
     def __str__(self):
-        return_string = "[%s]" % self.section_name
-        for key, value in self.iteritems():
+        return_string = "[%s]" % self.name
+        for key, value in self.items():
             return_string += "\n%s=%s" % (key, value)
         return return_string
 
@@ -886,6 +881,9 @@ class ConfigSection(collections.MutableMapping):
         for key, value in kwds.items():
             self._values[key] = value
 
+    def is_valid(self):
+        return self.state == ValidationState.VALID
+
     @classmethod
     def get_defaults(cls):
         """
@@ -905,7 +903,7 @@ class ConfigSection(collections.MutableMapping):
         clazz = ConfigSection
         # TODO: Update to use actual subclasses as the are created
         for subclass in cls.__subclasses__():
-            if subclass.VIRT_TYPE == virt_type:
+            if getattr(subclass, 'VIRT_TYPE', None) == virt_type:
                 clazz = subclass
                 break
         return clazz
@@ -913,7 +911,9 @@ class ConfigSection(collections.MutableMapping):
     @classmethod
     def from_dict(cls, values, section_name, wrapper):
         virt_type = values.get('virttype', None) or values.get('type')
-        return cls.class_for_type(virt_type)(section_name, wrapper)
+        section = cls.class_for_type(virt_type)(section_name, wrapper)
+        section.update(**values)
+        return section
 
 
 class GlobalSection(ConfigSection):
@@ -965,7 +965,7 @@ class GlobalSection(ConfigSection):
             filtered_items = [item for item in self._values['configs'] if isinstance(item, str)]
             self._values['configs'] = filtered_items
         elif isinstance(self._values['configs'], str):
-            self._values['configs'] = self._values['configs'].split(',')
+            self._values['configs'] = parse_list(self._values['configs'])
         else:
             result = ('warning', '"configs" must be one or more strings, '
                                                    'ignoring')
@@ -980,8 +980,11 @@ class GlobalSection(ConfigSection):
             result = ('warning', '%s cannot be empty, using default' % key)
         return result
 
-    def validate(self, validation_messages=None):
-        validation_messages = super(GlobalSection, self).validate(validation_messages)
+    def validate(self):
+        if not self._unvalidated_keys:
+            # Do not override validation_messages if there is nothing to validate
+            return self.validation_messages
+        validation_messages = super(GlobalSection, self).validate()
         to_reset = set()
         # Validate those keys that need to be validated
         for key in set(self._unvalidated_keys):
@@ -1007,7 +1010,7 @@ class GlobalSection(ConfigSection):
                 validation_messages.append(error)
                 if key not in ['interval']:  # Special cases not reset to default on failure
                     to_reset.add(key)
-                self._invalid_keys.add(key)
+                    self._invalid_keys.add(key)
             self._unvalidated_keys.remove(key)
 
         for key in to_reset:
@@ -1029,6 +1032,7 @@ DEFAULTS = {
     VW_GLOBAL: GlobalSection.get_defaults(),
     VW_ENV_CLI_SECTION_NAME: {
         'smtype': 'sam',
+        'virttype': 'libvirt',
     },
 }
 
@@ -1038,6 +1042,7 @@ class EffectiveConfig(collections.MutableMapping):
     This object represents the total configuration of virt-who including all global parameters
     and all sections that define a source or destination.
     """
+    __metaclass__ = util.Singleton
 
     __marker = object()
 
@@ -1046,7 +1051,7 @@ class EffectiveConfig(collections.MutableMapping):
 
     def __delitem__(self, key):
         if key in self:
-            del self[key]
+            del self._sections[key]
         else:
             raise KeyError("Unable to delete nonexistant section '%s'" % key)
 
@@ -1063,7 +1068,7 @@ class EffectiveConfig(collections.MutableMapping):
         return item in self._sections
 
     def items(self):
-        return [(key, self[key]) for key in self]
+        return util.DictItemsIter(self)
 
     def __init__(self):
         self.validation_messages = []
@@ -1075,9 +1080,12 @@ class EffectiveConfig(collections.MutableMapping):
             # This next check will not be necessary after we know that all sections are
             # ConfigSections
             if getattr(section, 'validate', None) is not None:
-                section.validate(validation_messages=validation_messages)
+                validation_messages.extend(section.validate())
         self.validation_messages = validation_messages
         return validation_messages
+
+    def is_valid(self):
+        return all(child.state == ValidationState.VALID for (name, child) in self.items())
 
     @staticmethod
     def filter_parameters(desired_parameters, values_to_filter):
@@ -1096,42 +1104,35 @@ class EffectiveConfig(collections.MutableMapping):
         return matching_parameters, non_matching_parameters
 
     @staticmethod
-    def all_drop_dir_config_sections():
+    def all_drop_dir_config_sections(config_dir=VW_CONF_DIR):
         """
         Read all configuration sections in the default config directory
-        :return: a dictionary of {section_name: {key: value, ... } ... }
+        :return: a dictionary of {name: {key: value, ... } ... }
         """
         parser = StripQuotesConfigParser()
-        all_dir_content = None
-        conf_files = None
-        non_conf_files = None
         try:
-            all_dir_content = set(os.listdir(VW_CONF_DIR))
+            all_dir_content = set(os.listdir(config_dir))
             conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
             non_conf_files = all_dir_content - conf_files
         except OSError:
-            logger.warn("Configuration directory '%s' doesn't exist or is not accessible", VW_CONF_DIR)
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible",
+                        config_dir)
             return {}
 
         if not all_dir_content:
-            logger.warn("Configuration directory '%s' appears empty", VW_CONF_DIR)
+            logger.warn("Configuration directory '%s' appears empty", config_dir)
         elif not conf_files:
             logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                             "is not empty", VW_CONF_DIR)
+                             "is not empty", config_dir)
         elif non_conf_files:
             logger.debug("There are files in '%s' not ending in '*.conf' is this "
-                              "intentional?", VW_CONF_DIR)
-
+                              "intentional?", config_dir)
+        all_sections = {}
         for conf in conf_files:
             if conf.startswith('.'):
                 continue
-            try:
-                filename = parser.read(os.path.join(VW_CONF_DIR, conf))
-                if len(filename) == 0:
-                    logger.error("Unable to read configuration file %s", conf)
-            except MissingSectionHeaderError:
-                logger.error("Configuration file %s contains no section headers", conf)
-        return parser._sections
+            all_sections.update(parse_file(os.path.join(config_dir, conf)))
+        return all_sections
 
     def is_default(self, section, option):
         return self._sections[section].is_default(option)
@@ -1139,8 +1140,48 @@ class EffectiveConfig(collections.MutableMapping):
     def get(self, section, default=__marker):
         return self._sections[section]
 
+    def virt_sections(self):
+        """
+        :return: list of sections that represent virt_backends
+        """
+        return [(name, section) for (name, section) in self.items()
+                if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME]]
 
-def init_config(env_options, cli_options):
+
+def _check_effective_config_validity(effective_config):
+    validation_errors = []
+    effective_config.validate()
+
+    valid_virt_sections = [(name, section) for (name, section) in effective_config.virt_sections()
+                           if section.is_valid()]
+
+    if not valid_virt_sections:
+        has_non_default_env_cli = False
+        validation_errors.append(('warning', 'No valid configurations found'))
+        # Check if ENV_CLI is default, if not fail
+        for name, section in effective_config.items():
+            if name == VW_GLOBAL:
+                # Always keep the global section
+                continue
+            if name == VW_ENV_CLI_SECTION_NAME:
+                has_non_default_env_cli = True
+            validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))
+            del effective_config[name]
+        validation_errors.append(('warning',
+                                  'Using default "%s" configuration' % VW_ENV_CLI_SECTION_NAME))
+        # In order to keep compatibility with older releases of virt-who,
+        # fallback to using libvirt as default virt backend
+        # only if we did not have a non_default env/cmdline config
+        if not has_non_default_env_cli:
+            effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
+                    DEFAULTS[VW_ENV_CLI_SECTION_NAME],
+                    VW_ENV_CLI_SECTION_NAME,
+                    effective_config)
+
+    effective_config.validate()
+    return effective_config, validation_errors
+
+def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     """
     Initialize and return the effective virt-who configuration
     :param env_options: The dict of options parsed from the environment
@@ -1148,12 +1189,13 @@ def init_config(env_options, cli_options):
     :return: EffectiveConfig
     """
     validation_errors = []
-    effective_config = get_effective_config()
+    effective_config = EffectiveConfig()
     global logger  # Use module level logger as this is likely called before other logging init
 
     effective_config[VW_GLOBAL] = GlobalSection(VW_GLOBAL, effective_config)
     effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection(VW_ENV_CLI_SECTION_NAME,
                                                               effective_config)
+    effective_config[VW_ENV_CLI_SECTION_NAME].defaults = DEFAULTS[VW_ENV_CLI_SECTION_NAME]
 
     global_required_params = effective_config[VW_GLOBAL].defaults.keys()
 
@@ -1191,9 +1233,19 @@ def init_config(env_options, cli_options):
             if key:
                 effective_config[VW_ENV_CLI_SECTION_NAME][key.lower()] = value
 
-    # This will add all sections named something other than 'global' or 'defaults' in
-    # the main configuration file "/etc/virt-who.conf"
-    for section, values in vw_conf.items():
+    if effective_config[VW_ENV_CLI_SECTION_NAME].is_section_default():
+        del effective_config[VW_ENV_CLI_SECTION_NAME]
+
+    all_sections_to_add = {}
+    # read additional sections from /etc/virt-who.conf
+    all_sections_to_add.update(vw_conf)
+    # also read all sections in conf files in the drop dir
+    all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+    # also read the files in the configs list from the configs var if defined
+    for file_name in effective_config[VW_GLOBAL]['configs']:
+        all_sections_to_add.update(parse_file(filename=file_name))
+
+    for section, values in all_sections_to_add.items():
         new_section = {}
         new_section.update(**virt_defaults_section)
         new_section.update(**values)
@@ -1204,35 +1256,14 @@ def init_config(env_options, cli_options):
             continue
         effective_config[section] = new_section
 
-    # Add each section of each file in the drop directory
-    drop_dir_config_sections = effective_config.all_drop_dir_config_sections()
-    for section, values in drop_dir_config_sections.items():
-        new_section = {}
-        new_section.update(**virt_defaults_section)
-        new_section.update(**values)
-        try:
-            new_section = ConfigSection.from_dict(new_section, section, self)
-        except KeyError:
-            # Missing required attribute
-            continue
-        effective_config[section] = new_section
+    effective_config, errors = _check_effective_config_validity(effective_config)
+    validation_errors.extend(errors)
 
-    global _effective_config
-    _effective_config = effective_config
-    effective_config.validate()
+    # Log pending errors
+    for err in validation_errors:
+        method = getattr(logger, err[0])
+        if method is not None:
+            method(err[1])
 
     return effective_config
 
-
-def get_effective_config():
-    """
-    The effective config virt-who is presently running with. If there is not one, 
-    create an empty one. This should likely never be called outside module scope.
-    Returns: EffectiveConfig
-    """
-    global _effective_config
-    if _effective_config is not None:
-        return _effective_config
-    # We don't have one, let us make one
-    _effective_config = EffectiveConfig()
-    return _effective_config  # Initialize an EffectiveConfig with no options

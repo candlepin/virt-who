@@ -61,9 +61,9 @@ def libvirt_cred_request(credentials, config):
     """ Callback function for requesting credentials from libvirt """
     for credential in credentials:
         if credential[0] == libvirt.VIR_CRED_AUTHNAME:
-            credential[4] = config.username
+            credential[4] = config.get('username', None)
         elif credential[0] == libvirt.VIR_CRED_PASSPHRASE:
-            credential[4] = config.password
+            credential[4] = config.get('password', None)
         else:
             return -1
     return 0
@@ -111,12 +111,12 @@ class Libvirtd(Virt):
         return self.virt.getType()
 
     def isHypervisor(self):
-        return bool(self.config.server)
+        return bool(self.config.get('server', None))
 
     def _get_url(self):
-        if self.config.server:
+        if self.config.get('server', None):
             scheme = username = netloc = path = None
-            url = self.config.server
+            url = self.config['server']
             if "//" not in url:
                 url = "//" + url
             splitted_url = urlparse.urlsplit(url)
@@ -129,8 +129,8 @@ class Libvirtd(Virt):
                 self.logger.info("Protocol is not specified in libvirt url, using qemu+ssh://")
                 scheme = 'qemu+ssh'
 
-            if self.config.username:
-                username = self.config.username
+            if self.config.get('username', None):
+                username = self.config['username']
             elif splitted_url.username:
                 username = splitted_url.username
 
@@ -160,7 +160,7 @@ class Libvirtd(Virt):
         url = self._get_url()
         self.logger.info("Using libvirt url: %s", url if url else '""')
         try:
-            if self.config.password:
+            if self.config.get('password', None):
                 auth = [[libvirt.VIR_CRED_AUTHNAME, libvirt.VIR_CRED_PASSPHRASE], libvirt_cred_request, self.config]
                 v = libvirt.openAuth(url, auth, libvirt.VIR_CONNECT_RO)
             else:
@@ -282,15 +282,15 @@ class Libvirtd(Virt):
         return self._host_capabilities_xml
 
     def _remote_host_id(self):
-        if self._host_uuid is None:
-            if self.config.hypervisor_id == 'uuid':
+        if self._host_uuid is None and self.config.get('hypervisor_id', None) is not None:
+            if self.config.get('hypervisor_id', None) == 'uuid':
                 self._host_uuid = self.host_capabilities_xml.find('host/uuid').text
-            elif self.config.hypervisor_id == 'hostname':
+            elif self.config.get('hypervisor_id', None) == 'hostname':
                 self._host_uuid = self.virt.getHostname()
             else:
                 raise VirtError(
                     'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
-                    self.config.hypervisor_id)
+                    self.config.get('hypervisor_id', None))
         return self._host_uuid
 
     def _remote_host_name(self):

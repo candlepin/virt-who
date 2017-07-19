@@ -4,15 +4,20 @@
 %global python2_sitelib %{python_sitelib}
 %endif
 
+%global release_number 1
+
+%global git_tag %{name}-%{version}-%{release_number}
+
+
 Name:           virt-who
 Version:        0.20.3
-Release:        1%{?dist}
+Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
 License:        GPLv2+
 URL:            https://github.com/virt-who/virt-who
-Source0:        https://fedorahosted.org/releases/v/i/virt-who/%{name}-%{version}.tar.gz
+Source0:        https://codeload.github.com/virt-who/virt-who/tar.gz/%{git_tag}#/%{name}-%{version}.tar.gz
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildArch:      noarch
@@ -129,10 +134,6 @@ fi
 
 
 %changelog
-* Tue Jul 25 2017 Christopher Snyder <csnyder@redhat.com> 0.20.3-1
-- python-argparse is required for Python 2.6 on EL6 (evgeni@golov.de)
-- update URLs to point to GitHub instead of fedorahosted.org (evgeni@golov.de)
-
 * Thu Jul 13 2017 Christopher Snyder <csnyder@redhat.com> 0.20.2-1
 - 1458184: better reading of environment variables (jhnidek@redhat.com)
 - 1401867: Enable logging of rhsm module to rhsm.log (jhnidek@redhat.com)

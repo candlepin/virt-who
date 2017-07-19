@@ -11,7 +11,7 @@ Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
 License:        GPLv2+
-URL:            https://fedorahosted.org/virt-who/
+URL:            https://github.com/virt-who/virt-who
 Source0:        https://fedorahosted.org/releases/v/i/virt-who/%{name}-%{version}.tar.gz
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 

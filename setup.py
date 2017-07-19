@@ -91,7 +91,7 @@ setup(
     author='Radek Novacek',
     author_email='rnovacek@redhat.com',
     license='LICENSE',
-    url='https://fedorahosted.org/virt-who/',
+    url='https://github.com/virt-who/virt-who',
     packages=find_packages(),
     entry_points={
         'console_scripts': [

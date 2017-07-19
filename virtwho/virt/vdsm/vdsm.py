@@ -2,7 +2,7 @@
 Module for accessing vdsm, part of virt-who
 
 Parts of this file is based on rhn-virtualization from spacewalk
-http://git.fedorahosted.org/git/?p=spacewalk.git;a=tree;f=client/tools/rhn-virtualization
+https://github.com/spacewalkproject/spacewalk/tree/master/client/tools/rhn-virtualization
 
 Copyright (C) 2011 Radek Novacek <rnovacek@redhat.com>
 

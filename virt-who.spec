@@ -27,6 +27,8 @@ Requires:       python-suds
 # m2crypto is required for Hyper-V support
 Requires:       m2crypto
 Requires:       python-requests
+# python-argparse is required for Python 2.6 on EL6
+%{?el6:Requires: python-argparse}
 
 %if %{use_systemd}
 Requires: systemd-python

@@ -5,7 +5,7 @@
 %endif
 
 Name:           virt-who
-Version:        0.20.2
+Version:        0.20.3
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -129,6 +129,10 @@ fi
 
 
 %changelog
+* Tue Jul 25 2017 Christopher Snyder <csnyder@redhat.com> 0.20.3-1
+- python-argparse is required for Python 2.6 on EL6 (evgeni@golov.de)
+- update URLs to point to GitHub instead of fedorahosted.org (evgeni@golov.de)
+
 * Thu Jul 13 2017 Christopher Snyder <csnyder@redhat.com> 0.20.2-1
 - 1458184: better reading of environment variables (jhnidek@redhat.com)
 - 1401867: Enable logging of rhsm module to rhsm.log (jhnidek@redhat.com)

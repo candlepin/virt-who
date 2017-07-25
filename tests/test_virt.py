@@ -9,7 +9,7 @@ from stubs import StubEffectiveConfig
 from mock import Mock, patch, call
 from threading import Event
 
-from virtwho.config import ConfigManager, Config, VW_GLOBAL
+from virtwho.config import DestinationToSourceMapper, Config, VW_GLOBAL
 from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
     DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport
@@ -65,7 +65,7 @@ owner=owner
 env=env
 {config}
 """.format(config=config))
-        config_manager = ConfigManager(self.logger, config_dir)
+        config_manager = DestinationToSourceMapper(self.logger, config_dir)
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0]
 

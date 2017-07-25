@@ -7,7 +7,7 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import Config, ConfigManager, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -171,7 +171,7 @@ rhsm_username=user
 rhsm_password=passwd
 """)
 
-        config_manager = ConfigManager(self.logger, config_dir)
+        config_manager = DestinationToSourceMapper(self.logger, config_dir)
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0]
         manager = Manager.fromOptions(self.logger, Mock(), config)
@@ -230,7 +230,7 @@ rhsm_username=user
 rhsm_password=passwd
 """)
 
-        config_manager = ConfigManager(self.logger, config_dir)
+        config_manager = DestinationToSourceMapper(self.logger, config_dir)
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0]
         manager = Manager.fromOptions(self.logger, Mock(), config)

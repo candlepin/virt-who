@@ -297,7 +297,7 @@ class IntervalThread(Thread):
         self.dest = dest
         self._internal_terminate_event = Event()
         self.terminate_event = terminate_event or self._internal_terminate_event
-        self.interval = interval or config.interval or DefaultInterval
+        self.interval = interval
         self._oneshot = oneshot
         super(IntervalThread, self).__init__()
 
@@ -867,7 +867,7 @@ class Virt(IntervalThread):
         """
 
         for subcls in cls.__subclasses_list():
-            if config.type == subcls.CONFIG_TYPE:
+            if config['type'] == subcls.CONFIG_TYPE:
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)

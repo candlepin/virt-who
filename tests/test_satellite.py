@@ -31,7 +31,7 @@ from mock import MagicMock, patch
 
 from base import TestBase
 
-from virtwho.config import Config, ConfigManager, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
@@ -354,7 +354,7 @@ type=libvirt
 sat_server=sat.example.com
 """)
 
-        config_manager = ConfigManager(self.logger, config_dir)
+        config_manager = DestinationToSourceMapper(self.logger, config_dir)
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0]
         manager = Manager.fromOptions(self.logger, MagicMock(), config)

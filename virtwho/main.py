@@ -112,6 +112,7 @@ def main():
     logger = options = None
     try:
         logger, options = parse_options()
+        # We now have the effective_config
     except OptionError as e:
         print >> sys.stderr, str(e)
         exit(1, status="virt-who can't be started: %s" % str(e))
@@ -123,64 +124,38 @@ def main():
         print >> sys.stderr, msg
         exit(1, status=msg)
 
+
+    if not options[VW_GLOBAL].is_valid():
+        message = "Required section 'global' is invalid:\n"
+        message += "\n".join([msg for (level, msg) in options[VW_GLOBAL].validation_messages])
+        message += "\n"
+        exit(1, "virt-who can't be started: %s" % message)
+
+    valid_virt_sections = [(name, section) for (name, section) in options.virt_sections()
+                           if section.is_valid()]
+
+    if not valid_virt_sections:
+        err = "virt-who can't be started: no valid configuration found"
+        logger.error(err)
+        exit(1, err)
+
     global executor
+    has_error = False
     try:
         executor = Executor(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
         exit(1, "virt-who can't be started: %s" % str(e))
-    # Attempting to create a "Config" object from the global section
-    env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
-    if env_cli_section.get('virttype', None) is not None:
-        config = Config("env/cmdline", env_cli_section['virttype'],
-                        executor.configManager._defaults, **env_cli_section)
-        try:
-            config.checkOptions(logger)
-        except InvalidOption as e:
-            err = "virt-who can't be started: %s" % str(e)
-            logger.error(err)
-            exit(1, err)
-        executor.configManager.addConfig(config)
-    has_error = False
-    for conffile in options[VW_GLOBAL]['configs']:
-        try:
-            executor.configManager.readFile(conffile)
-        except InvalidPasswordFormat as e:
-            err = "virt-who can't be started: %s" % str(e)
-            logger.error(err)
-            exit(1, err)
-        except Exception as e:
-            logger.error('Config file "%s" skipped because of an error: %s',
-                         conffile, str(e))
-            has_error = True
 
-    if len(executor.configManager.configs) == 0:
-        if has_error:
-            err = "virt-who can't be started: no valid configuration found"
-            logger.error(err)
-            exit(1, err)
-        # In order to keep compatibility with older releases of virt-who,
-        # fallback to using libvirt as default virt backend
-        logger.info("No configurations found (are there any '.conf' files in /etc/virt-who.d?), "
-                    "using libvirt as backend")
-        executor.configManager.addConfig(Config("env/cmdline", "libvirt"))
-
-    executor.configManager.update_dest_to_source_map()
-
-    if len(executor.configManager.dests) == 0:
+    if len(executor.dest_to_source_mapper.dests) == 0:
         if has_error:
             err = "virt-who can't be started: no valid destination found"
             logger.error(err)
             exit(1, err)
 
-    for config in executor.configManager.configs:
-        if config.name is None:
-            logger.info(
-                'Using commandline or sysconfig configuration ("%s" mode)',
-                config.type)
-        else:
-            logger.info('Using configuration "%s" ("%s" mode)', config.name,
-                        config.type)
+    for name, config in executor.dest_to_source_mapper.configs:
+        logger.info('Using configuration "%s" ("%s" mode)', name,
+                    config['type'])
 
     logger.info("Using reporter_id='%s'", options[VW_GLOBAL]['reporter_id'])
     log.closeLogger(logger)

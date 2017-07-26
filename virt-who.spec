@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.20.3
+Version:        0.20.4
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -134,6 +134,9 @@ fi
 
 
 %changelog
+* Wed Jul 26 2017 Christopher Snyder <csnyder@redhat.com> 0.20.4-1
+- Point Source0 to GitHub (csnyder@redhat.com)
+
 * Thu Jul 13 2017 Christopher Snyder <csnyder@redhat.com> 0.20.2-1
 - 1458184: better reading of environment variables (jhnidek@redhat.com)
 - 1401867: Enable logging of rhsm module to rhsm.log (jhnidek@redhat.com)

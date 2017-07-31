@@ -629,9 +629,9 @@ class DestinationThread(IntervalThread):
                                       "Trying again in "
                                       "%s", retry_after)
                     self.interval_modifier = retry_after
-                except (ManagerError, ManagerFatalError):
+                except (ManagerError, ManagerFatalError) as err:
                     self.logger.exception("Error during hypervisor "
-                                          "checkin: ")
+                                          "checkin: %s" % err)
                     if self._oneshot:
                         sources_erred.extend(reports_batched)
                     break

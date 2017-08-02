@@ -571,6 +571,9 @@ class DestinationThread(IntervalThread):
         sources_sent = []  # Sources we have dealt with this run
         sources_erred = []  # Sources with some problems
 
+        total_hypervisors = 0
+        total_guests = 0
+
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
             if isinstance(report, DomainListReport):
@@ -588,6 +591,8 @@ class DestinationThread(IntervalThread):
                 guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
                 self.logger.info('Hosts-to-guests mapping for config "%s": %d hypervisors and %d guests found',
                                  report.config.name, hypervisor_count, guest_count)
+                total_hypervisors += hypervisor_count
+                total_guests += guest_count
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -612,6 +617,9 @@ class DestinationThread(IntervalThread):
             num_429_received = 0
             while result is None and not self.is_terminated():
                 try:
+                    self.logger.info('Sending updated Host-to-guest mapping to "%s" including '
+                                     '%s hypervisors and %s guests', self.config.owner,
+                                     total_hypervisors, total_guests)
                     result = self.dest.hypervisorCheckIn(
                             batch_host_guest_report,
                             options=self.options)

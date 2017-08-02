@@ -179,7 +179,8 @@ class SubscriptionManager(Manager):
 
         is_async = self._is_rhsm_server_async(report, connection)
         serialized_mapping = self._hypervisor_mapping(report, is_async, connection)
-        self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
+        self.logger.debug("Host-to-guest mapping being sent to '%s': %s", report.config.owner,
+                          json.dumps(serialized_mapping, indent=4))
 
         try:
             try:

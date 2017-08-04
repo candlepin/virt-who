@@ -310,43 +310,43 @@ def parse_cli_arguments():
     parser.add_argument("-c", "--config", action="append", dest="configs", default=[],
                         help="Configuration file that will be processed, can be used multiple times")
     parser.add_argument("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(),
-                        help="Write one log file per configured virtualization backend.\n"
+                        help="[Deprecated] Write one log file per configured virtualization backend.\n"
                              "Implies a log_dir of %s/virtwho (Default: all messages are written to a single log file)"
                              % log.DEFAULT_LOG_DIR)
     parser.add_argument("-l", "--log-dir", action="store", dest="log_dir", default=log.DEFAULT_LOG_DIR,
-                        help="The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
+                        help="[Deprecated] The absolute path of the directory to log to. (Default '%s')" % log.DEFAULT_LOG_DIR)
     parser.add_argument("-f", "--log-file", action="store", dest="log_file", default=log.DEFAULT_LOG_FILE,
-                        help="The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
+                        help="[Deprecated] The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
     parser.add_argument("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(),
-                        help="Label host/guest associations obtained by this instance of virt-who with the provided id.")
+                        help="[Deprecated] Label host/guest associations obtained by this instance of virt-who with the provided id.")
 
     virt_group = parser.add_argument_group(
         title="Virtualization backend",
         description="Choose virtualization backend that should be used to gather host/guest associations"
     )
     virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virtType", const="libvirt",
-                            default=None, help="Use libvirt to list virtual guests")
+                            default=None, help="[Deprecated] Use libvirt to list virtual guests")
     virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virtType", const="vdsm",
-                            help="Use vdsm to list virtual guests")
+                            help="[Deprecated] Use vdsm to list virtual guests")
     virt_group.add_argument("--esx", action=StoreVirtType, dest="virtType", const="esx",
-                            help="Register ESX machines using vCenter")
+                            help="[Deprecated] Register ESX machines using vCenter")
     virt_group.add_argument("--xen", action=StoreVirtType, dest="virtType", const="xen",
-                            help="Register XEN machines using XenServer")
+                            help="[Deprecated] Register XEN machines using XenServer")
     virt_group.add_argument("--rhevm", action=StoreVirtType, dest="virtType", const="rhevm",
-                            help="Register guests using RHEV-M")
+                            help="[Deprecated] Register guests using RHEV-M")
     virt_group.add_argument("--hyperv", action=StoreVirtType, dest="virtType", const="hyperv",
-                            help="Register guests using Hyper-V")
+                            help="[Deprecated] Register guests using Hyper-V")
 
     manager_group = parser.add_argument_group(
         title="Subscription manager",
         description="Choose where the host/guest associations should be reported"
     )
     manager_group.add_argument("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6,
-                               help="Report host/guest associations to the Subscription Asset Manager [default]")
+                               help="[Deprecated] Report host/guest associations to the Subscription Asset Manager [default]")
     manager_group.add_argument("--satellite6", action="store_const", dest="smType", const=SAT6,
-                               help="Report host/guest associations to the Satellite 6 server")
+                               help="[Deprecated] Report host/guest associations to the Satellite 6 server")
     manager_group.add_argument("--satellite5", action="store_const", dest="smType", const=SAT5,
-                               help="Report host/guest associations to the Satellite 5 server")
+                               help="[Deprecated] Report host/guest associations to the Satellite 5 server")
     manager_group.add_argument("--satellite", action="store_const", dest="smType", const=SAT5)
 
     # FIXME: Remove all options of virtualization backend. Adding this wasn't happy design decision.
@@ -355,89 +355,90 @@ def parse_cli_arguments():
         description="Use these options with --libvirt"
     )
     libvirt_group.add_argument("--libvirt-owner", action=StoreGroupArgument, dest="owner", default="",
-                               help="Organization who has purchased subscriptions of the products, "
+                               help="[Deprecated] Organization who has purchased subscriptions of the products, "
                                     "default is owner of current system")
     libvirt_group.add_argument("--libvirt-env", action=StoreGroupArgument, dest="env", default="",
-                               help="Environment where the server belongs to, default is environment of current system")
+                               help="[Deprecated] Environment where the server belongs to, default is environment of current system")
     libvirt_group.add_argument("--libvirt-server", action=StoreGroupArgument, dest="server", default="",
-                               help="URL of the libvirt server to connect to, default is empty "
+                               help="[Deprecated] URL of the libvirt server to connect to, default is empty "
                                     "for libvirt on local computer")
     libvirt_group.add_argument("--libvirt-username", action=StoreGroupArgument, dest="username", default="",
-                               help="Username for connecting to the libvirt daemon")
+                               help="[Deprecated] Username for connecting to the libvirt daemon")
     libvirt_group.add_argument("--libvirt-password", action=StoreGroupArgument, dest="password", default="",
-                               help="Password for connecting to the libvirt daemon")
+                               help="[Deprecated] Password for connecting to the libvirt daemon")
 
     esx_group = parser.add_argument_group(
         title="vCenter/ESX options",
         description="Use these options with --esx"
     )
     esx_group.add_argument("--esx-owner", action=StoreGroupArgument, dest="owner", default="",
-                           help="Organization who has purchased subscriptions of the products")
+                           help="[Deprecated] Organization who has purchased subscriptions of the products")
     esx_group.add_argument("--esx-env", action=StoreGroupArgument, dest="env", default="",
-                           help="Environment where the vCenter server belongs to")
+                           help="[Deprecated] Environment where the vCenter server belongs to")
     esx_group.add_argument("--esx-server", action=StoreGroupArgument, dest="server", default="",
-                           help="URL of the vCenter server to connect to")
+                           help="[Deprecated] URL of the vCenter server to connect to")
     esx_group.add_argument("--esx-username", action=StoreGroupArgument, dest="username", default="",
-                           help="Username for connecting to vCenter")
+                           help="[Deprecated] Username for connecting to vCenter")
     esx_group.add_argument("--esx-password", action=StoreGroupArgument, dest="password", default="",
-                           help="Password for connecting to vCenter")
+                           help="[Deprecated] Password for connecting to vCenter")
 
     rhevm_group = parser.add_argument_group(
         title="RHEV-M options",
         description="Use these options with --rhevm"
     )
     rhevm_group.add_argument("--rhevm-owner", action=StoreGroupArgument, dest="owner", default="",
-                             help="Organization who has purchased subscriptions of the products")
+                             help="[Deprecated] Organization who has purchased subscriptions of the products")
     rhevm_group.add_argument("--rhevm-env", action=StoreGroupArgument, dest="env", default="",
-                             help="Environment where the RHEV-M belongs to")
+                             help="[Deprecated] Environment where the RHEV-M belongs to")
     rhevm_group.add_argument("--rhevm-server", action=StoreGroupArgument, dest="server", default="",
-                             help="URL of the RHEV-M server to connect to (preferable use secure connection"
+                             help="[Deprecated] URL of the RHEV-M server to connect to (preferable use secure connection"
                                   "- https://<ip or domain name>:<secure port, usually 8443>)")
     rhevm_group.add_argument("--rhevm-username", action=StoreGroupArgument, dest="username", default="",
-                             help="Username for connecting to RHEV-M in the format username@domain")
+                             help="[Deprecated] Username for connecting to RHEV-M in the format username@domain")
     rhevm_group.add_argument("--rhevm-password", action=StoreGroupArgument, dest="password", default="",
-                             help="Password for connecting to RHEV-M")
+                             help="[Deprecated] Password for connecting to RHEV-M")
 
     hyperv_group = parser.add_argument_group(
         title="Hyper-V options",
         description="Use these options with --hyperv"
     )
     hyperv_group.add_argument("--hyperv-owner", action=StoreGroupArgument, dest="owner", default="",
-                              help="Organization who has purchased subscriptions of the products")
+                              help="[Deprecated] Organization who has purchased subscriptions of the products")
     hyperv_group.add_argument("--hyperv-env", action=StoreGroupArgument, dest="env", default="",
-                              help="Environment where the Hyper-V belongs to")
+                              help="[Deprecated] Environment where the Hyper-V belongs to")
     hyperv_group.add_argument("--hyperv-server", action=StoreGroupArgument, dest="server",
-                              default="", help="URL of the Hyper-V server to connect to")
+                              default="", help="[Deprecated] URL of the Hyper-V server to connect to")
     hyperv_group.add_argument("--hyperv-username", action=StoreGroupArgument, dest="username",
-                              default="", help="Username for connecting to Hyper-V")
+                              default="", help="[Deprecated] Username for connecting to Hyper-V")
     hyperv_group.add_argument("--hyperv-password", action=StoreGroupArgument, dest="password",
-                              default="", help="Password for connecting to Hyper-V")
+                              default="", help="[Deprecated] Password for connecting to Hyper-V")
 
     xen_group = parser.add_argument_group(
         title="XenServer options",
         description="Use these options with --xen"
     )
     xen_group.add_argument("--xen-owner", action=StoreGroupArgument, dest="owner", default="",
-                           help="Organization who has purchased subscriptions of the products")
+                           help="[Deprecated] Organization who has purchased subscriptions of the products")
     xen_group.add_argument("--xen-env", action=StoreGroupArgument, dest="env", default="",
-                           help="Environment where the XenServer belongs to")
+                           help="[Deprecated] Environment where the XenServer belongs to")
     xen_group.add_argument("--xen-server", action=StoreGroupArgument, dest="server", default="",
-                           help="URL of the XenServer server to connect to")
+                           help="[Deprecated] URL of the XenServer server to connect to")
     xen_group.add_argument("--xen-username", action=StoreGroupArgument, dest="username", default="",
-                           help="Username for connecting to XenServer")
+                           help="[Deprecated] Username for connecting to XenServer")
     xen_group.add_argument("--xen-password", action=StoreGroupArgument, dest="password", default="",
-                           help="Password for connecting to XenServer")
+                           help="[Deprecated] Password for connecting to XenServer")
 
     satellite_group = parser.add_argument_group(
         title="Satellite 5 options",
         description="Use these options with --satellite5"
     )
     satellite_group.add_argument("--satellite-server", action="store", dest="sat_server", default="",
-                                 help="Satellite server URL")
+                                 help="[Deprecated] Satellite server URL")
     satellite_group.add_argument("--satellite-username", action="store", dest="sat_username", default="",
-                                 help="Username for connecting to Satellite server")
+                                 help="[Deprecated] Username for connecting to Satellite server")
     satellite_group.add_argument("--satellite-password", action="store", dest="sat_password", default="",
-                                 help="Password for connecting to Satellite server")
+                                 help="[Deprecated] Password for connecting to Satellite server")
+
 
     # Read option from CLI
     cli_options = vars(parser.parse_args())
@@ -457,6 +458,13 @@ def parse_options():
     :return: Tuple of logger and options
     """
 
+    # These options are deprecated
+    DEPRECATED_OPTIONS = ['log_per_config', 'log_dir', 'log_file', 'reporter_id', 'virtType',
+                          'owner', 'env', 'server', 'username', 'password',
+                          'sat_server', 'sat_username', 'sat_password',  'smType']
+    VIRT_TYPE_OPTIONS = ['owner', 'env', 'server', 'username', 'password']
+    SAT_OPTION_MAP = {'sat_server':'satellite-server', 'sat_username':'satellite-username', 'sat_password':'satellite-password'}
+
     # Read command line arguments first
     cli_options, defaults = parse_cli_arguments()
 
@@ -472,6 +480,19 @@ def parse_options():
     # It is possible to initialize logger now
     log.init(options)
     logger = log.getLogger(name='init', queue=False)
+
+
+    for option in DEPRECATED_OPTIONS:
+        display_option = option
+        if option in cli_options and not cli_options[option] == defaults[option]:
+            if option == 'virtType' or option == 'smType':
+                display_option = cli_options[option]
+            elif any(option in s for s in VIRT_TYPE_OPTIONS):
+                display_option = '%s-%s' % (cli_options['virtType'], option)
+            elif option in SAT_OPTION_MAP:
+                display_option = SAT_OPTION_MAP[option]
+            logger.warning("The option --%s is deprecated and will be removed in the next release. "
+                  "Please see 'man virt-who-config' for details on adding a configuration section." % display_option)
 
     # Log pending errors
     for err in errors:

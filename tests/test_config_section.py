@@ -23,8 +23,9 @@ from base import TestBase
 import copy
 
 from virtwho.config import GlobalSection, VirtConfigSection, str_to_bool, VW_TYPES, \
-    MinimumSendInterval, DefaultInterval
+    MinimumSendInterval
 from virtwho.password import Password
+from virtwho.log import DEFAULT_LOG_DIR
 
 
 # Values used for testing VirtConfigSection
@@ -257,8 +258,6 @@ class TestGlobalConfigSection(TestBase):
         del self.global_config._values['interval']
         result = self.global_config._validate_interval()
         self.assertIsNotNone(result)
-        # interval = self.global_config.get('interval')
-        # self.assertEqual(interval, DefaultInterval)
 
     def test_validate_configs(self):
         """
@@ -286,7 +285,6 @@ class TestGlobalConfigSection(TestBase):
         Test the validate method will set default value, when an option
         is missing and default value exist in DEFAULT
         """
-        del self.global_config._values['interval']
         self.global_config.validate()
-        default_interval = self.global_config.get('interval')
-        self.assertEqual(default_interval, DefaultInterval)
+        default_value = self.global_config.get('log_dir')
+        self.assertEqual(default_value, DEFAULT_LOG_DIR)

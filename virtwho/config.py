@@ -1013,13 +1013,9 @@ class GlobalSection(ConfigSection):
                 result = ("warning", message)
                 self._values['interval'] = MinimumSendInterval
         except KeyError:
-            result = ('warning', 'interval is missing, using default')
-            # FIXME: this should be done in validate() of parent class, right?
-            self._values['interval'] = DefaultInterval
+            result = ('warning', 'interval is missing')
         except (TypeError, ValueError) as e:
-            result = ('warning', 'interval was not set to a valid integer: %s, using default.' % str(e))
-            # FIXME: this should be done in validate() of parent class, right?
-            self._values['interval'] = DefaultInterval
+            result = ('warning', 'interval was not set to a valid integer: %s' % str(e))
         return result
 
     def _validate_configs(self):

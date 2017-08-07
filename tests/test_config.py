@@ -32,7 +32,7 @@ from base import TestBase, unittest
 
 from virtwho.config import DestinationToSourceMapper, InvalidOption, GeneralConfig, \
     NotSetSentinel, GlobalConfig, parse_list, Satellite6DestinationInfo, init_config, \
-    EffectiveConfig, reset_effective_config, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
+    EffectiveConfig, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
 from virtwho.password import Password, InvalidKeyFile
 
 default_config_values = {

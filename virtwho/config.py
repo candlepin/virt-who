@@ -690,12 +690,16 @@ def parse_file(filename):
                      filename, str(e))
     return sections
 
+
 # Helper methods used to validate parameters given to virt-who
 def str_to_bool(value):
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        return value.strip().lower() in ['yes', 'true', 'on', '1']
+        if value.strip().lower() in ['yes', 'true', 'on', '1']:
+            return True
+        elif value.strip().lower() in ['no', 'false', 'off', '0']:
+            return False
     raise ValueError("Unable to convert value to boolean")
 
 
@@ -751,6 +755,7 @@ class ConfigSection(collections.MutableMapping):
     dictionary like. This object maintains a state attribute. The state shows if the configuration
     section has passed validation, needs validation, or is invalid for some reason.
     """
+
     # The string representation of all default properties and values
     # Real values should be added in child classes
     DEFAULTS = ()
@@ -759,6 +764,11 @@ class ConfigSection(collections.MutableMapping):
     __marker = object()
 
     def __init__(self, section_name, wrapper):
+        """
+        Initialization of ConfigSection instance
+        :param section_name: The name of section
+        :param wrapper: ?
+        """
         self.name = section_name
         self._wrapper = wrapper
         self.defaults = dict(self.DEFAULTS)
@@ -863,7 +873,7 @@ class ConfigSection(collections.MutableMapping):
     def update(self, *args, **kwds):
         """
         This method implements update as usually defined on a regular dict. The only difference 
-        is a refernce to self is expected.
+        is a reference to self is expected.
         :param *args: Each arg passed if it has a "keys" method we will do the following d[k] = 
             arg[k] for k in arg.keys. If not we treat the arg as iterable (possiblly a tuple of 
             tuples or list of tuples etc). In this case we do the following: for key, val in arg:
@@ -915,8 +925,68 @@ class ConfigSection(collections.MutableMapping):
         section.update(**values)
         return section
 
+    def _validate_str_to_bool(self, key):
+        result = None
+        try:
+            self._values[key] = str_to_bool(self._values[key])
+        except (KeyError, ValueError):
+            if self.has_default(key):
+                self._values[key] = str_to_bool(self.defaults[key])
+                result = (
+                    'warning',
+                    '%s must be a valid boolean, using default. '
+                    'See man virt-who-config for more info' % key
+                )
+            else:
+                result = (
+                    'warning',
+                    '%s must be a valid boolean, ignoring. '
+                    'See man virt-who-config for more info' % key
+                )
+        return result
+
+    def _validate_non_empty_string(self, key):
+        result = None
+        try:
+            value = self._values[key]
+        except KeyError:
+            if self.has_default(key):
+                result = ('warning', 'Value for %s not set, using default' % key)
+        else:
+            if not isinstance(value, str):
+                result = ('warning', '%s is not set to a valid string, using default' % key)
+            elif len(value) == 0:
+                result = ('warning', '%s cannot be empty, using default' % key)
+        return result
+
+
+class VirtConfigSection(ConfigSection):
+    """
+    This class is used for validation of virtualization backend section.
+    It tries o validate options that are common for all virtualization
+    backends supported by virt-who.
+    """
+
+    def __init__(self, section_name, wrapper):
+        super(VirtConfigSection, self).__init__(section_name, wrapper)
+
+    def validate(self):
+        if not self._unvalidated_keys:
+            # Do not override validation_messages if there is nothing to validate
+            return self.validation_messages
+        validation_messages = super(VirtConfigSection, self).validate()
+
+        self._update_state()
+        self.validation_messages = validation_messages
+
+        return validation_messages
+
 
 class GlobalSection(ConfigSection):
+    """
+    Class used for
+    """
+
     DEFAULTS = (
         ('debug', False),
         ('oneshot', False),
@@ -946,17 +1016,6 @@ class GlobalSection(ConfigSection):
             result = ('warning', 'interval was not set to a valid integer: %s' % str(e))
         return result
 
-    def _validate_str_to_bool(self, key):
-        result = None
-        try:
-            self._values[key] = str_to_bool(self._values[key])
-        except (KeyError, ValueError):
-            if self.has_default(key):
-                self._values[key] = str_to_bool(self.defaults[key])
-            result = ('warning', '%s must be a valid boolean, using default. '
-                                                   'See man virt-who-config for more info')
-        return result
-
     def _validate_configs(self):
         result = None
         if self.is_default('configs'):
@@ -967,17 +1026,11 @@ class GlobalSection(ConfigSection):
         elif isinstance(self._values['configs'], str):
             self._values['configs'] = parse_list(self._values['configs'])
         else:
-            result = ('warning', '"configs" must be one or more strings, '
-                                                   'ignoring')
+            result = (
+                'warning',
+                '"configs" must be one or more strings, ignoring'
+            )
             self._values['configs'] = []  # Reset to empty list
-        return result
-
-    def _validate_non_empty_string(self, key):
-        result = None
-        if not isinstance(self._values[key], str):
-            result = ('warning', '%s is not set to a valid string, using default' % key)
-        elif len(self._values[key]) == 0:
-            result = ('warning', '%s cannot be empty, using default' % key)
         return result
 
     def validate(self):
@@ -1181,13 +1234,16 @@ def _check_effective_config_validity(effective_config):
     effective_config.validate()
     return effective_config, validation_errors
 
+
 def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     """
     Initialize and return the effective virt-who configuration
     :param env_options: The dict of options parsed from the environment
     :param cli_options: The dict of options parsed from the CLI
+    :param config_dir: The path to directory containing configuration files
     :return: EffectiveConfig
     """
+
     validation_errors = []
     effective_config = EffectiveConfig()
     global logger  # Use module level logger as this is likely called before other logging init

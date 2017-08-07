@@ -68,8 +68,8 @@ class TestVirtConfigSection(TestBase):
         """
         Test of validation of supported types of virtual backends
         """
-        test_virt_types = VW_TYPES[:]
-        test_virt_types.extend('vmware, kvm, ')
+        test_virt_types = list(VW_TYPES[:])
+        test_virt_types.extend('vmware,' 'kvm')
         for virt_type in test_virt_types:
             self.virt_config._values['type'] = virt_type
             result = self.virt_config._validate_virt_type()

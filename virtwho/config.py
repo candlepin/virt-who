@@ -970,6 +970,17 @@ class VirtConfigSection(ConfigSection):
     def __init__(self, section_name, wrapper):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
 
+    def _validate_virt_type(self):
+        result = None
+        try:
+            virt_type = self._values['type']
+        except KeyError:
+            result = ('warning', 'Virt. type is not set, using default')
+        else:
+            if virt_type not in VW_TYPES:
+                result = ('warning', 'Unsupported virt. type is not set, using default')
+        return result
+
     def validate(self):
         if not self._unvalidated_keys:
             # Do not override validation_messages if there is nothing to validate

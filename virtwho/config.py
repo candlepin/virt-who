@@ -838,9 +838,22 @@ class ConfigSection(collections.MutableMapping):
 
         if 'virttype' in self._values:
             self._values['type'] = self._values['virttype']
+
         # Finally calls _update_state
         self._update_state()
         return validation_messages
+
+    def reset_to_defaults(self, to_reset):
+        """
+        When option is not set correctly or it was not set at all, then
+        this methods tries to set such options to default values.
+        :param to_reset: List of options this method is trying to reset to default values.
+        """
+        for key in to_reset:
+            if self.has_default(key):
+                self._values[key] = self.defaults[key]
+                if key in self._invalid_keys:
+                    self._invalid_keys.remove(key)
 
     def is_default(self, key):
         return self.defaults[key] == self._values[key]
@@ -967,6 +980,39 @@ class VirtConfigSection(ConfigSection):
     backends supported by virt-who.
     """
 
+    DEFAULTS = (
+        ('type', 'libvirt'),
+        ('simplified_vim', True),
+        ('is_hypervisor', True),
+        ('hypervisor_id', 'uuid')
+    )
+    LIST_OPTIONS = (
+        'filter_hosts',
+        'filter_host_uuids',
+        'exclude_hosts',
+        'exclude_host_uuids',
+        'filter_host_parents'
+        'exclude_host_parents',
+    )
+    PASSWORD_OPTIONS = {
+        'encrypted_password': 'password',
+        'rhsm_encrypted_password': 'rhsm_password',
+        'rhsm_encrypted_proxy_password': 'rhsm_proxy_password',
+        'sat_encrypted_password': 'sat_password',
+    }
+    RENAMED_OPTIONS = (
+        ('filter_host_uuids', 'filter_hosts'),
+        ('exclude_host_uuids', 'exclude_hosts'),
+    )
+    # It is usually required to have username in latin1 encoding
+    LATIN1_OPTIONS = (
+        'username', 'rhsm_username', 'rhsm_proxy_user', 'sat_username',
+    )
+    # Password can be usually anything
+    UNENCRYPTED_PASS_OPTIONS = (
+        'password', 'rhsm_password', 'rhsm_proxy_password', 'sat_password',
+    )
+
     def __init__(self, section_name, wrapper):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
 
@@ -978,15 +1024,146 @@ class VirtConfigSection(ConfigSection):
             result = ('warning', 'Virt. type is not set, using default')
         else:
             if virt_type not in VW_TYPES:
-                result = ('warning', 'Unsupported virt. type is not set, using default')
+                result = ('warning', 'Unsupported virt. type is set, using default')
+        return result
+
+    def _validate_unencrypted_password(self, pass_key):
+        """
+        Try to validate unencrypted password. It has to be UTF-8 encoded.
+        :param pass_key: This could be: 'password', 'rhsm_password',
+                         'rhsm_proxy_password' and 'sat_password'
+        """
+        result = None
+        try:
+            password = self._values[pass_key]
+        except KeyError:
+            result = (
+                'warning',
+                'Option: "%s" was not set in configuration: %s' % (pass_key, self.name)
+            )
+        else:
+            if password != NotSetSentinel:
+                try:
+                    password.decode('UTF-8')
+                except UnicodeDecodeError:
+                    result = (
+                        'warning',
+                        "Value: {0} of option '{1}': is not in UTF-8 encoding".format(password, pass_key)
+                    )
+        return result
+
+    def _validate_encrypted_password(self, pass_key):
+        """
+        Try to validate encrypted password. It has to be UTF-8 encoded.
+        :param pass_key: This could be: 'encrypted_password', 'rhsm_encrypted_password',
+                         'rhsm_proxy_encrypted_password' and 'sat_encrypted_password'
+        """
+        result = None
+        decrypted_pass_key = self.PASSWORD_OPTIONS[pass_key]
+        try:
+            pwd = self._values[pass_key]
+        except KeyError:
+            result = (
+                'warning',
+                'Option: "%s" was not set in configuration %s' % (pass_key, self.name)
+            )
+        else:
+            try:
+                self._values[decrypted_pass_key] = Password.decrypt(unhexlify(pwd))
+            except (TypeError, IndexError):
+                result = (
+                    'warning',
+                    "Option \"{option}\" cannot be decrypted, possibly corrupted"
+                    .format(option=pass_key)
+                )
+        return result
+
+    def _validate_username(self, username_key):
+        """
+        Try to validate username
+        :param username_key: Possible values could be: 'username', 'rhsm_username',
+                             'rhsm_proxy_username', 'sat_username'
+        """
+        result = None
+        try:
+            username = self._values[username_key]
+        except KeyError:
+            result = ('warning', 'Option: "username" was not set in configuration')
+        else:
+            if username != NotSetSentinel:
+                try:
+                    username.encode('latin1')
+                except UnicodeEncodeError:
+                    result = (
+                        'warning',
+                        "Value: {0} of option '{1}': is not in latin1 encoding".format(
+                            username.encode('utf-8'),
+                            username_key
+                        )
+                    )
+        return result
+
+    def _validate_server(self):
+        """
+        Try to validate server definition
+        """
+        result = None
+        # Server option must be there for ESX, RHEVM, and HYPERV
+        if 'server' not in self._values:
+            if 'type' in self._values and self._values['type'] in ['libvirt', 'vdsm', 'fake']:
+                self._values['server'] = ''
+            else:
+                result = (
+                    'warning',
+                    "Option 'server' needs to be set in config `%s`" % self.name
+                )
         return result
 
     def validate(self):
+
+        dispatcher = {
+            'type': (self._validate_virt_type, ()),
+            'password': (self._validate_unencrypted_password, ('password',)),
+            'rhsm_password': (self._validate_unencrypted_password, ('rhsm_password',)),
+            'rhsm_proxy_password': (self._validate_unencrypted_password, ('rhsm_proxy_password',)),
+            'sat_password': (self._validate_encrypted_password, ('sat_password',)),
+            'encrypted_password': (self._validate_encrypted_password, ('encrypted_password',)),
+            'encrypted_rhsm_password': (self._validate_encrypted_password, ('rhsm_encrypted_password',)),
+            'encrypted_rhsm_proxy_password': (self._validate_encrypted_password, ('rhsm_proxy_encrypted_password',)),
+            'encrypted_sat_password': (self._validate_encrypted_password, ('sat_encrypted_password',)),
+            'username': (self._validate_username, ('username',)),
+            'rhsm_username': (self._validate_username, ('rhsm_username',)),
+            'rhsm_proxy_username': (self._validate_username, ('rhsm_proxy_username',)),
+            'sat_username': (self._validate_username, ('sat_username',)),
+            'server': (self._validate_server, ())
+        }
+
         if not self._unvalidated_keys:
             # Do not override validation_messages if there is nothing to validate
             return self.validation_messages
-        validation_messages = super(VirtConfigSection, self).validate()
 
+        validation_messages = super(VirtConfigSection, self).validate()
+        to_reset = set()
+        # Validate those keys that need to be validated
+        for key in set(self._unvalidated_keys):
+            error = None
+            try:
+                validation_method, args = dispatcher[key]
+                error = validation_method(*args)
+            except KeyError:
+                # We must not know of this parameter for the GlobalSection
+                validation_messages.append(
+                    ('warning', 'Ignoring unknown configuration option "%s"' % key)
+                )
+                del self._values[key]
+
+            if error is not None:
+                validation_messages.append(error)
+                to_reset.add(key)
+                self._invalid_keys.add(key)
+            self._unvalidated_keys.remove(key)
+
+        self.reset_to_defaults(to_reset)
         self._update_state()
         self.validation_messages = validation_messages
 
@@ -995,7 +1172,7 @@ class VirtConfigSection(ConfigSection):
 
 class GlobalSection(ConfigSection):
     """
-    Class used for
+    Class used for validation of global section
     """
 
     DEFAULTS = (
@@ -1079,11 +1256,7 @@ class GlobalSection(ConfigSection):
                     self._invalid_keys.add(key)
             self._unvalidated_keys.remove(key)
 
-        for key in to_reset:
-            if self.has_default(key):
-                self._values[key] = self.defaults[key]
-                if key in self._invalid_keys:
-                    self._invalid_keys.remove(key)
+        self.reset_to_defaults(to_reset)
 
         if self._values['print']:
             self._values['oneshot'] = True

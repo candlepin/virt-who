@@ -1,5 +1,6 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
@@ -13,14 +14,19 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
+#
 
 """
 Test validating of configuration values.
 """
 
 from base import TestBase
+from mock import MagicMock
+
 import copy
+import tempfile
+import os
+from binascii import hexlify
 
 from virtwho.config import GlobalSection, VirtConfigSection, str_to_bool, VW_TYPES, \
     MinimumSendInterval
@@ -66,7 +72,7 @@ class TestVirtConfigSection(TestBase):
 
     def test_validate_virt_type(self):
         """
-        Test of validation of supported types of virtual backends
+        Test validation of supported types of virtualization backends
         """
         test_virt_types = list(VW_TYPES[:])
         test_virt_types.extend('vmware,' 'kvm')
@@ -80,32 +86,107 @@ class TestVirtConfigSection(TestBase):
                 value = self.virt_config.get('type')
                 self.assertEqual(value, virt_type)
 
+    def test_validate_missing_virt_type(self):
+        """
+        Test validation of missing type of virtualization backend
+        """
+        del self.virt_config._values['type']
+        result = self.virt_config._validate_virt_type()
+        self.assertIsNotNone(result)
+        self.virt_config.validate()
+        virt_type = self.virt_config.get('type')
+        self.assertEqual(virt_type, 'libvirt')
+
+    def test_validate_wrong_virt_type(self):
+        """
+        Test validation of wrong type of virtualization backend
+        """
+        self.virt_config._values['type'] = 'qemu'
+        result = self.virt_config._validate_virt_type()
+        self.assertIsNotNone(result)
+        self.virt_config.validate()
+        virt_type = self.virt_config.get('type')
+        self.assertEqual(virt_type, 'libvirt')
+
     def test_validate_unencrypted_password(self):
         """
         Test of validation of password that is not encrypted
         """
-        result = self.virt_config._validate_password()
+        result = self.virt_config._validate_unencrypted_password('password')
         self.assertIsNone(result)
+
+    def test_validate_unicode_unencrypted_password(self):
+        """
+        Test of validation of password that is not encrypted and it contains some
+        UTF-8 string.
+        """
+        self.virt_config._values['password'] = 'Příšerně žluťoučký kůň pěl úděsné ódy.'
+        result = self.virt_config._validate_unencrypted_password('password')
+        self.assertIsNone(result)
+
+    def mock_pwd_file(self):
+        f, filename = tempfile.mkstemp()
+        self.addCleanup(os.unlink, filename)
+        Password.KEYFILE = filename
+        Password._can_write = MagicMock(retun_value=True)
 
     def test_validate_encrypted_password(self):
         """
         Test of validation of encrypted password
         """
+        self.mock_pwd_file()
+        # Safe current password
         password = self.virt_config['password']
         # Delete unencrypted password first
         del self.virt_config._values['password']
         # Set up encrypted password
-        self.virt_config['encryped_password'] = Password.encrypt(password)
+        self.virt_config._values['encrypted_password'] = hexlify(Password.encrypt(password))
         # Do own testing here
-        result = self.virt_config._validate_password()
+        result = self.virt_config._validate_encrypted_password('encrypted_password')
         self.assertIsNone(result)
+        decrypted_password = self.virt_config.get('password')
+        self.assertEqual(password, decrypted_password)
+
+    def test_validate_missing_encrypted_password(self):
+        """
+        Test of validation of missing encrypted password
+        """
+        result = self.virt_config._validate_encrypted_password('encrypted_password')
+        self.assertIsNotNone(result)
+
+    def test_validate_wrong_encrypted_password(self):
+        """
+        Test of validation of corrupted encrypted password
+        """
+        self.mock_pwd_file()
+        # Safe current password
+        password = self.virt_config['password']
+        # Delete unencrypted password first
+        del self.virt_config._values['password']
+        # Set up corrupted encrypted password
+        encrypted_pwd = Password.encrypt(password)
+        corrupted_encrypted_pwd = 'S' + encrypted_pwd[1:]
+        self.virt_config._values['encrypted_password'] = hexlify(corrupted_encrypted_pwd)
+        # Do own testing here
+        result = self.virt_config._validate_encrypted_password('encrypted_password')
+        self.assertIsNone(result)
+        decrypted_password = self.virt_config.get('password')
+        self.assertNotEqual(password, decrypted_password)
 
     def test_validate_correct_username(self):
         """
         Test of validation of username (it has to include only latin1 characters)
         """
-        result = self.virt_config._validate_username()
+        result = self.virt_config._validate_username('username')
         self.assertIsNone(result)
+
+    def test_validate_missing_username(self):
+        """
+        Test of validation of missing username
+        """
+        del self.virt_config._values['username']
+        result = self.virt_config._validate_username('username')
+        self.assertIsNotNone(result)
 
     def test_validate_wrong_username(self):
         """
@@ -113,7 +194,7 @@ class TestVirtConfigSection(TestBase):
         """
         # First, change username to something exotic ;-)
         self.virt_config['username'] = u'Jiří'
-        result = self.virt_config._validate_username()
+        result = self.virt_config._validate_username('username')
         self.assertIsNotNone(result)
 
     def test_validate_server(self):

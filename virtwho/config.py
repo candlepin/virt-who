@@ -862,7 +862,8 @@ class ConfigSection(collections.MutableMapping):
         """
         Own implementation should be done in subclasses
         """
-        raise RuntimeError("This method should never be called and should be implemented in subclass")
+        # raise RuntimeError("This method should never be called and should be implemented in subclass")
+        pass
 
     def validate(self):
         """
@@ -1152,8 +1153,9 @@ class VirtConfigSection(ConfigSection):
             else:
                 result = (
                     'warning',
-                    "Option 'server' needs to be set in config `%s`" % self.name
+                    "Option 'server' needs to be set in config: '%s'" % self.name
                 )
+
         return result
 
     def _validate_env(self):
@@ -1169,7 +1171,7 @@ class VirtConfigSection(ConfigSection):
             if 'env' not in self:
                 result = (
                     'warning',
-                    "Option `env` needs to be set in config `%s`" % self.name
+                    "Option `env` needs to be set in config: '%s'" % self.name
                 )
         return result
 
@@ -1186,7 +1188,7 @@ class VirtConfigSection(ConfigSection):
             if 'owner' not in self:
                 result = (
                     'warning',
-                    "Option `owner` needs to be set in config `%s`" % self.name
+                    "Option `owner` needs to be set in config: '%s'" % self.name
                 )
         return result
 

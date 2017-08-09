@@ -783,7 +783,6 @@ class ConfigSection(collections.MutableMapping):
         # Add section defaults
         for key, value in self.defaults.items():
             self._values[key] = value
-            self._unvalidated_keys.add(key)
         self._update_state()
 
     def iteritems(self):
@@ -829,31 +828,61 @@ class ConfigSection(collections.MutableMapping):
     def __getitem__(self, key):
         return self._values[key]
 
-    def validate(self):
-        validation_messages = []
-        # Do validation in subclasses
-        self.validation_messages = validation_messages
-        if len(self._values) == 0:
-            validation_messages.append(('warning', 'No values provided'))
-
+    def _pre_validate(self):
+        """
+        Steps necessary to do before evaluation 
+        """
+        # FIXME: add some comments with some explanation
         if 'virttype' in self._values:
             self._values['type'] = self._values['virttype']
 
+        if len(self._unvalidated_keys) == 0:
+            self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
+        else:
+            for default_key in self.defaults.keys():
+                if default_key not in self._unvalidated_keys:
+                    self.validation_messages.append(
+                        ('warning', 'Value for %s not set in: %s, using default: %s' %
+                         (default_key, self.name, self.defaults[default_key]))
+                    )
+
+    def _post_validate(self):
+        """
+        Steps necessary to do after evaluation
+        """
+        for required_key in self.REQUIRED:
+            if required_key not in self:
+                msg = ('error', 'Required option: "%s" is missing in: %s' % (required_key, self.name))
+                self.validation_messages.append(msg)
+        self.reset_to_defaults()
         # Finally calls _update_state
         self._update_state()
-        return validation_messages
 
-    def reset_to_defaults(self, to_reset):
+    def _validate(self):
+        """
+        Own implementation should be done in subclasses
+        """
+        raise RuntimeError("This method should never be called and should be implemented in subclass")
+
+    def validate(self):
+        """
+        Do validation of provided options.
+        :return: list of validation messages
+        """
+        self._pre_validate()
+        self._validate()
+        self._post_validate()
+        return self.validation_messages
+
+    def reset_to_defaults(self):
         """
         When option is not set correctly or it was not set at all, then
         this methods tries to set such options to default values.
-        :param to_reset: List of options this method is trying to reset to default values.
         """
-        for key in to_reset:
+        for key in self._invalid_keys:
             if self.has_default(key):
                 self._values[key] = self.defaults[key]
-                if key in self._invalid_keys:
-                    self._invalid_keys.remove(key)
+        self._invalid_keys = set()
 
     def is_default(self, key):
         return self.defaults[key] == self._values[key]
@@ -963,13 +992,30 @@ class ConfigSection(collections.MutableMapping):
         try:
             value = self._values[key]
         except KeyError:
-            if self.has_default(key):
-                result = ('warning', 'Value for %s not set, using default' % key)
+            if not self.has_default(key):
+                result = ('warning', 'Value for %s not set in: %s' % (key, self.name))
         else:
             if not isinstance(value, str):
                 result = ('warning', '%s is not set to a valid string, using default' % key)
             elif len(value) == 0:
                 result = ('warning', '%s cannot be empty, using default' % key)
+        return result
+
+    def _validate_list(self, list_key):
+        result = None
+        if self.is_default(list_key):
+            self._values[list_key] = []
+        elif isinstance(self[list_key], list):
+            filtered_items = [item for item in self._values[list_key] if isinstance(item, str)]
+            self._values[list_key] = filtered_items
+        elif isinstance(self._values[list_key], str):
+            self._values[list_key] = parse_list(self._values[list_key])
+        else:
+            result = (
+                'warning',
+                'Option "%s" must be one or more strings, ignoring' % list_key
+            )
+            self._values[list_key] = []  # Reset to empty list
         return result
 
 
@@ -982,17 +1028,16 @@ class VirtConfigSection(ConfigSection):
 
     DEFAULTS = (
         ('type', 'libvirt'),
+        ('sm_type', 'sam'),
         ('simplified_vim', True),
         ('is_hypervisor', True),
-        ('hypervisor_id', 'uuid')
-    )
-    LIST_OPTIONS = (
-        'filter_hosts',
-        'filter_host_uuids',
-        'exclude_hosts',
-        'exclude_host_uuids',
-        'filter_host_parents'
-        'exclude_host_parents',
+        ('hypervisor_id', 'uuid'),
+        ('filter_hosts', None),
+        ('filter_host_uuids', None),
+        ('exclude_hosts', None),
+        ('exclude_host_uuids', None),
+        ('filter_host_parents', None),
+        ('exclude_host_parents', None),
     )
     PASSWORD_OPTIONS = {
         'encrypted_password': 'password',
@@ -1003,14 +1048,6 @@ class VirtConfigSection(ConfigSection):
     RENAMED_OPTIONS = (
         ('filter_host_uuids', 'filter_hosts'),
         ('exclude_host_uuids', 'exclude_hosts'),
-    )
-    # It is usually required to have username in latin1 encoding
-    LATIN1_OPTIONS = (
-        'username', 'rhsm_username', 'rhsm_proxy_user', 'sat_username',
-    )
-    # Password can be usually anything
-    UNENCRYPTED_PASS_OPTIONS = (
-        'password', 'rhsm_password', 'rhsm_proxy_password', 'sat_password',
     )
 
     def __init__(self, section_name, wrapper):
@@ -1088,7 +1125,7 @@ class VirtConfigSection(ConfigSection):
         try:
             username = self._values[username_key]
         except KeyError:
-            result = ('warning', 'Option: "username" was not set in configuration')
+            result = ('warning', 'Option: "%s" was not set in configuration: %s' % (username_key, self.name))
         else:
             if username != NotSetSentinel:
                 try:
@@ -1119,7 +1156,47 @@ class VirtConfigSection(ConfigSection):
                 )
         return result
 
-    def validate(self):
+    def _validate_env(self):
+        """
+        Try to validate environment option
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        virt_type = self._values['type']
+        if sm_type == 'sam' and (
+                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
+                (virt_type == 'libvirt' and 'server' in self._values)):
+            if 'env' not in self:
+                result = (
+                    'warning',
+                    "Option `env` needs to be set in config `%s`" % self.name
+                )
+        return result
+
+    def _validate_owner(self):
+        """
+        Try to validate environment option
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        virt_type = self._values['type']
+        if sm_type == 'sam' and (
+                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
+                (virt_type == 'libvirt' and 'server' in self._values)):
+            if 'owner' not in self:
+                result = (
+                    'warning',
+                    "Option `owner` needs to be set in config `%s`" % self.name
+                )
+        return result
+
+    def _validate_filter(self, filter_key):
+        """
+        Try to validate filter option
+        """
+        return self._validate_list(filter_key)
+
+    def _validate(self):
 
         dispatcher = {
             'type': (self._validate_virt_type, ()),
@@ -1135,15 +1212,17 @@ class VirtConfigSection(ConfigSection):
             'rhsm_username': (self._validate_username, ('rhsm_username',)),
             'rhsm_proxy_username': (self._validate_username, ('rhsm_proxy_username',)),
             'sat_username': (self._validate_username, ('sat_username',)),
-            'server': (self._validate_server, ())
+            'server': (self._validate_server, ()),
+            'env': (self._validate_env, ()),
+            'owner': (self._validate_owner, ()),
+            'filter_hosts': (self._validate_filter, ('filter_hosts',)),
         }
 
         if not self._unvalidated_keys:
             # Do not override validation_messages if there is nothing to validate
-            return self.validation_messages
+            return
+        validation_messages = []
 
-        validation_messages = super(VirtConfigSection, self).validate()
-        to_reset = set()
         # Validate those keys that need to be validated
         for key in set(self._unvalidated_keys):
             error = None
@@ -1151,7 +1230,7 @@ class VirtConfigSection(ConfigSection):
                 validation_method, args = dispatcher[key]
                 error = validation_method(*args)
             except KeyError:
-                # We must not know of this parameter for the GlobalSection
+                # We must not know of this parameter for the VirtConfigSection
                 validation_messages.append(
                     ('warning', 'Ignoring unknown configuration option "%s"' % key)
                 )
@@ -1159,15 +1238,11 @@ class VirtConfigSection(ConfigSection):
 
             if error is not None:
                 validation_messages.append(error)
-                to_reset.add(key)
                 self._invalid_keys.add(key)
             self._unvalidated_keys.remove(key)
 
-        self.reset_to_defaults(to_reset)
         self._update_state()
-        self.validation_messages = validation_messages
-
-        return validation_messages
+        self.validation_messages.extend(validation_messages)
 
 
 class GlobalSection(ConfigSection):
@@ -1207,28 +1282,13 @@ class GlobalSection(ConfigSection):
         return result
 
     def _validate_configs(self):
-        result = None
-        if self.is_default('configs'):
-            self._values['configs'] = []
-        elif isinstance(self['configs'], list):
-            filtered_items = [item for item in self._values['configs'] if isinstance(item, str)]
-            self._values['configs'] = filtered_items
-        elif isinstance(self._values['configs'], str):
-            self._values['configs'] = parse_list(self._values['configs'])
-        else:
-            result = (
-                'warning',
-                '"configs" must be one or more strings, ignoring'
-            )
-            self._values['configs'] = []  # Reset to empty list
-        return result
+        return self._validate_list('configs')
 
-    def validate(self):
-        if not self._unvalidated_keys:
-            # Do not override validation_messages if there is nothing to validate
-            return self.validation_messages
-        validation_messages = super(GlobalSection, self).validate()
-        to_reset = set()
+    def _validate(self):
+        """
+        Try to validate global section of virt-who configuration
+        """
+        validation_messages = []
         # Validate those keys that need to be validated
         for key in set(self._unvalidated_keys):
             error = None
@@ -1252,19 +1312,11 @@ class GlobalSection(ConfigSection):
             if error is not None:
                 validation_messages.append(error)
                 if key not in ['interval']:  # Special cases not reset to default on failure
-                    to_reset.add(key)
                     self._invalid_keys.add(key)
             self._unvalidated_keys.remove(key)
 
-        self.reset_to_defaults(to_reset)
-
         if self._values['print']:
             self._values['oneshot'] = True
-
-        self._update_state()
-        self.validation_messages = validation_messages
-
-        return validation_messages
 
 # String representations of all the default configuration for virt-who
 DEFAULTS = {

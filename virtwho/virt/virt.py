@@ -617,9 +617,11 @@ class DestinationThread(IntervalThread):
             num_429_received = 0
             while result is None and not self.is_terminated():
                 try:
-                    self.logger.info('Sending updated Host-to-guest mapping to "%s" including '
-                                     '%s hypervisors and %s guests', self.config.owner,
-                                     total_hypervisors, total_guests)
+                    self.logger.info('Sending updated Host-to-guest mapping to "{owner}" including '
+                                     '{num_hypervisors} hypervisors and {num_guests} '
+                                     'guests'.format(owner=self.config.owner,
+                                                     num_hypervisors=total_hypervisors,
+                                                     num_guests=total_guests))
                     result = self.dest.hypervisorCheckIn(
                             batch_host_guest_report,
                             options=self.options)

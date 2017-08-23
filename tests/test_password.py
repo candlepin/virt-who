@@ -33,7 +33,7 @@ class TestPassword(TestBase):
         f, filename = tempfile.mkstemp()
         self.addCleanup(os.unlink, filename)
         Password.KEYFILE = filename
-        Password._can_write = MagicMock(retun_value=True)
+        Password._can_write = MagicMock(return_value=True)
 
     def testEncrypt(self):
         self.assertEqual(hexlify(

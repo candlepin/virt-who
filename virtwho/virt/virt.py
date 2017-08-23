@@ -39,8 +39,6 @@ except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
     from virtwho.util import OrderedDict
 
-from virtwho import DefaultInterval
-
 
 class VirtError(Exception):
     pass
@@ -143,9 +141,9 @@ class Hypervisor(object):
 
 
 class AbstractVirtReport(object):
-    '''
+    """
     An abstract report from virt backend.
-    '''
+    """
     # The report was just collected, but is not yet being reported
     STATE_CREATED = 1
     # The report is being processed by server
@@ -182,16 +180,16 @@ class AbstractVirtReport(object):
 
 
 class ErrorReport(AbstractVirtReport):
-    '''
+    """
     Report that virt backend fails. Used in oneshot mode to inform
     main thread that no data are coming.
-    '''
+    """
 
 
 class DomainListReport(AbstractVirtReport):
-    '''
+    """
     Report from virt backend about list of virtual guests on given system.
-    '''
+    """
     def __init__(self, config, guests, hypervisor_id=None, state=AbstractVirtReport.STATE_CREATED):
         super(DomainListReport, self).__init__(config, state)
         self._guests = guests
@@ -219,23 +217,23 @@ class DomainListReport(AbstractVirtReport):
 
 
 class HostGuestAssociationReport(AbstractVirtReport):
-    '''
+    """
     Report from virt backend about host/guest association on given hypervisor.
-    '''
+    """
     def __init__(self, config, assoc, state=AbstractVirtReport.STATE_CREATED,
                  exclude_hosts=None, filter_hosts=None):
         super(HostGuestAssociationReport, self).__init__(config, state)
         self._assoc = assoc
         if exclude_hosts is None:
             try:
-                exclude_hosts = self._config.exclude_hosts
-            except AttributeError:
+                exclude_hosts = self._config['exclude_hosts']
+            except KeyError:
                 # We do not have a config that has this attribute
                 pass
         if filter_hosts is None:
             try:
-                filter_hosts = self._config.filter_hosts
-            except AttributeError:
+                filter_hosts = self._config['filter_hosts']
+            except KeyError:
                 # We do not have a config with this attribute
                 pass
         self.exclude_hosts = exclude_hosts

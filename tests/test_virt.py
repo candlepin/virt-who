@@ -9,8 +9,9 @@ from stubs import StubEffectiveConfig
 from mock import Mock, patch, call
 from threading import Event
 
-from virtwho.config import DestinationToSourceMapper, Config, VW_GLOBAL
-from virtwho.manager import ManagerThrottleError, ManagerFatalError
+from virtwho.config import DestinationToSourceMapper, Config, VW_GLOBAL, EffectiveConfig, parse_file, \
+    VirtConfigSection
+from virtwho.manager import ManagerThrottleError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
     DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport
 
@@ -65,9 +66,18 @@ owner=owner
 env=env
 {config}
 """.format(config=config))
-        config_manager = DestinationToSourceMapper(self.logger, config_dir)
+        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        test_conf_values = conf.pop('test')
+        effective_config = EffectiveConfig()
+        effective_config['test'] = VirtConfigSection.from_dict(
+            test_conf_values,
+            'test',
+            effective_config
+        )
+        effective_config.validate()
+        config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
-        config = config_manager.configs[0]
+        config = config_manager.configs[0][1]
 
         included_hypervisor = Hypervisor('12345', guestIds=[
             Guest('guest-2', xvirt, Guest.STATE_RUNNING),

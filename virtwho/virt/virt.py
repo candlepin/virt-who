@@ -576,6 +576,11 @@ class DestinationThread(IntervalThread):
 
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
+            if getattr(self.config, 'owner', None) is None:
+                # If the owner on our config is not defined, set it to the first report that
+                # we've found. This should be ok because destination threads should not be run for
+                # more than one owner.
+                self.config.owner = report.config.owner
             if isinstance(report, DomainListReport):
                 # These are sent one at a time to the destination
                 domain_list_reports.append(source_key)

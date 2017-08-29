@@ -130,7 +130,7 @@ fi
 %ghost %{_sharedstatedir}/%{name}/key
 %{_datadir}/zsh/site-functions/_virt-who
 %{_sysconfdir}/virt-who.d/template.conf
-%{_sysconfdir}/virt-who.conf
+%attr(600, root, root) %config(noreplace) %{_sysconfdir}/virt-who.conf
 
 
 %changelog

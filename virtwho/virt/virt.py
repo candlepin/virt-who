@@ -571,8 +571,16 @@ class DestinationThread(IntervalThread):
         sources_sent = []  # Sources we have dealt with this run
         sources_erred = []  # Sources with some problems
 
+        total_hypervisors = 0
+        total_guests = 0
+
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
+            if getattr(self.config, 'owner', None) is None:
+                # If the owner on our config is not defined, set it to the first report that
+                # we've found. This should be ok because destination threads should not be run for
+                # more than one owner.
+                self.config.owner = report.config.owner
             if isinstance(report, DomainListReport):
                 # These are sent one at a time to the destination
                 domain_list_reports.append(source_key)
@@ -588,6 +596,8 @@ class DestinationThread(IntervalThread):
                 guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
                 self.logger.info('Hosts-to-guests mapping for config "%s": %d hypervisors and %d guests found',
                                  report.config.name, hypervisor_count, guest_count)
+                total_hypervisors += hypervisor_count
+                total_guests += guest_count
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -612,6 +622,11 @@ class DestinationThread(IntervalThread):
             num_429_received = 0
             while result is None and not self.is_terminated():
                 try:
+                    self.logger.info('Sending updated Host-to-guest mapping to "{owner}" including '
+                                     '{num_hypervisors} hypervisors and {num_guests} '
+                                     'guests'.format(owner=self.config.owner,
+                                                     num_hypervisors=total_hypervisors,
+                                                     num_guests=total_guests))
                     result = self.dest.hypervisorCheckIn(
                             batch_host_guest_report,
                             options=self.options)

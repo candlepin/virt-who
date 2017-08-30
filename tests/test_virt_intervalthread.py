@@ -81,8 +81,8 @@ class TestIntervalThreadTiming(TestBase):
             patcher.now = Mock(side_effect=[start_time, end_time])
             interval_thread = self.setup_interval_thread(oneshot=oneshot,
                                                          interval=interval)
-            interval_thread.is_terminated = Mock(side_effect=[False, True])
-            interval_thread.is_registered = Mock(return_value=True)
+            interval_thread.are_consumers_reachable = Mock(side_effect=[False, True])
+            interval_thread.are_consumers_reachable = Mock(return_value=True)
             interval_thread.wait = Mock()
             interval_thread._run()
             interval_thread._get_data.assert_called()

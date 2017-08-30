@@ -215,9 +215,8 @@ class Esx(virt.Virt):
                 continue
 
             if last_version != version or time() > next_update:
-                if self.is_registered() is True:
-                    assoc = self.getHostGuestMapping()
-                    self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+                assoc = self.getHostGuestMapping()
+                self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
                 next_update = time() + self.interval
                 last_version = version
 

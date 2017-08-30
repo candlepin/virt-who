@@ -208,9 +208,15 @@ class Libvirtd(Virt):
 
             time.sleep(1)
             if time.time() > self.next_update:
-                if self.is_registered() is True:
+                self._remote_host_id()
+                if self.are_consumers_reachable(self._host_uuid) is True:
                     report = self._get_report()
                     self._send_data(report)
+                else:
+                    self.logger.info(
+                        'No consumer available for libvirtd hypervisor: %s. Not gathering host-to-guest mapping.',
+                        self._host_uuid
+                    )
                 self.next_update = time.time() + self.interval
 
         if self.eventLoopThread is not None and self.eventLoopThread.isAlive():

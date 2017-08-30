@@ -36,29 +36,52 @@ class Datastore(object):
         Stores the value, retrievable by key, in a threadsafe manner in the
         underlying datastore. (Assumes all items are pickleable)
 
-        @param key: The unique identifier for this value
-        @type  key: str
+        :param key: The unique identifier for this value
+        :type  key: str
 
-        @param value: The object to store
+        :param value: The object to store
         """
+
         with self._datastore_lock:
-            to_store = pickle.dumps(value)
-            self._datastore[key] = to_store
+            self._datastore[key] = pickle.dumps(value)
+
+    def update(self, key, default, func, *args, **kwargs):
+        """
+        Update the value in datastore using provided function
+        :param key: The unique identifier for this value
+        :param default: The default value, when existing value for
+            given key is not found.
+        :param func: Function used for modification of value. It has to
+            accept at least two arguments: key and actual value. The value
+            returned by function will be used as new value in datastore.
+        :param args: Additional positional arguments passed to the function
+        :param kwargs: Additional keyed arguments passed to the function
+        :return: None
+        """
+
+        with self._datastore_lock:
+            try:
+                item = pickle.loads(self._datastore[key])
+            except KeyError:
+                item = default
+            value = func(key, item, *args, **kwargs)
+            self._datastore[key] = pickle.dumps(value)
 
     def get(self, key, default=None):
         """
         Retrieves the value for the given key, in a threadsafe manner from the
         underlying datastore. (Assumes all items in the datastore are pickled)
 
-        @param key: The unique identifier for this value
-        @type  key: str
+        :param key: The unique identifier for this value
+        :type  key: str
 
-        @param default: An optional default object to return should the
+        :param default: An optional default object to return should the
         underlying datastore not have an item for the given key.
 
-        @raises KeyError: A KeyError is raised when the underlying datastore
+        :raises KeyError: A KeyError is raised when the underlying datastore
         has no item for the given key and a default has not been provided.
         """
+
         with self._datastore_lock:
             try:
                 item = pickle.loads(self._datastore[key])

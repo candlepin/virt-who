@@ -28,6 +28,7 @@ import json
 import hashlib
 import re
 import fnmatch
+import socket
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
@@ -41,6 +42,7 @@ except ImportError:
     from virtwho.util import OrderedDict
 
 from virtwho import DefaultInterval
+
 
 class VirtError(Exception):
     pass
@@ -320,32 +322,21 @@ class IntervalThread(Thread):
         return self._internal_terminate_event.is_set() or \
             self.terminate_event.is_set()
 
-    def is_registered(self):
-        """
-        This function tries to guess if system is registered according last attempt of
-        sending data to candlepin server.
-        :return: Return true, when virt-who was able to send data to candlepin server.
-        """
-
-        consumers = []
-        try:
-            consumers = self.shared_data.get(key='consumers', default=None)
-        except KeyError:
-            # TODO: rename this function or implement full checking of registration status,
-            # because this will not be true in some cases.
-            is_registered = True
-        else:
-            if len(consumers) > 0:
-                is_registered = True
-            else:
-                is_registered = False
-        return is_registered
-
     def stop(self):
         """
         Causes this thread to stop at the next idle moment
         """
         self._internal_terminate_event.set()
+
+    def _gather_and_report(self):
+        """
+        This method gather data and report them. This method could be
+        reimplemented in in subclass (e.g. do not gather data, when
+        no consumer is reachable).
+        :return: None
+        """
+        data_to_send = self._get_data()
+        self._send_data(data_to_send)
 
     def _run(self):
         """
@@ -355,14 +346,14 @@ class IntervalThread(Thread):
         self.prepare()
         while not self.is_terminated():
             start_time = datetime.now()
-            if self.is_registered() is True:
-                data_to_send = self._get_data()
-                self._send_data(data_to_send)
-            else:
-                self.logger.debug(
-                    "System is not registered to any candlepin server. "
-                    "No need to do send any data. Waiting."
-                )
+
+            self._gather_and_report()
+
+            # candlepin_server = self.dest.rhsm_config.get('server', 'hostname')
+            # self.logger.error("Can not send data to consumer: error: %s" % err)
+            # self.logger.debug("Consumers: %s" % self.shared_data.get('consumers', []))
+            # self.logger.debug("Data to send: %s", data_to_send)
+            # self.shared_data.put(key='consumers', value={})
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -586,6 +577,41 @@ class DestinationThread(IntervalThread):
         self.is_initial_run = False
         return reports
 
+    def _update_consumers(self, data_to_send):
+        """Try to update shared dictionary of consumers parsing data_to_send"""
+
+        def update_consumers(key, consumers, _data_to_send):
+            """
+            This method is used for updating shared dictionary of
+            host-to-guest mapping consumers
+            :param key: Unused argument
+            :param consumers: Current dictionary of consumers (keys are hypervisor_uuid and
+                values are lists of destination consumers, respectively hostnames of canlepin servers)
+            :param _data_to_send: Data to be reported to consumer
+            :return: New dictionary of consumers
+            """
+            for value in _data_to_send.values():
+                if hasattr(value, 'association'):
+                    for hypervisor in value.association['hypervisors']:
+                        if hypervisor.hypervisorId not in consumers.keys():
+                            consumers[hypervisor.hypervisorId] = [value.config.rhsm_hostname]
+                        elif value.config.rhsm_hostname not in consumers[hypervisor.hypervisorId]:
+                            consumers[hypervisor.hypervisorId].append(value.config.rhsm_hostname)
+            return consumers
+
+        self.shared_data.update('consumers', {}, update_consumers, data_to_send)
+
+    def _remove_unreachable_consumer(self, unreachable_consumer):
+        """Try to remove unreachable consumer from shared dictionary of consumers"""
+
+        def remove_consumer(key, consumers, _unreachable_consumer):
+            for consumer_list in consumers.values():
+                if _unreachable_consumer in consumer_list:
+                    consumer_list.remove(_unreachable_consumer)
+            return consumers
+
+        self.shared_data.update('consumers', {}, remove_consumer, unreachable_consumer)
+
     def _send_data(self, data_to_send):
         """
         Processes the data_to_send and sends it using the dest object.
@@ -607,6 +633,8 @@ class DestinationThread(IntervalThread):
         reports_batched = []  # Source_keys of reports to be sent as one
         sources_sent = []  # Sources we have dealt with this run
         sources_erred = []  # Sources with some problems
+
+        self._update_consumers(data_to_send)
 
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
@@ -672,10 +700,18 @@ class DestinationThread(IntervalThread):
                     if self._oneshot:
                         sources_erred.extend(reports_batched)
                     break
+                except socket.error as err:
+                    # FIXME: we need some straightforward way of getting hostname of candlepin server
+                    # for given destination thread
+                    try:
+                        candlepin_server_hostname = batch_host_guest_report.config['rhsm_hostname']
+                    except KeyError:
+                        candlepin_server_hostname = self.dest.rhsm_config.get('server', 'hostname')
+                    self.logger.error('Error: %s during connection to: %s' % (err, candlepin_server_hostname))
+                    self._remove_unreachable_consumer(candlepin_server_hostname)
+                    break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
-                self.config.is_registered = False
-
             initial_job_check = True
             num_429_received = 0
             # Poll for async results if async (retrying where necessary)
@@ -752,18 +788,9 @@ class DestinationThread(IntervalThread):
                         if self._oneshot:
                             sources_erred.append(source_key)
                         retry = False  # Only retry on 429
-                        consumers = self.shared_data.get('consumers', [])
-                        if len(consumers) == 0:
-                            self.shared_data.put('consumers', [])
-                    else:
-                        # Try to get list of consumers
-                        consumers = self.shared_data.get('consumers', [])
-                        # Get current consumer for this destination thread
-                        self.uuid = self.dest.uuid()
-                        if self.uuid not in consumers:
-                            self.logger.debug('Try to add self.uuid: %s to consumers: %s' % (self.uuid, consumers))
-                            consumers.append(self.uuid)
-                            self.shared_data.put('consumers', consumers)
+
+        consumers = self.shared_data.get('consumers', {})
+        self.logger.debug('Current dictionary of consumers: %s' % consumers)
 
         # Were all sources handled at lease by one report?
         all_sources_handled = all((source_key in sources_sent or source_key in sources_erred)
@@ -984,6 +1011,30 @@ class Virt(IntervalThread):
         return value of isHypervisor method.
         """
         raise NotImplementedError('This should be reimplemented in subclass')
+
+    def are_consumers_reachable(self, hypervisor_uuid):
+        """
+        This function tries to guess if there is at least one consumers for given hypervisor_uuid.
+        :return: Return true, when virt-who was able to send data at least to one candlepin server.
+        """
+
+        try:
+            consumers = self.shared_data.get(key='consumers', default=None)
+        except KeyError:
+            # There were no attempt to report host-to-guest mapping in the past. We will be positive
+            # and we will estimate there is at least one reachable consumer.
+            consumers_reachable = True
+        else:
+            try:
+                if len(consumers[hypervisor_uuid]) > 0:
+                    consumers_reachable = True
+                else:
+                    consumers_reachable = False
+            except KeyError:
+                # Similar example as before. It wasn't reported anything about given hypervisor, but
+                # only for other hypervisors
+                consumers_reachable = True
+        return consumers_reachable
 
 
 info_to_destination_class = {

@@ -349,11 +349,6 @@ class IntervalThread(Thread):
 
             self._gather_and_report()
 
-            # candlepin_server = self.dest.rhsm_config.get('server', 'hostname')
-            # self.logger.error("Can not send data to consumer: error: %s" % err)
-            # self.logger.debug("Consumers: %s" % self.shared_data.get('consumers', []))
-            # self.logger.debug("Data to send: %s", data_to_send)
-            # self.shared_data.put(key='consumers', value={})
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -533,7 +528,7 @@ class DestinationThread(IntervalThread):
             return self._get_data_initial()
         return self._get_data_common(self.source_keys)
 
-    def _get_data_common(self, source_keys, ignore_duplicates=True, log_missing_reports=True):
+    def _get_data_common(self, source_keys, ignore_duplicates=False, log_missing_reports=True):
         reports = {}
         for source_key in source_keys:
             report = self.source.get(source_key, NotSetSentinel)
@@ -543,7 +538,7 @@ class DestinationThread(IntervalThread):
                     self.logger.debug("No report available for source: %s" %
                                       source_key)
                 continue
-            if ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
+            if not ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
                                                                                     None):
                 self.logger.debug('Duplicate report found for config "%s", ignoring',
                                   report.config.name)
@@ -566,7 +561,7 @@ class DestinationThread(IntervalThread):
             time_waited = 0
             while len(source_keys_remaining) > 0 and time_waited < self.interval and not self.is_terminated():
                 found_reports = self._get_data_common(source_keys_remaining,
-                                                      ignore_duplicates=False,
+                                                      ignore_duplicates=True,
                                                       log_missing_reports=False)
                 reports.update(found_reports)
                 source_keys_remaining.difference_update(found_reports.keys())
@@ -712,6 +707,7 @@ class DestinationThread(IntervalThread):
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
+
             initial_job_check = True
             num_429_received = 0
             # Poll for async results if async (retrying where necessary)
@@ -726,6 +722,7 @@ class DestinationThread(IntervalThread):
                     wait_time = self.polling_interval
                 if not initial_job_check:
                     self.wait(wait_time=wait_time)
+
                 try:
                     self.dest.check_report_state(batch_host_guest_report)
                 except ManagerThrottleError as e:
@@ -742,6 +739,16 @@ class DestinationThread(IntervalThread):
                     self.logger.exception("Error during job check: ")
                     if self._oneshot:
                         sources_sent.extend(reports_batched)
+                    break
+                except socket.error as err:
+                    # FIXME: we need some straightforward way of getting hostname of candlepin server
+                    # for given destination thread
+                    try:
+                        candlepin_server_hostname = batch_host_guest_report.config['rhsm_hostname']
+                    except KeyError:
+                        candlepin_server_hostname = self.dest.rhsm_config.get('server', 'hostname')
+                    self.logger.error('Error: %s during connection to: %s' % (err, candlepin_server_hostname))
+                    self._remove_unreachable_consumer(candlepin_server_hostname)
                     break
                 initial_job_check = False
 

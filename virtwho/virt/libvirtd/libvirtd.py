@@ -213,7 +213,7 @@ class Libvirtd(Virt):
                     report = self._get_report()
                     self._send_data(report)
                 else:
-                    self.logger.info(
+                    self.logger.warn(
                         'No consumer available for libvirtd hypervisor: %s. Not gathering host-to-guest mapping.',
                         self._host_uuid
                     )

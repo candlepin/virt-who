@@ -68,27 +68,6 @@ class Xen(virt.Virt):
             self.logger.exception("Unable to login to XENserver %s" % self.url)
             raise virt.VirtError(str(e))
 
-    def uuids(self):
-        """
-        Try to return tuple of uuid of Xen hypervisor
-        :return: Tuple of UUIDs/hostnames
-        """
-        uuids = []
-        hosts = self.session.xenapi.host.get_all()
-
-        for host in hosts:
-            record = self.session.xenapi.host.get_record(host)
-            if self.config.hypervisor_id == 'uuid':
-                uuid = record["uuid"]
-            elif self.config.hypervisor_id == 'hostname':
-                uuid = record["hostname"]
-            else:
-                raise virt.VirtError(
-                    'Invalid option %s for hypervisor_id, use one of: uuid or hostname' %
-                    self.config.hypervisor_id)
-            uuids.append(uuid)
-        return tuple(uuids)
-
     def getHostGuestMapping(self):
         assert hasattr(self, 'session'), "Login was not called"
         hosts = self.session.xenapi.host.get_all()
@@ -100,6 +79,16 @@ class Xen(virt.Virt):
         for host in hosts:
 
             record = self.session.xenapi.host.get_record(host)
+
+            # If there is no reachable consumer for given hypervisor,
+            # then getting list of guest can be skipped
+            if not self.are_consumers_reachable(record['uuid']):
+                self.logger.warn(
+                    'No consumer available for xen hypervisor: %s. Not gathering host-to-guest mapping.' %
+                    record['uuid']
+                )
+                continue
+
             guests = []
 
             for resident in self.session.xenapi.host.get_resident_VMs(host):
@@ -208,9 +197,6 @@ class Xen(virt.Virt):
                 events = []
 
             if initial or len(events) > 0 or delta > 0:
-                # if self.are_consumers_reachable() is True:
-                #     assoc = self.getHostGuestMapping()
-                #     self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
                 assoc = self.getHostGuestMapping()
                 self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
                 next_update = time() + self.interval

@@ -124,6 +124,7 @@ class Esx(virt.Virt):
         if "://" not in self.url:
             self.url = "https://%s" % self.url
 
+        self.client = None  # Instance of client is created during login()
         self.filter = None
         self.sc = None
 

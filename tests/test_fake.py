@@ -87,6 +87,8 @@ class TestFakeRead(TestBase):
 [test]
 type=fake
 is_hypervisor=true
+owner=taylor
+env=swift
 file=%s
 """ % self.hypervisor_file)
 
@@ -115,6 +117,8 @@ file=%s
 [test]
 type=fake
 is_hypervisor=true
+owner=covfefe
+env=covfefe
 file=%s
 """ % self.hypervisor_file)
 

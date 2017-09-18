@@ -74,6 +74,8 @@ class TestSubscriptionManager(TestManager):
         create_from_file.return_value.cert_uuid = {'CN': 'Test'}
         connection.return_value = MagicMock()
         connection.return_value.has_capability = MagicMock(return_value=False)
+        connection.return_value.getConsumer = MagicMock(return_value={'environment': {'name': 'ENV'}})
+        connection.return_value.getOwner = MagicMock(return_value={'key': 'OWNER'})
 
     @patch("rhsm.connection.UEPConnection")
     @patch("rhsm.certificate.create_from_file")

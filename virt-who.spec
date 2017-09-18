@@ -4,15 +4,20 @@
 %global python2_sitelib %{python_sitelib}
 %endif
 
+%global release_number 1
+
+%global git_tag %{name}-%{version}-%{release_number}
+
+
 Name:           virt-who
-Version:        0.20.1
-Release:        1%{?dist}
+Version:        0.20.4
+Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
 License:        GPLv2+
-URL:            https://fedorahosted.org/virt-who/
-Source0:        https://fedorahosted.org/releases/v/i/virt-who/%{name}-%{version}.tar.gz
+URL:            https://github.com/virt-who/virt-who
+Source0:        https://codeload.github.com/virt-who/virt-who/tar.gz/%{git_tag}#/%{name}-%{version}.tar.gz
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildArch:      noarch
@@ -27,6 +32,8 @@ Requires:       python-suds
 # m2crypto is required for Hyper-V support
 Requires:       m2crypto
 Requires:       python-requests
+# python-argparse is required for Python 2.6 on EL6
+%{?el6:Requires: python-argparse}
 
 %if %{use_systemd}
 Requires: systemd-python
@@ -123,10 +130,28 @@ fi
 %ghost %{_sharedstatedir}/%{name}/key
 %{_datadir}/zsh/site-functions/_virt-who
 %{_sysconfdir}/virt-who.d/template.conf
-%{_sysconfdir}/virt-who.conf
+%attr(600, root, root) %config(noreplace) %{_sysconfdir}/virt-who.conf
 
 
 %changelog
+* Wed Jul 26 2017 Christopher Snyder <csnyder@redhat.com> 0.20.4-1
+- Point Source0 to GitHub (csnyder@redhat.com)
+
+* Thu Jul 13 2017 Christopher Snyder <csnyder@redhat.com> 0.20.2-1
+- 1458184: better reading of environment variables (jhnidek@redhat.com)
+- 1401867: Enable logging of rhsm module to rhsm.log (jhnidek@redhat.com)
+- 1404117: Check parameter consistency and refactoring (jhnidek@redhat.com)
+- Adds a patch number to virt-who versioning (csnyder@redhat.com)
+- 1401420: xen supports only uuid/hostname as hypervisor_id
+  (jhnidek@redhat.com)
+- 1458674: Update use of result data to match the new async api
+  (csnyder@redhat.com)
+- 1452436: virt-who prints host-to-quest mapping everytime (jhnidek@redhat.com)
+- 1357761: Do not check passwords to be in latin1 encoding (jhnidek@redhat.com)
+- 1457101: Continue running despite malformed configs (csnyder@redhat.com)
+- 1409984: Retry initial report retrieval on connection timeout
+  (csnyder@redhat.com)
+
 * Fri Jun 09 2017 Christopher Snyder <csnyder@redhat.com> 0.20-1
 - 1389729: Add missing xml section for test (fran@caosdigital.com)
 - 1389729: virt-who incorrectly reports 'name' instead of 'hostname' for RHEV

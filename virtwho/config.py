@@ -451,7 +451,7 @@ class Config(GeneralConfig):
         if ((self.smType is None or self.smType == 'sam') and (
                 (self.type in ('esx', 'rhevm', 'hyperv', 'xen')) or
                 (self.type == 'libvirt' and self.server) or
-                (self.type == 'fake' and self.fake_is_hypervisor))):
+                (self.type == 'fake' and self.is_hypervisor))):
 
             if not self.env:
                 raise InvalidOption("Option `env` needs to be set in config `%s`" % self.name)
@@ -468,7 +468,7 @@ class Config(GeneralConfig):
             if self.is_hypervisor is not None:
                 logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
         else:
-            if not self.fake_is_hypervisor:
+            if not self.is_hypervisor:
                 if self.env:
                     logger.warn("Option `env` is not used in non-hypervisor fake mode")
                 if self.owner:

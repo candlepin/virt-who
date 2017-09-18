@@ -59,6 +59,8 @@ class SubscriptionManager(Manager):
         self.options = options
         self.cert_uuid = None
         self.rhsm_config = None
+        self.cert_file = None
+        self.key_file = None
         self.readConfig()
         self.connection = None
 
@@ -67,11 +69,58 @@ class SubscriptionManager(Manager):
             certificate and key paths. """
         self.rhsm_config = rhsm_config.initConfig(
             rhsm_config.DEFAULT_CONFIG_PATH)
-        consumerCertDir = self.rhsm_config.get("rhsm", "consumerCertDir")
+        consumer_cert_dir = self.rhsm_config.get("rhsm", "consumerCertDir")
         cert = 'cert.pem'
         key = 'key.pem'
-        self.cert_file = os.path.join(consumerCertDir, cert)
-        self.key_file = os.path.join(consumerCertDir, key)
+        self.cert_file = os.path.join(consumer_cert_dir, cert)
+        self.key_file = os.path.join(consumer_cert_dir, key)
+
+    def _check_owner_lib(self, kwargs, config):
+        """
+        Try to check values of env and owner. These values has to be
+        equal to values obtained from Satellite server.
+        :param kwargs: dictionary possibly containing valid username and
+                       password used for connection to rhsm
+        :param config: Configuration of virt-who
+        :return: None
+        """
+
+        if config is None:
+            return
+
+        keys = config.keys()
+        # Check 'owner' and 'env' only in situation, when these values
+        # are set and rhsm_username and rhsm_password are not set
+        if 'username' not in kwargs and 'password' not in kwargs and \
+                'owner' in keys and 'env' in keys:
+            pass
+        else:
+            return
+
+        uuid = self.uuid()
+        consumer = self.connection.getConsumer(uuid)
+
+        if 'environment' in consumer:
+            environment = consumer['environment']
+        else:
+            return
+
+        if environment:
+            environment_name = environment['name']
+            owner = self.connection.getOwner(uuid)
+            owner_id = owner['key']
+
+            if config['owner'] != owner_id:
+                raise ManagerError(
+                    "Cannot send data to: %s, because owner from configuration: %s is different" %
+                    (owner_id, config.owner)
+                )
+
+            if config['env'] != environment_name:
+                raise ManagerError(
+                    "Cannot send data to: %s, because Satellite env: %s differs from configuration: %s" %
+                    (owner_id, environment_name, config.env)
+                )
 
     def _connect(self, config=None):
         """ Connect to the subscription-manager. """
@@ -139,9 +188,13 @@ class SubscriptionManager(Manager):
         self.connection = rhsm_connection.UEPConnection(**kwargs)
         try:
             if not self.connection.ping()['result']:
-                raise SubscriptionManagerError("Unable to obtain status from server, UEPConnection is likely not usable.")
+                raise SubscriptionManagerError(
+                    "Unable to obtain status from server, UEPConnection is likely not usable."
+                )
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+
+        self._check_owner_lib(kwargs, config)
 
         return self.connection
 
@@ -179,7 +232,9 @@ class SubscriptionManager(Manager):
 
         is_async = self._is_rhsm_server_async(report, connection)
         serialized_mapping = self._hypervisor_mapping(report, is_async, connection)
-        self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
+        self.logger.debug("Host-to-guest mapping being sent to '{owner}': {mapping}".format(
+                          owner=report.config.owner,
+                          mapping=json.dumps(serialized_mapping, indent=4)))
 
         try:
             try:

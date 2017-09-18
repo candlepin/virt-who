@@ -579,7 +579,13 @@ class DestinationThread(IntervalThread):
         def update_consumers(key, consumers, _data_to_send):
             """
             This method is used for updating shared dictionary of
-            host-to-guest mapping consumers
+            host-to-guest mapping consumers. This method can return following dictionary:
+            {
+                12345678-90ab-cdef-000-000000000001: ['candle.example.com', 'bar.org'],
+                12345678-90ab-cdef-000-000000000002: ['candle.foo.com', 'bar.org']
+            }
+            where keys are IDs of hypervisors and values are hostnames of candlepin servers,
+            where is host-to-guest mapping reported.
             :param key: Unused argument
             :param consumers: Current dictionary of consumers (keys are hypervisor_uuid and
                 values are lists of destination consumers, respectively hostnames of canlepin servers)
@@ -588,11 +594,18 @@ class DestinationThread(IntervalThread):
             """
             for value in _data_to_send.values():
                 if hasattr(value, 'association'):
+                    # Try to get hostname of candlepin server
+                    rhsm_hostname = value.config.rhsm_hostname
+                    # When there is no configuration of candlepin server for
+                    # current destination, then try to use default from rhsm.conf
+                    if rhsm_hostname is None:
+                        rhsm_hostname = self.dest.rhsm_config.get('server', 'hostname')
+                    # Try to update dictionary of hypervisors
                     for hypervisor in value.association['hypervisors']:
                         if hypervisor.hypervisorId not in consumers.keys():
-                            consumers[hypervisor.hypervisorId] = [value.config.rhsm_hostname]
+                            consumers[hypervisor.hypervisorId] = [rhsm_hostname]
                         elif value.config.rhsm_hostname not in consumers[hypervisor.hypervisorId]:
-                            consumers[hypervisor.hypervisorId].append(value.config.rhsm_hostname)
+                            consumers[hypervisor.hypervisorId].append(rhsm_hostname)
             return consumers
 
         self.shared_data.update('consumers', {}, update_consumers, data_to_send)

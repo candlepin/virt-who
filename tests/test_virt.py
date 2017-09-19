@@ -250,8 +250,8 @@ class TestDestinationThread(TestBase):
         # we poll for the result
 
         # Setup the test data
-        config1 = Config('source1', 'esx')
-        config2 = Config('source2', 'esx')
+        config1 = Config('source1', 'esx', {'rhsm_hostname': 'candle.foo.org'})
+        config2 = Config('source2', 'esx', {'rhsm_hostname': 'candle.foo.org'})
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -327,8 +327,8 @@ class TestDestinationThread(TestBase):
         # This test's that when a 429 is detected during async polling
         # we wait for the amount of time specified
         source_keys = ['source1', 'source2']
-        config1 = Config('source1', 'esx')
-        config2 = Config('source2', 'esx')
+        config1 = Config('source1', 'esx', {'rhsm_hostname': 'candle.foo.org'})
+        config2 = Config('source2', 'esx', {'rhsm_hostname': 'candle.foo.org'})
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()

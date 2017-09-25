@@ -109,9 +109,9 @@ class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
     MAX_WAIT_TIME = 300  # 5 minutes
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(Esx, self).__init__(logger, config, dest,
+        super(Esx, self).__init__(logger, config, shared_data, dest,
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
@@ -124,6 +124,7 @@ class Esx(virt.Virt):
         if "://" not in self.url:
             self.url = "https://%s" % self.url
 
+        self.client = None  # Instance of client is created during login()
         self.filter = None
         self.sc = None
 

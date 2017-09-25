@@ -2,8 +2,9 @@ from base import TestBase
 
 from mock import patch, Mock, sentinel, call
 from virtwho.virt import IntervalThread
-from threading import Event
+from virtwho.datastore import Datastore
 from datetime import datetime
+
 
 class TestIntervalThreadTiming(TestBase):
     """
@@ -45,7 +46,7 @@ class TestIntervalThreadTiming(TestBase):
         interval = kwargs.get('interval', self.interval)
         oneshot = kwargs.get('oneshot', self.oneshot)
 
-        interval_thread = IntervalThread(logger, config, source, dest,
+        interval_thread = IntervalThread(logger, config, Datastore(), source, dest,
                                          terminate_event, interval, oneshot)
 
         mock_get_data_impl = kwargs.get('mock_get_data', None)
@@ -62,7 +63,6 @@ class TestIntervalThreadTiming(TestBase):
         interval_thread._send_data = mock_send_data_impl
 
         return interval_thread
-
 
     def test__run(self):
         """
@@ -105,12 +105,12 @@ class TestIntervalThreadTiming(TestBase):
             interval_thread = self.setup_interval_thread(oneshot=oneshot,
                                                          interval=interval)
             interval_thread.is_terminated = Mock(side_effect=[False, True])
+            interval_thread.is_registered = Mock(return_value=True)
             interval_thread.wait = Mock()
             interval_thread._run()
             interval_thread._get_data.assert_called()
             interval_thread._send_data.assert_has_calls([call(self._get_data_return)])
             interval_thread.wait.assert_not_called()
-
 
     def test_wait(self):
         interval_thread = self.setup_interval_thread()

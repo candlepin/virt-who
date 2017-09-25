@@ -30,6 +30,7 @@ from proxy import Proxy
 from virtwho.config import Config
 from virtwho.virt.hyperv import HyperV
 from virtwho.virt import VirtError, Guest, Hypervisor
+from virtwho.datastore import Datastore
 
 
 class HyperVMock(object):
@@ -138,12 +139,12 @@ class TestHyperV(TestBase):
     def setUp(self):
         config = Config('test', 'hyperv', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.hyperv = HyperV(self.logger, config, None)
+        self.hyperv = HyperV(self.logger, config, Datastore(), None)
 
-    def run_once(self, queue=None):
+    def run_once(self):
         ''' Run Hyper-V in oneshot mode '''
         self.hyperv._oneshot = True
-        self.hyperv.dest = queue or Queue()
+        self.hyperv.dest = Datastore()
         self.hyperv._terminate_event = Event()
         self.hyperv._interval = 0
         self.hyperv._run()

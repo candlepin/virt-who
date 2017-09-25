@@ -28,10 +28,12 @@ import json
 import hashlib
 import re
 import fnmatch
+import socket
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
 from virtwho import MinimumSendInterval
+from virtwho.datastore import Datastore
 
 try:
     from collections import OrderedDict
@@ -40,6 +42,7 @@ except ImportError:
     from virtwho.util import OrderedDict
 
 from virtwho import DefaultInterval
+
 
 class VirtError(Exception):
     pass
@@ -288,10 +291,12 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
 
 class IntervalThread(Thread):
-    def __init__(self, logger, config, source=None, dest=None,
+    def __init__(self, logger, config, shared_data, source=None, dest=None,
                  terminate_event=None, interval=None, oneshot=False):
         self.logger = logger
         self.config = config
+        # Datastore for sharing data between threads
+        self.shared_data = shared_data
         self.source = source
         self.dest = dest
         self._internal_terminate_event = Event()
@@ -301,9 +306,9 @@ class IntervalThread(Thread):
         super(IntervalThread, self).__init__()
 
     def wait(self, wait_time):
-        '''
+        """
         Wait `wait_time` seconds, could be interrupted by setting _terminate_event or _internal_terminate_event.
-        '''
+        """
         for i in range(wait_time):
             if self.is_terminated():
                 break
@@ -324,6 +329,16 @@ class IntervalThread(Thread):
         """
         self._internal_terminate_event.set()
 
+    def _gather_and_report(self):
+        """
+        This method gather data and report them. This method could be
+        reimplemented in in subclass (e.g. do not gather data, when
+        no consumer is reachable).
+        :return: None
+        """
+        data_to_send = self._get_data()
+        self._send_data(data_to_send)
+
     def _run(self):
         """
         This method could be reimplemented in subclass to provide
@@ -332,8 +347,9 @@ class IntervalThread(Thread):
         self.prepare()
         while not self.is_terminated():
             start_time = datetime.now()
-            data_to_send = self._get_data()
-            self._send_data(data_to_send)
+
+            self._gather_and_report()
+
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -369,9 +385,9 @@ class IntervalThread(Thread):
         raise NotImplementedError("Should be implemented in subclasses")
 
     def run(self):
-        '''
+        """
         Wrapper around `_run` method that just catches the error messages.
-        '''
+        """
         self.logger.debug("Thread '%s' started", self.config.name)
         try:
             while not self.is_terminated():
@@ -393,6 +409,7 @@ class IntervalThread(Thread):
                     self.logger.debug("Thread '%s' terminated",
                                       self.config.name)
                     self._internal_terminate_event.set()
+                    self.cleanup()
                     return
 
                 if has_error:
@@ -413,9 +430,9 @@ class IntervalThread(Thread):
             sys.exit(1)
 
     def cleanup(self):
-        '''
+        """
         Perform cleaning up actions before termination.
-        '''
+        """
         pass
 
     def prepare(self):
@@ -456,7 +473,7 @@ class DestinationThread(IntervalThread):
     This class should work so long as the destination is a Manager object.
     """
 
-    def __init__(self, logger, config, source_keys=None, options=None,
+    def __init__(self, logger, config, shared_data, source_keys=None, options=None,
                  source=None, dest=None, terminate_event=None, interval=None,
                  oneshot=False):
         """
@@ -469,17 +486,23 @@ class DestinationThread(IntervalThread):
 
         @param dest: The destination object to use to actually send the data
         @type dest: Manager
+
+        @param shared_data: The object for sharing data between threads
+        @type shared_data: Datastore
         """
         if not isinstance(source_keys, list):
             raise ValueError("Source keys must be a list")
         self.is_initial_run = True
         self.source_keys = source_keys
+        self.uuid = None
         self.last_report_for_source = {}  # Source_key to hash of last report
         self.options = options
         self.reports_to_print = []  # A list of reports we would send but are
         #  going to print instead, to be used by the owner of the thread
         # after the thread has been killed
-        super(DestinationThread, self).__init__(logger, config, source=source,
+        super(DestinationThread, self).__init__(logger, config,
+                                                shared_data=shared_data,
+                                                source=source,
                                                 dest=dest,
                                                 terminate_event=terminate_event,
                                                 interval=interval,
@@ -506,7 +529,7 @@ class DestinationThread(IntervalThread):
             return self._get_data_initial()
         return self._get_data_common(self.source_keys)
 
-    def _get_data_common(self, source_keys, ignore_duplicates=True, log_missing_reports=True):
+    def _get_data_common(self, source_keys, ignore_duplicates=False, log_missing_reports=True):
         reports = {}
         for source_key in source_keys:
             report = self.source.get(source_key, NotSetSentinel)
@@ -516,7 +539,7 @@ class DestinationThread(IntervalThread):
                     self.logger.debug("No report available for source: %s" %
                                       source_key)
                 continue
-            if ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
+            if not ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
                                                                                     None):
                 self.logger.debug('Duplicate report found for config "%s", ignoring',
                                   report.config.name)
@@ -539,7 +562,7 @@ class DestinationThread(IntervalThread):
             time_waited = 0
             while len(source_keys_remaining) > 0 and time_waited < self.interval and not self.is_terminated():
                 found_reports = self._get_data_common(source_keys_remaining,
-                                                      ignore_duplicates=False,
+                                                      ignore_duplicates=True,
                                                       log_missing_reports=False)
                 reports.update(found_reports)
                 source_keys_remaining.difference_update(found_reports.keys())
@@ -550,12 +573,61 @@ class DestinationThread(IntervalThread):
         self.is_initial_run = False
         return reports
 
+    def _update_consumers(self, data_to_send):
+        """Try to update shared dictionary of consumers parsing data_to_send"""
+
+        def update_consumers(key, consumers, _data_to_send):
+            """
+            This method is used for updating shared dictionary of
+            host-to-guest mapping consumers. This method can return following dictionary:
+            {
+                12345678-90ab-cdef-000-000000000001: ['candle.example.com', 'bar.org'],
+                12345678-90ab-cdef-000-000000000002: ['candle.foo.com', 'bar.org']
+            }
+            where keys are IDs of hypervisors and values are hostnames of candlepin servers,
+            where is host-to-guest mapping reported.
+            :param key: Unused argument
+            :param consumers: Current dictionary of consumers (keys are hypervisor_uuid and
+                values are lists of destination consumers, respectively hostnames of canlepin servers)
+            :param _data_to_send: Data to be reported to consumer
+            :return: New dictionary of consumers
+            """
+            for value in _data_to_send.values():
+                if hasattr(value, 'association'):
+                    # Try to get hostname of candlepin server
+                    rhsm_hostname = value.config.rhsm_hostname
+                    # When there is no configuration of candlepin server for
+                    # current destination, then try to use default from rhsm.conf
+                    if rhsm_hostname is None:
+                        rhsm_hostname = self.dest.rhsm_config.get('server', 'hostname')
+                    # Try to update dictionary of hypervisors
+                    for hypervisor in value.association['hypervisors']:
+                        if hypervisor.hypervisorId not in consumers.keys():
+                            consumers[hypervisor.hypervisorId] = [rhsm_hostname]
+                        elif value.config.rhsm_hostname not in consumers[hypervisor.hypervisorId]:
+                            consumers[hypervisor.hypervisorId].append(rhsm_hostname)
+            return consumers
+
+        self.shared_data.update('consumers', {}, update_consumers, data_to_send)
+
+    def _remove_unreachable_consumer(self, unreachable_consumer):
+        """Try to remove unreachable consumer from shared dictionary of consumers"""
+
+        def remove_consumer(key, consumers, _unreachable_consumer):
+            for consumer_list in consumers.values():
+                if _unreachable_consumer in consumer_list:
+                    consumer_list.remove(_unreachable_consumer)
+            return consumers
+
+        self.shared_data.update('consumers', {}, remove_consumer, unreachable_consumer)
+
     def _send_data(self, data_to_send):
         """
         Processes the data_to_send and sends it using the dest object.
         @param data_to_send: A dict of source_keys, report
         @type: dict
         """
+
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')
             return
@@ -573,6 +645,8 @@ class DestinationThread(IntervalThread):
 
         total_hypervisors = 0
         total_guests = 0
+
+        self._update_consumers(data_to_send)
 
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
@@ -649,6 +723,16 @@ class DestinationThread(IntervalThread):
                                           "checkin: %s" % err)
                     if self._oneshot:
                         sources_erred.extend(reports_batched)
+                    break
+                except socket.error as err:
+                    # FIXME: we need some straightforward way of getting hostname of candlepin server
+                    # for given destination thread
+                    try:
+                        candlepin_server_hostname = batch_host_guest_report.config['rhsm_hostname']
+                    except KeyError:
+                        candlepin_server_hostname = self.dest.rhsm_config.get('server', 'hostname')
+                    self.logger.error('Error: %s during connection to: %s' % (err, candlepin_server_hostname))
+                    self._remove_unreachable_consumer(candlepin_server_hostname)
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
@@ -729,6 +813,9 @@ class DestinationThread(IntervalThread):
                         if self._oneshot:
                             sources_erred.append(source_key)
                         retry = False  # Only retry on 429
+
+        consumers = self.shared_data.get('consumers', {})
+        self.logger.debug('Current dictionary of consumers: %s' % consumers)
 
         # Were all sources handled at lease by one report?
         all_sources_handled = all((source_key in sources_sent or source_key in sources_erred)
@@ -854,9 +941,9 @@ class Virt(IntervalThread):
     method.
     """
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(Virt, self).__init__(logger, config, dest=dest,
+        super(Virt, self).__init__(logger, config, shared_data, dest=dest,
                                    terminate_event=terminate_event,
                                    interval=interval, oneshot=oneshot)
 
@@ -874,7 +961,7 @@ class Virt(IntervalThread):
         return [subcls for subcls in cls.__subclasses__()]
 
     @classmethod
-    def from_config(cls, logger, config, dest,
+    def from_config(cls, logger, config, shared_data, dest,
                     terminate_event=None, interval=None, oneshot=False):
         """
         Create instance of inherited class based on the config.
@@ -882,7 +969,7 @@ class Virt(IntervalThread):
 
         for subcls in cls.__subclasses_list():
             if config.type == subcls.CONFIG_TYPE:
-                return subcls(logger, config, dest,
+                return subcls(logger, config, shared_data, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)
         raise KeyError("Invalid config type: %s" % config.type)
@@ -896,12 +983,12 @@ class Virt(IntervalThread):
         return [subcls.CONFIG_TYPE for subcls in cls.__subclasses_list() if subcls.CONFIG_TYPE != 'fake']
 
     def start_sync(self):
-        '''
+        """
         This method is same as `start()` but runs synchronously, it does NOT
         create new thread.
 
         Use it only in specific cases!
-        '''
+        """
         self._run()
 
     def _get_report(self):
@@ -935,20 +1022,44 @@ class Virt(IntervalThread):
         return True
 
     def getHostGuestMapping(self):
-        '''
+        """
         If subclass doesn't reimplement the `_run` method, it should
         reimplement either this method or `listDomains` method, based on
         return value of isHypervisor method.
-        '''
+        """
         raise NotImplementedError('This should be reimplemented in subclass')
 
     def listDomains(self):
-        '''
+        """
         If subclass doesn't reimplement the `_run` method, it should
         reimplement either this method or `getHostGuestMapping` method, based on
         return value of isHypervisor method.
-        '''
+        """
         raise NotImplementedError('This should be reimplemented in subclass')
+
+    def are_consumers_reachable(self, hypervisor_uuid):
+        """
+        This function tries to guess if there is at least one consumers for given hypervisor_uuid.
+        :return: Return true, when virt-who was able to send data at least to one candlepin server.
+        """
+
+        try:
+            consumers = self.shared_data.get(key='consumers', default=None)
+        except KeyError:
+            # There were no attempt to report host-to-guest mapping in the past. We will be positive
+            # and we will estimate there is at least one reachable consumer.
+            consumers_reachable = True
+        else:
+            try:
+                if len(consumers[hypervisor_uuid]) > 0:
+                    consumers_reachable = True
+                else:
+                    consumers_reachable = False
+            except KeyError:
+                # Similar example as before. It wasn't reported anything about given hypervisor, but
+                # only for other hypervisors
+                consumers_reachable = True
+        return consumers_reachable
 
 
 info_to_destination_class = {

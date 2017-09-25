@@ -442,9 +442,9 @@ class HyperVCallFailed(HyperVException):
 class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(HyperV, self).__init__(logger, config, dest,
+        super(HyperV, self).__init__(logger, config, shared_data, dest,
                                      terminate_event=terminate_event,
                                      interval=interval,
                                      oneshot=oneshot)

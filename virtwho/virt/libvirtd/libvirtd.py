@@ -73,9 +73,9 @@ class Libvirtd(Virt):
     """ Class for interacting with libvirt. """
     CONFIG_TYPE = "libvirt"
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False, registerEvents=True):
-        super(Libvirtd, self).__init__(logger, config, dest,
+        super(Libvirtd, self).__init__(logger, config, shared_data, dest,
                                        terminate_event=terminate_event,
                                        interval=interval,
                                        oneshot=oneshot)
@@ -208,8 +208,15 @@ class Libvirtd(Virt):
 
             time.sleep(1)
             if time.time() > self.next_update:
-                report = self._get_report()
-                self._send_data(report)
+                self._remote_host_id()
+                if self.are_consumers_reachable(self._host_uuid) is True:
+                    report = self._get_report()
+                    self._send_data(report)
+                else:
+                    self.logger.warn(
+                        'No consumer available for libvirtd hypervisor: %s. Not gathering host-to-guest mapping.',
+                        self._host_uuid
+                    )
                 self.next_update = time.time() + self.interval
 
         if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
@@ -229,11 +236,11 @@ class Libvirtd(Virt):
             return DomainListReport(self.config, self._listDomains(), self._remote_host_id())
 
     def _lookupDomain(self, method, domain):
-        '''
+        """
         Attempt to find the domain using given method.
 
         Returns None if the domain does not exist (it was probably just destroyed)
-        '''
+        """
         try:
             return method(domain)
         except libvirt.libvirtError as e:
@@ -272,7 +279,9 @@ class Libvirtd(Virt):
         except libvirt.libvirtError as e:
             self.virt.close()
             raise VirtError(str(e))
+
         self.logger.debug("Libvirt domains found: %s", ", ".join(guest.uuid for guest in domains))
+
         return domains
 
     @property

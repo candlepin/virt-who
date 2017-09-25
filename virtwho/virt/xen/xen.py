@@ -25,9 +25,9 @@ class Xen(virt.Virt):
     # Register for events on all classes
     event_types = ["host", "vm"]
 
-    def __init__(self, logger, config, dest, terminate_event=None,
+    def __init__(self, logger, config, shared_data, dest, terminate_event=None,
                  interval=None, oneshot=False):
-        super(Xen, self).__init__(logger, config, dest,
+        super(Xen, self).__init__(logger, config, shared_data, dest,
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
@@ -79,6 +79,16 @@ class Xen(virt.Virt):
         for host in hosts:
 
             record = self.session.xenapi.host.get_record(host)
+
+            # If there is no reachable consumer for given hypervisor,
+            # then getting list of guest can be skipped
+            if not self.are_consumers_reachable(record['uuid']):
+                self.logger.warn(
+                    'No consumer available for xen hypervisor: %s. Not gathering host-to-guest mapping.' %
+                    record['uuid']
+                )
+                continue
+
             guests = []
 
             for resident in self.session.xenapi.host.get_resident_VMs(host):

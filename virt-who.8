@@ -28,142 +28,148 @@ Use configuration file directly, can be used multiple times. See virt-who-config
 Choose virtualization backend that should be used to gather host/guest associations
 .TP
 \fB\-\-libvirt\fR
-Use libvirt to list virtual guests [default]
+[Deprecated] Use libvirt to list virtual guests [default]
 .TP
 \fB\-\-vdsm\fR
-Use vdsm to list virtual guests
+[Deprecated] Use vdsm to list virtual guests
 .TP
 \fB\-\-esx\fR
-Register ESX machines using vCenter
+[Deprecated] Register ESX machines using vCenter
 .TP
 \fB\-\-rhevm\fR
-Register guests using RHEV\-M
+[Deprecated] Register guests using RHEV\-M
 .TP
 \fB\-\-hyperv\fR
-Register guests using Hyper\-V
+[Deprecated] Register guests using Hyper\-V
 .TP
 \fB\-\-xen\fr
-Register XEN machines using XenServer
+[Deprecated] Register XEN machines using XenServer
 .IP
 .SS Subscription manager
 .IP
 Choose where the host/guest associations should be reported
 .TP
 \fB\-\-sam\fR
-Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]
+[Deprecated] Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]
 .TP
 \fB\-\-satellite5\fR
-Report host/guest associations to the Satellite 5 server
+[Deprecated] Report host/guest associations to the Satellite 5 server
 .IP
 \fB\-\-satellite6\fR
-Report host/guest associations to the Satellite 6 server
+[Deprecated] Report host/guest associations to the Satellite 6 server
 .IP
 .SS Libvirt options
 .IP
 Use these options with \fB\-\-libvirt\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-libvirt\-owner\fR=\fIOWNER\fR
-Organization who has purchased subscriptions of the products, same as current system registration by default
+[Deprecated] Organization who has purchased subscriptions of the products, same as current system registration by default
 .TP
 \fB\-\-libvirt\-env\fR=\fIENV\fR
-Environment where the libvirt server belongs to, same as current system registration by default
+[Deprecated] Environment where the libvirt server belongs to, same as current system registration by default
 .TP
 \fB\-\-libvirt\-server\fR=\fISERVER\fR
-URL of the remote libvirt server to connect to, local server by default
+[Deprecated] URL of the remote libvirt server to connect to, local server by default
 .TP
 \fB\-\-libvirt\-username\fR=\fIUSERNAME\fR
-Username for connecting to libvirt, username of current user by default
+[Deprecated] Username for connecting to libvirt, username of current user by default
 .TP
 \fB\-\-libvirt\-password\fR=\fIPASSWORD\fR
-Password for connecting to libvirt. This option doesn't work with ssh transport (default), copy your public ssh key to the remote machine.
+[Deprecated] Password for connecting to libvirt. This option doesn't work with ssh transport (default), copy your public ssh key to the remote machine.
 .IP
 .SS vCenter/ESX options
 .IP
 Use these options with \fB\-\-esx\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-esx\-owner\fR=\fIOWNER\fR
-Organization who has purchased subscriptions of the products
+[Deprecated] Organization who has purchased subscriptions of the products
 .TP
 \fB\-\-esx\-env\fR=\fIENV\fR
-Environment where the vCenter server belongs to
+[Deprecated] Environment where the vCenter server belongs to
 .TP
 \fB\-\-esx\-server\fR=\fISERVER\fR
-URL of the vCenter server to connect to
+[Deprecated] URL of the vCenter server to connect to
 .TP
 \fB\-\-esx\-username\fR=\fIUSERNAME\fR
-Username for connecting to vCenter
+[Deprecated] Username for connecting to vCenter
 .TP
 \fB\-\-esx\-password\fR=\fIPASSWORD\fR
-Password for connecting to vCenter
+[Deprecated] Password for connecting to vCenter
 .IP
 .SS RHEV\-M options
 .IP
 Use these options with \fB\-\-rhevm\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-rhevm\-owner\fR=\fIOWNER\fR
-Organization who has purchased subscriptions of the products
+[Deprecated] Organization who has purchased subscriptions of the products
 .TP
 \fB\-\-rhevm\-env\fR=\fIENV\fR
-Environment where the RHEV\-M belongs to
+[Deprecated] Environment where the RHEV\-M belongs to
 .TP
 \fB\-\-rhevm\-server\fR=\fISERVER\fR
-URL of the RHEV\-M server to connect to
+[Deprecated] URL of the RHEV\-M server to connect to
 .TP
 \fB\-\-rhevm\-username\fR=\fIUSERNAME\fR
-Username for connecting to RHEV\-M
+[Deprecated] Username for connecting to RHEV\-M
 .TP
 \fB\-\-rhevm\-password\fR=\fIPASSWORD\fR
-Password for connecting to RHEV\-M
+[Deprecated] Password for connecting to RHEV\-M
 .IP
 .SS Hyper\-V options
 .IP
 Use these options with \fB\-\-hyperv\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-hyperv\-owner\fR=\fIOWNER\fR
-Organization who has purchased subscriptions of the products
+[Deprecated] Organization who has purchased subscriptions of the products
 .TP
 \fB\-\-hyperv\-env\fR=\fIENV\fR
-Environment where the Hyper\-V belongs to
+[Deprecated] Environment where the Hyper\-V belongs to
 .TP
 \fB\-\-hyperv\-server\fR=\fISERVER\fR
-URL of the Hyper\-V server to connect to
+[Deprecated] URL of the Hyper\-V server to connect to
 .TP
 \fB\-\-hyperv\-username\fR=\fIUSERNAME\fR
-Username for connecting to Hyper\-V
+[Deprecated] Username for connecting to Hyper\-V
 .TP
 \fB\-\-hyperv\-password\fR=\fIPASSWORD\fR
-Password for connecting to Hyper\-V
+[Deprecated] Password for connecting to Hyper\-V
 .SS XenServer options
 .IP
 Use these options with \fB\-\-xen\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-xen\-owner\fR=\fIOWNER\fR
-Organization who has purchased subscriptions of the products
+[Deprecated] Organization who has purchased subscriptions of the products
 .TP
 \fB\-\-xen\-env\fR=\fIENV\fR
-Environment where the XenServer belongs to
+[Deprecated] Environment where the XenServer belongs to
 .TP
 \fB\-\-xen\-server\fR=\fISERVER\fR
-URL of the XenServer server to connect to
+[Deprecated] URL of the XenServer server to connect to
 .TP
 \fB\-\-xen\-username\fR=\fIUSERNAME\fR
-Username for connecting to XenServer
+[Deprecated] Username for connecting to XenServer
 .TP
 \fB\-\-xen\-password\fR=\fIPASSWORD\fR
-Password for connecting to XenServer
+[Deprecated] Password for connecting to XenServer
 .IP
 .SS Satellite 5 options:
 .IP
 Use these options with \fB\-\-satellite5\fR
+These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-satellite-server\fR=\fISAT_SERVER
-Satellite server URL
+[Deprecated] Satellite server URL
 .TP
 \fB\-\-satellite-username\fR=\fISAT_USERNAME
-Username for connecting to Satellite server
+[Deprecated] Username for connecting to Satellite server
 .TP
 \fB\-\-satellite-password\fR=\fISAT_PASSWORD
-Password for connecting to Satellite server
+[Deprecated] Password for connecting to Satellite server
 .PP
 .SH ENVIRONMENT
 virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled

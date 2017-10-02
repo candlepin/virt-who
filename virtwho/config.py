@@ -1404,7 +1404,10 @@ class EffectiveConfig(collections.MutableMapping):
         for param, value in values_to_filter.iteritems():
             if value is None:
                 continue
-            value = str(value)
+            if type(value) is list:
+                value = [str(item) for item in value]
+            else:
+                value = str(value)
             if param in desired_parameters:
                 matching_parameters[param] = value
             else:

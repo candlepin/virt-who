@@ -27,7 +27,7 @@ import tempfile
 import os
 from binascii import hexlify
 
-from virtwho.config import VirtConfigSection, VW_TYPES
+from virtwho.config import VirtConfigSection, LibvirtdConfigSection, VW_TYPES
 from virtwho.password import Password
 
 
@@ -57,11 +57,25 @@ class TestVirtConfigSection(TestBase):
         """
         Method executed before each unit test
         """
-        self.virt_config = VirtConfigSection('test-libvirt', None)
+        self.virt_config = VirtConfigSection('test_libvirt', None)
         # We need to set values using this way, because we need
         # to trigger __setitem__ of virt_config
         for key, value in LIBVIRT_SECTION_VALUES.items():
             self.virt_config[key] = value
+
+    def test_virt_config_section_new(self):
+        """
+        Test creating instance of subclass of VirtConfigSection
+        """
+        virt_config = VirtConfigSection(section_name='test_libvirt', wrapper=None, virt_type='libvirt')
+        self.assertEqual(type(virt_config), LibvirtdConfigSection)
+
+    def test_virt_config_section_new_no_virt_type(self):
+        """
+        Test creating instance of VirtConfigSection without definition of virt_type
+        """
+        virt_config = VirtConfigSection(section_name='test_libvirt', wrapper=None)
+        self.assertEqual(type(virt_config), VirtConfigSection)
 
     def test_validate_virt_type(self):
         """

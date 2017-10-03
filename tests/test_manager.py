@@ -110,7 +110,7 @@ class TestSubscriptionManager(TestManager):
                     ]
                 )
                 for host in self.host_guest_report.association['hypervisors']),
-            options=self.options)
+            options=ANY)
 
 
 class TestSatellite(TestManager):

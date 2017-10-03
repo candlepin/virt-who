@@ -161,12 +161,6 @@ class TestEffectiveConfig(TestBase):
         del self.effective_config[CUSTOM_SECTION_NAME]
         self.assertEqual(len(self.effective_config), 0)
 
-    def test_effective_config_is_singleton(self):
-        self.init_effective_config()
-        self.effective_config.validate()
-        effective_config = EffectiveConfig()
-        self.assertIn(CUSTOM_SECTION_NAME, effective_config)
-
     def test_effective_config_filter_params(self):
         effective_config = EffectiveConfig()
         desired_params = [

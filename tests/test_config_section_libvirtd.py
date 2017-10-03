@@ -85,11 +85,11 @@ class TestLibvirtdConfigSection(TestBase):
         """
         self.init_virt_config_section()
         # The server option is set
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         self.assertIsNone(result)
         # The server option is not set
         del self.virt_config['server']
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         self.assertIsNone(result)
 
     def test_validate_server_full_url(self):
@@ -99,7 +99,7 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # Set full URL
         self.virt_config['server'] = 'qemu+ssh://admin@example.com/system'
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         self.assertIsNone(result)
 
     def test_validate_server_url_missing_path(self):
@@ -109,7 +109,7 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # Set full URL
         self.virt_config['server'] = 'qemu+ssh://admin@example.com'
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         expected_result = [
             ('info', 'Libvirt path is not specified in the url, using /system')
         ]
@@ -123,7 +123,7 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # Set full URL
         self.virt_config['server'] = 'example.com/system'
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         expected_result = [
             ('info', 'Protocol is not specified in libvirt url, using qemu+ssh://')
         ]
@@ -137,7 +137,7 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # Set full URL
         self.virt_config['server'] = 'example.com'
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         expected_result = [
             ('info', 'Protocol is not specified in libvirt url, using qemu+ssh://'),
             ('info', 'Libvirt path is not specified in the url, using /system')
@@ -152,15 +152,15 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # When server is set, then owner has to be set too
         assert 'server' in self.virt_config
-        result = self.virt_config._validate_owner()
+        result = self.virt_config._validate_owner('owner')
         self.assertIsNone(result)
         # Delete 'owner' section
         del self.virt_config['owner']
-        result = self.virt_config._validate_owner()
+        result = self.virt_config._validate_owner('owner')
         self.assertIsNotNone(result)
         # Delete server too, then owner need not to be set
         del self.virt_config['server']
-        result = self.virt_config._validate_owner()
+        result = self.virt_config._validate_owner('owner')
         self.assertIsNone(result)
 
     def test_validate_env(self):
@@ -171,15 +171,15 @@ class TestLibvirtdConfigSection(TestBase):
         self.init_virt_config_section()
         # When server is set, then owner has to be set too
         assert 'server' in self.virt_config
-        result = self.virt_config._validate_env()
+        result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
         # Delete 'env' section
         del self.virt_config['env']
-        result = self.virt_config._validate_env()
+        result = self.virt_config._validate_env('env')
         self.assertIsNotNone(result)
         # Delete server too, then env need not to be set
         del self.virt_config['server']
-        result = self.virt_config._validate_env()
+        result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
 
     def test_validate_unencrypted_password(self):

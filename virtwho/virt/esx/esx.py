@@ -36,6 +36,7 @@ from collections import defaultdict
 from httplib import HTTPException
 
 from virtwho import virt
+from virtwho.config import VirtConfigSection
 
 
 class FileAdapter(requests.adapters.BaseAdapter):
@@ -115,14 +116,10 @@ class Esx(virt.Virt):
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
-        self.url = config.server
-        self.username = config.username
-        self.password = config.password
+        self.url = config['server']
+        self.username = config['username']
+        self.password = config['password']
         self.config = config
-
-        # Url must contain protocol (usually https://)
-        if "://" not in self.url:
-            self.url = "https://%s" % self.url
 
         self.filter = None
         self.sc = None
@@ -249,20 +246,20 @@ class Esx(virt.Virt):
         mapping = {'hypervisors': []}
         for host_id, host in self.hosts.items():
             parent = host['parent'].value
-            if self.config.exclude_host_parents is not None and parent in self.config.exclude_host_parents:
+            if self.config['exclude_host_parents'] is not None and parent in self.config['exclude_host_parents']:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
                 continue
-            if self.config.filter_host_parents is not None and parent not in self.config.filter_host_parents:
+            if self.config['filter_host_parents'] is not None and parent not in self.config['filter_host_parents']:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is not included", host_id, parent)
                 continue
             guests = []
 
             try:
-                if self.config.hypervisor_id == 'uuid':
+                if self.config['hypervisor_id'] == 'uuid':
                     uuid = host['hardware.systemInfo.uuid']
-                elif self.config.hypervisor_id == 'hwuuid':
+                elif self.config['hypervisor_id'] == 'hwuuid':
                     uuid = host_id
-                elif self.config.hypervisor_id == 'hostname':
+                elif self.config['hypervisor_id'] == 'hostname':
                     uuid = host['config.network.dnsConfig.hostName']
                     domain_name = host['config.network.dnsConfig.domainName']
                     if domain_name:
@@ -270,7 +267,7 @@ class Esx(virt.Virt):
                 else:
                     raise virt.VirtError(
                         'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
-                        self.config.hypervisor_id)
+                        self.config['hypervisor_id'])
             except KeyError:
                 self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_id)
                 continue
@@ -324,7 +321,7 @@ class Esx(virt.Virt):
 
         kwargs = {'transport': RequestsTransport()}
         # Connect to the vCenter server
-        if self.config.simplified_vim:
+        if self.config['simplified_vim']:
             wsdl = 'file://%s/vimServiceMinimal.wsdl' % os.path.dirname(os.path.abspath(__file__))
             kwargs['cache'] = None
         else:
@@ -494,6 +491,26 @@ class Host(dict):
 class VM(dict):
     def __init__(self):
         self.uuid = None
+
+
+class EsxConfigSection(VirtConfigSection):
+    VIRT_TYPE = 'esx'
+
+    def __init__(self, *args, **kwargs):
+        super(EsxConfigSection, self).__init__(*args, **kwargs)
+
+        self.add_key('simplified_vim', validation_method=self._validate_str_to_bool, default=True)
+        self.add_key('filter_host_parents', validation_method=self._validate_filter)
+        self.add_key('exclude_host_parents', validation_method=self._validate_filter)
+
+    def _validate_server(self, key):
+        error = super(EsxConfigSection, self)._validate_server(key)
+        if error is None:
+            # Url must contain protocol (usually https://)
+            if "://" not in self._values[key]:
+                self._values[key] = "https://%s" % self._values[key]
+        return error
+
 
 if __name__ == '__main__':  # pragma: no cover
     # TODO: read from config

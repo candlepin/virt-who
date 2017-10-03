@@ -114,7 +114,7 @@ class TestGlobalConfigSection(TestBase):
         Test validation of time interval
         """
         self.init_global_config_section()
-        result = self.global_config._validate_interval()
+        result = self.global_config._validate_interval('interval')
         self.assertIsNone(result)
 
     def test_validate_wrong_interval(self):
@@ -123,7 +123,7 @@ class TestGlobalConfigSection(TestBase):
         """
         self.init_global_config_section()
         self.global_config['interval'] = '10'
-        result = self.global_config._validate_interval()
+        result = self.global_config._validate_interval('interval')
         self.assertIsNotNone(result)
         interval = self.global_config.get('interval')
         self.assertEqual(interval, MinimumSendInterval)
@@ -137,8 +137,8 @@ class TestGlobalConfigSection(TestBase):
         for key, value in GLOBAL_SECTION_VALUES.items():
             if key != 'interval':
                 self.global_config[key] = value
-        result = self.global_config._validate_interval()
-        self.assertIsNone(result)
+        result = self.global_config._validate_interval('interval')
+        self.assertIsNotNone(result)
         interval = self.global_config['interval']
         self.assertEqual(interval, DefaultInterval)
 

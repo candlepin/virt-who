@@ -669,6 +669,7 @@ def parse_file(filename):
     # options_dict is a dict of option_name: value
     parser = StripQuotesConfigParser()
     sections = {}
+
     try:
         fname = parser.read(filename)
         if len(fname) == 0:
@@ -751,7 +752,7 @@ class ValidationState(object):
 
 class ConfigSection(collections.MutableMapping):
     """
-    This represents a section of configuration for virt-who. The interface that it exposes is 
+    This represents a section of configuration for virt-who. The interface that it exposes is
     dictionary like. This object maintains a state attribute. The state shows if the configuration
     section has passed validation, needs validation, or is invalid for some reason.
     """
@@ -836,7 +837,7 @@ class ConfigSection(collections.MutableMapping):
 
     def _pre_validate(self):
         """
-        Steps necessary to do before evaluation 
+        Steps necessary to do before evaluation
         """
         # FIXME: add some comments with some explanation
         if 'virttype' in self._values:
@@ -899,7 +900,7 @@ class ConfigSection(collections.MutableMapping):
 
     def is_section_default(self):
         """
-        :return: This method returns True if this ConfigSection instance has exactly the same 
+        :return: This method returns True if this ConfigSection instance has exactly the same
         keys and values as the defined defaults (if any).
         :rtype: bool
         """
@@ -924,13 +925,13 @@ class ConfigSection(collections.MutableMapping):
 
     def update(self, *args, **kwds):
         """
-        This method implements update as usually defined on a regular dict. The only difference 
+        This method implements update as usually defined on a regular dict. The only difference
         is a reference to self is expected.
-        :param *args: Each arg passed if it has a "keys" method we will do the following d[k] = 
-            arg[k] for k in arg.keys. If not we treat the arg as iterable (possiblly a tuple of 
+        :param *args: Each arg passed if it has a "keys" method we will do the following d[k] =
+            arg[k] for k in arg.keys. If not we treat the arg as iterable (possiblly a tuple of
             tuples or list of tuples etc). In this case we do the following: for key, val in arg:
-            d[key] = value. 
-        :param **kwds: for each keyword arg in kwds we set d[keyword] = kwds[keyword] 
+            d[key] = value.
+        :param **kwds: for each keyword arg in kwds we set d[keyword] = kwds[keyword]
         :return: Nothing
         """
         for arg in args:
@@ -950,9 +951,9 @@ class ConfigSection(collections.MutableMapping):
     def get_defaults(cls):
         """
         Returns: A dictionary of the defaults defined for a ConfigSection of this type.
-                 Strings are returned so as to match the values returned by parsers for other 
-                 sources of configuration (for example, ConfigParsers or argparse). Better to 
-                 treat args from all parsers as strings and to convert from strings 
+                 Strings are returned so as to match the values returned by parsers for other
+                 sources of configuration (for example, ConfigParsers or argparse). Better to
+                 treat args from all parsers as strings and to convert from strings
                  in one place than to check type multiple places up until then.
         """
         defaults = dict()
@@ -961,18 +962,29 @@ class ConfigSection(collections.MutableMapping):
         return defaults
 
     @classmethod
-    def class_for_type(cls, virt_type):
-        clazz = cls
+    def class_for_type(cls, virt_type, parent=None):
+        if parent is None:
+            clazz = cls
+        else:
+            clazz = parent
         for subclass in cls.__subclasses__():
             if getattr(subclass, 'VIRT_TYPE', None) == virt_type:
                 clazz = subclass
                 break
+            # When VIRT_TYPE was not found in this subclass, then
+            # this subclass can have another subclasses :-)
+            else:
+                result = subclass.class_for_type(virt_type, cls)
+                if result != cls:
+                    clazz = result
+                    break
         return clazz
 
     @classmethod
     def from_dict(cls, values, section_name, wrapper):
         virt_type = values.get('virttype', None) or values.get('type')
-        section = cls.class_for_type(virt_type)(section_name, wrapper)
+        sub_cls = cls.class_for_type(virt_type)
+        section = sub_cls(section_name, wrapper)
         section.update(**values)
         return section
 
@@ -1059,8 +1071,26 @@ class VirtConfigSection(ConfigSection):
         ('exclude_host_uuids', 'exclude_hosts'),
     )
 
-    def __init__(self, section_name, wrapper):
+    def __new__(cls, section_name, wrapper, virt_type=None, *args, **kwargs):
+        """
+        Try to return instance of subclass specific for virtualization
+        backend specified in virt_type
+        """
+
+        # Go through all subclasses and try to find subclass with the
+        # same virt_type
+        if virt_type is not None:
+            for sub_cls in cls.__subclasses__():
+                if hasattr(sub_cls, 'VIRT_TYPE') and sub_cls.VIRT_TYPE == virt_type:
+                    # Return instance of subclass
+                    return super(VirtConfigSection, sub_cls).__new__(sub_cls)
+        # Subclass with virt_type was not implemented yet or was not specified
+        # Returning instance of VirtConfigSection
+        return super(VirtConfigSection, cls).__new__(cls)
+
+    def __init__(self, section_name, wrapper, virt_type=None):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
+        self._values['type'] = virt_type
 
     def __setitem__(self, key, value):
         for old_key, new_key in self.RENAMED_OPTIONS:
@@ -1108,7 +1138,7 @@ class VirtConfigSection(ConfigSection):
         """
         Try to validate encrypted password. It has to be UTF-8 encoded.
         :param pass_key: This could be: 'encrypted_password', 'rhsm_encrypted_password',
-                         'rhsm_proxy_encrypted_password' and 'sat_encrypted_password'
+                         'rhsm_encrypted_proxy_password' and 'sat_encrypted_password'
         """
         result = None
         decrypted_pass_key = self.PASSWORD_OPTIONS[pass_key]
@@ -1179,9 +1209,7 @@ class VirtConfigSection(ConfigSection):
         result = None
         sm_type = self._values['sm_type']
         virt_type = self._values['type']
-        if sm_type == 'sam' and (
-                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
-                (virt_type == 'libvirt' and 'server' in self._values)):
+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
             if 'env' not in self:
                 result = (
                     'warning',
@@ -1196,9 +1224,7 @@ class VirtConfigSection(ConfigSection):
         result = None
         sm_type = self._values['sm_type']
         virt_type = self._values['type']
-        if sm_type == 'sam' and (
-                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
-                (virt_type == 'libvirt' and 'server' in self._values)):
+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
             if 'owner' not in self:
                 result = (
                     'warning',
@@ -1225,6 +1251,9 @@ class VirtConfigSection(ConfigSection):
             'encrypted_rhsm_proxy_password': (self._validate_encrypted_password, ('rhsm_proxy_encrypted_password',)),
             'encrypted_sat_password': (self._validate_encrypted_password, ('sat_encrypted_password',)),
             'username': (self._validate_username, ('username',)),
+            'rhsm_hostname': (self._validate_non_empty_string, ('rhsm_hostname',)),
+            'rhsm_port': (self._validate_non_empty_string, ('rhsm_port',)),
+            'rhsm_prefix': (self._validate_non_empty_string, ('rhsm_prefix',)),
             'rhsm_username': (self._validate_username, ('rhsm_username',)),
             'rhsm_proxy_username': (self._validate_username, ('rhsm_proxy_username',)),
             'sat_username': (self._validate_username, ('sat_username',)),
@@ -1481,7 +1510,7 @@ def _check_effective_config_validity(effective_config):
             validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))
             del effective_config[name]
         validation_errors.append(('warning',
-                                  'Using default "%s" configuration' % VW_ENV_CLI_SECTION_NAME))
+                                  'Using default "%s" configuration' % name))
         # In order to keep compatibility with older releases of virt-who,
         # fallback to using libvirt as default virt backend
         # only if we did not have a non_default env/cmdline config

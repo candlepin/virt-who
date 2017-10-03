@@ -262,12 +262,12 @@ class HostGuestAssociationReport(AbstractVirtReport):
         logger = logging.getLogger("virtwho")
         assoc = []
         for host in self._assoc['hypervisors']:
-            if self.exclude_hosts is not None and self._filter(
+            if self.exclude_hosts is not None and self.exclude_hosts != NotSetSentinel and self._filter(
                     host.hypervisorId, self.exclude_hosts):
                 logger.debug("Skipping host '%s' because its uuid is excluded", host.hypervisorId)
                 continue
 
-            if self.filter_hosts is not None and not self._filter(
+            if self.filter_hosts is not None and self.filter_hosts != NotSetSentinel and not self._filter(
                     host.hypervisorId,self.filter_hosts):
                 logger.debug("Skipping host '%s' because its uuid is not included", host.hypervisorId)
                 continue

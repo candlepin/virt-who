@@ -50,6 +50,13 @@ STATE_MAPPING = {
 }
 
 
+class NamedOptions(object):
+    """
+    Object used for compatibility with RHSM
+    """
+    pass
+
+
 class SubscriptionManager(Manager):
     smType = "sam"
 
@@ -181,13 +188,19 @@ class SubscriptionManager(Manager):
         serialized_mapping = self._hypervisor_mapping(report, is_async, connection)
         self.logger.debug("Host-to-guest mapping: %s", json.dumps(serialized_mapping, indent=4))
 
+        # All subclasses of ConfigSection use dictionary like notation,
+        # but RHSM uses attribute like notation
+        named_options = NamedOptions()
+        for key, value in options['global'].items():
+            setattr(named_options, key, value)
+
         try:
             try:
                 result = self.connection.hypervisorCheckIn(
                     report.config.owner,
                     report.config.env,
                     serialized_mapping,
-                    options=options)  # pylint:disable=unexpected-keyword-arg
+                    options=named_options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm

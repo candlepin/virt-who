@@ -27,7 +27,6 @@ from binascii import unhexlify
 import hashlib
 import json
 import util
-import urlparse
 
 # Module-level logger
 logger = log.getLogger('config', queue=False)
@@ -1434,8 +1433,10 @@ class EffectiveConfig(collections.MutableMapping):
         for param, value in values_to_filter.iteritems():
             if value is None:
                 continue
-            if not hasattr(value, '__iter__'):
-                str(value)
+            if type(value) is list:
+                value = [str(item) for item in value]
+            else:
+                value = str(value)
             if param in desired_parameters:
                 matching_parameters[param] = value
             else:
@@ -1504,7 +1505,6 @@ def _check_effective_config_validity(effective_config):
             if name == VW_GLOBAL:
                 # Always keep the global section
                 continue
-            # FIXME: why is env/cli automatically dropped?
             if name == VW_ENV_CLI_SECTION_NAME:
                 has_non_default_env_cli = True
             validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))

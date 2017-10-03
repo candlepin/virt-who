@@ -27,7 +27,7 @@ import shutil
 from virtwho.config import EffectiveConfig, ConfigSection, parse_file
 
 
-MY_SECTION_NAME = 'my_test_section'
+CUSTOM_SECTION_NAME = 'my_test_section'
 
 
 CUSTOM_SECTION_VALUES = {
@@ -47,7 +47,7 @@ another_str=pub
 my_bool=false
 my_list=cat, dog, frog
 must_have=bar
-""".format(section_name=MY_SECTION_NAME)
+""".format(section_name=CUSTOM_SECTION_NAME)
 
 
 class CustomConfigSection(ConfigSection):
@@ -115,11 +115,11 @@ class TestEffectiveConfig(TestBase):
         This method is executed before each unit test
         """
         self.effective_config = EffectiveConfig()
-        self.config_section = CustomConfigSection(MY_SECTION_NAME, self.effective_config)
+        self.config_section = CustomConfigSection(CUSTOM_SECTION_NAME, self.effective_config)
         # Fill config section with some values
         for key, value in CUSTOM_SECTION_VALUES.items():
             self.config_section[key] = value
-        self.effective_config[MY_SECTION_NAME] = self.config_section
+        self.effective_config[CUSTOM_SECTION_NAME] = self.config_section
 
     def test_effective_config_validate(self):
         self.init_effective_config()
@@ -137,35 +137,35 @@ class TestEffectiveConfig(TestBase):
         self.effective_config.validate()
         virt_sections = self.effective_config.virt_sections()
         self.assertEqual(len(virt_sections), 1)
-        self.assertEqual(virt_sections[0][0], MY_SECTION_NAME)
+        self.assertEqual(virt_sections[0][0], CUSTOM_SECTION_NAME)
 
     def test_effective_config_is_value_default(self):
         self.init_effective_config()
         self.effective_config.validate()
-        result = self.effective_config.is_default(MY_SECTION_NAME, 'my_str')
+        result = self.effective_config.is_default(CUSTOM_SECTION_NAME, 'my_str')
         self.assertEqual(result, False)
-        result = self.effective_config.is_default(MY_SECTION_NAME, 'another_str')
+        result = self.effective_config.is_default(CUSTOM_SECTION_NAME, 'another_str')
         self.assertEqual(result, True)
 
     def test_effective_config_items(self):
         self.init_effective_config()
         self.effective_config.validate()
         for key, item in self.effective_config.items():
-            self.assertEqual(key, MY_SECTION_NAME)
+            self.assertEqual(key, CUSTOM_SECTION_NAME)
             self.assertEqual(type(item), CustomConfigSection)
 
     def test_effective_config_del_item(self):
         self.init_effective_config()
         self.effective_config.validate()
         self.assertEqual(len(self.effective_config), 1)
-        del self.effective_config[MY_SECTION_NAME]
+        del self.effective_config[CUSTOM_SECTION_NAME]
         self.assertEqual(len(self.effective_config), 0)
 
     def test_effective_config_is_singleton(self):
         self.init_effective_config()
         self.effective_config.validate()
         effective_config = EffectiveConfig()
-        self.assertIn(MY_SECTION_NAME, effective_config)
+        self.assertIn(CUSTOM_SECTION_NAME, effective_config)
 
     def test_effective_config_filter_params(self):
         effective_config = EffectiveConfig()
@@ -193,13 +193,13 @@ class TestEffectiveConfig(TestBase):
             f.write(CONFIG_SECTION_TEXT)
         conf = parse_file(os.path.join(config_dir, "test.conf"))
         effective_config = EffectiveConfig()
-        conf_values = conf.pop(MY_SECTION_NAME)
-        effective_config[MY_SECTION_NAME] = ConfigSection.from_dict(
+        conf_values = conf.pop(CUSTOM_SECTION_NAME)
+        effective_config[CUSTOM_SECTION_NAME] = ConfigSection.from_dict(
             conf_values,
-            MY_SECTION_NAME,
+            CUSTOM_SECTION_NAME,
             effective_config
         )
-        self.assertEqual(type(effective_config[MY_SECTION_NAME]), CustomConfigSection)
-        self.assertEqual(effective_config[MY_SECTION_NAME]['my_str'], 'foo')
+        self.assertEqual(type(effective_config[CUSTOM_SECTION_NAME]), CustomConfigSection)
+        self.assertEqual(effective_config[CUSTOM_SECTION_NAME]['my_str'], 'foo')
         validate_messages = effective_config.validate()
         self.assertEqual(validate_messages, [])

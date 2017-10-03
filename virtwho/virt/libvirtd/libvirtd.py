@@ -27,6 +27,165 @@ from xml.etree import ElementTree
 from virtwho.virt import (
     Hypervisor, Guest, VirtError, HostGuestAssociationReport,
     DomainListReport, Virt)
+from virtwho.config import VirtConfigSection
+
+
+class LibvirtdConfigSection(VirtConfigSection):
+    """
+    This class is used for validation of libvirtd virtualization backend
+    section. It tries to validate options and combination of options that
+    are specific for this virtualization backend.
+    """
+
+    VIRT_TYPE = 'libvirt'
+
+    def __init__(self, section_name, wrapper, *args, **kwargs):
+        super(LibvirtdConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+
+    def _validate_server(self):
+        """
+        Do validation of server option specific for this virtualization backend
+        return: Always return None (no warning/error are reported)
+        """
+        # Server option is optional for libvirtd (libvirt hypervisor runs on the same
+        # machine as virt-who)
+        result = []
+        if 'server' not in self._values:
+            self._values['server'] = ''
+        else:
+            username = None
+            url = self._values['server']
+            if "//" not in url:
+                url = "//" + url
+            splitted_url = urlparse.urlsplit(url)
+
+            hostname = splitted_url.hostname
+
+            if hostname is None:
+                hostname = ''
+
+            if splitted_url.scheme:
+                scheme = splitted_url.scheme
+            else:
+                result.append((
+                    'info',
+                    "Protocol is not specified in libvirt url, using qemu+ssh://"
+                ))
+                scheme = 'qemu+ssh'
+
+            if 'username' in self._values:
+                username = self._values['username']
+            elif splitted_url.username:
+                username = splitted_url.username
+
+            if len(splitted_url.path) > 1:
+                path = splitted_url.path
+            else:
+                result.append((
+                    'info',
+                    "Libvirt path is not specified in the url, using /system"
+                ))
+                path = '/system'
+
+            self._values['server'] = "%(scheme)s://%(username)s%(hostname)s%(path)s?no_tty=1" % {
+                'username': ("%s@" % username) if username else '',
+                'scheme': scheme,
+                'hostname': hostname,
+                'path': path
+            }
+
+        if len(result) == 0:
+            return None
+        else:
+            return result
+
+    def _validate_env(self):
+        """
+        Do validation of environment (env)
+        :return: None or tuple with warning, when options are wrong
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        if sm_type == 'sam' and 'server' in self._values and 'env' not in self._values:
+            result = (
+                'error',
+                "Option `env` needs to be set in config: '%s'" % self.name
+            )
+        return result
+
+    def _validate_owner(self):
+        """
+        Do validation of owner
+        :return: None or tuple with warning, when options are wrong
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        if sm_type == 'sam' and 'server' in self._values and 'owner' not in self._values:
+            result = (
+                'error',
+                "Option `owner` needs to be set in config: '%s'" % self.name
+            )
+        return result
+
+    def __validate_password(self, pass_key):
+        """
+        Validate password (encrypted or unecrypted) for libvirtd backend
+        :return: None or warning/info, when options are wrong
+        """
+        result = None
+        if pass_key not in self._values:
+            return result
+        else:
+            if 'server' in self._values:
+                server = self._values['server']
+                if 'ssh://' in server or '://' not in server:
+                    result = (
+                        'warn',
+                        "Password authentication doesn't work with ssh transport on libvirt backend, "
+                        "copy your public ssh key to the remote machine"
+                    )
+            else:
+                result = (
+                    'info',
+                    "Options '%s' set in %s is useless for monitoring local libvirtd instance" %
+                    (pass_key, self.name)
+                )
+        return result
+
+    def _validate_encrypted_password(self, pass_key):
+        """
+        Validate encrypted password
+        :param pass_key: Key of encrypted password
+        :return: None or tuple with warning, when options are wrong
+        """
+        if pass_key == 'encrypted_password':
+            result = self.__validate_password(pass_key)
+        else:
+            result = super(LibvirtdConfigSection, self)._validate_encrypted_password(pass_key)
+        return result
+
+    def _validate_unencrypted_password(self, pass_key):
+        """
+        Validate unencrypted password
+        :param pass_key: Key of unencrypted password
+        :return: None or tuple with warning, when options are wrong
+        """
+        if pass_key == 'password':
+            result = self.__validate_password(pass_key)
+        else:
+            result = super(LibvirtdConfigSection, self)._validate_unencrypted_password(pass_key)
+
+        return result
+
+    def _validate(self):
+        """
+        Do validation of section specific for this virtualization backend
+        """
+        # There is currently no specific option for this virtualization backend
+        # we only call super class method of parent class and we do specific
+        # option checking in other _validate_* methods called from _validate()
+        # method of parent class.
+        super(LibvirtdConfigSection, self)._validate()
 
 
 class LibvirtdGuest(Guest):
@@ -113,41 +272,6 @@ class Libvirtd(Virt):
     def isHypervisor(self):
         return bool(self.config.get('server', None))
 
-    def _get_url(self):
-        if self.config.get('server', None):
-            scheme = username = netloc = path = None
-            url = self.config['server']
-            if "//" not in url:
-                url = "//" + url
-            splitted_url = urlparse.urlsplit(url)
-
-            netloc = splitted_url.netloc
-
-            if splitted_url.scheme:
-                scheme = splitted_url.scheme
-            else:
-                self.logger.info("Protocol is not specified in libvirt url, using qemu+ssh://")
-                scheme = 'qemu+ssh'
-
-            if self.config.get('username', None):
-                username = self.config['username']
-            elif splitted_url.username:
-                username = splitted_url.username
-
-            if len(splitted_url.path) > 1:
-                path = splitted_url.path
-            else:
-                self.logger.info("Libvirt path is not specified in the url, using /system")
-                path = '/system'
-
-            return "%(scheme)s://%(username)s%(netloc)s%(path)s?no_tty=1" % {
-                'username': ("%s@" % username) if username else '',
-                'scheme': scheme,
-                'netloc': netloc,
-                'path': path
-            }
-        return ''
-
     def _createEventLoop(self):
         libvirt.virEventRegisterDefaultImpl()
         if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
@@ -157,7 +281,7 @@ class Libvirtd(Virt):
         self.eventLoopThread.start()
 
     def _connect(self):
-        url = self._get_url()
+        url = self.config.get('server', None)
         self.logger.info("Using libvirt url: %s", url if url else '""')
         try:
             if self.config.get('password', None):

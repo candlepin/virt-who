@@ -115,7 +115,7 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--libvirt-username=admin", "--libvirt"]
         _, options = parse_options()
-        self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['virttype'], "libvirt")
+        self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], "libvirt")
         self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], "admin")
 
     @patch('virtwho.log.getLogger')
@@ -176,7 +176,7 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['virttype'], virt)
+            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'owner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'env')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
@@ -192,7 +192,7 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
             _, options = parse_options()
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['virttype'], virt)
+            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
@@ -215,7 +215,7 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['virttype'], virt)
+            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'password')
@@ -233,7 +233,7 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_USERNAME" % virt_up] = "xusername"
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
             _, options = parse_options()
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['virttype'], virt)
+            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')

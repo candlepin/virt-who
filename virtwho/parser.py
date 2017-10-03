@@ -177,57 +177,52 @@ def read_config_env_variables():
             _options[_attr] = _const
 
     # Function called by dispatcher
-    def store_value(_options, _attr, _env, _def_value):
-        if _env is not None and _env != _def_value and _env != "":
+    def store_value(_options, _attr, _env):
+        if _env is not None and _env != "":
             _options[_attr] = _env
 
     # Dispatcher for storing environment values in env_vars object
     dispatcher = {
         # environment variable: (attribute_name, default_value, method, const)
         "VIRTWHO_LOG_PER_CONFIG": ("log_per_config",
-                                   DEFAULTS[VW_GLOBAL]["log_per_config"],
                                    store_const, "true"),
         "VIRTWHO_LOG_FILE": ("log_file",
-                             DEFAULTS[VW_GLOBAL]["log_file"],
                              store_value),
         "VIRTWHO_DEBUG": ("debug",
-                          DEFAULTS[VW_GLOBAL]["debug"],
                           store_const, "true"),
         "VIRTWHO_BACKGROUND": ("background",
-                               DEFAULTS[VW_GLOBAL]["background"],
                                store_const,
                                "true"),
         "VIRTWHO_ONE_SHOT": ("oneshot",
-                             DEFAULTS[VW_GLOBAL]["oneshot"],
                              store_const,
                              "true"),
-        "VIRTWHO_SAM": ("smType", "0", store_const, SAT6),
-        "VIRTWHO_SATELLITE6": ("smType", "0", store_const, SAT6),
-        "VIRTWHO_SATELLITE5": ("smType", "0", store_const, SAT5),
-        "VIRTWHO_SATELLITE": ("smType", "0", store_const, SAT5),
-        "VIRTWHO_LIBVIRT": ("virtType", "0", store_const, "libvirt"),
-        "VIRTWHO_VDSM": ("virtType", "0", store_const, "vdsm"),
-        "VIRTWHO_ESX": ("virtType", "0", store_const, "esx"),
-        "VIRTWHO_XEN": ("virtType", "0", store_const, "xen"),
-        "VIRTWHO_RHEVM": ("virtType", "0", store_const, "rhevm"),
-        "VIRTWHO_HYPERV": ("virtType", "0", store_const, "hyperv"),
-        "VIRTWHO_INTERVAL": ("interval", DEFAULTS[VW_GLOBAL]["interval"], store_value),
-        "VIRTWHO_REPORTER_ID": ("reporter_id", DEFAULTS[VW_GLOBAL]["reporter_id"], store_value),
+        "VIRTWHO_SAM": ("smType", store_const, SAT6),
+        "VIRTWHO_SATELLITE6": ("smType", store_const, SAT6),
+        "VIRTWHO_SATELLITE5": ("smType", store_const, SAT5),
+        "VIRTWHO_SATELLITE": ("smType", store_const, SAT5),
+        "VIRTWHO_LIBVIRT": ("virtType", store_const, "libvirt"),
+        "VIRTWHO_VDSM": ("virtType", store_const, "vdsm"),
+        "VIRTWHO_ESX": ("virtType", store_const, "esx"),
+        "VIRTWHO_XEN": ("virtType", store_const, "xen"),
+        "VIRTWHO_RHEVM": ("virtType", store_const, "rhevm"),
+        "VIRTWHO_HYPERV": ("virtType", store_const, "hyperv"),
+        "VIRTWHO_INTERVAL": ("interval", store_value),
+        "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
     }
 
     # Store values of environment variables to env_vars using dispatcher
     for key, values in dispatcher.items():
         attribute = values[0]
-        default_value = values[1]
-        method = values[2]
-        env = os.getenv(key, default_value).strip()
-        # Try to get const
-        try:
-            value = values[3]
-        except IndexError:
-            method(env_vars, attribute, env, default_value)
-        else:
-            method(env_vars, attribute, env, value)
+        method = values[1]
+
+        if key in os.environ:
+            env = os.getenv(key).strip()
+            # Try to get const
+            try:
+                value = values[2]
+                method(env_vars, attribute, env, value)
+            except IndexError:
+                method(env_vars, attribute, env)
 
     # Todo: move this logic to the EffectiveConfig
     # env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()

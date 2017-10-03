@@ -117,9 +117,6 @@ class TestReadingConfigs(TestBase):
         self.addCleanup(shutil.rmtree, self.config_dir)
         self.logger = logging.getLogger("virtwho.main")
 
-    def tearDown(self):
-        reset_effective_config()
-
     @staticmethod
     def dict_to_ini(in_dict):
         """
@@ -528,8 +525,8 @@ simplified_vim=false
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
-        self.assertFalse(config.simplified_vim)
+        _, config = manager.configs[0]
+        self.assertFalse(config['simplified_vim'])
 
     def testMissingEnvOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:

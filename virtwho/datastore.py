@@ -17,10 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import copy
 from threading import Lock
 
 
@@ -42,7 +39,7 @@ class Datastore(object):
         @param value: The object to store
         """
         with self._datastore_lock:
-            to_store = pickle.dumps(value)
+            to_store = copy.deepcopy(value)
             self._datastore[key] = to_store
 
     def get(self, key, default=None):
@@ -61,7 +58,7 @@ class Datastore(object):
         """
         with self._datastore_lock:
             try:
-                item = pickle.loads(self._datastore[key])
+                item = self._datastore[key]
                 return item
             except KeyError:
                 if default:

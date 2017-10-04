@@ -42,7 +42,7 @@ class LibvirtdConfigSection(VirtConfigSection):
     def __init__(self, section_name, wrapper, *args, **kwargs):
         super(LibvirtdConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
 
-    def _validate_server(self):
+    def _validate_server(self, key):
         """
         Do validation of server option specific for this virtualization backend
         return: Always return None (no warning/error are reported)
@@ -50,11 +50,11 @@ class LibvirtdConfigSection(VirtConfigSection):
         # Server option is optional for libvirtd (libvirt hypervisor runs on the same
         # machine as virt-who)
         result = []
-        if 'server' not in self._values:
-            self._values['server'] = ''
+        if key not in self._values:
+            self._values[key] = ''
         else:
             username = None
-            url = self._values['server']
+            url = self._values[key]
             if "//" not in url:
                 url = "//" + url
             splitted_url = urlparse.urlsplit(url)
@@ -87,7 +87,7 @@ class LibvirtdConfigSection(VirtConfigSection):
                 ))
                 path = '/system'
 
-            self._values['server'] = "%(scheme)s://%(username)s%(hostname)s%(path)s?no_tty=1" % {
+            self._values[key] = "%(scheme)s://%(username)s%(hostname)s%(path)s?no_tty=1" % {
                 'username': ("%s@" % username) if username else '',
                 'scheme': scheme,
                 'hostname': hostname,
@@ -99,31 +99,31 @@ class LibvirtdConfigSection(VirtConfigSection):
         else:
             return result
 
-    def _validate_env(self):
+    def _validate_env(self, key):
         """
         Do validation of environment (env)
         :return: None or tuple with warning, when options are wrong
         """
         result = None
         sm_type = self._values['sm_type']
-        if sm_type == 'sam' and 'server' in self._values and 'env' not in self._values:
+        if sm_type == 'sam' and 'server' in self._values and key not in self._values:
             result = (
                 'error',
-                "Option `env` needs to be set in config: '%s'" % self.name
+                "Option `%s` needs to be set in config: '%s'" % (key, self.name)
             )
         return result
 
-    def _validate_owner(self):
+    def _validate_owner(self, key):
         """
         Do validation of owner
         :return: None or tuple with warning, when options are wrong
         """
         result = None
         sm_type = self._values['sm_type']
-        if sm_type == 'sam' and 'server' in self._values and 'owner' not in self._values:
+        if sm_type == 'sam' and 'server' in self._values and key not in self._values:
             result = (
                 'error',
-                "Option `owner` needs to be set in config: '%s'" % self.name
+                "Option `%s` needs to be set in config: '%s'" % (key, self.name)
             )
         return result
 
@@ -139,17 +139,17 @@ class LibvirtdConfigSection(VirtConfigSection):
             if 'server' in self._values:
                 server = self._values['server']
                 if 'ssh://' in server or '://' not in server:
-                    result = (
+                    result = [(
                         'warn',
                         "Password authentication doesn't work with ssh transport on libvirt backend, "
                         "copy your public ssh key to the remote machine"
-                    )
+                    )]
             else:
-                result = (
+                result = [(
                     'info',
                     "Options '%s' set in %s is useless for monitoring local libvirtd instance" %
                     (pass_key, self.name)
-                )
+                )]
         return result
 
     def _validate_encrypted_password(self, pass_key):
@@ -176,16 +176,6 @@ class LibvirtdConfigSection(VirtConfigSection):
             result = super(LibvirtdConfigSection, self)._validate_unencrypted_password(pass_key)
 
         return result
-
-    def _validate(self):
-        """
-        Do validation of section specific for this virtualization backend
-        """
-        # There is currently no specific option for this virtualization backend
-        # we only call super class method of parent class and we do specific
-        # option checking in other _validate_* methods called from _validate()
-        # method of parent class.
-        super(LibvirtdConfigSection, self)._validate()
 
 
 class LibvirtdGuest(Guest):

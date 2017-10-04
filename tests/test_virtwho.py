@@ -73,20 +73,20 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         sys.argv = ["virtwho.py", "--interval=5"]
         _, options = parse_options()
-        self.assertEqual(options[VW_GLOBAL]['interval'], 60)
+        self.assertEqual(options[VW_GLOBAL]['interval'], 3600)
 
         sys.argv = ["virtwho.py"]
         os.environ["VIRTWHO_INTERVAL"] = '1'
 
         _, options = parse_options()
-        self.assertEqual(options[VW_GLOBAL]['interval'], 60)
+        self.assertEqual(options[VW_GLOBAL]['interval'], 3600)
 
         self.clearEnv()
         bad_conf = {'global': {'interval': '1'}}
         parseFile.return_value = bad_conf
 
         _, options = parse_options()
-        self.assertEqual(options[VW_GLOBAL]['interval'], 60)
+        self.assertEqual(options[VW_GLOBAL]['interval'], 3600)
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')

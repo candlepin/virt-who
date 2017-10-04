@@ -31,11 +31,13 @@ from virtwho.virt.esx import Esx
 from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
 from proxy import Proxy
 
+from virtwho.virt.esx.esx import EsxConfigSection
+
 
 class TestEsx(TestBase):
     def setUp(self):
-        config = Config('test', 'esx', server='localhost', username='username',
-                        password='password', owner='owner', env='env')
+        config = EsxConfigSection('test', 'esx', server='localhost', username='username',
+                                  password='password', owner='owner', env='env')
         self.esx = Esx(self.logger, config, None)  #  No dest given here
 
     def run_once(self, datastore=None):

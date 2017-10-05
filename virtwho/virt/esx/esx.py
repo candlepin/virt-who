@@ -293,7 +293,7 @@ class Esx(virt.Virt):
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property", vm_id.value)
-                    guests.append(virt.Guest(vm['config.uuid'], self, state))
+                    guests.append(virt.Guest(vm['config.uuid'], self.CONFIG_TYPE, state))
             try:
                 name = host['config.network.dnsConfig.hostName']
                 domain_name = host['config.network.dnsConfig.domainName']

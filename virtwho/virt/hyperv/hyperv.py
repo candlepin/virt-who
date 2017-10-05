@@ -590,7 +590,7 @@ class HyperV(virt.Virt):
                 self.logger.warning("Unknown state for guest %s", elementName)
                 state = virt.Guest.STATE_UNKNOWN
 
-            guests.append(virt.Guest(HyperV.decodeWinUUID(uuid), self, state))
+            guests.append(virt.Guest(HyperV.decodeWinUUID(uuid), self.CONFIG_TYPE, state))
         # Get the hostname
         hostname = None
         socket_count = None

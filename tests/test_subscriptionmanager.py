@@ -19,9 +19,9 @@ xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 
 class TestSubscriptionManager(TestBase):
     guestList = [
-        Guest('222', xvirt, Guest.STATE_RUNNING),
-        Guest('111', xvirt, Guest.STATE_RUNNING),
-        Guest('333', xvirt, Guest.STATE_RUNNING),
+        Guest('222', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
+        Guest('111', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
+        Guest('333', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
     ]
     mapping = {
         'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR')]

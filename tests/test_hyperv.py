@@ -27,8 +27,8 @@ import requests
 from base import TestBase
 from proxy import Proxy
 
-from virtwho.config import Config
-from virtwho.virt.hyperv import HyperV
+from virtwho import DefaultInterval
+from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection
 from virtwho.virt import VirtError, Guest, Hypervisor
 
 
@@ -136,9 +136,18 @@ class HyperVMock(object):
 
 class TestHyperV(TestBase):
     def setUp(self):
-        config = Config('test', 'hyperv', server='localhost', username='username',
-                        password='password', owner='owner', env='env')
-        self.hyperv = HyperV(self.logger, config, None)
+        config_values = {
+            'type': 'hyperv',
+            'server': 'localhost',
+            'username': 'username',
+            'password': 'password',
+            'owner': 'owner',
+            'env': 'env,'
+        }
+        config = HypervConfigSection('test', None)
+        config.update(**config_values)
+        config.validate()
+        self.hyperv = HyperV(self.logger, config, None, interval=DefaultInterval)
 
     def run_once(self, queue=None):
         ''' Run Hyper-V in oneshot mode '''
@@ -217,7 +226,7 @@ class TestHyperV(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.hyperv,
+                    self.hyperv.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],

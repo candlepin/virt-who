@@ -58,7 +58,7 @@ class Datastore(object):
         """
         with self._datastore_lock:
             try:
-                item = self._datastore[key]
+                item = copy.deepcopy(self._datastore[key])
                 return item
             except KeyError:
                 if default:

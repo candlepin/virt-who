@@ -80,10 +80,10 @@ env=env
         config = config_manager.configs[0][1]
 
         included_hypervisor = Hypervisor('12345', guestIds=[
-            Guest('guest-2', xvirt, Guest.STATE_RUNNING),
+            Guest('guest-2', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
         ])
         excluded_hypervisor = Hypervisor('00000', guestIds=[
-            Guest('guest-1', xvirt, Guest.STATE_RUNNING),
+            Guest('guest-1', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
         ])
 
         assoc = {
@@ -216,8 +216,8 @@ class TestDestinationThread(TestBase):
         virt2 = Mock()
         virt2.CONFIG_TYPE = 'esx'
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
-        guest2 = Guest('GUUID2', virt2, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
+        guest2 = Guest('GUUID2', virt2.CONFIG_TYPE, Guest.STATE_RUNNING)
         assoc1 = {'hypervisors': [Hypervisor('hypervisor_id_1', [guest1])]}
         assoc2 = {'hypervisors': [Hypervisor('hypervisor_id_2', [guest2])]}
         report1 = HostGuestAssociationReport(config1, assoc1)
@@ -264,8 +264,8 @@ class TestDestinationThread(TestBase):
         virt2 = Mock()
         virt2.CONFIG_TYPE = 'esx'
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
-        guest2 = Guest('GUUID2', virt2, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
+        guest2 = Guest('GUUID2', virt2.CONFIG_TYPE, Guest.STATE_RUNNING)
         assoc1 = {'hypervisors': [Hypervisor('hypervisor_id_1', [guest1])]}
         assoc2 = {'hypervisors': [Hypervisor('hypervisor_id_2', [guest2])]}
         report1 = HostGuestAssociationReport(config1, assoc1)
@@ -338,8 +338,8 @@ class TestDestinationThread(TestBase):
         virt2 = Mock()
         virt2.CONFIG_TYPE = 'esx'
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
-        guest2 = Guest('GUUID2', virt2, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
+        guest2 = Guest('GUUID2', virt2.CONFIG_TYPE, Guest.STATE_RUNNING)
         assoc1 = {'hypervisors': [Hypervisor('hypervisor_id_1', [guest1])]}
         assoc2 = {'hypervisors': [Hypervisor('hypervisor_id_2', [guest2])]}
         report1 = HostGuestAssociationReport(config1, assoc1)
@@ -398,7 +398,7 @@ class TestDestinationThread(TestBase):
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
         report1 = DomainListReport(config1, [guest1],
                                    hypervisor_id='hypervisor_id_1')
 
@@ -434,7 +434,7 @@ class TestDestinationThread(TestBase):
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
         report1 = DomainListReport(config1, [guest1],
                                    hypervisor_id='hypervisor_id_1')
 
@@ -480,7 +480,7 @@ class TestDestinationThread(TestBase):
         config = Mock()
         manager = Mock()
 
-        guest1 = Guest('GUUID1', virt1, Guest.STATE_RUNNING)
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
         report1 = DomainListReport(config1, [guest1],
                                    hypervisor_id='hypervisor_id_1')
         report2 = DomainListReport(config1, [guest1],

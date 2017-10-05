@@ -61,7 +61,7 @@ class Guest(object):
 
     def __init__(self,
                  uuid,
-                 virt,
+                 virt_type,
                  state,
                  hypervisorType=None):
         """
@@ -75,7 +75,7 @@ class Guest(object):
         `state` is a number that represents the state of the guest (stopped, running, ...)
         """
         self.uuid = uuid
-        self.virtWhoType = virt.CONFIG_TYPE
+        self.virtWhoType = virt_type
         self.state = state
 
     def __repr__(self):

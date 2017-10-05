@@ -28,6 +28,12 @@ import hashlib
 import json
 import util
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6 doesn't have OrderedDict, we need to have our own
+    from util import OrderedDict
+
 # Module-level logger
 logger = log.getLogger('config', queue=False)
 
@@ -760,7 +766,6 @@ class ConfigSection(collections.MutableMapping):
     # The string representation of all default properties and values
     # Real values should be added in child classes
     DEFAULTS = ()
-    REQUIRED = ()
 
     __marker = object()
 
@@ -782,8 +787,10 @@ class ConfigSection(collections.MutableMapping):
         # Validation messages from last run
         self.validation_messages = []
 
-        self.validation_methods = {}
+        self.validation_methods = OrderedDict()
         self._destinations = {}
+        self._required_keys = set()
+        self._missing_required_keys = set()
 
         # Add section defaults
         for key, value in self.defaults.items():
@@ -803,7 +810,8 @@ class ConfigSection(collections.MutableMapping):
     def _update_state(self):
         if len(self._unvalidated_keys) > 0:
             self.state = ValidationState.NEEDS_VALIDATION
-        elif len(self._invalid_keys) > 0 or len(self._values) == 0:
+        elif len(self._invalid_keys) > 0 or len(self._values) == 0 or len(
+                self._missing_required_keys) > 0:
             self.state = ValidationState.INVALID
         else:
             self.state = ValidationState.VALID
@@ -848,8 +856,8 @@ class ConfigSection(collections.MutableMapping):
         """
         Steps necessary to do before evaluation
         """
-        # FIXME: add some comments with some explanation
-        if 'virttype' in self._values:
+        # Used to allow virttype to be provided for type (if type was not given)
+        if 'virttype' in self._values and 'type' not in self._values:
             self._values['type'] = self._values['virttype']
 
         if len(self._unvalidated_keys) == 0:
@@ -865,15 +873,21 @@ class ConfigSection(collections.MutableMapping):
                         )
                     )
 
+    def check_required_keys(self):
+        for required_key in self._required_keys:
+            if required_key not in self and not self.has_default(required_key):
+                msg = ('error', 'Required option: "%s" is missing in: "%s"' % (required_key,
+                                                                               self.name))
+                self.validation_messages.append(msg)
+                self._missing_required_keys.add(required_key)
+
     def _post_validate(self):
         """
         Steps necessary to do after evaluation
         """
-        for required_key in self.REQUIRED:
-            if required_key not in self:
-                msg = ('error', 'Required option: "%s" is missing in: %s' % (required_key, self.name))
-                self.validation_messages.append(msg)
+        self.check_required_keys()
         self.reset_to_defaults()
+        self.apply_destinations()
         # Finally calls _update_state
         self._update_state()
 
@@ -883,26 +897,35 @@ class ConfigSection(collections.MutableMapping):
             return
         validation_messages = []
 
+        # remove unknown keys
+        unknown_keys = self._unvalidated_keys.difference(self.validation_methods.keys())
+        self._unvalidated_keys.difference_update(unknown_keys)
         # Validate those keys that need to be validated
-        for key in set(self._unvalidated_keys):
-            errors = None
-            try:
-                validation_method = self.validation_methods[key]
-                errors = validation_method(key)
-            except KeyError:
-                # We must not know of this parameter for the VirtConfigSection
-                validation_messages.append(
-                    ('warning', 'Ignoring unknown configuration option "%s"' % key)
-                )
-                del self._values[key]
-
-            if errors is not None:
-                if type(errors) is list:
-                    validation_messages.extend(errors)
+        for key, validation_method in self.validation_methods.iteritems():
+            if key not in self._unvalidated_keys:
+                continue
+            messages = validation_method(key)
+            key_invalid = False
+            if messages is not None:
+                if type(messages) is list:
+                    if any(message[0] == 'error' for message in messages):
+                        key_invalid = True
+                    validation_messages.extend(messages)
                 else:
-                    validation_messages.append(errors)
-                self._invalid_keys.add(key)
+                    if messages[0] == 'error':
+                        key_invalid = True
+                    validation_messages.append(messages)
+                # Only add if at least one result contains an 'error' level message
+                if key_invalid:
+                    self._invalid_keys.add(key)
             self._unvalidated_keys.remove(key)
+
+        for key in unknown_keys:
+            validation_messages.append(
+                    ('warning', 'Ignoring unknown configuration option "%s"' % key)
+            )
+            if key in self._values:
+                del self._values[key]
 
         self._update_state()
         self.validation_messages.extend(validation_messages)
@@ -922,10 +945,23 @@ class ConfigSection(collections.MutableMapping):
         When option is not set correctly or it was not set at all, then
         this methods tries to set such options to default values.
         """
-        for key in self._invalid_keys:
-            if self.has_default(key):
+        for key in self._invalid_keys.union(self.defaults.keys()):
+            if self.has_default(key) and key not in self._values:
                 self._values[key] = self.defaults[key]
-        self._invalid_keys = set()
+                if key in self._required_keys:
+                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % (key, self.name,
+                                                                                                self.defaults[key])
+                else:
+                    message = 'Value for "%s" not set in: "%s", using default: "%s"' % (key, self.name, self.get(key))
+                self.validation_messages.append(('warning', message))
+
+    def apply_destinations(self):
+        # Rudimentary, should we be copying values around or just referencing them
+        for key in self._destinations:
+            if key in self._values and self._destinations[key] not in self._values and key \
+                    not in self._invalid_keys:
+                self._values[self._destinations[key]] = self._values[key]
+                del self._values[key]
 
     def is_default(self, key):
         return key in self.defaults and (key not in self._values or self._values[key] == self.defaults[key])
@@ -1071,14 +1107,17 @@ class ConfigSection(collections.MutableMapping):
             self._values[list_key] = []  # Reset to empty list
         return result
 
-    def add_key(self, key, validation_method=None, default=None, destination=None):
-        if default is not None:
+    def add_key(self, key, validation_method=None, default=__marker, destination=None,
+                required=False):
+        if default is not self.__marker:
             self.defaults[key] = default
         if not validation_method:
             raise AttributeError('validation_method must be provided for {}'.format(key))
         self.validation_methods[key] = validation_method
         if destination:
             self._destinations[key] = destination
+        if required:
+            self._required_keys.add(key)
 
 
 class VirtConfigSection(ConfigSection):
@@ -1120,7 +1159,8 @@ class VirtConfigSection(ConfigSection):
         self.add_key('filter_hosts', validation_method=self._validate_filter)
         self.add_key('filter_host_parents', validation_method=self._validate_filter)
         self.add_key('exclude_hosts', validation_method=self._validate_filter)
-        self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
+        self.add_key('exclude_host_parents', validation_method=self._validate_filter,
+                     default=None)
         self.add_key('rhsm_proxy_hostname', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_proxy_port', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_hostname', validation_method=self._validate_non_empty_string)
@@ -1445,34 +1485,39 @@ class EffectiveConfig(collections.MutableMapping):
 
 
 def _check_effective_config_validity(effective_config):
-    validation_errors = []
-    effective_config.validate()
+    validation_errors = effective_config.validate()
+    valid_virt_sections = {}
+    invalid_virt_sections = {}
+    for name, section in effective_config.virt_sections():
+        if section.is_valid():
+            valid_virt_sections[name] = section
+        else:
+            invalid_virt_sections[name] = section
+    has_non_default_env_cli = False
 
-    valid_virt_sections = [(name, section) for (name, section) in effective_config.virt_sections()
-                           if section.is_valid()]
-
-    if not valid_virt_sections:
-        has_non_default_env_cli = False
-        validation_errors.append(('warning', 'No valid configurations found'))
-        # Check if ENV_CLI is default, if not fail
-        for name, section in effective_config.items():
-            if name == VW_GLOBAL:
-                # Always keep the global section
-                continue
-            if name == VW_ENV_CLI_SECTION_NAME:
+    # Drop invalid configurations first
+    if len(invalid_virt_sections.keys()) > 0:
+        for name, section in invalid_virt_sections.items():
+            if name == VW_ENV_CLI_SECTION_NAME and not section.is_section_default():
                 has_non_default_env_cli = True
             validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))
             del effective_config[name]
+
+        # If there are no valid virt sections
+        if not valid_virt_sections:
+            validation_errors.append(('warning', 'No valid configurations found'))
+
+    # In order to keep compatibility with older releases of virt-who,
+    # fallback to using libvirt as default virt backend
+    # only if we did not have a non_default env/cmdline config
+    if not has_non_default_env_cli and len(effective_config.virt_sections()) == 0 and len(
+            invalid_virt_sections) == 0:
+        effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
+                DEFAULTS[VW_ENV_CLI_SECTION_NAME],
+                VW_ENV_CLI_SECTION_NAME,
+                effective_config)
         validation_errors.append(('warning',
-                                  'Using default "%s" configuration' % name))
-        # In order to keep compatibility with older releases of virt-who,
-        # fallback to using libvirt as default virt backend
-        # only if we did not have a non_default env/cmdline config
-        if not has_non_default_env_cli:
-            effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
-                    DEFAULTS[VW_ENV_CLI_SECTION_NAME],
-                    VW_ENV_CLI_SECTION_NAME,
-                    effective_config)
+                                  'Using default "%s" configuration' % VW_ENV_CLI_SECTION_NAME))
 
     effective_config.validate()
     return effective_config, validation_errors
@@ -1564,7 +1609,7 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     # Log pending errors
     for err in validation_errors:
         method = getattr(logger, err[0])
-        if method is not None:
+        if method is not None and err[0] == 'error':
             method(err[1])
 
     return effective_config

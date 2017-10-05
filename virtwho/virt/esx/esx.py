@@ -293,7 +293,7 @@ class Esx(virt.Virt):
                             state = virt.Guest.STATE_SHUTOFF
                     except KeyError:
                         self.logger.debug("Guest '%s' doesn't have 'runtime.powerState' property", vm_id.value)
-                    guests.append(virt.Guest(vm['config.uuid'], self, state))
+                    guests.append(virt.Guest(vm['config.uuid'], self.CONFIG_TYPE, state))
             try:
                 name = host['config.network.dnsConfig.hostName']
                 domain_name = host['config.network.dnsConfig.domainName']
@@ -498,10 +498,12 @@ class EsxConfigSection(VirtConfigSection):
 
     def __init__(self, *args, **kwargs):
         super(EsxConfigSection, self).__init__(*args, **kwargs)
-
+        self.add_key('env', validation_method=self._validate_env, required=True)
+        self.add_key('owner', validation_method=self._validate_owner, required=True)
+        self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
         self.add_key('simplified_vim', validation_method=self._validate_str_to_bool, default=True)
-        self.add_key('filter_host_parents', validation_method=self._validate_filter)
-        self.add_key('exclude_host_parents', validation_method=self._validate_filter)
+        self.add_key('filter_host_parents', validation_method=self._validate_filter, default=None)
+        self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
 
     def _validate_server(self, key):
         error = super(EsxConfigSection, self)._validate_server(key)

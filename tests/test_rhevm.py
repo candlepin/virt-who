@@ -167,7 +167,7 @@ class TestRhevM(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.rhevm,
+                    self.rhevm.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -211,7 +211,7 @@ class TestRhevM(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.rhevm,
+                    self.rhevm.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],

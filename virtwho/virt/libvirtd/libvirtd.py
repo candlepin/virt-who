@@ -66,12 +66,18 @@ class LibvirtdConfigSection(VirtConfigSection):
 
             if splitted_url.scheme:
                 scheme = splitted_url.scheme
-            else:
+            elif 'password' not in self._values:
                 result.append((
                     'info',
                     "Protocol is not specified in libvirt url, using qemu+ssh://"
                 ))
                 scheme = 'qemu+ssh'
+            else:
+                result.append((
+                    'info',
+                    "Protocol is not specified in libvirt url, using qemu://"
+                ))
+                scheme = 'qemu'
 
             if 'username' in self._values:
                 username = self._values['username']
@@ -179,7 +185,7 @@ class LibvirtdConfigSection(VirtConfigSection):
 
 
 class LibvirtdGuest(Guest):
-    def __init__(self, libvirtd, domain):
+    def __init__(self, domain):
         try:
             state = domain.state(0)[0]
         except AttributeError:
@@ -189,7 +195,7 @@ class LibvirtdGuest(Guest):
 
         super(LibvirtdGuest, self).__init__(
             uuid=domain.UUIDString(),
-            virt=libvirtd,
+            virt_type=Libvirtd.CONFIG_TYPE,
             state=state)
 
 
@@ -271,7 +277,7 @@ class Libvirtd(Virt):
         self.eventLoopThread.start()
 
     def _connect(self):
-        url = self.config.get('server', None)
+        url = self.config.get('server', "")
         self.logger.info("Using libvirt url: %s", url if url else '""')
         try:
             if self.config.get('password', None):
@@ -372,7 +378,7 @@ class Libvirtd(Virt):
                 if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
                     # Don't send Domain-0 on xen (zeroed uuid)
                     continue
-                domains.append(LibvirtdGuest(self, domain))
+                domains.append(LibvirtdGuest(domain))
 
             # Non active domains
             for domainName in self.virt.listDefinedDomains():
@@ -382,7 +388,7 @@ class Libvirtd(Virt):
                     self.logger.debug("Lookup for domain by name '%s' failed, probably it was just destroyed, ignoring" % domainName)
                     continue
 
-                domains.append(LibvirtdGuest(self, domain))
+                domains.append(LibvirtdGuest(domain))
         except libvirt.libvirtError as e:
             self.virt.close()
             raise VirtError(str(e))

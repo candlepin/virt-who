@@ -27,7 +27,8 @@ import tempfile
 import os
 from binascii import hexlify
 
-from virtwho.config import VirtConfigSection, LibvirtdConfigSection, VW_TYPES
+from virtwho.config import VirtConfigSection, VW_TYPES
+from virtwho.virt.libvirtd.libvirtd import LibvirtdConfigSection
 from virtwho.password import Password
 
 
@@ -63,20 +64,6 @@ class TestVirtConfigSection(TestBase):
         for key, value in LIBVIRT_SECTION_VALUES.items():
             self.virt_config[key] = value
 
-    def test_virt_config_section_new(self):
-        """
-        Test creating instance of subclass of VirtConfigSection
-        """
-        virt_config = VirtConfigSection(section_name='test_libvirt', wrapper=None, virt_type='libvirt')
-        self.assertEqual(type(virt_config), LibvirtdConfigSection)
-
-    def test_virt_config_section_new_no_virt_type(self):
-        """
-        Test creating instance of VirtConfigSection without definition of virt_type
-        """
-        virt_config = VirtConfigSection(section_name='test_libvirt', wrapper=None)
-        self.assertEqual(type(virt_config), VirtConfigSection)
-
     def test_validate_virt_type(self):
         """
         Test validation of supported types of virtualization backends
@@ -86,7 +73,7 @@ class TestVirtConfigSection(TestBase):
         test_virt_types.extend(['vmware,' 'kvm'])
         for virt_type in test_virt_types:
             self.virt_config['type'] = virt_type
-            result = self.virt_config._validate_virt_type()
+            result = self.virt_config._validate_virt_type('type')
             if virt_type not in VW_TYPES:
                 self.assertIsNotNone(result)
             else:
@@ -110,7 +97,7 @@ class TestVirtConfigSection(TestBase):
         """
         self.init_virt_config_section()
         self.virt_config['type'] = 'qemu'
-        result = self.virt_config._validate_virt_type()
+        result = self.virt_config._validate_virt_type('type')
         self.assertIsNotNone(result)
         self.virt_config.validate()
         virt_type = self.virt_config.get('type')
@@ -229,7 +216,7 @@ class TestVirtConfigSection(TestBase):
         Test validation of server
         """
         self.init_virt_config_section()
-        result = self.virt_config._validate_server()
+        result = self.virt_config._validate_server('server')
         self.assertIsNone(result)
 
     def test_validate_missing_server(self):
@@ -244,7 +231,7 @@ class TestVirtConfigSection(TestBase):
         # Test all of them
         for virt_type in virt_backends_requiring_server:
             self.virt_config['type'] = virt_type
-            result = self.virt_config._validate_server()
+            result = self.virt_config._validate_server('server')
             self.assertIsNotNone(result)
 
     def test_validate_missing_server_not_critical(self):
@@ -260,7 +247,7 @@ class TestVirtConfigSection(TestBase):
         # Test all of vm backend types
         for virt_type in virt_backends_not_requiring_server:
             self.virt_config['type'] = virt_type
-            result = self.virt_config._validate_server()
+            result = self.virt_config._validate_server('server')
             self.assertIsNone(result)
 
     def test_validate_environment(self):
@@ -268,7 +255,7 @@ class TestVirtConfigSection(TestBase):
         Test validation of env option 
         """
         self.init_virt_config_section()
-        result = self.virt_config._validate_env()
+        result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
 
     def test_validate_owner(self):
@@ -276,7 +263,7 @@ class TestVirtConfigSection(TestBase):
         Test validation of owner option
         """
         self.init_virt_config_section()
-        result = self.virt_config._validate_owner()
+        result = self.virt_config._validate_owner('owner')
         self.assertIsNone(result)
 
     def test_validate_filter(self):

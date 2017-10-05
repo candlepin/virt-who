@@ -493,7 +493,7 @@ def parse_options():
     # Log pending errors
     for err in errors:
         method = getattr(logger, err[0])
-        if method is not None:
+        if method is not None and err[0] == 'error':
             method(err[1])
 
     return logger, effective_config

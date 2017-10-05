@@ -25,7 +25,7 @@ import shutil
 
 from base import TestBase
 
-from virtwho.config import DestinationToSourceMapper
+from virtwho.config import DestinationToSourceMapper, init_config
 from virtwho.virt import Virt, Hypervisor, VirtError
 from virtwho.virt.fakevirt import FakeVirt
 
@@ -88,10 +88,10 @@ type=fake
 is_hypervisor=true
 file=%s
 """ % self.hypervisor_file)
-
-        manager = DestinationToSourceMapper(self.logger, self.config_dir)
+        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        manager = DestinationToSourceMapper(effective_config)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.from_config(self.logger, manager.configs[0], None)
+        virt = Virt.from_config(self.logger, manager.configs[0][1], None)
         self.assertEquals(type(virt), FakeVirt)
         mapping = virt.getHostGuestMapping()
         self.assertTrue("hypervisors" in mapping)
@@ -116,10 +116,10 @@ type=fake
 is_hypervisor=true
 file=%s
 """ % self.hypervisor_file)
-
-        manager = DestinationToSourceMapper(self.logger, self.config_dir)
+        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        manager = DestinationToSourceMapper(effective_config)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.from_config(self.logger, manager.configs[0], None)
+        virt = Virt.from_config(self.logger, manager.configs[0][1], None)
         self.assertEquals(type(virt), FakeVirt)
         self.assertRaises(VirtError, virt.getHostGuestMapping)
 
@@ -135,9 +135,10 @@ is_hypervisor=false
 file=%s
 """ % self.hypervisor_file)
 
-        manager = DestinationToSourceMapper(self.logger, self.config_dir)
+        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        manager = DestinationToSourceMapper(effective_config)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.from_config(self.logger, manager.configs[0], None)
+        virt = Virt.from_config(self.logger, manager.configs[0][1], None)
         self.assertEquals(type(virt), FakeVirt)
         guests = virt.listDomains()
         self.assertEquals(len(guests), 1)
@@ -157,8 +158,9 @@ is_hypervisor=false
 file=%s
 """ % self.hypervisor_file)
 
-        manager = DestinationToSourceMapper(self.logger, self.config_dir)
+        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        manager = DestinationToSourceMapper(effective_config)
         self.assertEquals(len(manager.configs), 1)
-        virt = Virt.from_config(self.logger, manager.configs[0], None)
+        virt = Virt.from_config(self.logger, manager.configs[0][1], None)
         self.assertEquals(type(virt), FakeVirt)
         self.assertRaises(VirtError, virt.listDomains)

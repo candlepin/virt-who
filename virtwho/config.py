@@ -784,6 +784,8 @@ class ConfigSection(collections.MutableMapping):
 
         self.validation_methods = {}
         self._destinations = {}
+        self._required_keys = set()
+        self._missing_required_keys = set()
 
         # Add section defaults
         for key, value in self.defaults.items():
@@ -803,7 +805,8 @@ class ConfigSection(collections.MutableMapping):
     def _update_state(self):
         if len(self._unvalidated_keys) > 0:
             self.state = ValidationState.NEEDS_VALIDATION
-        elif len(self._invalid_keys) > 0 or len(self._values) == 0:
+        elif len(self._invalid_keys) > 0 or len(self._values) == 0 or len(
+                self._missing_required_keys) > 0:
             self.state = ValidationState.INVALID
         else:
             self.state = ValidationState.VALID
@@ -869,10 +872,11 @@ class ConfigSection(collections.MutableMapping):
         """
         Steps necessary to do after evaluation
         """
-        for required_key in self.REQUIRED:
+        for required_key in self._required_keys:
             if required_key not in self:
                 msg = ('error', 'Required option: "%s" is missing in: %s' % (required_key, self.name))
                 self.validation_messages.append(msg)
+                self._missing_required_keys.add(required_key)
         self.reset_to_defaults()
         # Finally calls _update_state
         self._update_state()
@@ -1071,7 +1075,7 @@ class ConfigSection(collections.MutableMapping):
             self._values[list_key] = []  # Reset to empty list
         return result
 
-    def add_key(self, key, validation_method=None, default=None, destination=None):
+    def add_key(self, key, validation_method=None, default=None, destination=None, required=False):
         if default is not None:
             self.defaults[key] = default
         if not validation_method:
@@ -1079,6 +1083,8 @@ class ConfigSection(collections.MutableMapping):
         self.validation_methods[key] = validation_method
         if destination:
             self._destinations[key] = destination
+        if required:
+            self._required_keys.add(key)
 
 
 class VirtConfigSection(ConfigSection):

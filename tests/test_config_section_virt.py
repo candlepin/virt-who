@@ -27,7 +27,8 @@ import tempfile
 import os
 from binascii import hexlify
 
-from virtwho.config import VirtConfigSection, LibvirtdConfigSection, VW_TYPES
+from virtwho.config import VirtConfigSection, VW_TYPES
+from virtwho.virt.libvirtd.libvirtd import LibvirtdConfigSection
 from virtwho.password import Password
 
 

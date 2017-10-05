@@ -1454,31 +1454,37 @@ def _check_effective_config_validity(effective_config):
     validation_errors = []
     effective_config.validate()
 
-    valid_virt_sections = [(name, section) for (name, section) in effective_config.virt_sections()
-                           if section.is_valid()]
+    valid_virt_sections = {}
+    invalid_virt_sections = {}
+    for name, section in effective_config.virt_sections():
+        if section.is_valid():
+            valid_virt_sections[name] = section
+        else:
+            invalid_virt_sections[name] = section
+    has_non_default_env_cli = False
 
-    if not valid_virt_sections:
-        has_non_default_env_cli = False
-        validation_errors.append(('warning', 'No valid configurations found'))
-        # Check if ENV_CLI is default, if not fail
-        for name, section in effective_config.items():
-            if name == VW_GLOBAL:
-                # Always keep the global section
-                continue
-            if name == VW_ENV_CLI_SECTION_NAME:
+    # Drop invalid configurations first
+    if len(invalid_virt_sections.keys()) > 0:
+        for name, section in invalid_virt_sections.items():
+            if name == VW_ENV_CLI_SECTION_NAME and not section.is_section_default():
                 has_non_default_env_cli = True
             validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))
             del effective_config[name]
+
+        # If there are no valid virt sections
+        if not valid_virt_sections:
+            validation_errors.append(('warning', 'No valid configurations found'))
+
+    # In order to keep compatibility with older releases of virt-who,
+    # fallback to using libvirt as default virt backend
+    # only if we did not have a non_default env/cmdline config
+    elif not has_non_default_env_cli and len(effective_config.virt_sections()) == 0:
+        effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
+                DEFAULTS[VW_ENV_CLI_SECTION_NAME],
+                VW_ENV_CLI_SECTION_NAME,
+                effective_config)
         validation_errors.append(('warning',
-                                  'Using default "%s" configuration' % name))
-        # In order to keep compatibility with older releases of virt-who,
-        # fallback to using libvirt as default virt backend
-        # only if we did not have a non_default env/cmdline config
-        if not has_non_default_env_cli:
-            effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
-                    DEFAULTS[VW_ENV_CLI_SECTION_NAME],
-                    VW_ENV_CLI_SECTION_NAME,
-                    effective_config)
+                                  'Using default "%s" configuration' % VW_ENV_CLI_SECTION_NAME))
 
     effective_config.validate()
     return effective_config, validation_errors

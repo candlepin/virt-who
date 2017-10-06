@@ -6,4 +6,4 @@ RUN yum install -y epel-release && \
     yum clean all
 COPY . /virt-who
 WORKDIR /virt-who
-CMD PYTHONPATH=. py.test --timeout=30
+CMD PYTHONPATH=. py.test --timeout=30 -x

@@ -29,6 +29,7 @@ import requests
 
 from virtwho import virt
 import ntlm
+from virtwho.config import VirtConfigSection
 
 try:
     from uuid import uuid1
@@ -38,6 +39,56 @@ except ImportError:
     def uuid1():
         # fallback to calling commandline uuidgen
         return subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0].strip()
+
+class HypervConfigSection(VirtConfigSection):
+    """
+    This class is used for validation of hyperv virtualization backend
+    section. It tries to validate options and combination of options that
+    are specific for this virtualization backend.
+    """
+
+    VIRT_TYPE = 'hyperv'
+
+    def __init__(self, section_name, wrapper, *args, **kwargs):
+        super(HypervConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+
+    def _validate_server(self, key):
+        url_altered = False
+
+        result = []
+        if key not in self._values:
+            self._values[key] = ''
+        else:
+            url = self._values[key]
+
+            if "//" not in url:
+                url_altered = True
+                url = "//" + url
+            parsed = urlparse.urlsplit(url, "http")
+            if ":" not in parsed[1]:
+                url_altered = True
+                if parsed[0] == "https":
+                    self.host = parsed[1] + ":5986"
+                else:
+                    self.host = parsed[1] + ":5985"
+            else:
+                self.host = parsed[1]
+            if parsed[2] == "":
+                url_altered = True
+                path = "wsman"
+            else:
+                path = parsed[2]
+            self.url = urlparse.urlunsplit((parsed[0], self.host, path, "", ""))
+            self._values['url'] = self.url
+            if url_altered:
+                result.append((
+                    'info',
+                    "The original server URL was incomplete. It has been enhanced to %s" % self.url
+                ))
+        if len(result) == 0:
+            return None
+        else:
+            return result
 
 
 class HyperVAuth(AuthBase):
@@ -448,32 +499,13 @@ class HyperV(virt.Virt):
                                      terminate_event=terminate_event,
                                      interval=interval,
                                      oneshot=oneshot)
-        url = config.server
-        self.username = config.username
-        self.password = config.password
+        self.url = config['url']
+        self.username = config['username']
+        self.password = config['password']
 
         # First try to use old API (root/virtualization namespace) if doesn't
         # work, go with root/virtualization/v2
         self.useNewApi = False
-
-        # Parse URL and create proper one
-        if "//" not in url:
-            url = "//" + url
-        parsed = urlparse.urlsplit(url, "http")
-        if ":" not in parsed[1]:
-            if parsed[0] == "https":
-                self.host = parsed[1] + ":5986"
-            else:
-                self.host = parsed[1] + ":5985"
-        else:
-            self.host = parsed[1]
-        if parsed[2] == "":
-            path = "wsman"
-        else:
-            path = parsed[2]
-        self.url = urlparse.urlunsplit((parsed[0], self.host, path, "", ""))
-
-        logger.debug("Hyper-V url: %s", self.url)
 
     def connect(self):
         s = requests.Session()
@@ -567,17 +599,17 @@ class HyperV(virt.Virt):
             hostname = instance["DNSHostName"]
             socket_count = instance["NumberOfProcessors"]
 
-        if self.config.hypervisor_id == 'uuid':
+        if self.config['hypervisor_id'] == 'uuid':
             uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
             host = None
             for instance in hypervsoap.Pull(uuid, "root/cimv2"):
                 host = HyperV.decodeWinUUID(instance["UUID"])
-        elif self.config.hypervisor_id == 'hostname':
+        elif self.config['hypervisor_id'] == 'hostname':
             host = hostname
         else:
             raise virt.VirtError(
                 'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
-                self.config.hypervisor_id)
+                self.config['hypervisor_id'])
         facts = {
             virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
             virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',

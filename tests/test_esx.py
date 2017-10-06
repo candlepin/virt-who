@@ -121,7 +121,7 @@ class TestEsx(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.esx,
+                    self.esx.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -170,7 +170,7 @@ class TestEsx(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.esx,
+                    self.esx.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],

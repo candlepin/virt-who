@@ -217,7 +217,7 @@ class TestHyperV(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.hyperv,
+                    self.hyperv.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],

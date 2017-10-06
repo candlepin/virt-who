@@ -66,12 +66,18 @@ class LibvirtdConfigSection(VirtConfigSection):
 
             if splitted_url.scheme:
                 scheme = splitted_url.scheme
-            else:
+            elif 'password' not in self._values:
                 result.append((
                     'info',
                     "Protocol is not specified in libvirt url, using qemu+ssh://"
                 ))
                 scheme = 'qemu+ssh'
+            else:
+                result.append((
+                    'info',
+                    "Protocol is not specified in libvirt url, using qemu://"
+                ))
+                scheme = 'qemu'
 
             if 'username' in self._values:
                 username = self._values['username']

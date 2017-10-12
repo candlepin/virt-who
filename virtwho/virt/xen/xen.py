@@ -108,7 +108,7 @@ class Xen(virt.Virt):
                 else:
                     state = virt.Guest.STATE_UNKNOWN
 
-                guests.append(virt.Guest(uuid=uuid, virt=self, state=state))
+                guests.append(virt.Guest(uuid=uuid, virt_type=self.CONFIG_TYPE, state=state))
 
             facts = {}
             sockets = record.get('cpu_info', {}).get('socket_count')

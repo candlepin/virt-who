@@ -22,10 +22,9 @@ import requests
 import suds
 from mock import patch, ANY, MagicMock, Mock
 from threading import Event
-from Queue import Queue
 
 from base import TestBase
-from virtwho.config import Config
+from virtwho import DefaultInterval
 from virtwho.datastore import Datastore
 from virtwho.virt.esx import Esx
 from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
@@ -36,9 +35,18 @@ from virtwho.virt.esx.esx import EsxConfigSection
 
 class TestEsx(TestBase):
     def setUp(self):
-        config = EsxConfigSection('test', 'esx', server='localhost', username='username',
-                                  password='password', owner='owner', env='env')
-        self.esx = Esx(self.logger, config, None)  #  No dest given here
+        config_values = {
+            'type': 'esx',
+            'server': 'localhost',
+            'username': 'username',
+            'password': 'password',
+            'owner': 'owner',
+            'env': 'env',
+        }
+        config = EsxConfigSection('test', None)
+        config.update(**config_values)
+        config.validate()
+        self.esx = Esx(self.logger, config, None, interval=DefaultInterval)  #  No dest given here
 
     def run_once(self, datastore=None):
         ''' Run ESX in oneshot mode '''
@@ -80,7 +88,8 @@ class TestEsx(TestBase):
         self.run_once()
 
         self.assertTrue(mock_client.called)
-        mock_client.assert_called_with(ANY, location="https://localhost/sdk", transport=ANY)
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk", transport=ANY,
+                                       cache=None)
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
@@ -121,7 +130,7 @@ class TestEsx(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.esx,
+                    self.esx.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -170,7 +179,7 @@ class TestEsx(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.esx,
+                    self.esx.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -198,7 +207,8 @@ class TestEsx(TestBase):
         self.esx.getHostGuestMapping = getHostGuestMappingMock
         self.run_once(datastore)
         result_report = datastore.get(self.esx.config.name)
-        self.assertEqual(expected_report.config.hash, result_report.config.hash)
+        self.assertEqual(expected_report.config.name, result_report.config.name)
+        self.assertEqual(expected_report.config._values, result_report.config._values)
         self.assertEqual(expected_report._assoc, result_report._assoc)
 
     def test_proxy(self):

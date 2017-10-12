@@ -119,7 +119,7 @@ class TestXen(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.xen,
+                    self.xen.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -175,7 +175,7 @@ class TestXen(TestBase):
                 guestIds=[
                     Guest(
                         expected_guestId,
-                        self.xen,
+                        self.xen.CONFIG_TYPE,
                         expected_guest_state,
                     )
                 ],

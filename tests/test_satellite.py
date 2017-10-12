@@ -147,13 +147,13 @@ class TestSatellite(TestBase):
     mapping = {
         'hypervisors': [
             Hypervisor('host-1', [
-                Guest('guest1-1', xvirt, Guest.STATE_RUNNING),
-                Guest('guest1-2', xvirt, Guest.STATE_SHUTOFF)
+                Guest('guest1-1', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
+                Guest('guest1-2', xvirt.CONFIG_TYPE, Guest.STATE_SHUTOFF)
             ]),
             Hypervisor('host-2', [
-                Guest('guest2-1', xvirt, Guest.STATE_RUNNING),
-                Guest('guest2-2', xvirt, Guest.STATE_SHUTOFF),
-                Guest('guest2-3', xvirt, Guest.STATE_RUNNING)
+                Guest('guest2-1', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
+                Guest('guest2-2', xvirt.CONFIG_TYPE, Guest.STATE_SHUTOFF),
+                Guest('guest2-3', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING)
             ])
         ]
     }

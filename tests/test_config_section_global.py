@@ -123,10 +123,11 @@ class TestGlobalConfigSection(TestBase):
         """
         self.init_global_config_section()
         self.global_config['interval'] = '10'
-        result = self.global_config._validate_interval('interval')
-        self.assertIsNotNone(result)
+        self.global_config.validate()
         interval = self.global_config.get('interval')
-        self.assertEqual(interval, MinimumSendInterval)
+        # The behavior of this has changed. We now replace any invalid value with the default
+        # No special cases
+        self.assertEqual(interval, DefaultInterval)
 
     def test_validate_missing_interval(self):
         """

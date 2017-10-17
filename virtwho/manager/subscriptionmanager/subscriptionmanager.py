@@ -284,10 +284,6 @@ class SubscriptionManager(Manager):
         else:
             self.logger.debug("Server does not have 'hypervisors_async' capability")
 
-        if is_async and os.environ.get('VIRTWHO_DISABLE_ASYNC', '').lower() in ['1', 'yes', 'true']:
-            self.logger.info("Async reports are supported but explicitly disabled")
-            is_async = False
-
         return is_async
 
     def _hypervisor_mapping(self, report, is_async, connection=None):

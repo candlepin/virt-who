@@ -31,7 +31,7 @@ import fnmatch
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
-from virtwho import MinimumSendInterval
+from virtwho import MinimumSendInterval, MinimumJobPollInterval
 
 try:
     from collections import OrderedDict
@@ -437,14 +437,14 @@ class IntervalThread(Thread):
         @return: The number of seconds that should be waited before retrying
         @rtype: int
         """
-        wait_time = retry_after
-        if wait_time and wait_time >= MinimumSendInterval:
-            return wait_time
-        if number_of_failures > 0:
-            wait_time = MinimumSendInterval * number_of_failures
-        else:
-            wait_time = MinimumSendInterval
-        return wait_time
+        if retry_after is not None:
+            try:
+                return int(retry_after)
+            except (TypeError, ValueError):
+                # if the retry_after value is not convertable to an int, don't use it
+                pass
+        # If there is no good retry-after value to use, use twice the polling interval
+        return MinimumJobPollInterval * 2
 
 
 class DestinationThread(IntervalThread):
@@ -484,14 +484,6 @@ class DestinationThread(IntervalThread):
                                                 terminate_event=terminate_event,
                                                 interval=interval,
                                                 oneshot=oneshot)
-        # The polling interval has not been implemented as configurable yet
-        # Until the config includes the polling_interval attribute
-        # this will end up being the interval.
-        try:
-            polling_interval = self.config.polling_interval
-        except AttributeError:
-            polling_interval = self.interval
-        self.polling_interval = polling_interval or self.interval
         # This is used when there is some reason to modify how long we wait
         # EX when we get a 429 back from the server, this value will be the
         # value of the retry_after header.
@@ -653,8 +645,8 @@ class DestinationThread(IntervalThread):
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
 
-            initial_job_check = True
             num_429_received = 0
+            first_attempt = True
             # Poll for async results if async (retrying where necessary)
             while result and batch_host_guest_report.state not in [
                 AbstractVirtReport.STATE_CANCELED,
@@ -663,10 +655,13 @@ class DestinationThread(IntervalThread):
                 if self.interval_modifier != 0:
                     wait_time = self.interval_modifier
                     self.interval_modifier = 0
+                elif not first_attempt:
+                    wait_time = MinimumJobPollInterval * 2
                 else:
-                    wait_time = self.polling_interval
-                if not initial_job_check:
-                    self.wait(wait_time=wait_time)
+                    wait_time = MinimumJobPollInterval
+
+                self.wait(wait_time=wait_time)
+
                 try:
                     self.dest.check_report_state(batch_host_guest_report)
                 except ManagerThrottleError as e:
@@ -684,7 +679,8 @@ class DestinationThread(IntervalThread):
                     if self._oneshot:
                         sources_sent.extend(reports_batched)
                     break
-                initial_job_check = False
+                # If we get here and have to try again, it's not our first rodeo...
+                first_attempt = False
 
             # If the batch report did not reach the finished state
             # we do not want to update which report we last sent (as we

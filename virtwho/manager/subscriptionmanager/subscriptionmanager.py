@@ -320,6 +320,8 @@ class SubscriptionManager(Manager):
             result = self.connection.getJob(job_id)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.RateLimitExceededException as e:
+            raise ManagerThrottleError(e.retry_after)
         except rhsm_connection.ConnectionException as e:
             if hasattr(e, 'code'):
                 raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))

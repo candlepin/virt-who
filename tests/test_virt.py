@@ -8,6 +8,7 @@ from base import TestBase
 from mock import Mock, patch, call
 from threading import Event
 
+from virtwho import MinimumJobPollInterval
 from virtwho.config import ConfigManager, Config
 from virtwho.manager import ManagerThrottleError, ManagerFatalError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
@@ -279,7 +280,7 @@ class TestDestinationThread(TestBase):
             local_variables = {'count': 0}
 
             def mock_check_report_state(report):
-                if local_variables['count'] > 0:
+                if local_variables['count'] > 1:
                     report.state = AbstractVirtReport.STATE_FINISHED
                 else:
                     report.state = AbstractVirtReport.STATE_CREATED
@@ -290,7 +291,6 @@ class TestDestinationThread(TestBase):
         manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
         config = Mock()
-        config.polling_interval = 10
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         options = Mock()
@@ -307,15 +307,13 @@ class TestDestinationThread(TestBase):
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
-        # We expect there two be two calls to wait with the value of the
-        # polling_interval attr because we'd like to wait one polling
-        # interval before making the first check. Because the mock
-        # check_report_state function will modify the report to be in the
-        # successful state after the first call, we expect to wait exactly
-        # twice, both of duration config.polling_interval
+        # There should be three waits, one after the job is submitted with duration of
+        # MinimumJobPollingInterval. The second and third with duration MinimumJobPollInterval * 2
+        # (and all subsequent calls as demonstrated by the third wait)
         destination_thread.wait.assert_has_calls([
-            call(wait_time=config.polling_interval),
-        ])
+            call(wait_time=MinimumJobPollInterval),
+            call(wait_time=MinimumJobPollInterval * 2),
+            call(wait_time=MinimumJobPollInterval * 2)])
 
     def test_send_data_poll_async_429(self):
         # This test's that when a 429 is detected during async polling
@@ -339,7 +337,6 @@ class TestDestinationThread(TestBase):
         data_to_send = {'source1': report1,
                         'source2': report2}
         config = Mock()
-        config.polling_interval = 10
         error_to_throw = ManagerThrottleError(retry_after=62)
 
         manager = Mock()
@@ -360,7 +357,8 @@ class TestDestinationThread(TestBase):
                 return report
             return mock_check_report_state
         states = [error_to_throw, AbstractVirtReport.STATE_FINISHED]
-        expected_wait_calls = [call(wait_time=error_to_throw.retry_after)]
+        expected_wait_calls = [call(wait_time=MinimumJobPollInterval),
+                               call(wait_time=error_to_throw.retry_after)]
 
         check_report_mock = check_report_state_closure(states)
         manager.check_report_state = Mock(side_effect=check_report_mock)

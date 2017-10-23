@@ -869,7 +869,7 @@ class Virt(IntervalThread):
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
                               interval=interval, oneshot=oneshot)
-        raise KeyError("Invalid config type: %s" % config.type)
+        raise KeyError("Invalid config type: %s" % config['type'])
 
     @classmethod
     def hypervisor_types(cls):

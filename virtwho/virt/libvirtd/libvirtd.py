@@ -45,7 +45,7 @@ class LibvirtdConfigSection(VirtConfigSection):
     def _validate_server(self, key):
         """
         Do validation of server option specific for this virtualization backend
-        return: Always return None (no warning/error are reported)
+        return: None or info-warning/error
         """
         # Server option is optional for libvirtd (libvirt hypervisor runs on the same
         # machine as virt-who)

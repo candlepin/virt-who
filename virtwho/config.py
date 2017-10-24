@@ -856,10 +856,6 @@ class ConfigSection(collections.MutableMapping):
         """
         Steps necessary to do before evaluation 
         """
-        # Used to allow virttype to be provided for type (if type was not given)
-        if 'virttype' in self._values and 'type' not in self._values:
-            self._values['type'] = self._values['virttype']
-
         if len(self._unvalidated_keys) == 0:
             self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
         else:
@@ -868,7 +864,7 @@ class ConfigSection(collections.MutableMapping):
                     self.validation_messages.append(
                         (
                             'warning',
-                            'Value for %s not set in: %s, using default: %s' %
+                            'Value for "%s" not set in: %s, using default: %s' %
                             (default_key, self.name, self.defaults[default_key])
                         )
                     )
@@ -876,8 +872,8 @@ class ConfigSection(collections.MutableMapping):
     def check_required_keys(self):
         for required_key in self._required_keys:
             if required_key not in self and not self.has_default(required_key):
-                msg = ('error', 'Required option: "%s" is missing in: "%s"' % (required_key,
-                                                                               self.name))
+                msg = ('error', 'Required option: "%s" is missing in: "%s"'
+                       % (required_key, self.name))
                 self.validation_messages.append(msg)
                 self._missing_required_keys.add(required_key)
 
@@ -942,18 +938,15 @@ class ConfigSection(collections.MutableMapping):
 
     def reset_to_defaults(self):
         """
-        When option is not set correctly or it was not set at all, then
-        this methods tries to set such options to default values.
+        When option is not set, then this methods tries to set such option to default value.
         """
         for key in self._invalid_keys.union(self.defaults.keys()):
             if self.has_default(key) and key not in self._values:
                 self._values[key] = self.defaults[key]
                 if key in self._required_keys:
-                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % (key, self.name,
-                                                                                                self.defaults[key])
-                else:
-                    message = 'Value for "%s" not set in: "%s", using default: "%s"' % (key, self.name, self.get(key))
-                self.validation_messages.append(('warning', message))
+                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % \
+                              (key, self.name, self.defaults[key])
+                    self.validation_messages.append(('warning', message))
 
     def apply_destinations(self):
         # Rudimentary, should we be copying values around or just referencing them
@@ -1138,17 +1131,22 @@ class VirtConfigSection(ConfigSection):
     def __init__(self, section_name, wrapper):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
         self.add_key('type', validation_method=self._validate_virt_type, default='libvirt')
-        self.add_key('virttype', validation_method=self._validate_virt_type, default='libvirt', destination='virttype')
+        self.add_key('virttype', validation_method=self._validate_virt_type, default='libvirt',
+                     destination='virttype')
         self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
         self.add_key('hypervisor_id', validation_method=lambda *args: None, default='uuid')
         self.add_key('password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_proxy_password', validation_method=self._validate_unencrypted_password)
         self.add_key('sat_password', validation_method=self._validate_encrypted_password)
-        self.add_key('encrypted_password', validation_method=self._validate_encrypted_password, destination='password')
-        self.add_key('rhsm_encrypted_password', validation_method=self._validate_encrypted_password, destination='rhsm_password')
-        self.add_key('rhsm_encrypted_proxy_password', validation_method=self._validate_encrypted_password, destination='rhsm_proxy_password')
-        self.add_key('sat_encrypted_password', validation_method=self._validate_encrypted_password, destination='sat_password')
+        self.add_key('encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='password')
+        self.add_key('rhsm_encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='rhsm_password')
+        self.add_key('rhsm_encrypted_proxy_password', validation_method=self._validate_encrypted_password,
+                     destination='rhsm_proxy_password')
+        self.add_key('sat_encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='sat_password')
         self.add_key('username', validation_method=self._validate_username)
         self.add_key('rhsm_username', validation_method=self._validate_username)
         self.add_key('rhsm_proxy_user', validation_method=self._validate_username)
@@ -1159,8 +1157,7 @@ class VirtConfigSection(ConfigSection):
         self.add_key('filter_hosts', validation_method=self._validate_filter)
         self.add_key('filter_host_parents', validation_method=self._validate_filter)
         self.add_key('exclude_hosts', validation_method=self._validate_filter)
-        self.add_key('exclude_host_parents', validation_method=self._validate_filter,
-                     default=None)
+        self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
         self.add_key('rhsm_proxy_hostname', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_proxy_port', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_hostname', validation_method=self._validate_non_empty_string)
@@ -1174,6 +1171,12 @@ class VirtConfigSection(ConfigSection):
                 key = new_key
         super(VirtConfigSection, self).__setitem__(key, value)
 
+    def _pre_validate(self):
+        # Used to allow virttype to be provided for type (if type was not given)
+        if 'virttype' in self._values and 'type' not in self._values:
+            self._values['type'] = self._values['virttype']
+        super(VirtConfigSection, self)._pre_validate()
+
     def _validate_virt_type(self, key):
         result = None
         try:
@@ -1183,6 +1186,7 @@ class VirtConfigSection(ConfigSection):
         else:
             if virt_type not in VW_TYPES:
                 result = ('warning', 'Unsupported virt. type is set, using default')
+                self._values[key] = self.defaults[key]
         return result
 
     def _validate_unencrypted_password(self, pass_key):
@@ -1331,7 +1335,8 @@ class GlobalSection(ConfigSection):
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('background', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])
-        self.add_key('reporter_id', validation_method=self._validate_non_empty_string, default=util.generateReporterId())
+        self.add_key('reporter_id', validation_method=self._validate_non_empty_string,
+                     default=util.generateReporterId())
         self.add_key('interval',  validation_method=self._validate_interval, default=DefaultInterval)
         self.add_key('log_file', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_FILE)
         self.add_key('log_dir', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_DIR)
@@ -1346,6 +1351,7 @@ class GlobalSection(ConfigSection):
                           "{min} " \
                           "seconds will be used.".format(min=DefaultInterval)
                 result = ("warning", message)
+                self._values['interval'] = DefaultInterval
         except KeyError:
             result = ('warning', '%s is missing' % key)
         except (TypeError, ValueError) as e:

@@ -113,7 +113,7 @@ class TestConfigSection(TestBase):
             )
         ]
         self.assertEqual(result, expected_results)
-        self.assertEqual(dict(self.my_config), dict(self.my_config.DEFAULTS))
+        self.assertEqual(dict(self.my_config), dict(self.my_config.defaults))
 
     def test_validate_unsupported_option(self):
         """
@@ -143,8 +143,8 @@ class TestConfigSection(TestBase):
         self.my_config['my_bool'] = True
         result = self.my_config.validate()
         expected_result = [
-            ('warning', 'Value for my_list not set in: my_section, using default: []'),
-            ('warning', 'Value for my_str not set in: my_section, using default: bar'),
+            ('warning', 'Value for "my_list" not set in: my_section, using default: []'),
+            ('warning', 'Value for "my_str" not set in: my_section, using default: bar'),
         ]
         self.assertEqual(result, expected_result)
         self.assertEqual(self.my_config['my_str'], 'bar')
@@ -162,10 +162,6 @@ class TestConfigSection(TestBase):
                 'warning',
                 'my_bool must be a valid boolean, using default. See man virt-who-config for more info'
             ),
-            (
-                'warning',
-                'Value for my_bool not set in: my_section, using default: True'
-            )
         ]
         self.assertEqual(result, expected_result)
         self.assertEqual(self.my_config['my_bool'], True)

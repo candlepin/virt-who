@@ -27,6 +27,7 @@ from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
 from virtwho.virt import Virt, Guest
+from virtwho.config import VirtConfigSection
 
 
 class VdsmError(Exception):
@@ -46,6 +47,18 @@ VDSM_STATE_TO_GUEST_STATE = {
     'WaitForLaunch': Guest.STATE_SHUTOFF,
     'Powering up': Guest.STATE_SHUTOFF
 }
+
+class VdsmConfigSection(VirtConfigSection):
+    """
+    This class is used for validation of vdsm virtualization backend
+    section(s). It tries to validate options and combination of options that
+    are specific for this virtualization backend. In specific, it attempts to read
+    the given file and produces error messages if it is not usable.
+    """
+    VIRT_TYPE = 'vdsm'
+
+    def __init__(self, section_name, wrapper, *args, **kwargs):
+        super(VdsmConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
 
 
 class Vdsm(Virt):

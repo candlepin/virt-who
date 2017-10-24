@@ -102,6 +102,36 @@ class TestLibvirtdConfigSection(TestBase):
         result = self.virt_config._validate_server('server')
         self.assertIsNone(result)
 
+    def test_validate_uuid_hypervisor_id(self):
+        """
+        Test validation of valid hypervisor_id
+        """
+        # Following method sets hypervisor_id to 'uuid' and it is valid
+        self.init_virt_config_section()
+        result = self.virt_config._validate_hypervisor_id('hypervisor_id')
+        self.assertIsNone(result)
+
+    def test_validate_hostname_hypervisor_id(self):
+        """
+        Test validation of valid hypervisor_id
+        """
+        self.init_virt_config_section()
+        self.virt_config['hypervisor_id'] = 'hostname'  # it is also valid value
+        result = self.virt_config._validate_hypervisor_id('hypervisor_id')
+        self.assertIsNone(result)
+
+    def test_validate_unvalid_hypervisor_id(self):
+        """
+        Test validation of valid hypervisor_id
+        """
+        self.init_virt_config_section()
+        self.virt_config['hypervisor_id'] = 'unsupported_id'
+        result = self.virt_config._validate_hypervisor_id('hypervisor_id')
+        expected_result = [
+            ('error', 'Invalid option: "unsupported_id" for hypervisor_id, use one of: (uuid, hostname)')
+        ]
+        self.assertEqual(result, expected_result)
+
     def test_validate_server_url_missing_path(self):
         """
         Test validation of libvirt URL with missing path

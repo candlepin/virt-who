@@ -1346,6 +1346,7 @@ class GlobalSection(ConfigSection):
                           "{min} " \
                           "seconds will be used.".format(min=DefaultInterval)
                 result = ("warning", message)
+                self._values['interval'] = DefaultInterval
         except KeyError:
             result = ('warning', '%s is missing' % key)
         except (TypeError, ValueError) as e:

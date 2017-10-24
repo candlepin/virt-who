@@ -254,23 +254,15 @@ class Esx(virt.Virt):
                 continue
             guests = []
 
-            try:
-                if self.config['hypervisor_id'] == 'uuid':
-                    uuid = host['hardware.systemInfo.uuid']
-                elif self.config['hypervisor_id'] == 'hwuuid':
-                    uuid = host_id
-                elif self.config['hypervisor_id'] == 'hostname':
-                    uuid = host['config.network.dnsConfig.hostName']
-                    domain_name = host['config.network.dnsConfig.domainName']
-                    if domain_name:
-                        uuid = self._format_hostname(uuid, domain_name)
-                else:
-                    raise virt.VirtError(
-                        'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
-                        self.config['hypervisor_id'])
-            except KeyError:
-                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_id)
-                continue
+            if self.config['hypervisor_id'] == 'uuid':
+                uuid = host['hardware.systemInfo.uuid']
+            elif self.config['hypervisor_id'] == 'hwuuid':
+                uuid = host_id
+            elif self.config['hypervisor_id'] == 'hostname':
+                uuid = host['config.network.dnsConfig.hostName']
+                domain_name = host['config.network.dnsConfig.domainName']
+                if domain_name:
+                    uuid = self._format_hostname(uuid, domain_name)
             if host['vm']:
                 for vm_id in host['vm'].ManagedObjectReference:
                     if vm_id.value not in self.vms:
@@ -495,6 +487,7 @@ class VM(dict):
 
 class EsxConfigSection(VirtConfigSection):
     VIRT_TYPE = 'esx'
+    HYPERVISOR_ID = ('uuid', 'hwuuid', 'hostname')
 
     def __init__(self, *args, **kwargs):
         super(EsxConfigSection, self).__init__(*args, **kwargs)

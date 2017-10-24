@@ -1127,6 +1127,7 @@ class VirtConfigSection(ConfigSection):
         ('filter_host_uuids', 'filter_hosts'),
         ('exclude_host_uuids', 'exclude_hosts'),
     )
+    HYPERVISOR_ID = ()
 
     def __init__(self, section_name, wrapper):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
@@ -1134,7 +1135,7 @@ class VirtConfigSection(ConfigSection):
         self.add_key('virttype', validation_method=self._validate_virt_type, default='libvirt',
                      destination='virttype')
         self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
-        self.add_key('hypervisor_id', validation_method=lambda *args: None, default='uuid')
+        self.add_key('hypervisor_id', validation_method=self._validate_hypervisor_id, default='uuid')
         self.add_key('password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_proxy_password', validation_method=self._validate_unencrypted_password)
@@ -1188,6 +1189,30 @@ class VirtConfigSection(ConfigSection):
                 result = ('warning', 'Unsupported virt. type is set, using default')
                 self._values[key] = self.defaults[key]
         return result
+
+    # def _validate_hypervisor_id(self, key='hypervisor_id'):
+    #     # Note: Every virt. backend should implement own validation method of hypervisor id
+    #     return None
+
+    def _validate_hypervisor_id(self, key='hypervisor_id'):
+        """
+        Do validation of hypervisor_id, when virtualization backend support it
+        (self.HYPERVISOR_ID contains at leas one string)
+        :param key: hypervisor ID
+        :return: None or warning, when unsupported hypervisor_id is provided.
+        """
+        result = []
+        if key in self._values and len(self.HYPERVISOR_ID) > 0:
+            if self._values[key] not in self.HYPERVISOR_ID:
+                result.append((
+                    'error',
+                    'Invalid option: "%s" for hypervisor_id, use one of: (%s)' %
+                    (self._values[key], ", ".join(self.HYPERVISOR_ID))
+                ))
+        if len(result) > 0:
+            return result
+        else:
+            return None
 
     def _validate_unencrypted_password(self, pass_key):
         """

@@ -40,17 +40,22 @@ except ImportError:
         # fallback to calling commandline uuidgen
         return subprocess.Popen(["uuidgen"], stdout=subprocess.PIPE).communicate()[0].strip()
 
+
 class HypervConfigSection(VirtConfigSection):
     """
-    This class is used for validation of hyperv virtualization backend
+    This class is used for validation of Hyper-V virtualization backend
     section. It tries to validate options and combination of options that
     are specific for this virtualization backend.
     """
 
     VIRT_TYPE = 'hyperv'
+    HYPERVISOR_ID = ('uuid', 'hostname')
 
     def __init__(self, section_name, wrapper, *args, **kwargs):
         super(HypervConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+        self.add_key('server', validation_method=self._validate_server, required=True)
+        self.add_key('username', validation_method=self._validate_username, required=True)
+        self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
 
     def _validate_server(self, key):
         url_altered = False
@@ -606,10 +611,6 @@ class HyperV(virt.Virt):
                 host = HyperV.decodeWinUUID(instance["UUID"])
         elif self.config['hypervisor_id'] == 'hostname':
             host = hostname
-        else:
-            raise virt.VirtError(
-                'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
-                self.config['hypervisor_id'])
         facts = {
             virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
             virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',

@@ -38,9 +38,12 @@ class LibvirtdConfigSection(VirtConfigSection):
     """
 
     VIRT_TYPE = 'libvirt'
+    HYPERVISOR_ID = ('uuid', 'hostname')
 
     def __init__(self, section_name, wrapper, *args, **kwargs):
         super(LibvirtdConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+        # Note: no option is required for this virtualization backend. When no options
+        # are specified, then virt-who will try to gather information from localhost
 
     def _validate_server(self, key):
         """
@@ -402,15 +405,11 @@ class Libvirtd(Virt):
         return self._host_capabilities_xml
 
     def _remote_host_id(self):
-        if self._host_uuid is None and self.config.get('hypervisor_id', None) is not None:
-            if self.config.get('hypervisor_id', None) == 'uuid':
+        if self._host_uuid is None and 'hypervisor_id' in self.config:
+            if self.config['hypervisor_id'] == 'uuid':
                 self._host_uuid = self.host_capabilities_xml.find('host/uuid').text
-            elif self.config.get('hypervisor_id', None) == 'hostname':
+            elif self.config['hypervisor_id'] == 'hostname':
                 self._host_uuid = self.virt.getHostname()
-            else:
-                raise VirtError(
-                    'Invalid option %s for hypervisor_id, use one of: uuid, or hostname' %
-                    self.config.get('hypervisor_id', None))
         return self._host_uuid
 
     def _remote_host_name(self):

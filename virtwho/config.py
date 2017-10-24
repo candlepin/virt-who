@@ -856,10 +856,6 @@ class ConfigSection(collections.MutableMapping):
         """
         Steps necessary to do before evaluation 
         """
-        # Used to allow virttype to be provided for type (if type was not given)
-        if 'virttype' in self._values and 'type' not in self._values:
-            self._values['type'] = self._values['virttype']
-
         if len(self._unvalidated_keys) == 0:
             self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
         else:
@@ -868,7 +864,7 @@ class ConfigSection(collections.MutableMapping):
                     self.validation_messages.append(
                         (
                             'warning',
-                            'Value for %s not set in: %s, using default: %s' %
+                            'Value for "%s" not set in: %s, using default: %s' %
                             (default_key, self.name, self.defaults[default_key])
                         )
                     )
@@ -942,18 +938,16 @@ class ConfigSection(collections.MutableMapping):
 
     def reset_to_defaults(self):
         """
-        When option is not set correctly or it was not set at all, then
-        this methods tries to set such options to default values.
+        When option is not set correctly, then this methods tries
+        to set such option to default value.
         """
         for key in self._invalid_keys.union(self.defaults.keys()):
             if self.has_default(key) and key not in self._values:
                 self._values[key] = self.defaults[key]
                 if key in self._required_keys:
-                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % (key, self.name,
-                                                                                                self.defaults[key])
-                else:
-                    message = 'Value for "%s" not set in: "%s", using default: "%s"' % (key, self.name, self.get(key))
-                self.validation_messages.append(('warning', message))
+                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % \
+                              (key, self.name,self.defaults[key])
+                    self.validation_messages.append(('warning', message))
 
     def apply_destinations(self):
         # Rudimentary, should we be copying values around or just referencing them
@@ -1173,6 +1167,12 @@ class VirtConfigSection(ConfigSection):
             if key == old_key:
                 key = new_key
         super(VirtConfigSection, self).__setitem__(key, value)
+
+    def _pre_validate(self):
+        # Used to allow virttype to be provided for type (if type was not given)
+        if 'virttype' in self._values and 'type' not in self._values:
+            self._values['type'] = self._values['virttype']
+        super(VirtConfigSection, self)._pre_validate()
 
     def _validate_virt_type(self, key):
         result = None

@@ -12,6 +12,8 @@ from tempfile import TemporaryFile
 from fake_sam import FakeSam
 
 import virtwho
+import virtwho.parser
+import virtwho.main
 
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version

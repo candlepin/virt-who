@@ -190,9 +190,12 @@ class SubscriptionManager(Manager):
 
         # All subclasses of ConfigSection use dictionary like notation,
         # but RHSM uses attribute like notation
-        named_options = NamedOptions()
-        for key, value in options['global'].items():
-            setattr(named_options, key, value)
+        if options:
+            named_options = NamedOptions()
+            for key, value in options['global'].items():
+                setattr(named_options, key, value)
+        else:
+            named_options = None
 
         try:
             try:

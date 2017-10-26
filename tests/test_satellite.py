@@ -31,7 +31,8 @@ from mock import MagicMock, patch
 
 from base import TestBase
 
-from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, ConfigSection,\
+    parse_file
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
@@ -323,11 +324,9 @@ class TestSatelliteConfig(TestBase):
             "VIRTWHO_LIBVIRT": '1'
         }
         sys.argv = ["virt-who"]
-        logger, options = parse_options()
-        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
-        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
-        config.checkOptions(logger)
-        manager = Manager.fromOptions(logger, options, config)
+        logger, config = parse_options()
+        options = config[VW_ENV_CLI_SECTION_NAME]
+        manager = Manager.fromOptions(logger, options)
         self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_cmd(self):
@@ -337,11 +336,9 @@ class TestSatelliteConfig(TestBase):
                     "--satellite-username=username",
                     "--satellite-password=password",
                     "--libvirt"]
-        logger, options = parse_options()
-        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
-        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
-        config.checkOptions(logger)
-        manager = Manager.fromOptions(logger, options, config)
+        logger, config = parse_options()
+        options = config[VW_ENV_CLI_SECTION_NAME]
+        manager = Manager.fromOptions(logger, options)
         self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_file(self):
@@ -353,10 +350,17 @@ class TestSatelliteConfig(TestBase):
 type=libvirt
 sat_server=sat.example.com
 """)
-
-        config_manager = DestinationToSourceMapper(self.logger, config_dir)
+        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        effective_config = EffectiveConfig()
+        conf_values = conf.pop("test")
+        effective_config["test"] = ConfigSection.from_dict(
+            conf_values,
+            "test",
+            effective_config
+        )
+        config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
-        config = config_manager.configs[0]
-        manager = Manager.fromOptions(self.logger, MagicMock(), config)
+        options = dict(config_manager.configs)["test"]
+        manager = Manager.fromOptions(self.logger, options)
         self.assertTrue(isinstance(manager, Satellite))
-        self.assertEqual(config.sat_server, 'sat.example.com')
+        self.assertEqual(options['sat_server'], 'sat.example.com')

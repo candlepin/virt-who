@@ -31,7 +31,7 @@ from mock import MagicMock, patch
 
 from base import TestBase
 
-from virtwho.config import DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, ConfigSection,\
+from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, ConfigSection,\
     parse_file
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError

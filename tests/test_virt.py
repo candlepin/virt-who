@@ -103,6 +103,12 @@ env=env
 
 class TestDestinationThread(TestBase):
 
+    default_config_args = {
+        'type': 'esx',
+        'hypervisor_id': 'uuid',
+        'simplified_vim': True,
+    }
+
     def setUp(self):
         self.options_values = {
             VW_GLOBAL: {
@@ -122,7 +128,7 @@ class TestDestinationThread(TestBase):
         datastore = {'source1': report1, 'source2': report2}
         manager = Mock()
         logger = Mock()
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         destination_thread = DestinationThread(logger, config,
@@ -154,7 +160,7 @@ class TestDestinationThread(TestBase):
         }
         manager = Mock()
         logger = Mock()
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         destination_thread = DestinationThread(logger, config,
@@ -185,7 +191,7 @@ class TestDestinationThread(TestBase):
         datastore = {'source1': report1, 'source2': report2}
         manager = Mock()
         logger = Mock()
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         destination_thread = DestinationThread(logger, config,
@@ -240,7 +246,7 @@ class TestDestinationThread(TestBase):
 
         manager.hypervisorCheckIn = Mock(side_effect=check_hypervisorCheckIn)
         logger = Mock()
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
         destination_thread = DestinationThread(logger, config,
@@ -301,7 +307,7 @@ class TestDestinationThread(TestBase):
         check_report_mock = check_report_state_closure()
         manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         config.polling_interval = 10
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
@@ -348,7 +354,7 @@ class TestDestinationThread(TestBase):
         datastore = {'source1': report1, 'source2': report2}
         data_to_send = {'source1': report1,
                         'source2': report2}
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         config.polling_interval = 10
         error_to_throw = ManagerThrottleError(retry_after=62)
 
@@ -405,7 +411,7 @@ class TestDestinationThread(TestBase):
         datastore = {'source1': report1}
         data_to_send = {'source1': report1}
 
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         config.polling_interval = 10
         logger = Mock()
 
@@ -441,7 +447,7 @@ class TestDestinationThread(TestBase):
         datastore = {'source1': report1}
         data_to_send = {'source1': report1}
 
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         config.polling_interval = 10
         logger = Mock()
 
@@ -477,7 +483,7 @@ class TestDestinationThread(TestBase):
         config1 = Config('source1', 'esx')
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
-        config = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
         manager = Mock()
 
         guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)

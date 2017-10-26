@@ -55,6 +55,12 @@ class TestManager(TestBase):
 class TestSubscriptionManager(TestManager):
     smType = "sam"
 
+    default_config_args = {
+        'type': 'libvirt',
+        'hypervisor_id': 'uuid',
+
+    }
+
     def prepare(self, create_from_file, connection):
         self.options = MagicMock()
 
@@ -92,15 +98,16 @@ class TestSubscriptionManager(TestManager):
     @patch("rhsm.certificate.create_from_file")
     def test_hypervisorCheckIn(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
-        config = Config('test', 'libvirt')
-        config.smType = 'sam'
-        manager = Manager.fromOptions(self.logger, self.options, config)
-        self.options.env = "ENV"
-        self.options.owner = "OWNER"
-        manager.hypervisorCheckIn(self.host_guest_report, self.options)
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        d['env'] = 'ENV'
+        d['owner'] = 'OWNER'
+        manager = Manager.from_config(self.logger, config)
+        # TODO additional mocking. Specifically, mock out the host_guest_report and config...
+        self.host_guest_report._config = config
+        manager.hypervisorCheckIn(self.host_guest_report)
         manager.connection.hypervisorCheckIn.assert_called_with(
-            self.options.owner,
-            self.options.env,
+            d['owner'],
+            d['env'],
             dict(
                 (
                     host.hypervisorId,
@@ -116,6 +123,15 @@ class TestSubscriptionManager(TestManager):
 class TestSatellite(TestManager):
     smType = "satellite"
 
+    default_config_args = {
+        'type': 'libvirt',
+        'sm_type': 'satellite',
+        'hypervisor_id': 'uuid',
+        'sat_server': 'localhost',
+        'sat_username': 'username',
+        'sat_password': 'password',
+    }
+
     def test_sendVirtGuests(self):
         options = MagicMock()
         config = Config('test', 'libvirt', sat_server='localhost')
@@ -128,11 +144,9 @@ class TestSatellite(TestManager):
         server.return_value.registration.new_system_user_pass.return_value = {
             'system_id': '123'
         }
-
-        config = Config('test', 'libvirt', sat_server='localhost')
-        manager = Manager.fromOptions(self.logger, options, config)
-        options.env = "ENV"
-        options.owner = "OWNER"
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        manager = Manager.from_config(self.logger, config)
+        self.host_guest_report._config = config
         manager.hypervisorCheckIn(self.host_guest_report, options)
         manager.server_xmlrpc.registration.virt_notify.assert_called_with(ANY, [
             [0, "exists", "system", {"identity": "host", "uuid": "0000000000000000"}],

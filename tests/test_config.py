@@ -219,7 +219,8 @@ env=staging
 """)
         os.chmod(filename, 0)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        self.assertEqual(len(manager.configs), 0)
+        # There should be at least one 'env/cmdline' section
+        self.assertEqual(len(manager.configs), 1)
 
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedPassword(self, password):

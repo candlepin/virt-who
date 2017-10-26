@@ -179,7 +179,12 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'owner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'env')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
+            if virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
+            elif virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'password')
 
@@ -195,15 +200,20 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
+            if virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
+            elif virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'xpassword')
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
-    def test_options_virt_satellite(self, parseFile, getLogger):
-        self.setUpParseFile(parseFile)
-        for virt in ['esx', 'hyperv', 'rhevm']:
+    def test_options_virt_satellite(self, parse_file, getLogger):
+        self.setUpParseFile(parse_file)
+        for virt in ['hyperv', 'esx', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py",
                         "--satellite",
@@ -215,8 +225,15 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
+            if virt == 'esx':
+                # ESX requires env and owner. Thus the env/cmdline is dropped
+                self.assertNotIn(VW_ENV_CLI_SECTION_NAME, options)
+                continue
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
+            if virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'password')
 
@@ -234,7 +251,10 @@ class TestOptions(TestBase):
             os.environ["VIRTWHO_%s_PASSWORD" % virt_up] = "xpassword"
             _, options = parse_options()
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
+            if virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')

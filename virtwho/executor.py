@@ -164,7 +164,7 @@ class Executor(object):
                 try:
                     report = self.datastore.get(source)
                     config = report.config
-                    to_print[config] = report
+                    to_print[config.name] = report
                 except KeyError:
                     self.logger.info('Unable to retrieve report for source '
                                      '\"%s\" for printing' % source)

@@ -58,9 +58,9 @@ class Satellite(Manager):
         self.options = options
 
     def _connect(self, config):
-        server = config.sat_server or self.options.sat_server
-        self.username = config.sat_username or self.options.sat_username
-        self.password = config.sat_password or self.options.sat_password
+        server = config['sat_server']
+        self.username = config['sat_username']
+        self.password = config['sat_password']
 
         if not server.startswith("http://") and not server.startswith("https://"):
             server = "https://%s" % server
@@ -223,10 +223,12 @@ class Satellite(Manager):
 
         for hypervisor in mapping['hypervisors']:
             self.logger.debug("Loading systemid for %s", hypervisor.hypervisorId)
-            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, hypervisor_type=report.config.type)
+            hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId,
+                                                        hypervisor_type=report.config['type'])
 
             self.logger.debug("Building plan for hypervisor %s: %s", hypervisor.hypervisorId, hypervisor.guestIds)
-            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId, hypervisor_type=report.config.type)
+            plan = self._assemble_plan(hypervisor.guestIds, hypervisor.hypervisorId,
+                                       hypervisor_type=report.config['type'])
 
             try:
                 try:
@@ -235,7 +237,8 @@ class Satellite(Manager):
                 except xmlrpclib.Fault as e:
                     if e.faultCode == -9:
                         self.logger.warn("System was deleted from Satellite 5, reregistering")
-                        hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId, hypervisor_type=report.config.type, force=True)
+                        hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId,
+                                                                    hypervisor_type=report.config['type'], force=True)
                         self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
             except Exception as e:
                 self.logger.exception("Unable to send host/guest association to the satellite:")

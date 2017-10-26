@@ -1136,10 +1136,12 @@ class VirtConfigSection(ConfigSection):
                      destination='virttype')
         self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
         self.add_key('hypervisor_id', validation_method=self._validate_hypervisor_id, default='uuid')
+        # Unencrypted passwords
         self.add_key('password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_password', validation_method=self._validate_unencrypted_password)
         self.add_key('rhsm_proxy_password', validation_method=self._validate_unencrypted_password)
-        self.add_key('sat_password', validation_method=self._validate_encrypted_password)
+        self.add_key('sat_password', validation_method=self._validate_unencrypted_password)
+        # Encrypted passwords
         self.add_key('encrypted_password', validation_method=self._validate_encrypted_password,
                      destination='password')
         self.add_key('rhsm_encrypted_password', validation_method=self._validate_encrypted_password,
@@ -1148,6 +1150,7 @@ class VirtConfigSection(ConfigSection):
                      destination='rhsm_proxy_password')
         self.add_key('sat_encrypted_password', validation_method=self._validate_encrypted_password,
                      destination='sat_password')
+        # Usernames
         self.add_key('username', validation_method=self._validate_username)
         self.add_key('rhsm_username', validation_method=self._validate_username)
         self.add_key('rhsm_proxy_user', validation_method=self._validate_username)

@@ -55,10 +55,10 @@ class Manager(object):
         raise NotImplementedError()
 
     def check_report_state(self, report):
-        '''
+        """
         Check state of given report. This is used to check server side
         job if finished.
-        '''
+        """
         raise NotImplementedError()
 
     @classmethod
@@ -70,14 +70,15 @@ class Manager(object):
         # Silence pyflakes errors
         assert virtwho
 
-        config_smType = config.smType if config else None
-        smType = config_smType or options[VW_ENV_CLI_SECTION_NAME].get('smType', None) or 'sam'
+        if config:
+            options = config[VW_ENV_CLI_SECTION_NAME]
+        sm_type = options.get('sm_type', None) or 'sam'
 
         for subcls in cls.__subclasses__():
-            if subcls.smType == smType:
+            if subcls.smType == sm_type:
                 return subcls(logger, options)
 
-        raise KeyError("Invalid config type: %s" % smType)
+        raise KeyError("Invalid config type: %s" % sm_type)
 
     @classmethod
     def fromInfo(cls, logger, options, info):

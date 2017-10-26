@@ -179,7 +179,12 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'owner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'env')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
+            if virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
+            elif virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'password')
 
@@ -195,7 +200,12 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
+            if virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
+            elif virt == 'rhevm':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
+            else:
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'xpassword')
 

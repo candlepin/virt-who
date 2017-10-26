@@ -1155,6 +1155,8 @@ class VirtConfigSection(ConfigSection):
         self.add_key('rhsm_username', validation_method=self._validate_username)
         self.add_key('rhsm_proxy_user', validation_method=self._validate_username)
         self.add_key('sat_username', validation_method=self._validate_username)
+        # Needed to allow us to parse the destination info
+        self.add_key('sat_server', validation_method=lambda *args: None)
         self.add_key('server', validation_method=self._validate_server)
         self.add_key('env', validation_method=self._validate_env)
         self.add_key('owner', validation_method=self._validate_owner)

@@ -32,7 +32,7 @@ from mock import MagicMock, patch
 from base import TestBase
 
 from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, ConfigSection,\
-    parse_file
+    parse_file, Satellite5DestinationInfo
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
@@ -324,9 +324,14 @@ class TestSatelliteConfig(TestBase):
             "VIRTWHO_LIBVIRT": '1'
         }
         sys.argv = ["virt-who"]
-        logger, config = parse_options()
-        options = config[VW_ENV_CLI_SECTION_NAME]
-        manager = Manager.fromOptions(logger, options)
+        logger, effective_config = parse_options()
+        config_manager = DestinationToSourceMapper(effective_config)
+        # Again there should only be one config parsed out (and one dest)
+        self.assertEqual(len(config_manager.configs), 1)
+        self.assertEqual(len(config_manager.dests), 1)
+        dest_info = config_manager.dests.pop()
+        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
+        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
         self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_cmd(self):
@@ -336,19 +341,27 @@ class TestSatelliteConfig(TestBase):
                     "--satellite-username=username",
                     "--satellite-password=password",
                     "--libvirt"]
-        logger, config = parse_options()
-        options = config[VW_ENV_CLI_SECTION_NAME]
-        manager = Manager.fromOptions(logger, options)
+        logger, effective_config = parse_options()
+        config_manager = DestinationToSourceMapper(effective_config)
+        # Again there should only be one config parsed out (and one dest)
+        self.assertEqual(len(config_manager.configs), 1)
+        self.assertEqual(len(config_manager.dests), 1)
+        dest_info = config_manager.dests.pop()
+        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
+        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
         self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_file(self):
         config_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, config_dir)
+        # Username and password are required for a valid sat5 destination
         with open(os.path.join(config_dir, "test.conf"), "w") as f:
             f.write("""
 [test]
 type=libvirt
 sat_server=sat.example.com
+sat_username=sat_username
+sat_password=sat_password
 """)
         conf = parse_file(os.path.join(config_dir, "test.conf"))
         effective_config = EffectiveConfig()
@@ -360,7 +373,13 @@ sat_server=sat.example.com
         )
         config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
-        options = dict(config_manager.configs)["test"]
-        manager = Manager.fromOptions(self.logger, options)
+        # There should only be one destination detected
+        self.assertEqual(len(config_manager.dests), 1)
+        # Which should be a Satellite5DestinationInfo
+        dest_info = config_manager.dests.pop()
+        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo), 'The destination info '
+                                                                          'we got was not of the '
+                                                                          'expected type')
+        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
         self.assertTrue(isinstance(manager, Satellite))
-        self.assertEqual(options['sat_server'], 'sat.example.com')
+        self.assertEqual(dest_info.sat_server, 'sat.example.com')

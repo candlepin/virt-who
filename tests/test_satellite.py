@@ -174,18 +174,6 @@ class TestSatellite(TestBase):
     def tearDownClass(cls):
         cls.fake_server.shutdown()
 
-
-    def create_fake_config(self, name, **kwargs):
-        # Used to create a fake config with a given name
-        # All kwargs that are given will be used as the values provided by the config
-        mock_config = MagicMock(spec=VirtConfigSection)
-        mock_config.name = name
-        mock_config.__getitem__.side_effect = kwargs.__getitem__
-        mock_config.__setitem__.side_effect = kwargs.__setitem__
-        # Returns the mock_config and the dictionary that underlies it (useful for modifying the
-        # contents of the config, without messing up the expected call stack of the mock_config
-        return mock_config, kwargs
-
     def test_wrong_server(self):
         options = Mock()
         s = Satellite(self.logger, options)

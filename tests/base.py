@@ -19,7 +19,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import logging
-from mock import patch
+from mock import patch, MagicMock
+from virtwho.config import VirtConfigSection
 
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version
@@ -38,3 +39,15 @@ class TestBase(unittest.TestCase):
         cls.logger.handlers = []
         cls.logger.setLevel(logging.CRITICAL)
         logger.return_value = cls.logger
+
+    @staticmethod
+    def create_fake_config(name, **kwargs):
+        # Used to create a fake config with a given name
+        # All kwargs that are given will be used as the values provided by the config
+        mock_config = MagicMock(spec=VirtConfigSection)
+        mock_config.name = name
+        mock_config.__getitem__.side_effect = kwargs.__getitem__
+        mock_config.__setitem__.side_effect = kwargs.__setitem__
+        # Returns the mock_config and the dictionary that underlies it (useful for modifying the
+        # contents of the config, without messing up the expected call stack of the mock_config
+        return mock_config, kwargs

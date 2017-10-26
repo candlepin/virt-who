@@ -850,7 +850,7 @@ class ConfigSection(collections.MutableMapping):
         elif key in self.defaults:
             return self.defaults[key]
         else:
-            raise KeyError('{} not in {}'.format(key, self.name))
+            raise KeyError('{0} not in {1}'.format(key, self.name))
 
     def _pre_validate(self):
         """
@@ -1105,7 +1105,7 @@ class ConfigSection(collections.MutableMapping):
         if default is not self.__marker:
             self.defaults[key] = default
         if not validation_method:
-            raise AttributeError('validation_method must be provided for {}'.format(key))
+            raise AttributeError('validation_method must be provided for {0}'.format(key))
         self.validation_methods[key] = validation_method
         if destination:
             self._destinations[key] = destination

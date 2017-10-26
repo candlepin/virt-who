@@ -200,8 +200,8 @@ class SubscriptionManager(Manager):
         try:
             try:
                 result = self.connection.hypervisorCheckIn(
-                    report.config.owner,
-                    report.config.env,
+                    report.config['owner'],
+                    report.config['env'],
                     serialized_mapping,
                     options=named_options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:

@@ -361,7 +361,6 @@ sat_server=sat.example.com
         config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
         options = dict(config_manager.configs)["test"]
-        print(options)
         manager = Manager.fromOptions(self.logger, options)
         self.assertTrue(isinstance(manager, Satellite))
         self.assertEqual(options['sat_server'], 'sat.example.com')

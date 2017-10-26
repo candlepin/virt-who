@@ -7,7 +7,7 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, ConfigSection, init_config
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -134,11 +134,8 @@ class TestSubscriptionManagerConfig(TestBase):
             "VIRTWHO_LIBVIRT": '1'
         }
         sys.argv = ["virt-who"]
-        logger, options = parse_options()
-        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
-        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
-        config.checkOptions(logger)
-        manager = Manager.fromOptions(logger, options, config)
+        logger, config = parse_options()
+        manager = Manager.from_config(logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
     def test_sm_config_cmd(self):
@@ -171,13 +168,13 @@ rhsm_username=user
 rhsm_password=passwd
 """)
 
-        config_manager = DestinationToSourceMapper(self.logger, config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=config_dir))
         self.assertEqual(len(config_manager.configs), 1)
-        config = config_manager.configs[0]
-        manager = Manager.fromOptions(self.logger, Mock(), config)
+        config = dict(config_manager.configs)["test"]
+        manager = Manager.from_config(self.logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
-        self.assertEqual(config.rhsm_hostname, 'host')
-        self.assertEqual(config.rhsm_port, '8080')
+        self.assertEqual(config['rhsm_hostname'], 'host')
+        self.assertEqual(config['rhsm_port'], '8080')
 
         manager._connect(config)
         rhsmconnection.assert_called_with(

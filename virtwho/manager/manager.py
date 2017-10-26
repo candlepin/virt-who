@@ -62,6 +62,29 @@ class Manager(object):
         raise NotImplementedError()
 
     @classmethod
+    def from_config(cls, logger, config):
+        """
+        Try to get instance of manager from config
+        :param logger: Logger used by virt-who
+        :param config: instance of ConfigSection or subclass
+        :return: instance of manager or subclass
+        """
+        # Imports can't be top-level, it would be circular dependency
+        import virtwho.manager.subscriptionmanager
+        import virtwho.manager.satellite
+        # Silence pyflakes errors
+        assert virtwho
+
+        try:
+            sm_type = config['sm_type']
+        except KeyError:
+            sm_type = 'sam'
+
+        for subcls in cls.__subclasses__():
+            if subcls.smType == sm_type:
+                return subcls(logger, config)
+
+    @classmethod
     def fromOptions(cls, logger, options, config=None):
         # Imports can't be top-level, it would be circular dependency
         import virtwho.manager.subscriptionmanager

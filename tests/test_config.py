@@ -26,13 +26,11 @@ from tempfile import mkdtemp
 from binascii import hexlify, unhexlify
 from mock import patch
 import logging
-import random
 
 from base import TestBase, unittest
 
-from virtwho.config import DestinationToSourceMapper, InvalidOption, GeneralConfig, \
-    NotSetSentinel, GlobalConfig, parse_list, Satellite6DestinationInfo, init_config, \
-    EffectiveConfig, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import DestinationToSourceMapper, parse_list, Satellite6DestinationInfo, init_config, \
+    VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
 from virtwho.password import Password, InvalidKeyFile
 
 default_config_values = {
@@ -765,101 +763,6 @@ rhsm_insecure=2
         self.assertEqual(config["rhsm_proxy_user"], 'proxyuser1')
         self.assertEqual(config["rhsm_proxy_password"], 'proxypass1')
         self.assertEqual(config["rhsm_insecure"], '1')
-
-
-class TestGeneralConfig(TestBase):
-    """
-    A group of unittests to ensure correct functionality of GeneralConfig
-    """
-    def setUp(self):
-        self.config = GeneralConfig()
-
-    def test___init__(self):
-        defaults = {
-            'test': '1',
-            'override_me': 'wrong_value'
-        }
-        arg_dict = {
-            'arg_dict': 'some_value',
-            'override_me': 'expected_value'
-        }
-        general_config = GeneralConfig(defaults=defaults, **arg_dict)
-
-        self.assertEqual(getattr(general_config, 'test'), '1')
-        self.assertEqual(getattr(general_config, 'arg_dict'), 'some_value')
-        self.assertEqual(getattr(general_config, 'override_me'), 'expected_value')
-
-    def test___getattr__(self):
-        self.config.test = 1
-        self.assertTrue(self.config.test, 1)
-
-    def test___setattr__(self):
-        self.config.test = 1
-        self.assertEqual(self.config.test, 1)
-
-    def test___setattr___Not_Set_Sentinel(self):
-        # The general config class should refuse
-        # to set attributes to an instance of NotSetSentinel
-        self.config.test = NotSetSentinel()
-        self.assertEqual(self.config.test, None)
-
-    def test_update(self):
-        # The function should perform similarly to a dict's update method
-        test_dict = {
-            'cool_attribute': 'cool_value',
-            'not_set': NotSetSentinel()
-        }
-        self.config.update(**test_dict)
-        self.assertEquals(self.config.cool_attribute, 'cool_value')
-        self.assertEquals(self.config.not_set, None)
-
-    def test___getitem__(self):
-        self.config.test = 1
-        self.assertEqual(self.config['test'], 1)
-
-    def test___setitem__(self):
-        self.config['test'] = 1
-        self.assertEqual(self.config['test'], 1)
-
-    def test___delitem__(self):
-        self.config['test'] = 1
-        self.assertEqual(self.config['test'], 1)
-        del self.config['test']
-        self.assertRaises(KeyError, self.config.__getitem__, 'test')
-
-    def test___contains__(self):
-        self.config['test'] = 1
-        self.assertTrue('test' in self.config)
-        self.assertFalse('not_here' in self.config)
-
-
-class TestGlobalConfig(TestBase):
-
-    def setUp(self):
-        self.config = GlobalConfig()
-
-    def test___getattr__INT(self):
-        int_option = random.choice(GlobalConfig.INT_OPTIONS)
-        test_int = random.randint(-sys.maxint, sys.maxint)
-        # set to a random int
-        setattr(self.config, int_option, test_int)
-        self.assertEqual(getattr(self.config, int_option), test_int)
-
-        # set to a string of an int
-        setattr(self.config, int_option, str(test_int))
-        self.assertEqual(getattr(self.config, int_option), test_int)
-
-    def test___getattr__BOOL(self):
-        bool_option = random.choice(GlobalConfig.BOOL_OPTIONS)
-        test_bool = False
-        test_false_strings = ['0', 'no', 'false']
-
-        setattr(self.config, bool_option, test_bool)
-        self.assertEqual(getattr(self.config, bool_option), test_bool)
-
-        for false_string in test_false_strings:
-            setattr(self.config, bool_option, false_string)
-            self.assertEqual(getattr(self.config, bool_option), False)
 
 
 class TestParseList(TestBase):

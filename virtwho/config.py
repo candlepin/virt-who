@@ -20,10 +20,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import collections
 import os
+
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log
 from password import Password
 from binascii import unhexlify
+import hashlib
+import json
 import util
 
 try:
@@ -168,6 +171,9 @@ class Info(object):
             pass
         return NotSetSentinel
 
+    def __setitem__(self, key, value):
+        self.__dict__["_options"][key] = value
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -247,7 +253,6 @@ class DestinationToSourceMapper(object):
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
-        # self._read_effective_config(effective_config=effective_config)
         self.update_dest_to_source_map()
 
     def update_dest_to_source_map(self):
@@ -260,24 +265,6 @@ class DestinationToSourceMapper(object):
         self.dests = dests
         self.dest_to_sources_map = d_to_s
 
-    def _read_effective_config(self, effective_config):
-        for name, section in effective_config.items():
-            if name == VW_GLOBAL:
-                continue
-            try:
-                # TODO: Remove the Config Class entirely
-                # This is intermediary
-                config = Config.from_config_section(name, section)
-                config.checkOptions(self.logger)
-                self._configs.append(config)
-            except NoOptionError as e:
-                self.logger.error(str(e))
-            except InvalidPasswordFormat as e:
-                self.logger.error(str(e))
-            except InvalidOption as e:
-                # When a configuration section has an Invalid Option, continue
-                # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
-                self.logger.warn("Invalid configuration detected: %s", str(e))
 
     @staticmethod
     def map_destinations_to_sources(configs, dest_classes=(Satellite5DestinationInfo, Satellite6DestinationInfo)):
@@ -345,6 +332,7 @@ class DestinationToSourceMapper(object):
         """
         dests = set()
         for dest_class in dest_classes:
+            dest = None
             try:
                 dest = dest_class(**dict_to_parse)
             except ValueError:
@@ -1061,7 +1049,7 @@ class GlobalSection(ConfigSection):
         super(GlobalSection, self).__init__(*args, **kwargs)
         self.add_key('debug', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('oneshot', validation_method=self._validate_str_to_bool, default=False)
-        self.add_key('print', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('print_', validation_method=self._validate_str_to_bool, default=False, destination='print')
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('background', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])
@@ -1094,7 +1082,7 @@ class GlobalSection(ConfigSection):
     def _validate(self):
         super(GlobalSection, self)._validate()
 
-        if self.get('print'):
+        if self.get('print_', None) or self.get('print', None):
             self._values['oneshot'] = True
 
 # String representations of all the default configuration for virt-who

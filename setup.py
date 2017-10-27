@@ -85,13 +85,13 @@ class InstallConfig(install):
 
 setup(
     name='virt-who',
-    version='0.20',
+    version='0.20.4',
     description='virt-who is agent for reporting virtual guest IDs to subscription manager.',
     # long_description=open('README.md').read(),
     author='Radek Novacek',
     author_email='rnovacek@redhat.com',
     license='LICENSE',
-    url='https://fedorahosted.org/virt-who/',
+    url='https://github.com/virt-who/virt-who',
     packages=find_packages(),
     entry_points={
         'console_scripts': [

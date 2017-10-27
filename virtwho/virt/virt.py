@@ -31,7 +31,7 @@ import fnmatch
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
-from virtwho import MinimumSendInterval
+from virtwho import MinimumSendInterval, MinimumJobPollInterval
 
 try:
     from collections import OrderedDict
@@ -436,14 +436,14 @@ class IntervalThread(Thread):
         @return: The number of seconds that should be waited before retrying
         @rtype: int
         """
-        wait_time = retry_after
-        if wait_time and wait_time >= MinimumSendInterval:
-            return wait_time
-        if number_of_failures > 0:
-            wait_time = MinimumSendInterval * number_of_failures
-        else:
-            wait_time = MinimumSendInterval
-        return wait_time
+        if retry_after is not None:
+            try:
+                return int(retry_after)
+            except (TypeError, ValueError):
+                # if the retry_after value is not convertable to an int, don't use it
+                pass
+        # If there is no good retry-after value to use, use twice the polling interval
+        return MinimumJobPollInterval * 2
 
 
 class DestinationThread(IntervalThread):
@@ -483,14 +483,6 @@ class DestinationThread(IntervalThread):
                                                 terminate_event=terminate_event,
                                                 interval=interval,
                                                 oneshot=oneshot)
-        # The polling interval has not been implemented as configurable yet
-        # Until the config includes the polling_interval attribute
-        # this will end up being the interval.
-        try:
-            polling_interval = self.config.polling_interval
-        except AttributeError:
-            polling_interval = self.interval
-        self.polling_interval = polling_interval or self.interval
         # This is used when there is some reason to modify how long we wait
         # EX when we get a 429 back from the server, this value will be the
         # value of the retry_after header.
@@ -570,8 +562,16 @@ class DestinationThread(IntervalThread):
         sources_sent = []  # Sources we have dealt with this run
         sources_erred = []  # Sources with some problems
 
+        total_hypervisors = 0
+        total_guests = 0
+
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
+            if getattr(self.config, 'owner', None) is None:
+                # If the owner on our config is not defined, set it to the first report that
+                # we've found. This should be ok because destination threads should not be run for
+                # more than one owner.
+                self.config['owner'] = report.config['owner']
             if isinstance(report, DomainListReport):
                 # These are sent one at a time to the destination
                 domain_list_reports.append(source_key)
@@ -587,6 +587,8 @@ class DestinationThread(IntervalThread):
                 guest_count = sum(len(hypervisor.guestIds) for hypervisor in mapping['hypervisors'])
                 self.logger.info('Hosts-to-guests mapping for config "%s": %d hypervisors and %d guests found',
                                  report.config.name, hypervisor_count, guest_count)
+                total_hypervisors += hypervisor_count
+                total_guests += guest_count
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -611,6 +613,11 @@ class DestinationThread(IntervalThread):
             num_429_received = 0
             while result is None and not self.is_terminated():
                 try:
+                    self.logger.info('Sending updated Host-to-guest mapping to "{owner}" including '
+                                     '{num_hypervisors} hypervisors and {num_guests} '
+                                     'guests'.format(owner=self.config['owner'],
+                                                     num_hypervisors=total_hypervisors,
+                                                     num_guests=total_guests))
                     result = self.dest.hypervisorCheckIn(
                             batch_host_guest_report,
                             options=self.options)
@@ -628,17 +635,17 @@ class DestinationThread(IntervalThread):
                                       "Trying again in "
                                       "%s", retry_after)
                     self.interval_modifier = retry_after
-                except (ManagerError, ManagerFatalError):
+                except (ManagerError, ManagerFatalError) as err:
                     self.logger.exception("Error during hypervisor "
-                                          "checkin: ")
+                                          "checkin: %s" % err)
                     if self._oneshot:
                         sources_erred.extend(reports_batched)
                     break
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
 
-            initial_job_check = True
             num_429_received = 0
+            first_attempt = True
             # Poll for async results if async (retrying where necessary)
             while result and batch_host_guest_report.state not in [
                 AbstractVirtReport.STATE_CANCELED,
@@ -647,10 +654,13 @@ class DestinationThread(IntervalThread):
                 if self.interval_modifier != 0:
                     wait_time = self.interval_modifier
                     self.interval_modifier = 0
+                elif not first_attempt:
+                    wait_time = MinimumJobPollInterval * 2
                 else:
-                    wait_time = self.polling_interval
-                if not initial_job_check:
-                    self.wait(wait_time=wait_time)
+                    wait_time = MinimumJobPollInterval
+
+                self.wait(wait_time=wait_time)
+
                 try:
                     self.dest.check_report_state(batch_host_guest_report)
                 except ManagerThrottleError as e:
@@ -668,7 +678,8 @@ class DestinationThread(IntervalThread):
                     if self._oneshot:
                         sources_sent.extend(reports_batched)
                     break
-                initial_job_check = False
+                # If we get here and have to try again, it's not our first rodeo...
+                first_attempt = False
 
             # If the batch report did not reach the finished state
             # we do not want to update which report we last sent (as we

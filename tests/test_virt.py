@@ -9,6 +9,7 @@ from stubs import StubEffectiveConfig
 from mock import Mock, patch, call
 from threading import Event
 
+from virtwho import MinimumJobPollInterval
 from virtwho.config import DestinationToSourceMapper, VW_GLOBAL, EffectiveConfig, parse_file, \
     VirtConfigSection
 from virtwho.manager import ManagerThrottleError
@@ -107,6 +108,7 @@ class TestDestinationThread(TestBase):
         'type': 'esx',
         'hypervisor_id': 'uuid',
         'simplified_vim': True,
+        'owner': 'owner',
     }
 
     def setUp(self):
@@ -131,6 +133,8 @@ class TestDestinationThread(TestBase):
         config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -163,6 +167,8 @@ class TestDestinationThread(TestBase):
         config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -194,6 +200,8 @@ class TestDestinationThread(TestBase):
         config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -209,13 +217,13 @@ class TestDestinationThread(TestBase):
         # This tests that reports of the right type are batched into one
         # and that the hypervisorCheckIn method of the destination is called
         # with the right parameters
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config1.exclude_hosts = []
-        config1.filter_hosts = []
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        d1['exclude_hosts'] = []
+        d1['filter_hosts'] = []
 
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
-        config2.exclude_hosts = []
-        config2.filter_hosts = []
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+        d2['exclude_hosts'] = []
+        d2['filter_hosts'] = []
 
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
@@ -239,6 +247,8 @@ class TestDestinationThread(TestBase):
         report2.hash = "report2_hash"
         datastore = {'source1': report1, 'source2': report2}
         manager = Mock()
+        options = Mock()
+        options.print_ = False
 
         def check_hypervisorCheckIn(report, options=None):
             self.assertEquals(report.association['hypervisors'],
@@ -263,8 +273,8 @@ class TestDestinationThread(TestBase):
         # we poll for the result
 
         # Setup the test data
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -297,7 +307,7 @@ class TestDestinationThread(TestBase):
             local_variables = {'count': 0}
 
             def mock_check_report_state(report):
-                if local_variables['count'] > 0:
+                if local_variables['count'] > 1:
                     report.state = AbstractVirtReport.STATE_FINISHED
                 else:
                     report.state = AbstractVirtReport.STATE_CREATED
@@ -308,9 +318,10 @@ class TestDestinationThread(TestBase):
         manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
         config, d = self.create_fake_config('test', **self.default_config_args)
-        config.polling_interval = 10
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -323,22 +334,20 @@ class TestDestinationThread(TestBase):
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
-        # We expect there two be two calls to wait with the value of the
-        # polling_interval attr because we'd like to wait one polling
-        # interval before making the first check. Because the mock
-        # check_report_state function will modify the report to be in the
-        # successful state after the first call, we expect to wait exactly
-        # twice, both of duration config.polling_interval
+        # There should be three waits, one after the job is submitted with duration of
+        # MinimumJobPollingInterval. The second and third with duration MinimumJobPollInterval * 2
+        # (and all subsequent calls as demonstrated by the third wait)
         destination_thread.wait.assert_has_calls([
-            call(wait_time=config.polling_interval),
-        ])
+            call(wait_time=MinimumJobPollInterval),
+            call(wait_time=MinimumJobPollInterval * 2),
+            call(wait_time=MinimumJobPollInterval * 2)])
 
     def test_send_data_poll_async_429(self):
         # This test's that when a 429 is detected during async polling
         # we wait for the amount of time specified
         source_keys = ['source1', 'source2']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -355,7 +364,6 @@ class TestDestinationThread(TestBase):
         data_to_send = {'source1': report1,
                         'source2': report2}
         config, d = self.create_fake_config('test', **self.default_config_args)
-        config.polling_interval = 10
         error_to_throw = ManagerThrottleError(retry_after=62)
 
         manager = Mock()
@@ -376,13 +384,16 @@ class TestDestinationThread(TestBase):
                 return report
             return mock_check_report_state
         states = [error_to_throw, AbstractVirtReport.STATE_FINISHED]
-        expected_wait_calls = [call(wait_time=error_to_throw.retry_after)]
+        expected_wait_calls = [call(wait_time=MinimumJobPollInterval),
+                               call(wait_time=error_to_throw.retry_after)]
 
         check_report_mock = check_report_state_closure(states)
         manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -400,7 +411,7 @@ class TestDestinationThread(TestBase):
         # method of the destination
 
         source_keys = ['source1']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
@@ -412,12 +423,13 @@ class TestDestinationThread(TestBase):
         data_to_send = {'source1': report1}
 
         config, d = self.create_fake_config('test', **self.default_config_args)
-        config.polling_interval = 10
         logger = Mock()
 
         manager = Mock()
         terminate_event = Mock()
         interval = 10
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -435,20 +447,18 @@ class TestDestinationThread(TestBase):
         # Show that when a 429 is encountered during the sending of a
         # DomainListReport that we retry after waiting the appropriate
         # amount of time
+        config, d = self.create_fake_config('test', **self.default_config_args)
         source_keys = ['source1']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
         guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
-        report1 = DomainListReport(config1, [guest1],
+        report1 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_1')
 
         datastore = {'source1': report1}
         data_to_send = {'source1': report1}
 
-        config, d = self.create_fake_config('test', **self.default_config_args)
-        config.polling_interval = 10
         logger = Mock()
 
         error_to_throw = ManagerThrottleError(retry_after=62)
@@ -457,6 +467,8 @@ class TestDestinationThread(TestBase):
         manager.sendVirtGuests = Mock(side_effect=[error_to_throw, report1])
         terminate_event = Mock()
         interval = 10
+        options = Mock()
+        options.print_ = False
         destination_thread = DestinationThread(logger, config,
                                                source_keys=source_keys,
                                                source=datastore,
@@ -480,18 +492,17 @@ class TestDestinationThread(TestBase):
         source_keys = ['source1', 'source2']
         interval = 1
         terminate_event = Mock()
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         config, d = self.create_fake_config('test', **self.default_config_args)
         manager = Mock()
 
         guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
-        report1 = DomainListReport(config1, [guest1],
+        report1 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_1')
-        report2 = DomainListReport(config1, [guest1],
+        report2 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_2')
-        report3 = DomainListReport(config1, [guest1],
+        report3 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_3')
         datastore = {
             'source1': report1,  # Not changing, should be excluded later

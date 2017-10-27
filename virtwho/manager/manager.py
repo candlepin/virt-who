@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 from virtwho.config import VW_ENV_CLI_SECTION_NAME
 
+
 class ManagerError(Exception):
     pass
 
@@ -29,10 +30,10 @@ class ManagerFatalError(Exception):
 
 
 class ManagerThrottleError(Exception):
-    '''
+    """
     Exception that is thrown when manager is too busy and want us to
     send reports less often.
-    '''
+    """
     def __init__(self, retry_after=None):
         self.retry_after = retry_after
 

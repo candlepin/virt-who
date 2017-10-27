@@ -31,7 +31,7 @@ except ImportError:
     from util import OrderedDict
 
 from virtwho import log
-from virtwho.config import Config, InvalidPasswordFormat, InvalidOption, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
+from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
 from virtwho.parser import parse_options, OptionError

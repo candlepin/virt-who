@@ -58,6 +58,9 @@ class TestConfigSection(TestBase):
         super(TestConfigSection, self).__init__(*args, **kwargs)
         self.my_config = None
 
+    def setUp(self):
+        self.init_config_section()
+
     def init_config_section(self):
         """
         This method is executed before each unit test
@@ -71,7 +74,6 @@ class TestConfigSection(TestBase):
         """
         Test validation, when all values are set properly (in setUp)
         """
-        self.init_config_section()
         self.assertEqual(self.my_config.state, ValidationState.NEEDS_VALIDATION)
         result = self.my_config.validate()
         self.assertEqual(self.my_config.name, MY_SECTION_NAME)
@@ -85,7 +87,6 @@ class TestConfigSection(TestBase):
         """
         Test validation, when required option is missing (with no default)
         """
-        self.init_config_section()
         del self.my_config['must_have']
         result = self.my_config.validate()
         expected_results = [
@@ -119,7 +120,6 @@ class TestConfigSection(TestBase):
         """
         Test validation, when there is one more option
         """
-        self.init_config_section()
         self.my_config['unsupported_opt'] = 'foo'
         result = self.my_config.validate()
         expected_result = [
@@ -135,7 +135,6 @@ class TestConfigSection(TestBase):
         """
         Test validation, when there is mission option that has defined default value
         """
-        self.init_config_section()
         self.my_config = MyConfigSection(MY_SECTION_NAME, None)
         # Add required option and one with default value
         self.my_config['must_have'] = 'foo'
@@ -154,7 +153,6 @@ class TestConfigSection(TestBase):
         """
         Test validation, when there is wrong bool option that has defined default value
         """
-        self.init_config_section()
         self.my_config['my_bool'] = 'nein'
         result = self.my_config.validate()
         expected_result = [

@@ -621,17 +621,3 @@ class HyperV(virt.Virt):
 
     def ping(self):
         return True
-
-if __name__ == '__main__':  # pragma: no cover
-    if len(sys.argv) < 4:
-        print "Usage: %s url username password"
-        sys.exit(0)
-
-    import logging
-    logger = logging.Logger("virtwho.hyperv.main")
-    logger.addHandler(logging.StreamHandler())
-    from virtwho.config import Config
-    config = Config('test', 'hyperv', server=sys.argv[1], username=sys.argv[2],
-                    password=sys.argv[3])
-    hyperv = HyperV(logger, config)
-    print dict((host, [guest.toDict() for guest in guests]) for host, guests in hyperv.getHostGuestMapping().items())

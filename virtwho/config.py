@@ -24,8 +24,6 @@ from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionH
 from virtwho import log
 from password import Password
 from binascii import unhexlify
-import hashlib
-import json
 import util
 
 try:
@@ -60,9 +58,9 @@ class InvalidPasswordFormat(Exception):
 
 
 def parse_list(s):
-    '''
+    """
     Parse comma-separated list of items (that might be in quotes) to the list of strings
-    '''
+    """
     items = []
 
     read_to = None  # everything until next `read_to` (single or double
@@ -188,6 +186,7 @@ class Info(object):
     def keys(self):
         return self.__dict__['_options'].keys()
 
+
 # Should this be defined in the manager that actually requires these values?
 class Satellite5DestinationInfo(Info):
     required_kwargs = (
@@ -229,305 +228,6 @@ default_destination_info = DefaultDestinationInfo()
 default_destination_info.name = "default_destination"
 
 
-class GeneralConfig(object):
-    # This dictionary should be filled in for subclasses with option_name: default_value
-    DEFAULTS = {}
-    # options that are lists should be placed here in subclasses
-    LIST_OPTIONS = ()
-    # boolean options should be listed here
-    BOOL_OPTIONS = ()
-    INT_OPTIONS = ()
-
-    def __init__(self, defaults=None, **kwargs):
-        options = self.DEFAULTS.copy()
-        options.update(defaults or {})
-        options.update(kwargs)
-        # setting the attribute the normal way causes
-        # a reference to the dictionary to appear
-        self.__dict__['_options'] = options
-
-    def __repr__(self):
-        return '{cls}({args!r})'.format(cls=self.__class__.__name__, args=self._options)
-
-    def __getattr__(self, name):
-        if name.startswith('_'):
-            super(GeneralConfig, self).__getattr__(name)
-
-        value = self._options.get(name, None)
-        if value is None or value is NotSetSentinel:
-            if name in self.DEFAULTS:
-                return self.DEFAULTS[name]
-            else:
-                return None
-        if name in self.BOOL_OPTIONS:
-            return str(value).lower() not in ("0", "false", "no")
-        if name in self.LIST_OPTIONS:
-            if not isinstance(value, list):
-                return parse_list(value)
-            else:
-                return value
-        if name in self.INT_OPTIONS:
-            return int(value)
-        return value
-
-    def __setattr__(self, name, value):
-        if isinstance(value, NotSetSentinel):
-            return
-        if name.startswith('_'):
-            super(GeneralConfig, self).__setattr__(name, value)
-        else:
-            self._options[name] = value
-
-    def keys(self):
-        return self.__dict__['_options'].keys()
-
-    def update(self, **kwargs):
-        '''
-        Update _options with the kwargs
-        '''
-        self.__dict__['_options'].update([(k, v) for k, v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
-
-    def __getitem__(self, name):
-        return self._options[name]
-
-    def __setitem__(self, name, value):
-        if isinstance(value, NotSetSentinel):
-            return
-        self._options[name] = value
-
-    def __delitem__(self, name):
-        del self._options[name]
-
-    def __contains__(self, name):
-        return name in self._options
-
-    def has_options(self, options):
-        """
-        @param options: A list of strings of options. Returns True if all
-        options are included in this config
-        @type options: list
-
-        @rtype: bool
-        """
-        for option in options:
-            if not option in self:
-                return False
-        return True
-
-    @classmethod
-    def from_file(cls, filename):
-        raise NotImplementedError()
-
-
-class GlobalConfig(GeneralConfig):
-    """
-    This GeneralConfig subclass represents the config file
-    that holds the global values used to control virt-who's
-    operation.
-    """
-    DEFAULTS = {
-        'debug': False,
-        'oneshot': False,
-        'print': False,
-        'log_per_config': False,
-        'background': False,
-        'configs': '',
-        'reporter_id': util.generateReporterId(),
-        'smType': None,
-        'interval': DefaultInterval
-    }
-    LIST_OPTIONS = (
-        'configs',
-    )
-    BOOL_OPTIONS = (
-        'debug',
-        'oneshot',
-        'background',
-        'print'
-        'log_per_config'
-    )
-    INT_OPTIONS = (
-        'interval',
-    )
-
-    @classmethod
-    def from_file(cls, filename):
-        global_config = parse_file(filename).get(VW_GLOBAL)
-        if not global_config:
-            if logger:
-                logger.warning(
-                    'Unable to find "%s" section in general config file: "%s"\nWill use defaults where required',
-                    VW_GLOBAL, filename)
-            global_config = {}
-        return cls(**global_config)
-
-
-class Config(GeneralConfig):
-    DEFAULTS = {
-        'simplified_vim': True,
-        'hypervisor_id': 'uuid',
-    }
-    LIST_OPTIONS = (
-        'filter_hosts',
-        'filter_host_uuids',
-        'exclude_hosts',
-        'exclude_host_uuids',
-        'filter_host_parents'
-        'exclude_host_parents',
-    )
-    BOOL_OPTIONS = (
-        'is_hypervisor',
-        'simplified_vim',
-    )
-    PASSWORD_OPTIONS = (
-        ('encrypted_password', 'password'),
-        ('rhsm_encrypted_password', 'rhsm_password'),
-        ('rhsm_encrypted_proxy_password', 'rhsm_proxy_password'),
-        ('sat_encrypted_password', 'sat_password'),
-    )
-    RENAMED_OPTIONS = (
-        ('filter_host_uuids', 'filter_hosts'),
-        ('exclude_host_uuids', 'exclude_hosts'),
-    )
-    # It is usually required to have username in latin1 encoding
-    LATIN1_OPTIONS = (
-        'username', 'rhsm_username', 'rhsm_proxy_user', 'sat_username',
-    )
-    # Password can be usually anything
-    UTF8_OPTIONS = (
-        'password', 'rhsm_password', 'rhsm_proxy_password', 'sat_password',
-    )
-
-    def __init__(self, name, virtwho_type, defaults=None, **kwargs):
-        super(Config, self).__init__(defaults=defaults, **kwargs)
-        self._name = name
-        self._type = virtwho_type
-
-        if self._type not in VW_TYPES:
-            raise InvalidOption('Invalid type "%s", must be one of following %s' %
-                                (self._type, ", ".join(VW_TYPES)))
-
-        for password_option, decrypted_option in self.PASSWORD_OPTIONS:
-            try:
-                pwd = self._options[password_option]
-            except KeyError:
-                continue
-            try:
-                self._options[decrypted_option] = Password.decrypt(unhexlify(pwd))
-            except (TypeError, IndexError):
-                raise InvalidPasswordFormat(
-                    "Option \"{option}\" in config named \"{name}\" can't be decrypted, possibly corrupted"
-                    .format(option=password_option, name=name))
-
-        for old_name, new_name in self.RENAMED_OPTIONS:
-            try:
-                self._options[new_name] = self._options[old_name]
-            except KeyError:
-                pass
-
-        for option in self.LATIN1_OPTIONS:
-            value = self._options.get(option)
-            if not value or value is NotSetSentinel:
-                continue
-            try:
-                value.encode('latin1')
-            except UnicodeDecodeError:
-                raise InvalidOption("Value: {0} of option '{1}': is not in latin1 encoding".format(value, option))
-
-        for option in self.UTF8_OPTIONS:
-            value = self._options.get(option)
-            if not value or value is NotSetSentinel:
-                continue
-            try:
-                value.decode('UTF-8')
-            except UnicodeDecodeError:
-                raise InvalidOption("Value: {0} of option '{1}': is not in UTF-8 encoding".format(value, option))
-
-    @property
-    def smType(self):
-        try:
-            return self._options['smType']
-        except KeyError:
-            if 'sat_server' in self._options:
-                return 'satellite'
-            elif 'rhsm_hostname' in self._options:
-                return 'sam'
-            else:
-                return None
-
-    def checkOptions(self, logger):
-        # Server option must be there for ESX, RHEVM, and HYPERV
-        if 'server' not in self._options:
-            if self.type in ['libvirt', 'vdsm', 'fake']:
-                self._options['server'] = ''
-            else:
-                raise InvalidOption("Option `server` needs to be set in config `%s`" % self.name)
-
-        # Check for env and owner options, it must be present for SAM
-        if ((self.smType is None or self.smType == 'sam') and (
-                (self.type in ('esx', 'rhevm', 'hyperv', 'xen')) or
-                (self.type == 'libvirt' and self.server) or
-                (self.type == 'fake' and self.fake_is_hypervisor))):
-
-            if not self.env:
-                raise InvalidOption("Option `env` needs to be set in config `%s`" % self.name)
-            elif not self.owner:
-                raise InvalidOption("Option `owner` needs to be set in config `%s`" % self.name)
-
-        if self.type != 'esx':
-            if self.filter_host_parents is not None:
-                logger.warn("filter_host_parents is not supported in %s mode, ignoring it", self.type)
-            if self.exclude_host_parents is not None:
-                logger.warn("exclude_host_parents is not supported in %s mode, ignoring it", self.type)
-
-        if self.type != 'fake':
-            if self.is_hypervisor is not None:
-                logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
-        else:
-            if not self.fake_is_hypervisor:
-                if self.env:
-                    logger.warn("Option `env` is not used in non-hypervisor fake mode")
-                if self.owner:
-                    logger.warn("Option `owner` is not used in non-hypervisor fake mode")
-
-        if self.type == 'libvirt':
-            if self.server is not None and self.server != '':
-                if ('ssh://' in self.server or '://' not in self.server) and self.password:
-                    logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
-                                "copy your public ssh key to the remote machine")
-            else:
-                if self.env:
-                    logger.warn("Option `env` is not used in non-remote libvirt connection")
-                if self.owner:
-                    logger.warn("Option `owner` is not used in non-remote libvirt connection")
-
-    @classmethod
-    def fromParser(cls, name, parser, defaults=None):
-        options = {}
-        for option in parser.options(name):
-            options[option] = parser.get(name, option)
-        virtwho_type = options.pop('type').lower()
-        config = Config(name, virtwho_type, defaults, **options)
-        return config
-
-    @classmethod
-    def from_config_section(cls, name, section):
-        virtwho_type = section.get('type')
-        return Config(name, virtwho_type, **section)
-
-    @property
-    def hash(self):
-        return hashlib.sha256(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def type(self):
-        return self._type
-
-
 class StripQuotesConfigParser(SafeConfigParser):
     def get(self, section, option):
         # Don't call super, SafeConfigParser is not inherited from object
@@ -547,7 +247,7 @@ class DestinationToSourceMapper(object):
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
-        #self._read_effective_config(effective_config=effective_config)
+        # self._read_effective_config(effective_config=effective_config)
         self.update_dest_to_source_map()
 
     def update_dest_to_source_map(self):
@@ -645,12 +345,12 @@ class DestinationToSourceMapper(object):
         """
         dests = set()
         for dest_class in dest_classes:
-            dest = None
             try:
                 dest = dest_class(**dict_to_parse)
             except ValueError:
                 continue
-            dests.add(dest)
+            else:
+                dests.add(dest)
         return dests
 
     @property
@@ -1481,7 +1181,6 @@ class EffectiveConfig(collections.MutableMapping):
         Read all configuration sections in the default config directory
         :return: a dictionary of {name: {key: value, ... } ... }
         """
-        parser = StripQuotesConfigParser()
         try:
             all_dir_content = set(os.listdir(config_dir))
             conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
@@ -1495,10 +1194,10 @@ class EffectiveConfig(collections.MutableMapping):
             logger.warn("Configuration directory '%s' appears empty", config_dir)
         elif not conf_files:
             logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                             "is not empty", config_dir)
+                        "is not empty", config_dir)
         elif non_conf_files:
             logger.debug("There are files in '%s' not ending in '*.conf' is this "
-                              "intentional?", config_dir)
+                         "intentional?", config_dir)
         all_sections = {}
         for conf in conf_files:
             if conf.startswith('.'):

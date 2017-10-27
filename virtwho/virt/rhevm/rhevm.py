@@ -24,7 +24,7 @@ from requests.auth import HTTPBasicAuth
 from xml.etree import ElementTree
 
 from virtwho import virt
-from virtwho.config import Config, VirtConfigSection
+from virtwho.config import VirtConfigSection
 
 
 RHEVM_STATE_TO_GUEST_STATE = {

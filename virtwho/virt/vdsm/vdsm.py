@@ -145,11 +145,3 @@ class Vdsm(Virt):
                 status = VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN)
                 domains.append(Guest(vm['vmId'], self, status))
         return domains
-
-
-if __name__ == '__main__':  # pragma: no cover
-    import logging
-    logger = logging.getLogger("virtwho.vdsm.main")
-    logger.addHandler(logging.StreamHandler())
-    vdsm = Vdsm(logger, None)
-    print vdsm.listDomains()

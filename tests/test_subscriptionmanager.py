@@ -7,7 +7,8 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import Config, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, ConfigSection, init_config
+from virtwho.config import DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, VirtConfigSection, \
+    init_config, parse_file
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -33,7 +34,7 @@ class TestSubscriptionManager(TestBase):
     @patch('rhsm.certificate.create_from_file')
     def setUpClass(cls, rhsmcert, rhsmconfig):
         super(TestSubscriptionManager, cls).setUpClass()
-        config = Config('test', 'libvirt')
+        config = VirtConfigSection.from_dict({'type': 'libvirt'}, 'test', None)
         cls.tempdir = tempfile.mkdtemp()
         with open(os.path.join(cls.tempdir, 'cert.pem'), 'w') as f:
             f.write("\n")
@@ -49,7 +50,7 @@ class TestSubscriptionManager(TestBase):
 
     @patch('rhsm.connection.UEPConnection')
     def test_sendVirtGuests(self, rhsmconnection):
-        config = Config('test', 'libvirt')
+        config = VirtConfigSection.from_dict({'type': 'libvirt'}, 'test', None)
         report = DomainListReport(config, self.guestList, self.hypervisor_id)
         self.sm.sendVirtGuests(report)
         self.sm.connection.updateConsumer.assert_called_with(
@@ -61,7 +62,7 @@ class TestSubscriptionManager(TestBase):
     def test_hypervisorCheckIn(self, rhsmconnection):
         owner = "owner"
         env = "env"
-        config = Config("test", "esx", owner=owner, env=env)
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
         # Ensure the data takes the proper for for the old API
         rhsmconnection.return_value.has_capability.return_value = False
         report = HostGuestAssociationReport(config, self.mapping)
@@ -70,13 +71,14 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
-            dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']), options=None)
+            dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']),
+            options=None)
 
     @patch('rhsm.connection.UEPConnection')
     def test_hypervisorCheckInAsync(self, rhsmconnection):
         owner = 'owner'
         env = 'env'
-        config = Config("test", "esx", owner=owner, env=env)
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
         # Ensure we try out the new API
         rhsmconnection.return_value.has_capability.return_value = True
         report = HostGuestAssociationReport(config, self.mapping)
@@ -92,7 +94,7 @@ class TestSubscriptionManager(TestBase):
     @patch('rhsm.connection.UEPConnection')
     def test_job_status(self, rhsmconnection):
         rhsmconnection.return_value.has_capability.return_value = True
-        config = Config("test", "esx", owner='owner', env='env')
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'owner', 'env': 'env'}, 'test', None)
         report = HostGuestAssociationReport(config, self.mapping)
         self.sm.hypervisorCheckIn(report)
         rhsmconnection.return_value.getJob.return_value = {
@@ -141,11 +143,11 @@ class TestSubscriptionManagerConfig(TestBase):
     def test_sm_config_cmd(self):
         os.environ = {}
         sys.argv = ["virt-who", "--sam", "--libvirt"]
-        logger, options = parse_options()
-        env_cli_section = options[VW_ENV_CLI_SECTION_NAME]
-        config = Config("env/cmdline", env_cli_section['virttype'], defaults={}, **env_cli_section)
-        config.checkOptions(logger)
-        manager = Manager.fromOptions(logger, options, config)
+        logger, effective_config = parse_options()
+        config_manager = DestinationToSourceMapper(effective_config)
+        self.assertEqual(len(config_manager.configs), 1)
+        config = dict(config_manager.configs)[VW_ENV_CLI_SECTION_NAME]
+        manager = Manager.from_config(self.logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
     @patch('rhsm.connection.UEPConnection')
@@ -194,7 +196,7 @@ rhsm_password=passwd
     @patch('M2Crypto.httpslib.HTTPSConnection')
     @patch('rhsm.config.initConfig')
     def test_sm_config_override(self, initConfig, HTTPSConnection, RhsmProxyHTTPSConnection):
-        '''Test if overriding options from rhsm.conf works.'''
+        """Test if overriding options from rhsm.conf works."""
 
         conn = MagicMock()
         conn.getresponse.return_value.status = 200
@@ -227,7 +229,15 @@ rhsm_username=user
 rhsm_password=passwd
 """)
 
-        config_manager = DestinationToSourceMapper(self.logger, config_dir)
+        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        effective_config = EffectiveConfig()
+        conf_values = conf.pop("test")
+        effective_config["test"] = VirtConfigSection.from_dict(
+            conf_values,
+            "test",
+            effective_config
+        )
+        config_manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0]
         manager = Manager.fromOptions(self.logger, Mock(), config)

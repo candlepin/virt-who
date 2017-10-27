@@ -547,7 +547,7 @@ class DestinationToSourceMapper(object):
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
-        #self._read_effective_config(effective_config=effective_config)
+        # self._read_effective_config(effective_config=effective_config)
         self.update_dest_to_source_map()
 
     def update_dest_to_source_map(self):

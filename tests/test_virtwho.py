@@ -21,20 +21,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import copy
 import os
-from Queue import Empty, Queue
-from mock import patch, Mock, sentinel, ANY, call
+from mock import patch, Mock, call
 
 from base import TestBase
 
 from virtwho import util
-from virtwho.config import Config, DestinationToSourceMapper, VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
-from virtwho.manager import ManagerThrottleError, ManagerFatalError
-from virtwho.virt import (
-    HostGuestAssociationReport, Hypervisor, Guest,
-    DomainListReport, AbstractVirtReport)
+from virtwho.config import VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
 from virtwho.parser import parse_options, OptionError
-from virtwho.executor import Executor, ReloadRequest
-from virtwho.main import _main
+from virtwho.executor import Executor
 
 
 class TestOptions(TestBase):

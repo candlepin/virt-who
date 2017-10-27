@@ -9,7 +9,7 @@ from stubs import StubEffectiveConfig
 from mock import Mock, patch, call
 from threading import Event
 
-from virtwho.config import DestinationToSourceMapper, Config, VW_GLOBAL, EffectiveConfig, parse_file, \
+from virtwho.config import DestinationToSourceMapper, VW_GLOBAL, EffectiveConfig, parse_file, \
     VirtConfigSection
 from virtwho.manager import ManagerThrottleError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
@@ -209,11 +209,11 @@ class TestDestinationThread(TestBase):
         # This tests that reports of the right type are batched into one
         # and that the hypervisorCheckIn method of the destination is called
         # with the right parameters
-        config1 = Config('source1', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         config1.exclude_hosts = []
         config1.filter_hosts = []
 
-        config2 = Config('source2', 'esx')
+        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
         config2.exclude_hosts = []
         config2.filter_hosts = []
 
@@ -263,8 +263,8 @@ class TestDestinationThread(TestBase):
         # we poll for the result
 
         # Setup the test data
-        config1 = Config('source1', 'esx')
-        config2 = Config('source2', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
+        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -337,8 +337,8 @@ class TestDestinationThread(TestBase):
         # This test's that when a 429 is detected during async polling
         # we wait for the amount of time specified
         source_keys = ['source1', 'source2']
-        config1 = Config('source1', 'esx')
-        config2 = Config('source2', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
+        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -400,7 +400,7 @@ class TestDestinationThread(TestBase):
         # method of the destination
 
         source_keys = ['source1']
-        config1 = Config('source1', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
@@ -436,7 +436,7 @@ class TestDestinationThread(TestBase):
         # DomainListReport that we retry after waiting the appropriate
         # amount of time
         source_keys = ['source1']
-        config1 = Config('source1', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
@@ -480,7 +480,7 @@ class TestDestinationThread(TestBase):
         source_keys = ['source1', 'source2']
         interval = 1
         terminate_event = Mock()
-        config1 = Config('source1', 'esx')
+        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         config, d = self.create_fake_config('test', **self.default_config_args)

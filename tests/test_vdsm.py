@@ -22,7 +22,6 @@ from mock import MagicMock
 
 from base import TestBase
 
-from virtwho.config import Config
 from virtwho.virt.vdsm import Vdsm
 from virtwho.virt.vdsm.vdsm import VdsmConfigSection
 

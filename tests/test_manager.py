@@ -23,9 +23,9 @@ import shutil
 import tempfile
 from mock import patch, MagicMock, ANY
 
-from base import TestBase
+from base import TestBase, unittest
 
-from virtwho.config import Config
+from virtwho.config import VirtConfigSection
 from virtwho.manager import Manager, ManagerError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport
 
@@ -42,7 +42,7 @@ class TestManager(TestBase):
     guestInfo = [guest1]
     hypervisor_id = "HYPERVISOR_ID"
 
-    config = Config('test', 'libvirt', owner='OWNER', env='ENV')
+    config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'OWNER', 'env': 'ENV'}, 'test', None)
     host_guest_report = HostGuestAssociationReport(config, {
         'hypervisors': [
             Hypervisor('9c927368-e888-43b4-9cdb-91b10431b258', []),
@@ -85,9 +85,8 @@ class TestSubscriptionManager(TestManager):
     @patch("rhsm.certificate.create_from_file")
     def test_sendVirtGuests(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
-        config = Config('test', 'libvirt')
-        config.smType = 'sam'
-        manager = Manager.fromOptions(self.logger, self.options, config)
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'sm_type': 'sam'}, 'test', None)
+        manager = Manager.from_config(self.logger, config)
         manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
             ANY,
@@ -132,10 +131,10 @@ class TestSatellite(TestManager):
         'sat_password': 'password',
     }
 
+    @unittest.skip("skip until config section for satellite is implemented")
     def test_sendVirtGuests(self):
-        options = MagicMock()
-        config = Config('test', 'libvirt', sat_server='localhost')
-        manager = Manager.fromOptions(self.logger, options, config)
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'sat_server': 'localhost'}, 'test', None)
+        manager = Manager.from_config(self.logger, config)
         self.assertRaises(ManagerError, manager.sendVirtGuests, self.domain_report)
 
     @patch("xmlrpclib.ServerProxy")

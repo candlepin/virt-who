@@ -571,7 +571,7 @@ class DestinationThread(IntervalThread):
                 # If the owner on our config is not defined, set it to the first report that
                 # we've found. This should be ok because destination threads should not be run for
                 # more than one owner.
-                self.config.owner = report.config.owner
+                self.config['owner'] = report.config['owner']
             if isinstance(report, DomainListReport):
                 # These are sent one at a time to the destination
                 domain_list_reports.append(source_key)
@@ -615,7 +615,7 @@ class DestinationThread(IntervalThread):
                 try:
                     self.logger.info('Sending updated Host-to-guest mapping to "{owner}" including '
                                      '{num_hypervisors} hypervisors and {num_guests} '
-                                     'guests'.format(owner=self.config.owner,
+                                     'guests'.format(owner=self.config['owner'],
                                                      num_hypervisors=total_hypervisors,
                                                      num_guests=total_guests))
                     result = self.dest.hypervisorCheckIn(

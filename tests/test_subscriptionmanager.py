@@ -7,7 +7,8 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import Config, ConfigManager
+from virtwho.config import VirtConfigSection, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME,\
+    init_config
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -69,7 +70,7 @@ class TestSubscriptionManager(TestBase):
         env = "env"
         config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
         # Ensure the data takes the proper for for the old API
-        rhsmconnection.return_value.has_capability.return_value = False
+        self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
         report = HostGuestAssociationReport(config, self.mapping)
         self.sm.hypervisorCheckIn(report)
 
@@ -140,13 +141,13 @@ class TestSubscriptionManagerConfig(TestBase):
     @patch('rhsm.certificate.create_from_file')
     def setUpClass(cls, rhsmcert, rhsmconfig):
         super(TestSubscriptionManagerConfig, cls).setUpClass()
-        config = Config('test', 'libvirt')
+        options = Mock()
         cls.tempdir = tempfile.mkdtemp()
         with open(os.path.join(cls.tempdir, 'cert.pem'), 'w') as f:
             f.write("\n")
         rhsmcert.return_value.subject = {'CN': 123}
         rhsmconfig.return_value.get.side_effect = lambda group, key: {'consumerCertDir': cls.tempdir}.get(key, DEFAULT)
-        cls.sm = SubscriptionManager(cls.logger, config)
+        cls.sm = SubscriptionManager(cls.logger, options)
         cls.sm.connection = MagicMock()
         cls.sm.connection.return_value.has_capability = MagicMock(return_value=False)
         cls.sm.connection.return_value.getConsumer = MagicMock(return_value={'environment': {'name': 'env'}})

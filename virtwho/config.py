@@ -171,6 +171,9 @@ class Info(object):
             pass
         return NotSetSentinel
 
+    def __setitem__(self, key, value):
+        self.__dict__["_options"][key] = value
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -1046,7 +1049,7 @@ class GlobalSection(ConfigSection):
         super(GlobalSection, self).__init__(*args, **kwargs)
         self.add_key('debug', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('oneshot', validation_method=self._validate_str_to_bool, default=False)
-        self.add_key('print', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('print_', validation_method=self._validate_str_to_bool, default=False, destination='print')
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('background', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])
@@ -1079,7 +1082,7 @@ class GlobalSection(ConfigSection):
     def _validate(self):
         super(GlobalSection, self)._validate()
 
-        if self.get('print'):
+        if self.get('print_', None) or self.get('print', None):
             self._values['oneshot'] = True
 
 # String representations of all the default configuration for virt-who

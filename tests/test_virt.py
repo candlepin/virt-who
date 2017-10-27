@@ -108,6 +108,7 @@ class TestDestinationThread(TestBase):
         'type': 'esx',
         'hypervisor_id': 'uuid',
         'simplified_vim': True,
+        'owner': 'owner',
     }
 
     def setUp(self):
@@ -216,13 +217,13 @@ class TestDestinationThread(TestBase):
         # This tests that reports of the right type are batched into one
         # and that the hypervisorCheckIn method of the destination is called
         # with the right parameters
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config1.exclude_hosts = []
-        config1.filter_hosts = []
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        d1['exclude_hosts'] = []
+        d1['filter_hosts'] = []
 
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
-        config2.exclude_hosts = []
-        config2.filter_hosts = []
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+        d2['exclude_hosts'] = []
+        d2['filter_hosts'] = []
 
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
@@ -272,8 +273,8 @@ class TestDestinationThread(TestBase):
         # we poll for the result
 
         # Setup the test data
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -345,8 +346,8 @@ class TestDestinationThread(TestBase):
         # This test's that when a 429 is detected during async polling
         # we wait for the amount of time specified
         source_keys = ['source1', 'source2']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
-        config2 = VirtConfigSection.from_dict({'type': 'esx'}, 'source2', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         virt2 = Mock()
@@ -410,7 +411,7 @@ class TestDestinationThread(TestBase):
         # method of the destination
 
         source_keys = ['source1']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
@@ -446,20 +447,18 @@ class TestDestinationThread(TestBase):
         # Show that when a 429 is encountered during the sending of a
         # DomainListReport that we retry after waiting the appropriate
         # amount of time
+        config, d = self.create_fake_config('test', **self.default_config_args)
         source_keys = ['source1']
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
 
         guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
-        report1 = DomainListReport(config1, [guest1],
+        report1 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_1')
 
         datastore = {'source1': report1}
         data_to_send = {'source1': report1}
 
-        config, d = self.create_fake_config('test', **self.default_config_args)
-        config.polling_interval = 10
         logger = Mock()
 
         error_to_throw = ManagerThrottleError(retry_after=62)
@@ -493,18 +492,17 @@ class TestDestinationThread(TestBase):
         source_keys = ['source1', 'source2']
         interval = 1
         terminate_event = Mock()
-        config1 = VirtConfigSection.from_dict({'type': 'esx'}, 'source1', None)
         virt1 = Mock()
         virt1.CONFIG_TYPE = 'esx'
         config, d = self.create_fake_config('test', **self.default_config_args)
         manager = Mock()
 
         guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
-        report1 = DomainListReport(config1, [guest1],
+        report1 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_1')
-        report2 = DomainListReport(config1, [guest1],
+        report2 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_2')
-        report3 = DomainListReport(config1, [guest1],
+        report3 = DomainListReport(config, [guest1],
                                    hypervisor_id='hypervisor_id_3')
         datastore = {
             'source1': report1,  # Not changing, should be excluded later

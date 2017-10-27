@@ -7,8 +7,7 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME, EffectiveConfig, VirtConfigSection, \
-    init_config, parse_file
+from virtwho.config import Config, ConfigManager
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
@@ -28,6 +27,7 @@ class TestSubscriptionManager(TestBase):
         'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR')]
     }
     hypervisor_id = "HYPERVISOR_ID"
+    uep_connection = None
 
     @classmethod
     @patch('rhsm.config.initConfig')
@@ -42,14 +42,20 @@ class TestSubscriptionManager(TestBase):
         rhsmcert.return_value.subject = {'CN': 123}
         rhsmconfig.return_value.get.side_effect = lambda group, key: {'consumerCertDir': cls.tempdir}.get(key, DEFAULT)
         cls.sm = SubscriptionManager(cls.logger, config)
+        cls.sm.connection = MagicMock()
+        cls.sm.connection.return_value.has_capability = MagicMock(return_value=False)
+        cls.sm.connection.return_value.getConsumer = MagicMock(return_value={'environment': {'name': 'env'}})
+        cls.sm.connection.return_value.getOwner = MagicMock(return_value={'key': 'owner'})
+        cls.uep_connection = patch('rhsm.connection.UEPConnection', cls.sm.connection)
+        cls.uep_connection.start()
         cls.sm.cert_uuid = 123
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.tempdir)
+        cls.uep_connection.stop()
 
-    @patch('rhsm.connection.UEPConnection')
-    def test_sendVirtGuests(self, rhsmconnection):
+    def test_sendVirtGuests(self):
         config = VirtConfigSection.from_dict({'type': 'libvirt'}, 'test', None)
         report = DomainListReport(config, self.guestList, self.hypervisor_id)
         self.sm.sendVirtGuests(report)
@@ -58,8 +64,7 @@ class TestSubscriptionManager(TestBase):
             guest_uuids=[g.toDict() for g in self.guestList],
             hypervisor_id=self.hypervisor_id)
 
-    @patch('rhsm.connection.UEPConnection')
-    def test_hypervisorCheckIn(self, rhsmconnection):
+    def test_hypervisorCheckIn(self):
         owner = "owner"
         env = "env"
         config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
@@ -103,9 +108,9 @@ class TestSubscriptionManager(TestBase):
         self.sm.check_report_state(report)
         self.assertEqual(report.state, AbstractVirtReport.STATE_PROCESSING)
 
-        def host(host):
+        def host(_host):
             return {
-                'uuid': host
+                'uuid': _host
             }
         rhsmconnection.return_value.getJob.return_value = {
             'state': 'FINISHED',
@@ -130,6 +135,31 @@ class TestSubscriptionManager(TestBase):
 
 
 class TestSubscriptionManagerConfig(TestBase):
+    @classmethod
+    @patch('rhsm.config.initConfig')
+    @patch('rhsm.certificate.create_from_file')
+    def setUpClass(cls, rhsmcert, rhsmconfig):
+        super(TestSubscriptionManagerConfig, cls).setUpClass()
+        config = Config('test', 'libvirt')
+        cls.tempdir = tempfile.mkdtemp()
+        with open(os.path.join(cls.tempdir, 'cert.pem'), 'w') as f:
+            f.write("\n")
+        rhsmcert.return_value.subject = {'CN': 123}
+        rhsmconfig.return_value.get.side_effect = lambda group, key: {'consumerCertDir': cls.tempdir}.get(key, DEFAULT)
+        cls.sm = SubscriptionManager(cls.logger, config)
+        cls.sm.connection = MagicMock()
+        cls.sm.connection.return_value.has_capability = MagicMock(return_value=False)
+        cls.sm.connection.return_value.getConsumer = MagicMock(return_value={'environment': {'name': 'env'}})
+        cls.sm.connection.return_value.getOwner = MagicMock(return_value={'key': 'owner'})
+        cls.uep_connection = patch('rhsm.connection.UEPConnection', cls.sm.connection)
+        cls.uep_connection.start()
+        cls.sm.cert_uuid = 123
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tempdir)
+        cls.uep_connection.stop()
+
     def test_sm_config_env(self):
         os.environ = {
             "VIRTWHO_SAM": '1',
@@ -150,14 +180,15 @@ class TestSubscriptionManagerConfig(TestBase):
         manager = Manager.from_config(self.logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
-    @patch('rhsm.connection.UEPConnection')
-    def test_sm_config_file(self, rhsmconnection):
+    def test_sm_config_file(self):
         config_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, config_dir)
         with open(os.path.join(config_dir, "test.conf"), "w") as f:
             f.write("""
 [test]
 type=libvirt
+owner=owner
+env=env
 rhsm_hostname=host
 rhsm_port=8080
 rhsm_prefix=prefix
@@ -179,7 +210,7 @@ rhsm_password=passwd
         self.assertEqual(config['rhsm_port'], '8080')
 
         manager._connect(config)
-        rhsmconnection.assert_called_with(
+        self.sm.connection.assert_called_with(
             username='user',
             password='passwd',
             host='host',
@@ -219,6 +250,8 @@ rhsm_password=passwd
             f.write("""
 [test]
 type=libvirt
+owner=owner
+env=env
 rhsm_hostname=host
 rhsm_port=8080
 rhsm_prefix=/prefix

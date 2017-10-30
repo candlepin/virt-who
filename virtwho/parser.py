@@ -481,6 +481,10 @@ def parse_options():
     VIRT_TYPE_OPTIONS = ['owner', 'env', 'server', 'username', 'password']
     SAT_OPTION_MAP = {'sat_server':'satellite-server', 'sat_username':'satellite-username', 'sat_password':'satellite-password'}
 
+    # Deprecated Environement variables
+    DEPRECATED_ENV_VARS = set(['VIRTWHO_DISABLE_ASYNC'])
+    present_deprecated_env_vars = list(set(os.environ.keys()).intersection(DEPRECATED_ENV_VARS))
+
     # Read command line arguments first
     cli_options, errors, defaults = parse_cli_arguments()
 
@@ -490,6 +494,8 @@ def parse_options():
     # Read environments variables for virtualization backends
     env_options, env_errors = read_vm_backend_env_variables(env_options)
     errors.extend(env_errors)
+    errors.append(('warning', 'The following present environment variables are deprecated and will be ignored: {0}'.format(present_deprecated_env_vars)))
+
     # Create the effective config that virt-who will use to run
     effective_config = init_config(env_options, cli_options)
     # Ensure validation errors during effective config creation are logged

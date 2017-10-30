@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.20.4
+Version:        0.21.0
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -134,6 +134,40 @@ fi
 
 
 %changelog
+* Mon Oct 30 2017 Christopher Snyder <csnyder@redhat.com> 0.21.0-1
+- Update hypervisorCheckInAsync test for new config sections
+  (csnyder@redhat.com)
+- Update Config Refactor with changes from master (csnyder@redhat.com)
+- Removed usage of old Config (not unit tests) (jhnidek@redhat.com)
+- Further clean up of unit tests (jhnidek@redhat.com)
+- Create Xen Config Subclass (jhnidek@redhat.com)
+- Create Rhevm Config Subclass (jhnidek@redhat.com)
+- Create VDSM config subclass (wpoteat@redhat.com)
+- Clean up ConfigSection Unit tests (jhnidek@redhat.com)
+- Adds FakeVirtConfigSection (csnyder@redhat.com)
+- Configuration subclass for hyperv (wpoteat@redhat.com)
+- Implement EsxConfigSection (khowell@redhat.com)
+- Libvirtd ConfigSection Subclass (jhnidek@redhat.com)
+- Adds EffectiveConfig, ConfigSection (csnyder@redhat.com)
+- Adds warning message for deprecated env vars (csnyder@redhat.com)
+- 1503700: Updates to the job polling frequency (csnyder@redhat.com)
+- 1502821: Remove undocumented, broken env var "VIRTWHO_DISABLE_ASYNC"
+  (csnyder@redhat.com)
+- 1466015: Warn of deprecation of command line options in next release
+  (wpoteat@redhat.com)
+- remove non-existant variable fake_is_hypervisor (adarshvritant@gmail.com)
+- 1485865: Do not replace /etc/virt-who.conf on rpm upgrade
+  (csnyder@redhat.com)
+- Utilize the owner from the first report seen, if we do not know the owner
+  (csnyder@redhat.com)
+- Updates based on review (use str.format) (csnyder@redhat.com)
+- Fix example fake config in man docs (adarshvritant@gmail.com)
+- Add m2crypto dependency (adarshvritant@gmail.com)
+- 1211435: Don't send host-to-geust mapping, when env, owner are wrong
+  (jhnidek@redhat.com)
+- 1408556: Log which owner updated mappings are being sent to
+  (csnyder@redhat.com)
+
 * Wed Jul 26 2017 Christopher Snyder <csnyder@redhat.com> 0.20.4-1
 - Point Source0 to GitHub (csnyder@redhat.com)
 

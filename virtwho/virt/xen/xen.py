@@ -1,15 +1,69 @@
 #!/usr/bin/env python
 
-import sys
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
 from time import time
 import XenAPI
 from XenAPI import NewMaster, Failure
 from collections import defaultdict
-import logging
 import requests
 
 from virtwho import virt
 from virtwho.util import RequestsXmlrpcTransport
+from virtwho.config import VirtConfigSection
+
+
+class XenConfigSection(VirtConfigSection):
+    """
+    This class is used for validation of Xen virtualization backend
+    section(s). It tries to validate options and combination of options that
+    are specific for this virtualization backend.
+    """
+    VIRT_TYPE = 'xen'
+    HYPERVISOR_ID = ('uuid', 'hostname')
+
+    def __init__(self, section_name, wrapper, *args, **kwargs):
+        super(XenConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+        self.add_key('server', validation_method=self._validate_server, required=True)
+        self.add_key('username', validation_method=self._validate_username, required=True)
+        self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
+
+    def _validate_server(self, key):
+        """
+        Do validation of server option specific for this virtualization backend
+        return: None or info-warning/error
+        """
+
+        result = []
+
+        # Url must contain protocol (usually https://)
+        url = self._values[key]
+        if "://" not in url:
+            url = "https://%s" % url
+            result.append((
+                'info',
+                "The original server URL was incomplete. It has been enhanced to %s" % url
+            ))
+            self._values[key] = url
+
+        if len(result) > 0:
+            return result
+        else:
+            return None
 
 
 class Xen(virt.Virt):
@@ -31,16 +85,12 @@ class Xen(virt.Virt):
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
-        self.url = config.server
-        self.username = config.username
-        self.password = config.password
+        self.session = None
+        self.url = config['server']
+        self.username = config['username']
+        self.password = config['password']
         self.config = config
         self.ignored_guests = set()
-
-        # Url must contain protocol (usually https://)
-        if "://" not in self.url:
-            self.url = "https://%s" % self.url
-
         self.filter = None
 
     def _prepare(self):
@@ -108,7 +158,7 @@ class Xen(virt.Virt):
                 else:
                     state = virt.Guest.STATE_UNKNOWN
 
-                guests.append(virt.Guest(uuid=uuid, virt=self, state=state))
+                guests.append(virt.Guest(uuid=uuid, virt_type=self.CONFIG_TYPE, state=state))
 
             facts = {}
             sockets = record.get('cpu_info', {}).get('socket_count')
@@ -121,14 +171,10 @@ class Xen(virt.Virt):
             if version:
                 facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
 
-            if self.config.hypervisor_id == 'uuid':
+            if self.config['hypervisor_id'] == 'uuid':
                 uuid = record["uuid"]
-            elif self.config.hypervisor_id == 'hostname':
+            elif self.config['hypervisor_id'] == 'hostname':
                 uuid = record["hostname"]
-            else:
-                raise virt.VirtError(
-                    'Invalid option %s for hypervisor_id, use one of: uuid or hostname' %
-                    self.config.hypervisor_id)
 
             mapping['hypervisors'].append(
                 virt.Hypervisor(
@@ -189,49 +235,11 @@ class Xen(virt.Virt):
             if initial or len(events) > 0 or delta > 0:
                 assoc = self.getHostGuestMapping()
                 self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
-                next_update = time() + self.interval
                 initial = False
 
             if self._oneshot:
                 break
+            else:
+                next_update = time() + self.interval
 
         self.cleanup()
-
-
-if __name__ == "__main__":  # pragma: no cover
-    # First acquire a valid session by logging in:
-    from virtwho.config import Config
-    if len(sys.argv) < 4:
-        print("Usage: %s url username password" % sys.argv[0])
-        sys.exit(0)
-    logger = logging.getLogger('virtwho.xen')
-    logger.addHandler(logging.StreamHandler())
-    url, username, password = sys.argv[1:4]
-    config = Config('xen', 'xen', server=url, username=username, password=password)
-    from virtwho.datastore import Datastore
-    from threading import Event, Thread
-    printer_terminate_event = Event()
-    datastore = Datastore()
-
-    xenserver = Xen(logger, config, datastore)
-
-    class Printer(Thread):
-        def run(self):
-            last_hash = None
-            while not printer_terminate_event.is_set():
-                try:
-                    report = datastore.get(config.name)
-                    if report and report.hash != last_hash:
-                        print report.association
-                        last_hash = report.hash
-                except KeyError:
-                    pass
-    p = Printer()
-    p.daemon = True
-    p.start()
-    try:
-        xenserver.start_sync()
-    except KeyboardInterrupt:
-        printer_terminate_event.set()
-        p.join()
-        sys.exit(1)

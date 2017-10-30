@@ -27,20 +27,29 @@ from Queue import Queue
 from base import TestBase
 from proxy import Proxy
 
-from virtwho.config import Config
-from virtwho.virt.xen import Xen
+from virtwho.virt.xen.xen import XenConfigSection
 from virtwho.virt.xen.XenAPI import NewMaster, Failure
-from virtwho.virt import VirtError, Guest, Hypervisor
+from virtwho.virt import Virt, VirtError, Guest, Hypervisor
+from virtwho.datastore import Datastore
+from virtwho import DefaultInterval
 
 
 class TestXen(TestBase):
+
+    @staticmethod
+    def create_config(name, wrapper, **kwargs):
+        config = XenConfigSection(name, wrapper)
+        config.update(**kwargs)
+        config.validate()
+        return config
+
     def setUp(self):
-        config = Config('test', 'xen', server='localhost', username='username',
+        config = self.create_config(name='test', wrapper=None, type='xen', server='localhost', username='username',
                         password='password', owner='owner', env='env')
-        self.xen = Xen(self.logger, config, None)
+        self.xen = Virt.from_config(self.logger, config, Datastore(), interval=DefaultInterval)
 
     def run_once(self, queue=None):
-        ''' Run XEN in oneshot mode '''
+        """Run XEN in oneshot mode"""
         self.xen._oneshot = True
         self.xen.dest = queue or Queue()
         self.xen._terminate_event = Event()
@@ -119,7 +128,7 @@ class TestXen(TestBase):
             guestIds=[
                 Guest(
                     expected_guestId,
-                    self.xen,
+                    self.xen.CONFIG_TYPE,
                     expected_guest_state,
                 )
             ],
@@ -175,7 +184,7 @@ class TestXen(TestBase):
                 guestIds=[
                     Guest(
                         expected_guestId,
-                        self.xen,
+                        self.xen.CONFIG_TYPE,
                         expected_guest_state,
                     )
                 ],

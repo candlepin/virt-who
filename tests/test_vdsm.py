@@ -22,13 +22,20 @@ from mock import MagicMock
 
 from base import TestBase
 
-from virtwho.config import Config
 from virtwho.virt.vdsm import Vdsm
+from virtwho.virt.vdsm.vdsm import VdsmConfigSection
 
 
 class TestVdsm(TestBase):
+
+    def create_config(self, name, wrapper, **kwargs):
+        config = VdsmConfigSection(name, wrapper)
+        config.update(**kwargs)
+        config.validate()
+        return config
+
     def setUp(self):
-        config = Config('test', 'vdsm')
+        config = self.create_config('test', None, type='vdsm')
 
         def fakeSecureConnect(self):
             return MagicMock()

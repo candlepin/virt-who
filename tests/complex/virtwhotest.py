@@ -12,6 +12,8 @@ from tempfile import TemporaryFile
 from fake_sam import FakeSam
 
 import virtwho
+import virtwho.parser
+import virtwho.main
 
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version
@@ -64,9 +66,8 @@ class TestBase(TestCase):
         virt-who process (or None if `background` is True) and stdout is
         stdout from the process (or None if `grab_stdout` is False).
         '''
-        oldMinimumSendInterval = virtwho.executor.MinimumSendInterval
-        virtwho.executor.MinimumSendInterval = 2
-        virtwho.parser.MinimumSendInterval = 2
+        old_minimum_send_interval = virtwho.config.MinimumSendInterval
+        virtwho.config.MinimumSendInterval = 2
         virtwho.log.Logger._stream_handler = None
         virtwho.log.Logger._queue_logger = None
         old_stdout = None
@@ -90,8 +91,8 @@ class TestBase(TestCase):
             sys.stdout.close()
             sys.stdout = old_stdout
 
-        virtwho.executor.MinimumSendInterval = oldMinimumSendInterval
-        virtwho.parser.MinimumSendInterval = oldMinimumSendInterval
+        virtwho.config.MinimumSendInterval = old_minimum_send_interval
+
         return code, data
 
     def stop_virtwho(self):

@@ -18,21 +18,38 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
+import collections
 import os
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import DefaultInterval
+from virtwho import log
 from password import Password
 from binascii import unhexlify
 import hashlib
 import json
 import util
 
-VIRTWHO_CONF_DIR = "/etc/virt-who.d/"
-VIRTWHO_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
-VIRTWHO_GENERAL_CONF_PATH = "/etc/virt-who.conf"
-VIRTWHO_GLOBAL_SECTION_NAME = "global"
-VIRTWHO_VIRT_DEFAULTS_SECTION_NAME = "defaults"
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6 doesn't have OrderedDict, we need to have our own
+    from util import OrderedDict
+
+# Module-level logger
+logger = log.getLogger('config', queue=False)
+
+_effective_config = None
+
+VW_CONF_DIR = "/etc/virt-who.d/"
+VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen")
+VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
+VW_GLOBAL = "global"
+VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
+VW_ENV_CLI_SECTION_NAME = "env/cmdline"
+
+# Default interval for sending list of UUIDs
+DefaultInterval = 3600  # One per hour
+MinimumSendInterval = 60  # One minute
 
 
 class InvalidOption(Error):
@@ -44,9 +61,9 @@ class InvalidPasswordFormat(Exception):
 
 
 def parse_list(s):
-    '''
+    """
     Parse comma-separated list of items (that might be in quotes) to the list of strings
-    '''
+    """
     items = []
 
     read_to = None  # everything until next `read_to` (single or double
@@ -154,6 +171,9 @@ class Info(object):
             pass
         return NotSetSentinel
 
+    def __setitem__(self, key, value):
+        self.__dict__["_options"][key] = value
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -171,6 +191,7 @@ class Info(object):
 
     def keys(self):
         return self.__dict__['_options'].keys()
+
 
 # Should this be defined in the manager that actually requires these values?
 class Satellite5DestinationInfo(Info):
@@ -213,300 +234,6 @@ default_destination_info = DefaultDestinationInfo()
 default_destination_info.name = "default_destination"
 
 
-class GeneralConfig(object):
-    # This dictionary should be filled in for subclasses with option_name: default_value
-    DEFAULTS = {}
-    # options that are lists should be placed here in subclasses
-    LIST_OPTIONS = ()
-    # boolean options should be listed here
-    BOOL_OPTIONS = ()
-    INT_OPTIONS = ()
-
-    def __init__(self, defaults=None, **kwargs):
-        options = self.DEFAULTS.copy()
-        options.update(defaults or {})
-        options.update(kwargs)
-        # setting the attribute the normal way causes
-        # a reference to the dictionary to appear
-        self.__dict__['_options'] = options
-
-    def __repr__(self):
-        return '{cls}({args!r})'.format(cls=self.__class__.__name__, args=self._options)
-
-    def __getattr__(self, name):
-        if name.startswith('_'):
-            super(GeneralConfig, self).__getattr__(name)
-
-        value = self._options.get(name, None)
-        if value is None or value is NotSetSentinel:
-            if name in self.DEFAULTS:
-                return self.DEFAULTS[name]
-            else:
-                return None
-        if name in self.BOOL_OPTIONS:
-            return str(value).lower() not in ("0", "false", "no")
-        if name in self.LIST_OPTIONS:
-            if not isinstance(value, list):
-                return parse_list(value)
-            else:
-                return value
-        if name in self.INT_OPTIONS:
-            return int(value)
-        return value
-
-    def __setattr__(self, name, value):
-        if isinstance(value, NotSetSentinel):
-            return
-        if name.startswith('_'):
-            super(GeneralConfig, self).__setattr__(name, value)
-        else:
-            self._options[name] = value
-
-    def keys(self):
-        return self.__dict__['_options'].keys()
-
-    def update(self, **kwargs):
-        '''
-        Update _options with the kwargs
-        '''
-        self.__dict__['_options'].update([(k, v) for k, v in kwargs.iteritems() if not isinstance(v, NotSetSentinel)])
-
-    def __getitem__(self, name):
-        return self._options[name]
-
-    def __setitem__(self, name, value):
-        if isinstance(value, NotSetSentinel):
-            return
-        self._options[name] = value
-
-    def __delitem__(self, name):
-        del self._options[name]
-
-    def __contains__(self, name):
-        return name in self._options
-
-    def has_options(self, options):
-        """
-        @param options: A list of strings of options. Returns True if all
-        options are included in this config
-        @type options: list
-
-        @rtype: bool
-        """
-        for option in options:
-            if not option in self:
-                return False
-        return True
-
-    @classmethod
-    def fromFile(cls, filename, logger):
-        raise NotImplementedError()
-
-
-class GlobalConfig(GeneralConfig):
-    """
-    This GeneralConfig subclass represents the config file
-    that holds the global values used to control virt-who's
-    operation.
-    """
-    DEFAULTS = {
-        'debug': False,
-        'oneshot': False,
-        'print_': False,
-        'log_per_config': False,
-        'background': False,
-        'configs': '',
-        'reporter_id': util.generateReporterId(),
-        'smType': None,
-        'interval': DefaultInterval
-    }
-    LIST_OPTIONS = (
-        'configs',
-    )
-    BOOL_OPTIONS = (
-        'debug',
-        'oneshot',
-        'background',
-        'print_'
-        'log_per_config'
-    )
-    INT_OPTIONS = (
-        'interval',
-    )
-
-    @classmethod
-    def fromFile(cls, filename, logger=None):
-        global_config = parseFile(filename, logger=logger).get(VIRTWHO_GLOBAL_SECTION_NAME)
-        if not global_config:
-            if logger:
-                logger.warning(
-                    'Unable to find "%s" section in general config file: "%s"\nWill use defaults where required',
-                    VIRTWHO_GLOBAL_SECTION_NAME, filename)
-            global_config = {}
-        return cls(**global_config)
-
-
-class Config(GeneralConfig):
-    DEFAULTS = {
-        'simplified_vim': True,
-        'hypervisor_id': 'uuid',
-    }
-    LIST_OPTIONS = (
-        'filter_hosts',
-        'filter_host_uuids',
-        'exclude_hosts',
-        'exclude_host_uuids',
-        'filter_host_parents'
-        'exclude_host_parents',
-    )
-    BOOL_OPTIONS = (
-        'is_hypervisor',
-        'simplified_vim',
-    )
-    PASSWORD_OPTIONS = (
-        ('encrypted_password', 'password'),
-        ('rhsm_encrypted_password', 'rhsm_password'),
-        ('rhsm_encrypted_proxy_password', 'rhsm_proxy_password'),
-        ('sat_encrypted_password', 'sat_password'),
-    )
-    RENAMED_OPTIONS = (
-        ('filter_host_uuids', 'filter_hosts'),
-        ('exclude_host_uuids', 'exclude_hosts'),
-    )
-    # It is usually required to have username in latin1 encoding
-    LATIN1_OPTIONS = (
-        'username', 'rhsm_username', 'rhsm_proxy_user', 'sat_username',
-    )
-    # Password can be usually anything
-    UTF8_OPTIONS = (
-        'password', 'rhsm_password', 'rhsm_proxy_password', 'sat_password',
-    )
-
-    def __init__(self, name, virtwho_type, defaults=None, **kwargs):
-        super(Config, self).__init__(defaults=defaults, **kwargs)
-        self._name = name
-        self._type = virtwho_type
-
-        if self._type not in VIRTWHO_TYPES:
-            raise InvalidOption('Invalid type "%s", must be one of following %s' %
-                                (self._type, ", ".join(VIRTWHO_TYPES)))
-
-        for password_option, decrypted_option in self.PASSWORD_OPTIONS:
-            try:
-                pwd = self._options[password_option]
-            except KeyError:
-                continue
-            try:
-                self._options[decrypted_option] = Password.decrypt(unhexlify(pwd))
-            except (TypeError, IndexError):
-                raise InvalidPasswordFormat(
-                    "Option \"{option}\" in config named \"{name}\" can't be decrypted, possibly corrupted"
-                    .format(option=password_option, name=name))
-
-        for old_name, new_name in self.RENAMED_OPTIONS:
-            try:
-                self._options[new_name] = self._options[old_name]
-            except KeyError:
-                pass
-
-        for option in self.LATIN1_OPTIONS:
-            value = self._options.get(option)
-            if not value or value is NotSetSentinel:
-                continue
-            try:
-                value.encode('latin1')
-            except UnicodeDecodeError:
-                raise InvalidOption("Value: {0} of option '{1}': is not in latin1 encoding".format(value, option))
-
-        for option in self.UTF8_OPTIONS:
-            value = self._options.get(option)
-            if not value or value is NotSetSentinel:
-                continue
-            try:
-                value.decode('UTF-8')
-            except UnicodeDecodeError:
-                raise InvalidOption("Value: {0} of option '{1}': is not in UTF-8 encoding".format(value, option))
-
-    @property
-    def smType(self):
-        try:
-            return self._options['smType']
-        except KeyError:
-            if 'sat_server' in self._options:
-                return 'satellite'
-            elif 'rhsm_hostname' in self._options:
-                return 'sam'
-            else:
-                return None
-
-    def checkOptions(self, logger):
-        # Server option must be there for ESX, RHEVM, and HYPERV
-        if 'server' not in self._options:
-            if self.type in ['libvirt', 'vdsm', 'fake']:
-                self._options['server'] = ''
-            else:
-                raise InvalidOption("Option `server` needs to be set in config `%s`" % self.name)
-
-        # Check for env and owner options, it must be present for SAM
-        if ((self.smType is None or self.smType == 'sam') and (
-                (self.type in ('esx', 'rhevm', 'hyperv', 'xen')) or
-                (self.type == 'libvirt' and self.server) or
-                (self.type == 'fake' and self.is_hypervisor))):
-
-            if not self.env:
-                raise InvalidOption("Option `env` needs to be set in config `%s`" % self.name)
-            elif not self.owner:
-                raise InvalidOption("Option `owner` needs to be set in config `%s`" % self.name)
-
-        if self.type != 'esx':
-            if self.filter_host_parents is not None:
-                logger.warn("filter_host_parents is not supported in %s mode, ignoring it", self.type)
-            if self.exclude_host_parents is not None:
-                logger.warn("exclude_host_parents is not supported in %s mode, ignoring it", self.type)
-
-        if self.type != 'fake':
-            if self.is_hypervisor is not None:
-                logger.warn("is_hypervisor is not supported in %s mode, ignoring it", self.type)
-        else:
-            if not self.is_hypervisor:
-                if self.env:
-                    logger.warn("Option `env` is not used in non-hypervisor fake mode")
-                if self.owner:
-                    logger.warn("Option `owner` is not used in non-hypervisor fake mode")
-
-        if self.type == 'libvirt':
-            if self.server is not None and self.server != '':
-                if ('ssh://' in self.server or '://' not in self.server) and self.password:
-                    logger.warn("Password authentication doesn't work with ssh transport on libvirt backend, "
-                                "copy your public ssh key to the remote machine")
-            else:
-                if self.env:
-                    logger.warn("Option `env` is not used in non-remote libvirt connection")
-                if self.owner:
-                    logger.warn("Option `owner` is not used in non-remote libvirt connection")
-
-    @classmethod
-    def fromParser(cls, name, parser, defaults=None):
-        options = {}
-        for option in parser.options(name):
-            options[option] = parser.get(name, option)
-        virtwho_type = options.pop('type').lower()
-        config = Config(name, virtwho_type, defaults, **options)
-        return config
-
-    @property
-    def hash(self):
-        return hashlib.sha256(json.dumps(self.__dict__, sort_keys=True)).hexdigest()
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def type(self):
-        return self._type
-
-
 class StripQuotesConfigParser(SafeConfigParser):
     def get(self, section, option):
         # Don't call super, SafeConfigParser is not inherited from object
@@ -519,60 +246,18 @@ class StripQuotesConfigParser(SafeConfigParser):
         return value
 
 
-class ConfigManager(object):
-    def __init__(self, logger, config_dir=None, defaults=None):
-        if not defaults:
-            try:
-                defaults_from_config = parseFile(VIRTWHO_GENERAL_CONF_PATH).get(VIRTWHO_VIRT_DEFAULTS_SECTION_NAME)
-                self._defaults = defaults_from_config or {}
-            except MissingSectionHeaderError:
-                self._defaults = {}
-        else:
-            self._defaults = defaults
-        if config_dir is None:
-            config_dir = VIRTWHO_CONF_DIR
-        parser = StripQuotesConfigParser()
-        self._configs = []
+class DestinationToSourceMapper(object):
+    def __init__(self, effective_config):
+        self._configs = effective_config.virt_sections()
         self.logger = logger
         self.sources = set()
         self.dests = set()
         self.dest_to_sources_map = {}
-        all_dir_content = None
-        conf_files = None
-        non_conf_files = None
-        try:
-            all_dir_content = set(os.listdir(config_dir))
-            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
-            non_conf_files = all_dir_content - conf_files
-        except OSError:
-            self.logger.warn("Configuration directory '%s' doesn't exist or is not accessible", config_dir)
-            return
-        if not all_dir_content:
-            self.logger.warn("Configuration directory '%s' appears empty", config_dir)
-        elif not conf_files:
-            self.logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                             "is not empty", config_dir)
-        elif non_conf_files:
-            self.logger.debug("There are files in '%s' not ending in '*.conf' is this "
-                              "intentional?", config_dir)
-
-        for conf in conf_files:
-            if conf.startswith('.'):
-                continue
-            try:
-                filename = parser.read(os.path.join(config_dir, conf))
-                if len(filename) == 0:
-                    self.logger.error("Unable to read configuration file %s", conf)
-            except MissingSectionHeaderError:
-                self.logger.error("Configuration file %s contains no section headers", conf)
-
-        self._readConfig(parser)
         self.update_dest_to_source_map()
 
     def update_dest_to_source_map(self):
         sources, dests, d_to_s, orphan_sources = \
-            ConfigManager.map_destinations_to_sources(
-                self._configs)
+            DestinationToSourceMapper.map_destinations_to_sources(self._configs)
         if orphan_sources:
             d_to_s[default_destination_info] = orphan_sources
             dests.add(default_destination_info)
@@ -580,27 +265,6 @@ class ConfigManager(object):
         self.dests = dests
         self.dest_to_sources_map = d_to_s
 
-    def _readConfig(self, parser):
-        for section in parser.sections():
-            try:
-                config = Config.fromParser(section, parser, self._defaults)
-                config.checkOptions(self.logger)
-                self._configs.append(config)
-            except NoOptionError as e:
-                self.logger.error(str(e))
-            except InvalidPasswordFormat as e:
-                self.logger.error(str(e))
-            except InvalidOption as e:
-                # When a configuration section has an Invalid Option, continue
-                # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
-                self.logger.warn("Invalid configuration detected: %s", str(e))
-
-    def readFile(self, filename):
-        parser = StripQuotesConfigParser()
-        fname = parser.read(filename)
-        if len(fname) == 0:
-            self.logger.error("Unable to read configuration file %s", filename)
-        self._readConfig(parser)
 
     @staticmethod
     def map_destinations_to_sources(configs, dest_classes=(Satellite5DestinationInfo, Satellite6DestinationInfo)):
@@ -615,7 +279,7 @@ class ConfigManager(object):
         config object
         @type dest_classes: Iterable
 
-        @rtype: (set, set, dict)
+        @rtype: (set, set, dict, set)
         """
 
         # Will include the names of the configs
@@ -632,16 +296,15 @@ class ConfigManager(object):
         # mapping
         # of destination to
         # sources
-        for config in configs:
-            sources.add(config.name)
-            sources_without_destinations.add(config.name)
-            for dest in ConfigManager.parse_dests_from_dict(config._options,
-                                                            dest_classes):
+        for name, config in configs:
+            sources.add(name)
+            sources_without_destinations.add(name)
+            for dest in DestinationToSourceMapper.parse_dests_from_dict(config,
+                                                                        dest_classes):
                 dests.add(dest)
                 current_sources = dest_to_source_map.get(dest, set())
-                current_sources.update(set([config.name]))
-                sources_without_destinations.difference_update(
-                        set([config.name]))
+                current_sources.update(set([name]))
+                sources_without_destinations.difference_update(set([name]))
                 dest_to_source_map[dest] = current_sources
         for dest, source_set in dest_to_source_map.iteritems():
             dest_to_source_map[dest] = sorted(list(source_set))
@@ -674,40 +337,1002 @@ class ConfigManager(object):
                 dest = dest_class(**dict_to_parse)
             except ValueError:
                 continue
-            dests.add(dest)
+            else:
+                dests.add(dest)
         return dests
 
     @property
     def configs(self):
         return self._configs
 
-    def addConfig(self, config):
+    def add_config(self, config):
         self._configs.append(config)
 
 
-def getOptions(section, parser):
-    options = {}
-    for option in parser.options(section):
-        options[option] = parser.get(section, option)
-    return options
-
-
-def getSections(parser):
-    sections = {}
+def _all_parser_sections(parser):
+    all_sections = {}
     for section in parser.sections():
-        try:
-            sections[section] = getOptions(section, parser)
-        except NoOptionError:
-            sections[section] = {}
-    return sections
+        all_sections[section] = {}
+        for option in parser.options(section):
+            all_sections[section][option] = parser.get(section, option)
+    return all_sections
 
 
-def parseFile(filename, logger=None):
-    # Parse a file into a dict of section_name: options_dict
+def parse_file(filename):
+    # Parse a file into a dict of name: options_dict
     # options_dict is a dict of option_name: value
     parser = StripQuotesConfigParser()
-    fname = parser.read(filename)
-    if len(fname) == 0 and logger:
-        logger.error("Unable to read configuration file %s", filename)
-    sections = getSections(parser)
+    sections = {}
+
+    try:
+        fname = parser.read(filename)
+        if len(fname) == 0:
+            logger.error("Unable to read configuration file %s", filename)
+        else:
+            sections = _all_parser_sections(parser)
+    except MissingSectionHeaderError:
+        logger.error("Configuration file %s contains no section headers", filename)
+    except NoOptionError as e:
+        logger.error(str(e))
+    except InvalidPasswordFormat as e:
+        logger.error(str(e))
+    except InvalidOption as e:
+        # When a configuration section has an Invalid Option, continue
+        # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
+        logger.warn("Invalid configuration detected: %s", str(e))
+    except Exception as e:
+        logger.error('Config file "%s" skipped because of an error: %s',
+                     filename, str(e))
     return sections
+
+
+# Helper methods used to validate parameters given to virt-who
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        if value.strip().lower() in ['yes', 'true', 'on', '1']:
+            return True
+        elif value.strip().lower() in ['no', 'false', 'off', '0']:
+            return False
+    raise ValueError("Unable to convert value to boolean")
+
+
+def non_empty_string(value):
+    if not isinstance(value, str):
+        raise TypeError("Value is not a string")
+    if not value:
+        raise ValueError("String is empty")
+    return value
+
+
+def readable(path):
+    if not os.access(path, os.R_OK):
+        raise ValueError("Path '%s' is not accessible" % path)
+
+
+def accessible_file(path):
+    readable(path)
+    if not os.path.isfile(path):
+        raise ValueError("Path '%s' does not appear to be a file" % path)
+
+
+def accessible_dir(path):
+    readable(path)
+    if not os.path.isdir(path):
+        raise ValueError("Path '%s' does not appear to be a directory" % path)
+
+
+def empty_or_accessible_files(paths):
+    if not isinstance(paths, list):
+        if not isinstance(paths, str):
+            raise TypeError()
+        if len(paths) == 0:
+            return []
+        paths = [paths]
+    if len(paths) == 0:
+        return paths
+    for path in paths:
+        accessible_file(path)
+    return paths
+
+
+class ValidationState(object):
+    VALID = 'valid'
+    INVALID = 'invalid'
+    UNKNOWN = 'unknown'
+    NEEDS_VALIDATION = 'needs_validation'
+
+
+class ConfigSection(collections.MutableMapping):
+    """
+    This represents a section of configuration for virt-who. The interface that it exposes is
+    dictionary like. This object maintains a state attribute. The state shows if the configuration
+    section has passed validation, needs validation, or is invalid for some reason.
+    """
+
+    # The string representation of all default properties and values
+    # Real values should be added in child classes
+    DEFAULTS = ()
+
+    __marker = object()
+
+    def __init__(self, section_name, wrapper):
+        """
+        Initialization of ConfigSection instance
+        :param section_name: The name of section
+        :param wrapper: The parent of current config section
+        """
+        self.name = section_name
+        self._wrapper = wrapper
+        self.defaults = dict(self.DEFAULTS)
+        # Those properties that have yet to be validated
+        # Any item not in this set but in this ConfigSection is validated
+        self._unvalidated_keys = set()
+        self._invalid_keys = set()
+        # Holds all properties for this section
+        self._values = {}
+        # Validation messages from last run
+        self.validation_messages = []
+
+        self.validation_methods = OrderedDict()
+        self._destinations = {}
+        self._required_keys = set()
+        self._missing_required_keys = set()
+
+        # Add section defaults
+        for key, value in self.defaults.items():
+            self._values[key] = value
+        self._update_state()
+
+    def iteritems(self):
+        for key in self:
+            yield (key, self._values[key])
+
+    def items(self):
+        return util.DictItemsIter(self)
+
+    def __iter__(self):
+        return iter(self._values.keys())
+
+    def _update_state(self):
+        if len(self._unvalidated_keys) > 0:
+            self.state = ValidationState.NEEDS_VALIDATION
+        elif len(self._invalid_keys) > 0 or len(self._values) == 0 or len(
+                self._missing_required_keys) > 0:
+            self.state = ValidationState.INVALID
+        else:
+            self.state = ValidationState.VALID
+
+    def __delitem__(self, key):
+        if key in self:
+            if self.has_default(key):
+                return
+            del self._values[key]
+            if key in self._unvalidated_keys:
+                self._unvalidated_keys.remove(key)
+            if key in self._invalid_keys:
+                self._invalid_keys.remove(key)
+            self._update_state()
+        else:
+            raise KeyError('Unable to delete nonexistant property "%s"' % key)
+
+    def __contains__(self, key):
+        return key in self._values
+
+    def __setitem__(self, key, value):
+        if key not in self or (key in self and self[key] != value):
+            self._unvalidated_keys.add(key)
+            self._values[key] = value
+            self._update_state()
+        elif key not in self._unvalidated_keys:
+            self._unvalidated_keys.add(key)
+            self._update_state()
+
+    def __len__(self):
+        return len(self._values)
+
+    def __getitem__(self, key):
+        if key in self._values:
+            return self._values[key]
+        elif key in self.defaults:
+            return self.defaults[key]
+        else:
+            raise KeyError('{0} not in {1}'.format(key, self.name))
+
+    def _pre_validate(self):
+        """
+        Steps necessary to do before evaluation
+        """
+        if len(self._unvalidated_keys) == 0:
+            self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
+        else:
+            for default_key in self.defaults.keys():
+                if default_key not in self._unvalidated_keys:
+                    self.validation_messages.append(
+                        (
+                            'warning',
+                            'Value for "%s" not set in: %s, using default: %s' %
+                            (default_key, self.name, self.defaults[default_key])
+                        )
+                    )
+
+    def check_required_keys(self):
+        for required_key in self._required_keys:
+            if required_key not in self and not self.has_default(required_key):
+                msg = ('error', 'Required option: "%s" is missing in: "%s"'
+                       % (required_key, self.name))
+                self.validation_messages.append(msg)
+                self._missing_required_keys.add(required_key)
+
+    def _post_validate(self):
+        """
+        Steps necessary to do after evaluation
+        """
+        self.check_required_keys()
+        self.reset_to_defaults()
+        self.apply_destinations()
+        # Finally calls _update_state
+        self._update_state()
+
+    def _validate(self):
+        if not self._unvalidated_keys:
+            # Do not override validation_messages if there is nothing to validate
+            return
+        validation_messages = []
+
+        # remove unknown keys
+        unknown_keys = self._unvalidated_keys.difference(self.validation_methods.keys())
+        self._unvalidated_keys.difference_update(unknown_keys)
+        # Validate those keys that need to be validated
+        for key, validation_method in self.validation_methods.iteritems():
+            if key not in self._unvalidated_keys:
+                continue
+            messages = validation_method(key)
+            key_invalid = False
+            if messages is not None:
+                if type(messages) is list:
+                    if any(message[0] == 'error' for message in messages):
+                        key_invalid = True
+                    validation_messages.extend(messages)
+                else:
+                    if messages[0] == 'error':
+                        key_invalid = True
+                    validation_messages.append(messages)
+                # Only add if at least one result contains an 'error' level message
+                if key_invalid:
+                    self._invalid_keys.add(key)
+            self._unvalidated_keys.remove(key)
+
+        for key in unknown_keys:
+            validation_messages.append(
+                    ('warning', 'Ignoring unknown configuration option "%s"' % key)
+            )
+            if key in self._values:
+                del self._values[key]
+
+        self._update_state()
+        self.validation_messages.extend(validation_messages)
+
+    def validate(self):
+        """
+        Do validation of provided options.
+        :return: list of validation messages
+        """
+        self._pre_validate()
+        self._validate()
+        self._post_validate()
+        return self.validation_messages
+
+    def reset_to_defaults(self):
+        """
+        When option is not set, then this methods tries to set such option to default value.
+        """
+        for key in self._invalid_keys.union(self.defaults.keys()):
+            if self.has_default(key) and key not in self._values:
+                self._values[key] = self.defaults[key]
+                if key in self._required_keys:
+                    message = 'Required option: "%s" is missing in: "%s" using default "%s"' % \
+                              (key, self.name, self.defaults[key])
+                    self.validation_messages.append(('warning', message))
+
+    def apply_destinations(self):
+        # Rudimentary, should we be copying values around or just referencing them
+        for key in self._destinations:
+            if key in self._values and self._destinations[key] not in self._values and key \
+                    not in self._invalid_keys:
+                self._values[self._destinations[key]] = self._values[key]
+                del self._values[key]
+
+    def is_default(self, key):
+        return key in self.defaults and (key not in self._values or self._values[key] == self.defaults[key])
+
+    def is_section_default(self):
+        """
+        :return: This method returns True if this ConfigSection instance has exactly the same
+        keys and values as the defined defaults (if any).
+        :rtype: bool
+        """
+        return all(self.has_default(key) and self.is_default(key) for key in self)
+
+    def has_default(self, key):
+        return key in self.defaults
+
+    def get(self, key, default=__marker):
+        try:
+            return self[key]
+        except KeyError as e:
+            if default is not self.__marker:
+                return default
+            raise e
+
+    def __str__(self):
+        return_string = "[%s]" % self.name
+        for key, value in self.items():
+            return_string += "\n%s=%s" % (key, value)
+        return return_string
+
+    def update(self, *args, **kwds):
+        """
+        This method implements update as usually defined on a regular dict. The only difference
+        is a reference to self is expected.
+        :param *args: Each arg passed if it has a "keys" method we will do the following d[k] =
+            arg[k] for k in arg.keys. If not we treat the arg as iterable (possiblly a tuple of
+            tuples or list of tuples etc). In this case we do the following: for key, val in arg:
+            d[key] = value.
+        :param **kwds: for each keyword arg in kwds we set d[keyword] = kwds[keyword]
+        :return: Nothing
+        """
+        for arg in args:
+            if getattr(arg, 'keys', None):
+                for key in arg.keys():
+                    self[key] = arg[key]
+            else:
+                for key, value in arg:
+                    self[key] = value
+        for key, value in kwds.items():
+            self[key] = value
+
+    def is_valid(self):
+        return self.state == ValidationState.VALID
+
+    @classmethod
+    def get_defaults(cls):
+        """
+        Returns: A dictionary of the defaults defined for a ConfigSection of this type.
+                 Strings are returned so as to match the values returned by parsers for other
+                 sources of configuration (for example, ConfigParsers or argparse). Better to
+                 treat args from all parsers as strings and to convert from strings
+                 in one place than to check type multiple places up until then.
+        """
+        defaults = dict()
+        for key, value in cls.DEFAULTS:
+            defaults[key] = str(value)
+        return defaults
+
+    @classmethod
+    def class_for_type(cls, virt_type, parent=None):
+        if parent is None:
+            clazz = cls
+        else:
+            clazz = parent
+        for subclass in cls.__subclasses__():
+            if getattr(subclass, 'VIRT_TYPE', None) == virt_type:
+                clazz = subclass
+                break
+            # When VIRT_TYPE was not found in this subclass, then
+            # this subclass can have another subclasses :-)
+            else:
+                result = subclass.class_for_type(virt_type, cls)
+                if result != cls:
+                    clazz = result
+                    break
+        return clazz
+
+    @classmethod
+    def from_dict(cls, values, section_name, wrapper):
+        virt_type = values.get('virttype', None) or values.get('type')
+        sub_cls = cls.class_for_type(virt_type)
+        section = sub_cls(section_name, wrapper)
+        section.update(**values)
+        return section
+
+    def _validate_str_to_bool(self, key):
+        result = None
+        try:
+            self._values[key] = str_to_bool(self._values[key])
+        except (KeyError, ValueError):
+            if self.has_default(key):
+                self._values[key] = str_to_bool(self.defaults[key])
+                result = (
+                    'warning',
+                    '%s must be a valid boolean, using default. '
+                    'See man virt-who-config for more info' % key
+                )
+            else:
+                result = (
+                    'warning',
+                    '%s must be a valid boolean, ignoring. '
+                    'See man virt-who-config for more info' % key
+                )
+        return result
+
+    def _validate_non_empty_string(self, key):
+        result = None
+        try:
+            value = self._values[key]
+        except KeyError:
+            if not self.has_default(key):
+                result = ('warning', 'Value for %s not set in: %s' % (key, self.name))
+        else:
+            if not isinstance(value, str):
+                result = ('warning', '%s is not set to a valid string, using default' % key)
+            elif len(value) == 0:
+                result = ('warning', '%s cannot be empty, using default' % key)
+        return result
+
+    def _validate_list(self, list_key):
+        result = None
+        if self.is_default(list_key):
+            self._values[list_key] = []
+        elif isinstance(self[list_key], list):
+            filtered_items = [item for item in self._values[list_key] if isinstance(item, str)]
+            self._values[list_key] = filtered_items
+        elif isinstance(self._values[list_key], str):
+            self._values[list_key] = parse_list(self._values[list_key])
+        else:
+            result = (
+                'warning',
+                'Option "%s" must be one or more strings, ignoring' % list_key
+            )
+            self._values[list_key] = []  # Reset to empty list
+        return result
+
+    def add_key(self, key, validation_method=None, default=__marker, destination=None,
+                required=False):
+        if default is not self.__marker:
+            self.defaults[key] = default
+        if not validation_method:
+            raise AttributeError('validation_method must be provided for {0}'.format(key))
+        self.validation_methods[key] = validation_method
+        if destination:
+            self._destinations[key] = destination
+        if required:
+            self._required_keys.add(key)
+
+
+class VirtConfigSection(ConfigSection):
+    """
+    This class is used for validation of virtualization backend section.
+    It tries o validate options that are common for all virtualization
+    backends supported by virt-who.
+    """
+
+    DEFAULTS = (
+        ('sm_type', 'sam'),
+    )
+    RENAMED_OPTIONS = (
+        ('filter_host_uuids', 'filter_hosts'),
+        ('exclude_host_uuids', 'exclude_hosts'),
+    )
+    HYPERVISOR_ID = ()
+
+    def __init__(self, section_name, wrapper):
+        super(VirtConfigSection, self).__init__(section_name, wrapper)
+        self.add_key('type', validation_method=self._validate_virt_type, default='libvirt')
+        self.add_key('virttype', validation_method=self._validate_virt_type, default='libvirt',
+                     destination='virttype')
+        self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
+        self.add_key('hypervisor_id', validation_method=self._validate_hypervisor_id, default='uuid')
+        # Unencrypted passwords
+        self.add_key('password', validation_method=self._validate_unencrypted_password)
+        self.add_key('rhsm_password', validation_method=self._validate_unencrypted_password)
+        self.add_key('rhsm_proxy_password', validation_method=self._validate_unencrypted_password)
+        self.add_key('sat_password', validation_method=self._validate_unencrypted_password)
+        # Encrypted passwords
+        self.add_key('encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='password')
+        self.add_key('rhsm_encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='rhsm_password')
+        self.add_key('rhsm_encrypted_proxy_password', validation_method=self._validate_encrypted_password,
+                     destination='rhsm_proxy_password')
+        self.add_key('sat_encrypted_password', validation_method=self._validate_encrypted_password,
+                     destination='sat_password')
+        # Usernames
+        self.add_key('username', validation_method=self._validate_username)
+        self.add_key('rhsm_username', validation_method=self._validate_username)
+        self.add_key('rhsm_proxy_user', validation_method=self._validate_username)
+        self.add_key('sat_username', validation_method=self._validate_username)
+        # Needed to allow us to parse the destination info
+        self.add_key('sat_server', validation_method=lambda *args: None)
+        self.add_key('server', validation_method=self._validate_server)
+        self.add_key('env', validation_method=self._validate_env)
+        self.add_key('owner', validation_method=self._validate_owner)
+        self.add_key('filter_hosts', validation_method=self._validate_filter)
+        self.add_key('filter_host_parents', validation_method=self._validate_filter)
+        self.add_key('exclude_hosts', validation_method=self._validate_filter)
+        self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
+        self.add_key('rhsm_proxy_hostname', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_proxy_port', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_hostname', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_port', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_prefix', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_insecure', validation_method=self._validate_non_empty_string)
+
+    def __setitem__(self, key, value):
+        for old_key, new_key in self.RENAMED_OPTIONS:
+            if key == old_key:
+                key = new_key
+        super(VirtConfigSection, self).__setitem__(key, value)
+
+    def _pre_validate(self):
+        # Used to allow virttype to be provided for type (if type was not given)
+        if 'virttype' in self._values and 'type' not in self._values:
+            self._values['type'] = self._values['virttype']
+        super(VirtConfigSection, self)._pre_validate()
+
+    def _validate_virt_type(self, key):
+        result = None
+        try:
+            virt_type = self._values[key]
+        except KeyError:
+            result = ('warning', 'Virt. type is not set, using default')
+        else:
+            if virt_type not in VW_TYPES:
+                result = ('warning', 'Unsupported virt. type is set, using default')
+                self._values[key] = self.defaults[key]
+        return result
+
+    # def _validate_hypervisor_id(self, key='hypervisor_id'):
+    #     # Note: Every virt. backend should implement own validation method of hypervisor id
+    #     return None
+
+    def _validate_hypervisor_id(self, key='hypervisor_id'):
+        """
+        Do validation of hypervisor_id, when virtualization backend support it
+        (self.HYPERVISOR_ID contains at leas one string)
+        :param key: hypervisor ID
+        :return: None or warning, when unsupported hypervisor_id is provided.
+        """
+        result = []
+        if key in self._values and len(self.HYPERVISOR_ID) > 0:
+            if self._values[key] not in self.HYPERVISOR_ID:
+                result.append((
+                    'error',
+                    'Invalid option: "%s" for hypervisor_id, use one of: (%s)' %
+                    (self._values[key], ", ".join(self.HYPERVISOR_ID))
+                ))
+        if len(result) > 0:
+            return result
+        else:
+            return None
+
+    def _validate_unencrypted_password(self, pass_key):
+        """
+        Try to validate unencrypted password. It has to be UTF-8 encoded.
+        :param pass_key: This could be: 'password', 'rhsm_password',
+                         'rhsm_proxy_password' and 'sat_password'
+        """
+        result = None
+        try:
+            password = self._values[pass_key]
+        except KeyError:
+            result = (
+                'warning',
+                'Option: "%s" was not set in configuration: %s' % (pass_key, self.name)
+            )
+        else:
+            if password != NotSetSentinel:
+                try:
+                    password.decode('UTF-8')
+                except UnicodeDecodeError:
+                    result = (
+                        'warning',
+                        "Value: {0} of option '{1}': is not in UTF-8 encoding".format(password, pass_key)
+                    )
+        return result
+
+    def _validate_encrypted_password(self, pass_key):
+        """
+        Try to validate encrypted password. It has to be UTF-8 encoded.
+        :param pass_key: This could be: 'encrypted_password', 'rhsm_encrypted_password',
+                         'rhsm_encrypted_proxy_password' and 'sat_encrypted_password'
+        """
+        result = None
+        decrypted_pass_key = self._destinations[pass_key]
+        try:
+            pwd = self._values[pass_key]
+        except KeyError:
+            result = (
+                'warning',
+                'Option: "%s" was not set in configuration %s' % (pass_key, self.name)
+            )
+        else:
+            try:
+                self._values[decrypted_pass_key] = Password.decrypt(unhexlify(pwd))
+            except (TypeError, IndexError):
+                result = (
+                    'warning',
+                    "Option \"{option}\" cannot be decrypted, possibly corrupted"
+                    .format(option=pass_key)
+                )
+        return result
+
+    def _validate_username(self, username_key):
+        """
+        Try to validate username
+        :param username_key: Possible values could be: 'username', 'rhsm_username',
+                             'rhsm_proxy_username', 'sat_username'
+        """
+        result = None
+        try:
+            username = self._values[username_key]
+        except KeyError:
+            result = ('warning', 'Option: "%s" was not set in configuration: %s' % (username_key, self.name))
+        else:
+            if username != NotSetSentinel:
+                try:
+                    username.encode('latin1')
+                except UnicodeEncodeError:
+                    result = (
+                        'warning',
+                        "Value: {0} of option '{1}': is not in latin1 encoding".format(
+                            username.encode('utf-8'),
+                            username_key
+                        )
+                    )
+        return result
+
+    def _validate_server(self, key):
+        """
+        Try to validate server definition
+        """
+        result = None
+        # Server option must be there for ESX, RHEVM, and HYPERV
+        if key not in self._values:
+            if 'type' in self._values and self._values['type'] in ['libvirt', 'vdsm', 'fake']:
+                self._values[key] = ''
+            else:
+                result = (
+                    'warning',
+                    "Option %s needs to be set in config: '%s'" % (key, self.name)
+                )
+
+        return result
+
+    def _validate_env(self, key):
+        """
+        Try to validate environment option
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        virt_type = self._values['type']
+        if sm_type == 'sam' and (
+                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
+                (virt_type == 'libvirt' and 'server' in self._values)):
+            if key not in self:
+                result = (
+                    'warning',
+                    "Option `%s` needs to be set in config: '%s'" % (key, self.name)
+                )
+        return result
+
+    def _validate_owner(self, key):
+        """
+        Try to validate environment option
+        """
+        result = None
+        sm_type = self._values['sm_type']
+        virt_type = self._values['type']
+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
+            if key not in self:
+                result = (
+                    'warning',
+                    "Option `%s` needs to be set in config: '%s'" % (key, self.name)
+                )
+        return result
+
+    def _validate_filter(self, filter_key):
+        """
+        Try to validate filter option
+        """
+        return self._validate_list(filter_key)
+
+
+class GlobalSection(ConfigSection):
+    """
+    Class used for validation of global section
+    """
+    SECTION_NAME = VW_GLOBAL
+
+    def __init__(self, *args, **kwargs):
+        super(GlobalSection, self).__init__(*args, **kwargs)
+        self.add_key('debug', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('oneshot', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('print_', validation_method=self._validate_str_to_bool, default=False, destination='print')
+        self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('background', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('configs', validation_method=self._validate_list, default=[])
+        self.add_key('reporter_id', validation_method=self._validate_non_empty_string,
+                     default=util.generateReporterId())
+        self.add_key('interval',  validation_method=self._validate_interval, default=DefaultInterval)
+        self.add_key('log_file', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_FILE)
+        self.add_key('log_dir', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_DIR)
+
+    def _validate_interval(self, key):
+        result = None
+        try:
+            self._values[key] = int(self._values[key])
+
+            if self._values[key] < MinimumSendInterval:
+                message = "Interval value can't be lower than {min} seconds. Default value of " \
+                          "{min} " \
+                          "seconds will be used.".format(min=DefaultInterval)
+                result = ("warning", message)
+                self._values['interval'] = DefaultInterval
+        except KeyError:
+            result = ('warning', '%s is missing' % key)
+        except (TypeError, ValueError) as e:
+            result = ('warning', '%s was not set to a valid integer: %s' % (key, str(e)))
+        return result
+
+    def _validate_configs(self):
+        return self._validate_list('configs')
+
+    def _validate(self):
+        super(GlobalSection, self)._validate()
+
+        if self.get('print_', None) or self.get('print', None):
+            self._values['oneshot'] = True
+
+# String representations of all the default configuration for virt-who
+DEFAULTS = {
+    VW_GLOBAL: GlobalSection.get_defaults(),
+    VW_ENV_CLI_SECTION_NAME: {
+        'smtype': 'sam',
+        'virttype': 'libvirt',
+    },
+}
+
+
+class EffectiveConfig(collections.MutableMapping):
+    """
+    This object represents the total configuration of virt-who including all global parameters
+    and all sections that define a source or destination.
+    """
+
+    __marker = object()
+
+    def __iter__(self):
+        return iter(self._sections)
+
+    def __delitem__(self, key):
+        if key in self:
+            del self._sections[key]
+        else:
+            raise KeyError("Unable to delete nonexistant section '%s'" % key)
+
+    def __setitem__(self, key, value):
+        self._sections[key] = value
+
+    def __len__(self):
+        return len(self._sections)
+
+    def __getitem__(self, key):
+        return self._sections[key]
+
+    def __contains__(self, item):
+        return item in self._sections
+
+    def items(self):
+        return util.DictItemsIter(self)
+
+    def __init__(self):
+        self.validation_messages = []
+        self._sections = {}
+
+    def validate(self):
+        validation_messages = []
+        for section_name, section in self._sections.items():
+            # This next check will not be necessary after we know that all sections are
+            # ConfigSections
+            if getattr(section, 'validate', None) is not None:
+                validation_messages.extend(section.validate())
+        self.validation_messages = validation_messages
+        return validation_messages
+
+    def is_valid(self):
+        return all(child.state == ValidationState.VALID for (name, child) in self.items())
+
+    @staticmethod
+    def filter_parameters(desired_parameters, values_to_filter):
+        matching_parameters = {}
+        non_matching_parameters = {}
+        for param, value in values_to_filter.iteritems():
+            if value is None:
+                continue
+            if type(value) is list:
+                value = [str(item) for item in value]
+            else:
+                value = str(value)
+            if param in desired_parameters:
+                matching_parameters[param] = value
+            else:
+                # Take all parameters and their values for those params that are non-default or
+                # for which a default is unknown
+                non_matching_parameters[param] = value
+        return matching_parameters, non_matching_parameters
+
+    @staticmethod
+    def all_drop_dir_config_sections(config_dir=VW_CONF_DIR):
+        """
+        Read all configuration sections in the default config directory
+        :return: a dictionary of {name: {key: value, ... } ... }
+        """
+        try:
+            all_dir_content = set(os.listdir(config_dir))
+            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+            non_conf_files = all_dir_content - conf_files
+        except OSError:
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible",
+                        config_dir)
+            return {}
+
+        if not all_dir_content:
+            logger.warn("Configuration directory '%s' appears empty", config_dir)
+        elif not conf_files:
+            logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
+                        "is not empty", config_dir)
+        elif non_conf_files:
+            logger.debug("There are files in '%s' not ending in '*.conf' is this "
+                         "intentional?", config_dir)
+        all_sections = {}
+        for conf in conf_files:
+            if conf.startswith('.'):
+                continue
+            all_sections.update(parse_file(os.path.join(config_dir, conf)))
+        return all_sections
+
+    def is_default(self, section, option):
+        return self._sections[section].is_default(option)
+
+    def get(self, section, default=__marker):
+        return self._sections[section]
+
+    def virt_sections(self):
+        """
+        :return: list of sections that represent virt_backends
+        """
+        return [(name, section) for (name, section) in self.items()
+                if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME]]
+
+
+def _check_effective_config_validity(effective_config):
+    validation_errors = effective_config.validate()
+    valid_virt_sections = {}
+    invalid_virt_sections = {}
+    for name, section in effective_config.virt_sections():
+        if section.is_valid():
+            valid_virt_sections[name] = section
+        else:
+            invalid_virt_sections[name] = section
+    has_non_default_env_cli = False
+
+    # Drop invalid configurations first
+    if len(invalid_virt_sections.keys()) > 0:
+        for name, section in invalid_virt_sections.items():
+            if name == VW_ENV_CLI_SECTION_NAME and not section.is_section_default():
+                has_non_default_env_cli = True
+            validation_errors.append(('warning', 'Dropping invalid configuration "%s"' % name))
+            del effective_config[name]
+
+        # If there are no valid virt sections
+        if not valid_virt_sections:
+            validation_errors.append(('warning', 'No valid configurations found'))
+
+    # In order to keep compatibility with older releases of virt-who,
+    # fallback to using libvirt as default virt backend
+    # only if we did not have a non_default env/cmdline config
+    if not has_non_default_env_cli and len(effective_config.virt_sections()) == 0 and len(
+            invalid_virt_sections) == 0:
+        effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
+                DEFAULTS[VW_ENV_CLI_SECTION_NAME],
+                VW_ENV_CLI_SECTION_NAME,
+                effective_config)
+        validation_errors.append(('warning',
+                                  'Using default "%s" configuration' % VW_ENV_CLI_SECTION_NAME))
+
+    effective_config.validate()
+    return effective_config, validation_errors
+
+
+def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
+    """
+    Initialize and return the effective virt-who configuration
+    :param env_options: The dict of options parsed from the environment
+    :param cli_options: The dict of options parsed from the CLI
+    :param config_dir: The path to directory containing configuration files
+    :return: EffectiveConfig
+    """
+
+    validation_errors = []
+    effective_config = EffectiveConfig()
+    global logger  # Use module level logger as this is likely called before other logging init
+
+    effective_config[VW_GLOBAL] = GlobalSection(VW_GLOBAL, effective_config)
+    effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection(VW_ENV_CLI_SECTION_NAME,
+                                                              effective_config)
+    effective_config[VW_ENV_CLI_SECTION_NAME].defaults = DEFAULTS[VW_ENV_CLI_SECTION_NAME]
+
+    global_required_params = effective_config[VW_GLOBAL].defaults.keys()
+
+    # Split environment variables values into global or non
+    env_globals, env_non_globals = effective_config.filter_parameters(global_required_params,
+                                                                      env_options)
+    # Split cli variables values into global or non
+    cli_globals, cli_non_globals = effective_config.filter_parameters(global_required_params,
+                                                                      cli_options)
+    # Read the virt-who general conf file
+    vw_conf = parse_file(VW_GENERAL_CONF_PATH)
+
+    global_section = vw_conf.pop(VW_GLOBAL, {})
+    # NOTE: Might be nice in the future to include the defaults in this object
+    # So that section would still exist in the output
+    virt_defaults_section = vw_conf.pop(VW_VIRT_DEFAULTS_SECTION_NAME, {})
+    global_section_sources = [global_section, env_globals, cli_globals]
+
+    for global_source in global_section_sources:
+        for key, value in global_source.items():
+            if key:
+                effective_config[VW_GLOBAL][key.lower()] = value
+
+    # Validate GlobalSection before use.
+    validation_errors.extend(effective_config[VW_GLOBAL].validate())
+
+    # Initialize logger, the creation of this object is the earliest it can be done
+    log.init(effective_config)
+    logger = log.getLogger('config', queue=False)
+
+    # Create the effective env / cli config from those values we've sorted out as non_global
+    env_cli_sources = [env_non_globals, cli_non_globals]
+    for env_cli_source in env_cli_sources:
+        for key, value in env_cli_source.items():
+            if key:
+                effective_config[VW_ENV_CLI_SECTION_NAME][key.lower()] = value
+
+    # Now with the aggregate config data, run it through the appropriate class to get it validated/defaulted.
+    effective_config[VW_ENV_CLI_SECTION_NAME] = VirtConfigSection.from_dict(effective_config[VW_ENV_CLI_SECTION_NAME], VW_ENV_CLI_SECTION_NAME, effective_config)
+
+    if effective_config[VW_ENV_CLI_SECTION_NAME].is_section_default():
+        del effective_config[VW_ENV_CLI_SECTION_NAME]
+
+    all_sections_to_add = {}
+    # read additional sections from /etc/virt-who.conf
+    all_sections_to_add.update(vw_conf)
+    # also read all sections in conf files in the drop dir
+    all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+    # also read the files in the configs list from the configs var if defined
+    for file_name in effective_config[VW_GLOBAL]['configs']:
+        all_sections_to_add.update(parse_file(filename=file_name))
+
+    for section, values in all_sections_to_add.items():
+        new_section = {}
+        new_section.update(**virt_defaults_section)
+        new_section.update(**values)
+        try:
+            new_section = ConfigSection.from_dict(new_section, section, effective_config)
+        except KeyError:
+            # Missing required attribute
+            continue
+        effective_config[section] = new_section
+
+    effective_config, errors = _check_effective_config_validity(effective_config)
+    validation_errors.extend(errors)
+
+    # Log pending errors
+    for err in validation_errors:
+        method = getattr(logger, err[0])
+        if method is not None and err[0] == 'error':
+            method(err[1])
+
+    return effective_config

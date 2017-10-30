@@ -1,20 +1,13 @@
 import time
 from threading import Event
-from Queue import Empty, Queue
-import errno
-import socket
 import sys
 
-from virtwho import log, MinimumSendInterval
+from virtwho import log
 
-from virtwho.config import ConfigManager
+from virtwho.config import DestinationToSourceMapper, VW_GLOBAL
 from virtwho.datastore import Datastore
-from virtwho.manager import (
-    Manager, ManagerThrottleError, ManagerError, ManagerFatalError)
-from virtwho.virt import (
-    AbstractVirtReport, ErrorReport, DomainListReport,
-    HostGuestAssociationReport, Virt, DestinationThread,
-    info_to_destination_class)
+from virtwho.manager import Manager
+from virtwho.virt import Virt, info_to_destination_class
 
 try:
     from collections import OrderedDict
@@ -28,7 +21,7 @@ class ReloadRequest(Exception):
 
 
 class Executor(object):
-    def __init__(self, logger, options, config_dir=None):
+    def __init__(self, logger, options):
         """
         Executor class provides bridge between virtualization supervisor and
         Subscription Manager.
@@ -46,25 +39,25 @@ class Executor(object):
         self.datastore = Datastore()
         self.reloading = False
 
-        self.configManager = ConfigManager(self.logger, config_dir)
+        self.dest_to_source_mapper = DestinationToSourceMapper(options)
 
-        for config in self.configManager.configs:
-            logger.debug("Using config named '%s'" % config.name)
+        for name, config in self.dest_to_source_mapper.configs:
+            logger.debug("Using config named '%s'" % name)
 
     def _create_virt_backends(self):
         """
         Create virts list with virt backend threads
         """
         virts = []
-        for config in self.configManager.configs:
+        for name, config in self.dest_to_source_mapper.configs:
             try:
                 logger = log.getLogger(config=config)
                 virt = Virt.from_config(logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
-                                        interval=self.options.interval,
-                                        oneshot=self.options.oneshot)
+                                        interval=self.options[VW_GLOBAL]['interval'],
+                                        oneshot=self.options[VW_GLOBAL]['oneshot'])
             except Exception as e:
-                self.logger.error('Unable to use configuration "%s": %s', config.name, str(e))
+                self.logger.error('Unable to use configuration "%s": %s', name, str(e))
                 continue
             virts.append(virt)
         return virts
@@ -77,11 +70,11 @@ class Executor(object):
             @type: bool
         """
         dests = []
-        for info in self.configManager.dests:
+        for info in self.dest_to_source_mapper.dests:
             # Dests should already include all destinations we want created
             # at this time. This method will make no assumptions of creating
             # defaults of any kind.
-            source_keys = self.configManager.dest_to_sources_map[info]
+            source_keys = self.dest_to_source_mapper.dest_to_sources_map[info]
             info.name = "destination_%s" % hash(info)
             logger = log.getLogger(name=info.name)
             manager = Manager.fromInfo(logger, self.options, info)
@@ -91,8 +84,8 @@ class Executor(object):
                               options=self.options,
                               source=self.datastore, dest=manager,
                               terminate_event=self.terminate_event,
-                              interval=self.options.interval,
-                              oneshot=self.options.oneshot)
+                              interval=self.options[VW_GLOBAL]['interval'],
+                              oneshot=self.options[VW_GLOBAL]['oneshot'])
             dests.append(dest)
         return dests
 
@@ -165,13 +158,13 @@ class Executor(object):
 
         Executor.wait_on_threads(self.virts)
 
-        if self.options.print_:
+        if self.options[VW_GLOBAL]['print']:
             to_print = {}
-            for source in self.configManager.sources:
+            for source in self.dest_to_source_mapper.sources:
                 try:
                     report = self.datastore.get(source)
                     config = report.config
-                    to_print[config] = report
+                    to_print[config.name] = report
                 except KeyError:
                     self.logger.info('Unable to retrieve report for source '
                                      '\"%s\" for printing' % source)
@@ -183,13 +176,14 @@ class Executor(object):
         Executor.wait_on_threads(self.destinations)
 
     def run(self):
-        self.logger.debug("Starting infinite loop with %d seconds interval", self.options.interval)
+        self.logger.debug("Starting infinite loop with %d seconds interval",
+                          self.options[VW_GLOBAL]['interval'])
 
-        # Need to update the dest to source mapping of the configManager object
+        # Need to update the dest to source mapping of the dest_to_source_mapper object
         # here because of the way that main reads the config from the command
         # line
         # TODO: Update dests to source map on addition or removal of configs
-        self.configManager.update_dest_to_source_map()
+        self.dest_to_source_mapper.update_dest_to_source_map()
         # Start all sources
         self.virts = self._create_virt_backends()
 

@@ -7,11 +7,11 @@ from virtwho.datastore import Datastore
 class TestDatastore(TestBase):
 
     def setUp(self):
-        pickle_patcher = patch('virtwho.datastore.pickle')
-        self.mock_pickle = pickle_patcher.start()
-        self.mock_pickle.dumps.return_value = sentinel.pickled_value
-        self.mock_pickle.loads.return_value = sentinel.unpickled_value
-        self.addCleanup(pickle_patcher.stop)
+        copy_patcher = patch('virtwho.datastore.copy')
+        self.mock_copy = copy_patcher.start()
+        self.mock_copy.deepcopy.side_effect = [sentinel.deep_copy_value_1,
+                                                sentinel.deep_copy_value_2]
+        self.addCleanup(copy_patcher.stop)
 
         lock_patcher = patch('virtwho.datastore.Lock')
         mock_lock_class = lock_patcher.start()
@@ -20,7 +20,7 @@ class TestDatastore(TestBase):
         self.mock_lock = mock_lock_instance
         self.addCleanup(lock_patcher.stop)
 
-    def mock_test_data(self, datastore, **kwargs):
+    def _mock_test_data(self, datastore, **kwargs):
         # Sets the datastore to contain the keys and values of the kwargs
         # in a way that does not use the put method of the datastore
         # Returns the datastore instance as modified, the test internal
@@ -39,7 +39,7 @@ class TestDatastore(TestBase):
         # and that the lock (when used as a context manager) is acquired by
         # the calling thread on __enter__ and released by the calling thread
         # on __exit__
-        datastore, mock_internal_datastore = self.mock_test_data(Datastore(),
+        datastore, mock_internal_datastore = self._mock_test_data(Datastore(),
                                                                  test_item=sentinel.test_value)
 
         def assert_internal_store_unchanged(*args, **kwargs):
@@ -85,7 +85,7 @@ class TestDatastore(TestBase):
         # and the item exists
         datastore = Datastore()
         expected_value = sentinel.test_value
-        self.mock_pickle.loads.side_effect = lambda x: x
+        self.mock_copy.deepcopy.side_effect = lambda x: x
         with patch.dict(datastore._datastore, test_item=expected_value):
             result = datastore.get("test_item", default=sentinel.default_value)
             self.assertEquals(result, expected_value)
@@ -98,8 +98,8 @@ class TestDatastore(TestBase):
         with patch.dict(datastore._datastore,
                         test_item=sentinel.test_item_value):
             result = datastore.get("test_item")
-        self.mock_pickle.loads.assert_called_with(sentinel.test_item_value)
-        self.assertEquals(result, self.mock_pickle.loads.return_value)
+        self.mock_copy.deepcopy.assert_called_with(sentinel.test_item_value)
+        self.assertEquals(result, sentinel.deep_copy_value_1)
 
     def test_put_locking(self):
         # Ensure that a lock is acquired before (and released after) updating a
@@ -108,7 +108,7 @@ class TestDatastore(TestBase):
         # and that the lock (when used as a context manager) is acquired by
         # the calling thread on __enter__ and released by the calling thread
         # on __exit__
-        datastore, mock_internal_datastore = self.mock_test_data(Datastore(),
+        datastore, mock_internal_datastore = self._mock_test_data(Datastore(),
                                                                  test_item=sentinel.test_value)
 
         def assert_internal_store_unchanged(*args, **kwargs):
@@ -118,7 +118,7 @@ class TestDatastore(TestBase):
 
         def assert_internal_store_accessed(*args, **kwargs):
             mock_internal_datastore.__setitem__.assert_called_once_with(
-                    "test_item", self.mock_pickle.dumps.return_value)
+                    "test_item", sentinel.deep_copy_value_1)
 
         self.mock_lock.__enter__.side_effect = assert_internal_store_unchanged
         self.mock_lock.__exit__.side_effect = assert_internal_store_accessed
@@ -127,14 +127,14 @@ class TestDatastore(TestBase):
         self.mock_lock.__enter__.assert_called_once()
         self.mock_lock.__exit__.assert_called_once()
 
-    def test_put_uses_pickle_dumps(self):
+    def test_put_uses_deepcopy(self):
         # Ensure that put uses the return value of pickle.dumps
         test_item = "test_value"
         test_key = "test_item"
-        datastore, mock_internal_ds = self.mock_test_data(Datastore(),
+        datastore, mock_internal_ds = self._mock_test_data(Datastore(),
                                                           test_item=test_item)
         datastore.put(test_key, test_item)
-        self.mock_pickle.dumps.assert_called_with(test_item)
-        expected_value = self.mock_pickle.dumps.return_value
+        self.mock_copy.deepcopy.assert_called_with(test_item)
+        expected_value = sentinel.deep_copy_value_1
         mock_internal_ds.__setitem__.assert_called_with(test_key,
                                                         expected_value)

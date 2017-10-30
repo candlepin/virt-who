@@ -1,6 +1,7 @@
 import socket
 import xmlrpclib
 import requests
+from abc import ABCMeta
 
 try:
     from thread import get_ident as _get_ident
@@ -15,6 +16,32 @@ from string import letters, digits
 
 
 __all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename', 'RequestsXmlrpcTransport')
+
+
+class Singleton(ABCMeta):
+    """
+    As Metaclasses are responsible for the creation of classes, class attributes
+    declared on the metaclass will end up as an attribute on the resultant classes.
+    This Metaclass enables all classes that use it to share the '_instances' dict.
+    Actual instances of each such class are maintained there.
+    
+    See https://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
+    for an explanation of why we want to create a metaclass for Singletons in python
+    """
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """
+        Registers an instance of the given class to the shared _instances class attribute.
+        Creates the instance required if not already existant.
+        Please note any class that is already initialized will ignore new args and kwargs.
+        Returns: The one instance of the given class.
+        """
+        if cls not in cls._instances:
+            # Create the actual instance of the class and add it to those we are tracking
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
 
 
 class RequestsXmlrpcTransport(xmlrpclib.SafeTransport):
@@ -339,3 +366,25 @@ def generateReporterId():
         return hostname
     else:
         return hostname + '-' + machine_id
+
+
+class DictItemsIter(object):
+    """
+    A dictionary iterator that is compatible with python3.
+    Iterates over the items in the dictionary it is initialized with
+    """
+    def __init__(self, items):
+        self.items = items
+        self.keys = sorted(self.items.keys())
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if len(self.keys) == 0:
+            raise StopIteration
+        key = self.keys.pop()
+        return key, self.items[key]
+
+    def next(self):
+        return self.__next__()

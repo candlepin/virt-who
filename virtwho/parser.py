@@ -510,6 +510,19 @@ def parse_options():
                   "Please see 'man virt-who-config' for details on adding a configuration section." % display_option)
 
 
+
+    for option in DEPRECATED_OPTIONS:
+        display_option = option
+        if option in cli_options and not cli_options[option] == defaults[option]:
+            if option == 'virtType' or option == 'smType':
+                display_option = cli_options[option]
+            elif any(option in s for s in VIRT_TYPE_OPTIONS):
+                display_option = '%s-%s' % (cli_options['virtType'], option)
+            elif option in SAT_OPTION_MAP:
+                display_option = SAT_OPTION_MAP[option]
+            logger.warning("The option --%s is deprecated and will be removed in the next release. "
+                  "Please see 'man virt-who-config' for details on adding a configuration section." % display_option)
+
     # Log pending errors
     for err in errors:
         method = getattr(logger, err[0])

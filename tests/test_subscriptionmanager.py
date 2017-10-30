@@ -73,7 +73,6 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
         report = HostGuestAssociationReport(config, self.mapping)
         self.sm.hypervisorCheckIn(report)
-
         self.sm.connection.hypervisorCheckIn.assert_called_with(
             owner,
             env,
@@ -81,6 +80,7 @@ class TestSubscriptionManager(TestBase):
             options=None)
 
     @patch('rhsm.connection.UEPConnection')
+    # def test_hypervisorCheckInAsync(self):
     def test_hypervisorCheckInAsync(self, rhsmconnection):
         owner = 'owner'
         env = 'env'
@@ -91,11 +91,12 @@ class TestSubscriptionManager(TestBase):
         self.sm.hypervisorCheckIn(report)
         expected = {'hypervisors': [h.toDict() for h in self.mapping['hypervisors']]}
         self.sm.connection.hypervisorCheckIn.assert_called_with(
-            owner,
-            env,
+            None,
+            None,
             expected,
             options=None
         )
+        self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
 
     @patch('rhsm.connection.UEPConnection')
     def test_job_status(self, rhsmconnection):
@@ -113,6 +114,8 @@ class TestSubscriptionManager(TestBase):
             return {
                 'uuid': _host
             }
+
+        # self.sm.connection.return_value.getJob.return_value = {
         rhsmconnection.return_value.getJob.return_value = {
             'state': 'FINISHED',
             'resultData': {

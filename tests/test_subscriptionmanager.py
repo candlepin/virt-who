@@ -91,8 +91,8 @@ class TestSubscriptionManager(TestBase):
         self.sm.hypervisorCheckIn(report)
         expected = {'hypervisors': [h.toDict() for h in self.mapping['hypervisors']]}
         self.sm.connection.hypervisorCheckIn.assert_called_with(
-            None,
-            None,
+            'owner',
+            'env',
             expected,
             options=None
         )

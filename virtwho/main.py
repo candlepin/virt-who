@@ -31,10 +31,9 @@ except ImportError:
     from util import OrderedDict
 
 from virtwho import log
-from virtwho.config import Config, InvalidPasswordFormat, InvalidOption
+from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
 from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest
-from virtwho.manager import ManagerFatalError
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
@@ -113,6 +112,7 @@ def main():
     logger = options = None
     try:
         logger, options = parse_options()
+        # We now have the effective_config
     except OptionError as e:
         print >> sys.stderr, str(e)
         exit(1, status="virt-who can't be started: %s" % str(e))
@@ -124,67 +124,43 @@ def main():
         print >> sys.stderr, msg
         exit(1, status=msg)
 
+
+    if not options[VW_GLOBAL].is_valid():
+        message = "Required section 'global' is invalid:\n"
+        message += "\n".join([msg for (level, msg) in options[VW_GLOBAL].validation_messages])
+        message += "\n"
+        exit(1, "virt-who can't be started: %s" % message)
+
+    valid_virt_sections = [(name, section) for (name, section) in options.virt_sections()
+                           if section.is_valid()]
+
+    if not valid_virt_sections:
+        err = "virt-who can't be started: no valid configuration found"
+        logger.error(err)
+        exit(1, err)
+
     global executor
+    has_error = False
     try:
         executor = Executor(logger, options)
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
         exit(1, "virt-who can't be started: %s" % str(e))
 
-    if options.virtType is not None:
-        config = Config("env/cmdline", options.virtType,
-                        executor.configManager._defaults, **options)
-        try:
-            config.checkOptions(logger)
-        except InvalidOption as e:
-            err = "virt-who can't be started: %s" % str(e)
-            logger.error(err)
-            exit(1, err)
-        executor.configManager.addConfig(config)
-    has_error = False
-    for conffile in options.configs:
-        try:
-            executor.configManager.readFile(conffile)
-        except InvalidPasswordFormat as e:
-            err = "virt-who can't be started: %s" % str(e)
-            logger.error(err)
-            exit(1, err)
-        except Exception as e:
-            logger.error('Config file "%s" skipped because of an error: %s',
-                         conffile, str(e))
-            has_error = True
-
-    if len(executor.configManager.configs) == 0:
-        if has_error:
-            err = "virt-who can't be started: no valid configuration found"
-            logger.error(err)
-            exit(1, err)
-        # In order to keep compatibility with older releases of virt-who,
-        # fallback to using libvirt as default virt backend
-        logger.info("No configurations found (are there any '.conf' files in /etc/virt-who.d?), "
-                    "using libvirt as backend")
-        executor.configManager.addConfig(Config("env/cmdline", "libvirt"))
-
-    executor.configManager.update_dest_to_source_map()
-
-    if len(executor.configManager.dests) == 0:
+    if len(executor.dest_to_source_mapper.dests) == 0:
         if has_error:
             err = "virt-who can't be started: no valid destination found"
             logger.error(err)
             exit(1, err)
 
-    for config in executor.configManager.configs:
-        if config.name is None:
-            logger.info(
-                'Using commandline or sysconfig configuration ("%s" mode)',
-                config.type)
-        else:
-            logger.info('Using configuration "%s" ("%s" mode)', config.name,
-                        config.type)
+    for name, config in executor.dest_to_source_mapper.configs:
+        logger.info('Using configuration "%s" ("%s" mode)', name,
+                    config['type'])
 
-    logger.info("Using reporter_id='%s'", options.reporter_id)
+    logger.info("Using reporter_id='%s'", options[VW_GLOBAL]['reporter_id'])
     log.closeLogger(logger)
-    if options.background:
+    if options[VW_GLOBAL]['background']:
+        # This DaemonContext seems to cause import issues
         locker = lambda: daemon.DaemonContext(pidfile=lock)  # flake8: noqa
     else:
         locker = lambda: lock  # flake8: noqa
@@ -206,10 +182,10 @@ def main():
 
 
 def _main(executor):
-    if executor.options.oneshot:
+    if executor.options[VW_GLOBAL]['oneshot']:
         result = executor.run_oneshot()
 
-        if executor.options.print_:
+        if executor.options[VW_GLOBAL]['print']:
             if not result:
                 executor.logger.error("No hypervisor reports found")
                 return 1

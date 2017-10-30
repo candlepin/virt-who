@@ -25,6 +25,8 @@ from base import TestBase
 
 from virtwho import log
 
+from stubs import StubEffectiveConfig
+
 
 class TestLog(TestBase):
     def setUp(self):
@@ -56,13 +58,17 @@ class TestLog(TestBase):
         queueLogger.logger.handlers = []
         mockQueueLogger = Mock(wraps=queueLogger)
         getQueueLogger.return_value = mockQueueLogger
-        options = Mock()
-        options.debug = False
-        options.background = True
-        options.log_file = log.DEFAULT_LOG_FILE
-        options.log_dir = log.DEFAULT_LOG_DIR
-        options.log_per_config = False
-        log.init(options)
+        conf_values = {
+            'global': {
+                'debug': False,
+                'background': True,
+                'log_file': log.DEFAULT_LOG_FILE,
+                'log_dir': log.DEFAULT_LOG_DIR,
+                'log_per_config': False
+            }
+        }
+        config = StubEffectiveConfig(conf_values)
+        log.init(config)
         main_logger = log.getLogger(name='main')
         self.assertTrue(main_logger.name == 'virtwho.main')
         self.assertTrue(len(main_logger.handlers) == 1)
@@ -84,12 +90,15 @@ class TestLog(TestBase):
         config.log_file = 'test.log'
         config.log_dir = '/test/'
 
-        options = Mock()
-        options.debug = False
-        options.background = True
-        options.log_per_config = True
-        options.log_dir = ''
-        options.log_file = ''
+        options = {
+            'global':{
+                'debug': False,
+                'background': True,
+                'log_per_config': True,
+                'log_dir': '',
+                'log_file': '',
+            },
+        }
         log.init(options)
         test_logger = log.getLogger(name='test', config=config)
 
@@ -116,14 +125,13 @@ class TestLog(TestBase):
 
         # Ensure we don't try to make a directory
         isdir.return_value = True
-        options = Mock()
         filtername = 'test'
-        options.log_file = 'test.log'
-        options.log_dir = '/nonexistant/'
+        log_file = 'test.log'
+        log_dir = '/nonexistant/'
 
-        log.Logger.initialize(options)
+        log.Logger.initialize(log_file=log_file, log_dir=log_dir)
         fileHandler = log.Logger.get_file_handler(filtername)
-        self.assertEquals(fileHandler.baseFilename, options.log_dir + options.log_file)
+        self.assertEquals(fileHandler.baseFilename, log_dir + log_file)
 
 
 class TestQueueLogger(TestBase):

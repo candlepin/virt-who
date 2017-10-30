@@ -26,16 +26,15 @@ from tempfile import mkdtemp
 from binascii import hexlify, unhexlify
 from mock import patch
 import logging
-import random
 
 from base import TestBase, unittest
 
-from virtwho.config import ConfigManager, InvalidOption, GeneralConfig, \
-    NotSetSentinel, GlobalConfig, parse_list, Satellite6DestinationInfo
+from virtwho.config import DestinationToSourceMapper, parse_list, Satellite6DestinationInfo, init_config, \
+    VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
 from virtwho.password import Password, InvalidKeyFile
 
 default_config_values = {
-    "name":"test",
+    "name": "test",
     "type": "esx",
     "server": "1.2.3.4",
     "username": "admin",
@@ -82,15 +81,15 @@ def append_number_to_all(in_dict, number):
 class TestReadingConfigs(TestBase):
     source_options_1 = {
         "name": "test1",
-        "type": "esx",
-        "server": "1.2.3.4",
+        "type": "esx",  # The following values are sensitive to the type involved
+        "server": "https://1.2.3.4",  # for example, "http://" is needed here
         "username": "admin",
         "password": "password",
     }
     source_options_2 = {
         "name": "test2",
-        "type": "hyperv",
-        "server": "1.2.3.5",
+        "type": "esx",
+        "server": "https://1.2.3.5",
         "username": "admin",
         "password": "password",
     }
@@ -134,53 +133,59 @@ class TestReadingConfigs(TestBase):
                           in_dict.iteritems() if key is not "name"])
         return header + body + "\n"
 
-    def testEmptyConfig(self):
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 0)
+    def test_empty_config(self):
+        config = init_config({}, {}, self.config_dir)
+        self.assertItemsEqual(config.keys(), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
 
-    def assertConfigEqualsDefault(self, config):
+    def assert_config_equals_default(self, config):
         self.assertEqual(config.name, "test")
-        self.assertEqual(config.type, "esx")
-        self.assertEqual(config.server, "1.2.3.4")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root")
-        self.assertEqual(config.env, "staging")
-        self.assertEqual(config.rhsm_username, 'admin')
-        self.assertEqual(config.rhsm_password, 'password')
-        self.assertEqual(config.rhsm_hostname, 'host')
-        self.assertEqual(config.rhsm_port, '1234')
-        self.assertEqual(config.rhsm_prefix, 'prefix')
-        self.assertEqual(config.rhsm_proxy_hostname, 'proxy host')
-        self.assertEqual(config.rhsm_proxy_port, '4321')
-        self.assertEqual(config.rhsm_proxy_user, 'proxyuser')
-        self.assertEqual(config.rhsm_proxy_password, 'proxypass')
-        self.assertEqual(config.rhsm_insecure, '1')
-        self.assertEqual(config.simplified_vim, True)
+        self.assertEqual(config['type'], "esx")
+        self.assertEqual(config['server'], "https://1.2.3.4")
+        self.assertEqual(config['username'], "admin")
+        self.assertEqual(config['password'], "password")
+        self.assertEqual(config['owner'], "root")
+        self.assertEqual(config['env'], "staging")
+        self.assertEqual(config['rhsm_username'], 'admin')
+        self.assertEqual(config['rhsm_password'], 'password')
+        self.assertEqual(config['rhsm_hostname'], 'host')
+        self.assertEqual(config['rhsm_port'], '1234')
+        self.assertEqual(config['rhsm_prefix'], 'prefix')
+        self.assertEqual(config['rhsm_proxy_hostname'], 'proxy host')
+        self.assertEqual(config['rhsm_proxy_port'], '4321')
+        self.assertEqual(config['rhsm_proxy_user'], 'proxyuser')
+        self.assertEqual(config['rhsm_proxy_password'], 'proxypass')
+        self.assertEqual(config['rhsm_insecure'], '1')
+        self.assertEqual(config['simplified_vim'], True)
 
     def assert_config_contains_all(self, config, options):
         for key in options:
-            config_value = getattr(config, key)
+            if key == 'name':
+                config_value = getattr(config, key)
+            else:
+                config_value = config.get(key, None)
             self.assertEquals(config_value, options[key])
 
-    def testBasicConfig(self):
+    def test_basic_config(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(default_config_values))
+        config = init_config({}, {}, config_dir=self.config_dir)
+        self.assertItemsEqual(config.keys(), ['test', 'global'])
+        self.assert_config_equals_default(config['test'])
 
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
-        self.assertConfigEqualsDefault(config)
-
-    def testInvalidConfig(self):
+    def test_invalid_config(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write("""
 Malformed configuration file
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 0)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        # If there are only invalid configurations specified, and nothing has been specified via
+        # the command line or ENV then we should use the default
+        # TODO Remove the default hard-coded behaviour, and allow virt-who to output a
+        # configuration that will cause it to behave equivalently
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0][0], VW_ENV_CLI_SECTION_NAME)
 
-    def testInvalidType(self):
+    def test_invalid_type(self):
         filename = os.path.join(self.config_dir, "test.conf")
         with open(filename, "w") as f:
             f.write("""
@@ -189,16 +194,16 @@ type=invalid
 server=1.2.3.4
 username=test
 """)
-        # Instantiating the ConfigManager with an invalid config should not fail
-        # instead we expect that the list of configs managed by the ConfigManager does not
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = ConfigManager(self.logger, self.config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
 
     @unittest.skipIf(os.getuid() == 0, "Can't create unreadable file when running as root")
-    def testUnreadableConfig(self):
+    def test_unreadable_config(self):
         filename = os.path.join(self.config_dir, "test.conf")
         with open(filename, "w") as f:
             f.write("""
@@ -211,8 +216,9 @@ owner=root
 env=staging
 """)
         os.chmod(filename, 0)
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 0)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        # There should be at least one 'env/cmdline' section
+        self.assertEqual(len(manager.configs), 1)
 
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedPassword(self, password):
@@ -231,9 +237,9 @@ encrypted_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0].password, passwd)
+        self.assertEqual(manager.configs[0][1]['password'], passwd)
 
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedRHSMPassword(self, password):
@@ -254,9 +260,9 @@ rhsm_encrypted_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0].rhsm_password, passwd)
+        self.assertEqual(manager.configs[0][1]["rhsm_password"], passwd)
 
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedRHSMProxyPassword(self, password):
@@ -276,9 +282,9 @@ rhsm_encrypted_proxy_password=%s
 owner=root
 env=staging
 """ % crypted)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0].rhsm_proxy_password, passwd)
+        self.assertEqual(manager.configs[0][1]["rhsm_proxy_password"], passwd)
 
     def testCryptedPasswordWithoutKey(self):
         Password.KEYFILE = "/some/nonexistant/file"
@@ -292,10 +298,10 @@ env=staging
 [test]
 type=esx
 """)
-        # Instantiating the ConfigManager with an invalid config should not fail
-        # instead we expect that the list of configs managed by the ConfigManager does not
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = ConfigManager(self.logger, self.config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -310,12 +316,14 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 2)
-        config = manager.configs[0]
-        self.assert_config_contains_all(config, config_1)
-        config = manager.configs[1]
-        self.assert_config_contains_all(config, config_2)
+        for name, config in manager.configs:
+            self.assertIn(config.name, [config_1["name"], config_2["name"]])
+            if config.name == config_1['name']:
+                self.assert_config_contains_all(config, config_1)
+            elif config.name == config_2['name']:
+                self.assert_config_contains_all(config, config_2)
 
     def testMultipleConfigFiles(self):
         config_1 = combine_dicts(TestReadingConfigs.source_options_1,
@@ -338,14 +346,15 @@ type=esx
             expected_dest_2: [config_2['name']]
         }
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 2)
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
         self.assertEqual(manager.dests, set([expected_dest_1, expected_dest_2]))
         self.assertEqual(manager.sources,
                          set([config_1['name'], config_2['name']]))
 
-        result2, result1 = manager.configs
+        result1 = manager.configs[0][1]
+        result2 = manager.configs[1][1]
 
         self.assertIn(result1.name, ("test1", "test2"))
         if result1.name == "test2":
@@ -371,7 +380,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(manager.dests, set([expected_dest]))
         self.assertEqual(manager.sources,
                          set([config_1['name'], config_2['name']]))
@@ -408,7 +417,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEquals(manager.dest_to_sources_map, expected_mapping)
 
     def test_one_source_to_one_dest(self):
@@ -423,7 +432,7 @@ type=esx
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(config_1))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEquals(manager.dest_to_sources_map, expected_mapping)
 
     def test_two_sources_to_two_dests(self):
@@ -444,7 +453,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEquals(manager.dest_to_sources_map, expected_mapping)
 
     def test_many_sources_to_many_dests(self):
@@ -487,7 +496,7 @@ type=esx
                     TestReadingConfigs.dict_to_ini(config_3) +
                     TestReadingConfigs.dict_to_ini(config_4))
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEquals(manager.dest_to_sources_map, expected_mapping)
 
     def testLibvirtConfig(self):
@@ -501,16 +510,19 @@ password=password
 owner=root
 env=staging
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
+        config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
-        self.assertEqual(config.type, "libvirt")
-        self.assertEqual(config.server, "1.2.3.4")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root")
-        self.assertEqual(config.env, "staging")
+        self.assertEqual(config["type"], "libvirt")
+        # The following server value is different than what is provided above as it has been
+        # processed by the libvirt config section validation.
+        # TODO decouple this from the libvirt config section (for testing only)
+        self.assertEqual(config["server"], "qemu://admin@1.2.3.4/system?no_tty=1")
+        self.assertEqual(config["username"], "admin")
+        self.assertEqual(config["password"], "password")
+        self.assertEqual(config["owner"], "root")
+        self.assertEqual(config["env"], "staging")
 
     def testEsxDisableSimplifiedVim(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -524,10 +536,10 @@ owner=root
 env=staging
 simplified_vim=false
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
-        self.assertFalse(config.simplified_vim)
+        _, config = manager.configs[0]
+        self.assertFalse(config['simplified_vim'])
 
     def testMissingEnvOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -540,10 +552,10 @@ password=password
 owner=root
 rhsm_hostname=abc
 """)
-        # Instantiating the ConfigManager with an invalid config should not fail
-        # instead we expect that the list of configs managed by the ConfigManager does not
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = ConfigManager(self.logger, self.config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -559,10 +571,10 @@ password=password
 env=env
 rhsm_hostname=abc
 """)
-        # Instantiating the ConfigManager with an invalid config should not fail
-        # instead we expect that the list of configs managed by the ConfigManager does not
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = ConfigManager(self.logger, self.config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -588,10 +600,10 @@ password=password
 env=env
 rhsm_hostname=abc
 """ % {'valid_config_name': valid_config_name})
-        config_manager = ConfigManager(self.logger, self.config_dir)
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be only one config, and that should be the one that is valid
         self.assertEqual(len(config_manager.configs), 1)
-        self.assertEquals(config_manager.configs[0].name, valid_config_name)
+        self.assertEquals(config_manager.configs[0][1].name, valid_config_name)
 
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:
@@ -604,8 +616,9 @@ password=password
 owner=root
 env=staging
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
-        self.assertEqual(len(manager.configs), 0, "Hidden config file shouldn't be read")
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        self.assertTrue("test1" not in [name for (name, config) in manager.configs],
+                        "Hidden config file shouldn't be read")
 
     def testFilterHostOld(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -619,9 +632,9 @@ owner=root
 env=staging
 filter_host_uuids=12345
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0].filter_hosts, ['12345'])
+        self.assertEqual(manager.configs[0][1]["filter_hosts"], ['12345'])
 
     def testFilterHostNew(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -635,54 +648,54 @@ owner=root
 env=staging
 filter_hosts=12345
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0].filter_hosts, ['12345'])
+        self.assertEqual(manager.configs[0][1]["filter_hosts"], ['12345'])
 
     def testQuotesInConfig(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write("""
 [test1]
 type=esx
-server="1.2.3.4"
+server="http://1.2.3.4"
 username='admin'
 password=p"asswor'd
 owner=" root "
 env='"staging"'
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
+        config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
-        self.assertEqual(config.type, "esx")
-        self.assertEqual(config.server, "1.2.3.4")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.password, "p\"asswor'd")
-        self.assertEqual(config.owner, " root ")
-        self.assertEqual(config.env, '"staging"')
+        self.assertEqual(config["type"], "esx")
+        self.assertEqual(config["server"], "http://1.2.3.4")
+        self.assertEqual(config["username"], "admin")
+        self.assertEqual(config["password"], "p\"asswor'd")
+        self.assertEqual(config["owner"], " root ")
+        self.assertEqual(config["env"], '"staging"')
 
     def testUnicode(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write("""
 [test1]
 type=esx
-server=žluťoučký servřík
+server=http://žluťoučký servřík
 username=username
 password=password
 owner=здравствуйте
 env=العَرَبِيَّة
 """)
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
+        config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
-        self.assertEqual(config.type, "esx")
-        self.assertEqual(config.server, "žluťoučký servřík")
+        self.assertEqual(config["type"], "esx")
+        self.assertEqual(config["server"], "http://žluťoučký servřík")
         # Username and password can't be unicode, they has to be latin1 for HTTP Basic auth
-        self.assertEqual(config.username, "username")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "здравствуйте")
-        self.assertEqual(config.env, 'العَرَبِيَّة')
+        self.assertEqual(config["username"], "username")
+        self.assertEqual(config["password"], "password")
+        self.assertEqual(config["owner"], "здравствуйте")
+        self.assertEqual(config["env"], 'العَرَبِيَّة')
 
     def testConfigFileExtensions(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -726,122 +739,30 @@ rhsm_proxy_password=proxypass2
 rhsm_insecure=2
 """)
 
-        manager = ConfigManager(self.logger, self.config_dir)
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
-        config = manager.configs[0]
+        name, config = manager.configs[0]
 
-        self.assertEqual(config.name, "test1")
-        self.assertEqual(config.type, "esx")
-        self.assertEqual(config.server, "1.2.3.4")
-        self.assertEqual(config.username, "admin")
-        self.assertEqual(config.password, "password")
-        self.assertEqual(config.owner, "root")
-        self.assertEqual(config.env, "staging")
-        self.assertEqual(config.rhsm_username, 'rhsm_admin1')
-        self.assertEqual(config.rhsm_password, 'rhsm_password1')
-        self.assertEqual(config.rhsm_hostname, 'host1')
-        self.assertEqual(config.rhsm_port, '12341')
-        self.assertEqual(config.rhsm_prefix, 'prefix1')
-        self.assertEqual(config.rhsm_proxy_hostname, 'proxyhost1')
-        self.assertEqual(config.rhsm_proxy_port, '43211')
-        self.assertEqual(config.rhsm_proxy_user, 'proxyuser1')
-        self.assertEqual(config.rhsm_proxy_password, 'proxypass1')
-        self.assertEqual(config.rhsm_insecure, '1')
-
-
-class TestGeneralConfig(TestBase):
-    """
-    A group of unittests to ensure correct functionality of GeneralConfig
-    """
-    def setUp(self):
-        self.config = GeneralConfig()
-
-    def test___init__(self):
-        defaults = {
-            'test': '1',
-            'override_me': 'wrong_value'
-        }
-        arg_dict = {
-            'arg_dict': 'some_value',
-            'override_me': 'expected_value'
-        }
-        general_config = GeneralConfig(defaults=defaults, **arg_dict)
-
-        self.assertEqual(getattr(general_config, 'test'), '1')
-        self.assertEqual(getattr(general_config, 'arg_dict'), 'some_value')
-        self.assertEqual(getattr(general_config, 'override_me'), 'expected_value')
-
-    def test___getattr__(self):
-        self.config.test = 1
-        self.assertTrue(self.config.test, 1)
-
-    def test___setattr__(self):
-        self.config.test = 1
-        self.assertEqual(self.config.test, 1)
-
-    def test___setattr___Not_Set_Sentinel(self):
-        # The general config class should refuse
-        # to set attributes to an instance of NotSetSentinel
-        self.config.test = NotSetSentinel()
-        self.assertEqual(self.config.test, None)
-
-    def test_update(self):
-        # The function should perform similarly to a dict's update method
-        test_dict = {
-            'cool_attribute': 'cool_value',
-            'not_set': NotSetSentinel()
-        }
-        self.config.update(**test_dict)
-        self.assertEquals(self.config.cool_attribute, 'cool_value')
-        self.assertEquals(self.config.not_set, None)
-
-    def test___getitem__(self):
-        self.config.test = 1
-        self.assertEqual(self.config['test'], 1)
-
-    def test___setitem__(self):
-        self.config['test'] = 1
-        self.assertEqual(self.config['test'], 1)
-
-    def test___delitem__(self):
-        self.config['test'] = 1
-        self.assertEqual(self.config['test'], 1)
-        del self.config['test']
-        self.assertRaises(KeyError, self.config.__getitem__, 'test')
-
-    def test___contains__(self):
-        self.config['test'] = 1
-        self.assertTrue('test' in self.config)
-        self.assertFalse('not_here' in self.config)
-
-
-class TestGlobalConfig(TestBase):
-
-    def setUp(self):
-        self.config = GlobalConfig()
-
-    def test___getattr__INT(self):
-        int_option = random.choice(GlobalConfig.INT_OPTIONS)
-        test_int = random.randint(-sys.maxint, sys.maxint)
-        # set to a random int
-        setattr(self.config, int_option, test_int)
-        self.assertEqual(getattr(self.config, int_option), test_int)
-
-        # set to a string of an int
-        setattr(self.config, int_option, str(test_int))
-        self.assertEqual(getattr(self.config, int_option), test_int)
-
-    def test___getattr__BOOL(self):
-        bool_option = random.choice(GlobalConfig.BOOL_OPTIONS)
-        test_bool = False
-        test_false_strings = ['0', 'no', 'false']
-
-        setattr(self.config, bool_option, test_bool)
-        self.assertEqual(getattr(self.config, bool_option), test_bool)
-
-        for false_string in test_false_strings:
-            setattr(self.config, bool_option, false_string)
-            self.assertEqual(getattr(self.config, bool_option), False)
+        self.assertEqual(name, "test1")
+        # TODO decouple tests like these from the ConfigSections that they imply
+        # The values used here reflect the expected output of the EsxConfigSection validation
+        # (If in case these seem strange)
+        self.assertEqual(config["type"], "esx")
+        self.assertEqual(config["server"], "https://1.2.3.4")
+        self.assertEqual(config["username"], "admin")
+        self.assertEqual(config["password"], "password")
+        self.assertEqual(config["owner"], "root")
+        self.assertEqual(config["env"], "staging")
+        self.assertEqual(config["rhsm_username"], 'rhsm_admin1')
+        self.assertEqual(config["rhsm_password"], 'rhsm_password1')
+        self.assertEqual(config["rhsm_hostname"], 'host1')
+        self.assertEqual(config["rhsm_port"], '12341')
+        self.assertEqual(config["rhsm_prefix"], 'prefix1')
+        self.assertEqual(config["rhsm_proxy_hostname"], 'proxyhost1')
+        self.assertEqual(config["rhsm_proxy_port"], '43211')
+        self.assertEqual(config["rhsm_proxy_user"], 'proxyuser1')
+        self.assertEqual(config["rhsm_proxy_password"], 'proxypass1')
+        self.assertEqual(config["rhsm_insecure"], '1')
 
 
 class TestParseList(TestBase):

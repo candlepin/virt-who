@@ -50,6 +50,13 @@ STATE_MAPPING = {
 }
 
 
+class NamedOptions(object):
+    """
+    Object used for compatibility with RHSM
+    """
+    pass
+
+
 class SubscriptionManager(Manager):
     smType = "sam"
 
@@ -113,13 +120,13 @@ class SubscriptionManager(Manager):
             if config['owner'] != owner_id:
                 raise ManagerError(
                     "Cannot send data to: %s, because owner from configuration: %s is different" %
-                    (owner_id, config.owner)
+                    (owner_id, config['owner'])
                 )
 
             if config['env'] != environment_name:
                 raise ManagerError(
                     "Cannot send data to: %s, because Satellite env: %s differs from configuration: %s" %
-                    (owner_id, environment_name, config.env)
+                    (owner_id, environment_name, config['env'])
                 )
 
     def _connect(self, config=None):
@@ -233,23 +240,32 @@ class SubscriptionManager(Manager):
         is_async = self._is_rhsm_server_async(report, connection)
         serialized_mapping = self._hypervisor_mapping(report, is_async, connection)
         self.logger.debug("Host-to-guest mapping being sent to '{owner}': {mapping}".format(
-                          owner=report.config.owner,
+                          owner=report.config['owner'],
                           mapping=json.dumps(serialized_mapping, indent=4)))
+
+        # All subclasses of ConfigSection use dictionary like notation,
+        # but RHSM uses attribute like notation
+        if options:
+            named_options = NamedOptions()
+            for key, value in options['global'].items():
+                setattr(named_options, key, value)
+        else:
+            named_options = None
 
         try:
             try:
                 result = self.connection.hypervisorCheckIn(
-                    report.config.owner,
-                    report.config.env,
+                    report.config['owner'],
+                    report.config['env'],
                     serialized_mapping,
-                    options=options)  # pylint:disable=unexpected-keyword-arg
+                    options=named_options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
                 # This is temporary workaround until the options parameter gets implemented
                 # in python-rhsm
                 self.logger.debug(
                     "hypervisorCheckIn method in python-rhsm doesn't understand options parameter, ignoring"
                 )
-                result = self.connection.hypervisorCheckIn(report.config.owner, report.config.env, serialized_mapping)
+                result = self.connection.hypervisorCheckIn(report.config['owner'], report.config['env'], serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.RateLimitExceededException as e:

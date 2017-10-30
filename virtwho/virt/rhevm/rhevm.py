@@ -18,14 +18,13 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import sys
 import urlparse
 import requests
 from requests.auth import HTTPBasicAuth
 from xml.etree import ElementTree
 
 from virtwho import virt
-from virtwho.config import Config
+from virtwho.config import VirtConfigSection
 
 
 RHEVM_STATE_TO_GUEST_STATE = {
@@ -50,6 +49,51 @@ RHEVM_STATE_TO_GUEST_STATE = {
 }
 
 
+class RhevmConfigSection(VirtConfigSection):
+    """
+    This class is used for validation of RHEVM virtualization backend
+    section. It tries to validate options and combination of options that
+    are specific for this virtualization backend.
+    """
+
+    VIRT_TYPE = 'rhevm'
+    HYPERVISOR_ID = ('uuid', 'hwuuid', 'hostname')
+
+    def __init__(self, section_name, wrapper, *args, **kwargs):
+        super(RhevmConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
+        self.add_key('server', validation_method=self._validate_server, required=True)
+        self.add_key('username', validation_method=self._validate_username, required=True)
+        self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
+
+    def _validate_server(self, key='server'):
+        """
+        Do validation of server option specific for this virtualization backend
+        return: Return None or info/warning/error
+        """
+        url = self._values[key]
+
+        if "//" not in url:
+            url = "//" + url
+        parsed = urlparse.urlsplit(url, "https")
+        if ":" not in parsed[1]:
+            netloc = parsed[1] + ":8443"
+        else:
+            netloc = parsed[1]
+        url = urlparse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
+
+        if url[-1] != '/':
+            url += '/'
+
+        if url != self._values[key]:
+            self._values[key] = url
+            return [(
+                    'info',
+                    "The original server URL was incomplete. It has been enhanced to %s" % url
+                )]
+        else:
+            return None
+
+
 class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
@@ -59,25 +103,15 @@ class RhevM(virt.Virt):
                                     terminate_event=terminate_event,
                                     interval=interval,
                                     oneshot=oneshot)
-        self.url = self.config.server
+        self.url = self.config['server']
         self.api_base = 'api'
-        if "//" not in self.url:
-            self.url = "//" + self.config.server
-        parsed = urlparse.urlsplit(self.url, "https")
-        if ":" not in parsed[1]:
-            netloc = parsed[1] + ":8443"
-        else:
-            netloc = parsed[1]
-        self.url = urlparse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
-
-        if self.url[-1] != '/':
-            self.url += '/'
-
-        self.username = self.config.username
-        self.password = self.config.password
-
-        self.auth = HTTPBasicAuth(self.config.username, self.config.password)
+        self.username = self.config['username']
+        self.password = self.config['password']
+        self.auth = HTTPBasicAuth(self.config['username'], self.config['password'])
         self.prepared = False
+        self.clusters_url = None
+        self.hosts_url = None
+        self.vms_url = None
 
     def prepare(self):
         if not self.prepared:
@@ -199,20 +233,16 @@ class RhevM(virt.Virt):
                 self.logger.debug('Cluster of host %s is not virt_service, skipped', id)
                 continue
 
-            if self.config.hypervisor_id == 'uuid':
+            if self.config['hypervisor_id'] == 'uuid':
                 host_id = id
-            elif self.config.hypervisor_id == 'hwuuid':
+            elif self.config['hypervisor_id'] == 'hwuuid':
                 try:
                     host_id = host.find('hardware_information').find('uuid').text
                 except AttributeError:
                     self.logger.warn("Host %s doesn't have hardware uuid", id)
                     continue
-            elif self.config.hypervisor_id == 'hostname':
+            elif self.config['hypervisor_id'] == 'hostname':
                 host_id = host.find('address').text
-            else:
-                raise virt.VirtError(
-                    'Invalid option %s for hypervisor_id, use one of: uuid, hwuuid, or hostname' %
-                    self.config.hypervisor_id)
 
             sockets = host.find('cpu').find('topology').get('sockets')
             if not sockets:
@@ -262,22 +292,10 @@ class RhevM(virt.Virt):
                     guest_id)
                 state = virt.Guest.STATE_UNKNOWN
 
-            hosts[host_id].guestIds.append(virt.Guest(guest_id, self, state))
+            hosts[host_id].guestIds.append(virt.Guest(guest_id, self.CONFIG_TYPE, state))
 
         return {'hypervisors': hosts.values()}
 
     def ping(self):
         return True
 
-if __name__ == '__main__':  # pragma: no cover
-    # TODO: read from config
-    if len(sys.argv) < 4:
-        print("Usage: %s url username password" % sys.argv[0])
-        sys.exit(0)
-
-    import logging
-    logger = logging.Logger("")
-    config = Config('rhevm', 'rhevm', server=sys.argv[1], username=sys.argv[2],
-                    password=sys.argv[3])
-    rhevm = RhevM(logger, config)
-    print dict((host, [guest.toDict() for guest in guests]) for host, guests in rhevm.getHostGuestMapping().items())

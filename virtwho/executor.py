@@ -1,6 +1,5 @@
 import time
 from threading import Event
-import sys
 
 from virtwho import log
 
@@ -18,6 +17,14 @@ except ImportError:
 
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
+
+
+class ExitRequest(Exception):
+    """ Indicates that something that should cause virt-who to exit has occurred"""
+
+    def __init__(self, code=0, message=""):
+        self.code = code
+        self.message = message
 
 
 class Executor(object):
@@ -142,16 +149,14 @@ class Executor(object):
         if len(self.virts) == 0:
             err = "virt-who can't be started: no suitable virt backend found"
             self.logger.error(err)
-            self.terminate()
-            sys.exit(err)
+            raise ExitRequest(code=1, message=err)
 
         self.destinations = self._create_destinations()
 
         if len(self.destinations) == 0:
             err = "virt-who can't be started: no suitable destinations found"
             self.logger.error(err)
-            self.terminate()
-            sys.exit(err)
+            raise ExitRequest(code=1, message=err)
 
         for thread in self.virts:
             thread.start()
@@ -190,15 +195,13 @@ class Executor(object):
         if len(self.virts) == 0:
             err = "virt-who can't be started: no suitable virt backend found"
             self.logger.error(err)
-            self.terminate()
-            sys.exit(err)
+            raise ExitRequest(code=1, message=err)
 
         self.destinations = self._create_destinations()
         if len(self.destinations) == 0:
             err = "virt-who can't be started: no suitable destinations found"
             self.logger.error(err)
-            self.terminate()
-            sys.exit(err)
+            raise ExitRequest(code=1, message=err)
 
         for thread in self.virts:
             thread.start()
@@ -209,7 +212,7 @@ class Executor(object):
         # Interruptibly wait on the other threads to be terminated
         self.wait_on_threads(self.destinations)
 
-        self.terminate()
+        raise ExitRequest(code=0)
 
     def stop_threads(self):
         self.terminate_event.set()

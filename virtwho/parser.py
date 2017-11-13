@@ -42,6 +42,7 @@ SAT_VM_DISPATCHER = {
     'xen': {'owner': False, 'env': False, 'server': True, 'username': True},
     'rhevm': {'owner': False, 'env': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'env': False, 'server': True, 'username': True},
+    'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
 }
 
 SAM_VM_DISPATCHER = {
@@ -50,6 +51,7 @@ SAM_VM_DISPATCHER = {
     'xen': {'owner': True, 'env': True, 'server': True, 'username': True},
     'rhevm': {'owner': True, 'env': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'env': True, 'server': True, 'username': True},
+    'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
 }
 
 

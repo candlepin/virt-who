@@ -567,7 +567,8 @@ class DestinationThread(IntervalThread):
 
         # Reports of different types are handled differently
         for source_key, report in data_to_send.iteritems():
-            if getattr(self.config, 'owner', None) is None:
+            if getattr(self.config, 'owner', None) is None and \
+                    isinstance(report, HostGuestAssociationReport):
                 # If the owner on our config is not defined, set it to the first report that
                 # we've found. This should be ok because destination threads should not be run for
                 # more than one owner.

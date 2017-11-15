@@ -409,7 +409,6 @@ class IntervalThread(Thread):
         except KeyboardInterrupt:
             self.logger.debug("Thread '%s' interrupted", self.config.name)
             self.cleanup()
-            sys.exit(1)
 
     def cleanup(self):
         '''
@@ -918,7 +917,7 @@ class Virt(IntervalThread):
 
     def _send_data(self, data_to_send):
         if self.is_terminated():
-            sys.exit(0)
+            return
         self.logger.info('Report for config "%s" gathered, placing in '
                           'datastore', data_to_send.config.name)
         self.dest.put(self.config.name, data_to_send)

@@ -33,7 +33,7 @@ except ImportError:
 from virtwho import log
 from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
 from virtwho.daemon import daemon
-from virtwho.executor import Executor, ReloadRequest
+from virtwho.executor import Executor, ReloadRequest, ExitRequest
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
@@ -179,6 +179,8 @@ def main():
             except ReloadRequest:
                 logger.info("Reloading")
                 continue
+            except ExitRequest as e:
+                exit(e.code, status=e.message)
 
 
 def _main(executor):
@@ -232,7 +234,7 @@ def exit(code, status=None):
 
     If status is not None, use sd_notify to report the status to systemd
     """
-    if status is not None:
+    if status is not None and status != "":
         sd_notify("STATUS=%s" % status)
 
     if executor:

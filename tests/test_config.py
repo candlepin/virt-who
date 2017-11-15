@@ -518,7 +518,7 @@ env=staging
         # The following server value is different than what is provided above as it has been
         # processed by the libvirt config section validation.
         # TODO decouple this from the libvirt config section (for testing only)
-        self.assertEqual(config["server"], "qemu://admin@1.2.3.4/system?no_tty=1")
+        self.assertEqual(config["server"], "qemu+ssh://admin@1.2.3.4/system?no_tty=1")
         self.assertEqual(config["username"], "admin")
         self.assertEqual(config["password"], "password")
         self.assertEqual(config["owner"], "root")

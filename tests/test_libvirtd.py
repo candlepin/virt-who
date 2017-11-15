@@ -117,7 +117,7 @@ class TestLibvirtd(TestBase):
         virt.return_value.getVersion.return_value = "VERSION 1337"
         self.run_virt(config)
         # We don't yet support using a password with ssh
-        virt.assert_called_with('qemu://user@server/system?no_tty=1', ANY, ANY)
+        virt.assert_called_with('qemu+ssh://user@server/system?no_tty=1', ANY, ANY)
 
     @patch('libvirt.openAuth')
     def test_remote_url_with_username_and_password(self, virt):

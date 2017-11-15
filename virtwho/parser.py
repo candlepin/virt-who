@@ -499,6 +499,7 @@ def parse_options():
 
     logger = log.getLogger("init", queue=False)
 
+    used_deprecated_cli_options = []
     for option in DEPRECATED_OPTIONS:
         display_option = option
         if option in cli_options and not cli_options[option] == defaults[option]:
@@ -508,22 +509,12 @@ def parse_options():
                 display_option = '%s-%s' % (cli_options['virtType'], option)
             elif option in SAT_OPTION_MAP:
                 display_option = SAT_OPTION_MAP[option]
-            logger.warning("The option --%s is deprecated and will be removed in the next release. "
-                  "Please see 'man virt-who-config' for details on adding a configuration section." % display_option)
-
-
-
-    for option in DEPRECATED_OPTIONS:
-        display_option = option
-        if option in cli_options and not cli_options[option] == defaults[option]:
-            if option == 'virtType' or option == 'smType':
-                display_option = cli_options[option]
-            elif any(option in s for s in VIRT_TYPE_OPTIONS):
-                display_option = '%s-%s' % (cli_options['virtType'], option)
-            elif option in SAT_OPTION_MAP:
-                display_option = SAT_OPTION_MAP[option]
-            logger.warning("The option --%s is deprecated and will be removed in the next release. "
-                  "Please see 'man virt-who-config' for details on adding a configuration section." % display_option)
+            used_deprecated_cli_options.append(display_option)
+    deprecated_options_msg = "The following cli options: %s are deprecated and will be removed " \
+    "in the next release. Please see 'man virt-who-config' for details on adding a configuration "\
+    "section."
+    if used_deprecated_cli_options:
+        logger.warning(deprecated_options_msg % ', '.join('--' + item for item in used_deprecated_cli_options))
 
     # Log pending errors
     for err in errors:

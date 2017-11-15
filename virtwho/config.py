@@ -479,6 +479,8 @@ class ConfigSection(collections.MutableMapping):
         self._destinations = {}
         self._required_keys = set()
         self._missing_required_keys = set()
+        # Those values which should not be displayed
+        self._restricted = set(['virttype', 'sm_type'])
 
         # Add section defaults
         for key, value in self.defaults.items():
@@ -545,23 +547,26 @@ class ConfigSection(collections.MutableMapping):
         Steps necessary to do before evaluation
         """
         if len(self._unvalidated_keys) == 0:
-            self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
+            if not self._values:
+                self.validation_messages.append(('warning', 'No values provided in: %s' % self.name))
         else:
             for default_key in self.defaults.keys():
-                if default_key not in self._unvalidated_keys:
+                if default_key not in self._unvalidated_keys and \
+                   default_key not in self._restricted and \
+                   self.defaults[default_key] is not None:
                     self.validation_messages.append(
                         (
                             'warning',
-                            'Value for "%s" not set in: %s, using default: %s' %
-                            (default_key, self.name, self.defaults[default_key])
+                            'Value for "%s" not set, using default: %s' %
+                            (default_key, self.defaults[default_key])
                         )
                     )
 
     def check_required_keys(self):
         for required_key in self._required_keys:
             if required_key not in self and not self.has_default(required_key):
-                msg = ('error', 'Required option: "%s" is missing in: "%s"'
-                       % (required_key, self.name))
+                msg = ('error', 'Required option: "%s" not set.'
+                       % required_key)
                 self.validation_messages.append(msg)
                 self._missing_required_keys.add(required_key)
 
@@ -763,7 +768,7 @@ class ConfigSection(collections.MutableMapping):
             value = self._values[key]
         except KeyError:
             if not self.has_default(key):
-                result = ('warning', 'Value for %s not set in: %s' % (key, self.name))
+                result = ('warning', 'Value for %s not set' % key)
         else:
             if not isinstance(value, str):
                 result = ('warning', '%s is not set to a valid string, using default' % key)
@@ -1134,10 +1139,10 @@ class EffectiveConfig(collections.MutableMapping):
     def validate(self):
         validation_messages = []
         for section_name, section in self._sections.items():
-            # This next check will not be necessary after we know that all sections are
-            # ConfigSections
-            if getattr(section, 'validate', None) is not None:
-                validation_messages.extend(section.validate())
+            validation_messages.extend(
+                    [(level, "[%s]: %s" % (section.name, message))
+                     for (level, message) in section.validate()]
+            )
         self.validation_messages = validation_messages
         return validation_messages
 
@@ -1287,7 +1292,7 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
                 effective_config[VW_GLOBAL][key.lower()] = value
 
     # Validate GlobalSection before use.
-    validation_errors.extend(effective_config[VW_GLOBAL].validate())
+    effective_config[VW_GLOBAL].validate()
 
     # Initialize logger, the creation of this object is the earliest it can be done
     log.init(effective_config)
@@ -1332,7 +1337,7 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     # Log pending errors
     for err in validation_errors:
         method = getattr(logger, err[0])
-        if method is not None and err[0] == 'error':
+        if method is not None and err[0] in ['error', 'warning', 'info']:
             method(err[1])
 
     return effective_config

@@ -92,7 +92,7 @@ class TestConfigSection(TestBase):
         expected_results = [
             (
                 'error',
-                'Required option: "must_have" is missing in: "my_section"'
+                'Required option: "must_have" not set.'
             )
         ]
         self.assertEqual(result, expected_results)
@@ -110,7 +110,7 @@ class TestConfigSection(TestBase):
             ),
             (
                 'error',
-                'Required option: "must_have" is missing in: "my_section"'
+                'Required option: "must_have" not set.'
             )
         ]
         self.assertEqual(result, expected_results)
@@ -142,8 +142,8 @@ class TestConfigSection(TestBase):
         self.my_config['my_bool'] = True
         result = self.my_config.validate()
         expected_result = [
-            ('warning', 'Value for "my_list" not set in: my_section, using default: []'),
-            ('warning', 'Value for "my_str" not set in: my_section, using default: bar'),
+            ('warning', 'Value for "my_list" not set, using default: []'),
+            ('warning', 'Value for "my_str" not set, using default: bar'),
         ]
         self.assertEqual(result, expected_result)
         self.assertEqual(self.my_config['my_str'], 'bar')

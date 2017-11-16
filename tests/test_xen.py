@@ -108,18 +108,19 @@ class TestXenConfigSection(TestBase):
     def test_validate_xen_section_unsupported_filters(self):
         """
         Test validation of xen section. Filters: filter_host_parents and exclude_host_parents
-        are not supported on Xen mode.
+        are not supported on Xen mode. It is supported only on ESX mode.
         """
         self.init_virt_config_section()
         # Supported filter
         self.xen_config['filter_hosts'] = '*.company.com, *.company.net'
-        # Unsuported filters
+        # Unsupported filters
         self.xen_config['filter_host_parents'] = 'host_parents'
         self.xen_config['exclude_host_parents'] = 'host_parents'
         result = self.xen_config.validate()
+        print(result)
         expected_result = [
-            ('warning', 'The filter_host_parents is not supported on Xen mode.'),
-            ('warning', 'The exclude_host_parents is not supported on Xen mode.')
+            ('warning', 'Ignoring unknown configuration option "filter_host_parents"'),
+            ('warning', 'Ignoring unknown configuration option "exclude_host_parents"')
         ]
         self.assertEqual(expected_result, result)
 

@@ -65,34 +65,6 @@ class XenConfigSection(VirtConfigSection):
         else:
             return None
 
-    def _validate_filter(self, filter_key):
-        """
-        The filter of Xen is specific. The filter_host_parents/exclude_host_parents is not
-        supported on xen mode.
-        :param filter_key: key of filter
-        :return: Warning or None
-        """
-        result = super(XenConfigSection, self)._validate_filter(filter_key)
-
-        result = result or []
-
-        not_allowed_filter_keys = (
-            'filter_host_parents',
-            'exclude_host_parents'
-        )
-
-        if filter_key in not_allowed_filter_keys:
-            result.append((
-                'warning',
-                'The %s is not supported on Xen mode.' % filter_key
-            ))
-            del self._values[filter_key]
-
-        if len(result) > 0:
-            return result
-        else:
-            return None
-
 
 class Xen(virt.Virt):
     CONFIG_TYPE = "xen"

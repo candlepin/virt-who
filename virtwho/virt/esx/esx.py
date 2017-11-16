@@ -491,6 +491,9 @@ class EsxConfigSection(VirtConfigSection):
 
     def __init__(self, *args, **kwargs):
         super(EsxConfigSection, self).__init__(*args, **kwargs)
+        self.add_key('server', validation_method=self._validate_server, required=True)
+        self.add_key('username', validation_method=self._validate_username, required=True)
+        self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
         self.add_key('env', validation_method=self._validate_env, required=True)
         self.add_key('owner', validation_method=self._validate_owner, required=True)
         self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)

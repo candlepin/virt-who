@@ -22,7 +22,7 @@ import collections
 import os
 
 from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-from virtwho import log
+from virtwho import log, SAT5, SAT6
 from password import Password
 from binascii import unhexlify
 import hashlib
@@ -249,6 +249,7 @@ class StripQuotesConfigParser(SafeConfigParser):
 class DestinationToSourceMapper(object):
     def __init__(self, effective_config):
         self._configs = effective_config.virt_sections()
+        self.effective_config = effective_config
         self.logger = logger
         self.sources = set()
         self.dests = set()
@@ -259,8 +260,14 @@ class DestinationToSourceMapper(object):
         sources, dests, d_to_s, orphan_sources = \
             DestinationToSourceMapper.map_destinations_to_sources(self._configs)
         if orphan_sources:
-            d_to_s[default_destination_info] = orphan_sources
-            dests.add(default_destination_info)
+            # Only use the default destination for sources that have a matching sm_type
+            sources_to_default = [
+                    orphan for orphan in orphan_sources \
+                    if self.effective_config[orphan]['sm_type'] != SAT5
+            ]
+            if sources_to_default:
+                d_to_s[default_destination_info] = sources_to_default
+                dests.add(default_destination_info)
         self.sources = sources
         self.dests = dests
         self.dest_to_sources_map = d_to_s
@@ -794,7 +801,7 @@ class ConfigSection(collections.MutableMapping):
         return result
 
     def add_key(self, key, validation_method=None, default=__marker, destination=None,
-                required=False):
+                required=False, restricted=False):
         if default is not self.__marker:
             self.defaults[key] = default
         if not validation_method:
@@ -802,8 +809,35 @@ class ConfigSection(collections.MutableMapping):
         self.validation_methods[key] = validation_method
         if destination:
             self._destinations[key] = destination
+
         if required:
             self._required_keys.add(key)
+        elif key in self._required_keys:
+            self._required_keys.remove(key)
+
+        if restricted:
+            self._restricted.add(key)
+        elif key in self._restricted:
+            self._restricted.remove(key)
+
+    def remove_key(self, key):
+        # The parts of the ConfigSection that might contain "key"
+        trackers = [self.validation_methods,
+                    self._destinations,
+                    self._restricted,
+                    self._required_keys,
+                    self.defaults,
+                    self._values,
+                    self._unvalidated_keys,
+                    ]
+        for tracker in trackers:
+            if key in tracker:
+                if isinstance(tracker, collections.MutableMapping):
+                    del tracker[key]
+                elif isinstance(tracker, collections.MutableSequence):
+                    tracker.remove(key)
+                elif isinstance(tracker, collections.MutableSet):
+                    tracker.discard(key)
 
 
 class VirtConfigSection(ConfigSection):
@@ -825,8 +859,7 @@ class VirtConfigSection(ConfigSection):
     def __init__(self, section_name, wrapper):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
         self.add_key('type', validation_method=self._validate_virt_type, default='libvirt')
-        self.add_key('virttype', validation_method=self._validate_virt_type, default='libvirt',
-                     destination='virttype')
+        self.add_key('sm_type', validation_method=self._validate_sm_type, default="sam", restricted=True)
         self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
         self.add_key('hypervisor_id', validation_method=self._validate_hypervisor_id, default='uuid')
         # Unencrypted passwords
@@ -873,8 +906,29 @@ class VirtConfigSection(ConfigSection):
     def _pre_validate(self):
         # Used to allow virttype to be provided for type (if type was not given)
         if 'virttype' in self._values and 'type' not in self._values:
-            self._values['type'] = self._values['virttype']
+            self['type'] = self._values['virttype']
+            self.remove_key('virttype')
+        if 'sm_type' in self._values:
+            if self._values['sm_type'] == SAT5:
+                self._required_keys.update(Satellite5DestinationInfo.required_kwargs)
+                # Owner and Env are only necessary for SAT6 and only for certain backends
+                self._required_keys.discard('owner')
+                self._required_keys.discard('env')
         super(VirtConfigSection, self)._pre_validate()
+
+    def _validate_sm_type(self, key):
+        result = None
+        try:
+            sm_type = non_empty_string(self._values['sm_type'])
+        except KeyError:
+            result = ('error', 'Unknown destination type')
+        except (ValueError, TypeError) as e:
+            result = ('error', str(e))
+        else:
+            acceptable_sm_types = [SAT5, SAT6]
+            if sm_type not in acceptable_sm_types:
+                result = ('error', '%s must be one of %s' % (key, ', '.join(acceptable_sm_types)))
+        return result
 
     def _validate_virt_type(self, key):
         result = None
@@ -1094,7 +1148,7 @@ class GlobalSection(ConfigSection):
 DEFAULTS = {
     VW_GLOBAL: GlobalSection.get_defaults(),
     VW_ENV_CLI_SECTION_NAME: {
-        'smtype': 'sam',
+        'sm_type': 'sam',
         'virttype': 'libvirt',
     },
 }

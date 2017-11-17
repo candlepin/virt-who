@@ -82,7 +82,7 @@ class Manager(object):
             sm_type = 'sam'
 
         for subcls in cls.__subclasses__():
-            if subcls.smType == sm_type:
+            if subcls.sm_type == sm_type:
                 return subcls(logger, config)
 
     @classmethod
@@ -94,11 +94,11 @@ class Manager(object):
         # Silence pyflakes errors
         assert virtwho
 
-        config_sm_type = config.smType if config else None
-        sm_type = config_sm_type or options[VW_ENV_CLI_SECTION_NAME].get('smType', None) or 'sam'
+        config_sm_type = config.sm_type if config else None
+        sm_type = config_sm_type or options[VW_ENV_CLI_SECTION_NAME].get('sm_type', None) or 'sam'
 
         for subcls in cls.__subclasses__():
-            if subcls.smType == sm_type:
+            if subcls.sm_type == sm_type:
                 return subcls(logger, options)
 
         raise KeyError("Invalid config type: %s" % sm_type)

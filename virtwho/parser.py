@@ -24,19 +24,16 @@ configuration from environment variables.
 import os
 from argparse import ArgumentParser, Action
 
-from virtwho import log, MinimumSendInterval, DefaultInterval
+from virtwho import log, MinimumSendInterval, DefaultInterval, SAT5, SAT6
 from virtwho.config import NotSetSentinel, init_config, DEFAULTS, VW_GLOBAL,\
     VW_ENV_CLI_SECTION_NAME
 from virtwho.virt.virt import Virt
 
 
-SAT5 = "satellite"
-SAT6 = "sam"
-
 # List of supported virtualization backends
 VIRT_BACKENDS = Virt.hypervisor_types()
 
-SAT_VM_DISPATCHER = {
+SAT5_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
     'esx': {'owner': False, 'env': False, 'server': True, 'username': True},
     'xen': {'owner': False, 'env': False, 'server': True, 'username': True},
@@ -45,7 +42,7 @@ SAT_VM_DISPATCHER = {
     'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
 }
 
-SAM_VM_DISPATCHER = {
+SAT6_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
     'esx': {'owner': True, 'env': True, 'server': True, 'username': True},
     'xen': {'owner': True, 'env': True, 'server': True, 'username': True},
@@ -135,12 +132,12 @@ def check_argument_consistency(cli_options):
     REQUIRED_OPTIONS = ['owner', 'env', 'server', 'username']
 
     virt_type = cli_options.get('virtType')
-    sm_type = cli_options.get('smType')
+    sm_type = cli_options.get('sm_type')
 
     if sm_type == 'sam':
-        VM_DISPATCHER = SAM_VM_DISPATCHER
+        VM_DISPATCHER = SAT6_VM_DISPATCHER
     elif sm_type == 'satellite':
-        VM_DISPATCHER = SAT_VM_DISPATCHER
+        VM_DISPATCHER = SAT5_VM_DISPATCHER
     elif sm_type is None:
         errors.append(('warning', 'Unable to check cli argument consistency, no destination '
                                   'provided'))
@@ -198,10 +195,10 @@ def read_config_env_variables():
         "VIRTWHO_ONE_SHOT": ("oneshot",
                              store_const,
                              "true"),
-        "VIRTWHO_SAM": ("smType", store_const, SAT6),
-        "VIRTWHO_SATELLITE6": ("smType", store_const, SAT6),
-        "VIRTWHO_SATELLITE5": ("smType", store_const, SAT5),
-        "VIRTWHO_SATELLITE": ("smType", store_const, SAT5),
+        "VIRTWHO_SAM": ("sm_type", store_const, SAT6),
+        "VIRTWHO_SATELLITE6": ("sm_type", store_const, SAT6),
+        "VIRTWHO_SATELLITE5": ("sm_type", store_const, SAT5),
+        "VIRTWHO_SATELLITE": ("sm_type", store_const, SAT5),
         "VIRTWHO_LIBVIRT": ("virtType", store_const, "libvirt"),
         "VIRTWHO_VDSM": ("virtType", store_const, "vdsm"),
         "VIRTWHO_ESX": ("virtType", store_const, "esx"),
@@ -256,9 +253,9 @@ def read_vm_backend_env_variables(env_vars):
     """
     errors = []
 
-    sm_type = env_vars.get('smType', DEFAULTS[VW_ENV_CLI_SECTION_NAME]['smtype'])
+    sm_type = env_vars.get('sm_type', DEFAULTS[VW_ENV_CLI_SECTION_NAME]['sm_type'])
     if sm_type is None:
-        # Just don't read the env vars if there is no smType specified
+        # Just don't read the env vars if there is no sm_type specified
         return env_vars, errors
 
     if sm_type == SAT5:
@@ -267,9 +264,9 @@ def read_vm_backend_env_variables(env_vars):
         env_vars['sat_password'] = os.getenv("VIRTWHO_SATELLITE_PASSWORD")
 
     if sm_type == SAT5:
-        VM_DISPATCHER = SAM_VM_DISPATCHER
+        VM_DISPATCHER = SAT5_VM_DISPATCHER
     elif sm_type == SAT6:
-        VM_DISPATCHER = SAT_VM_DISPATCHER
+        VM_DISPATCHER = SAT6_VM_DISPATCHER
     else:
         errors.append(("warning", "Env"))
         VM_DISPATCHER = {}
@@ -277,24 +274,24 @@ def read_vm_backend_env_variables(env_vars):
     if env_vars.get('virtType') in VM_DISPATCHER.keys():
         virt_type = env_vars['virtType']
         try:
-            env_vars['owner'] = check_env("VIRTWHO_" + virt_type.upper() + "_OWNER",
-                                          env_vars.get('owner'),
-                                          required=VM_DISPATCHER[virt_type]['owner'])
-            env_vars['env'] = check_env("VIRTWHO_" + virt_type.upper() + "_ENV",
-                                        env_vars.get('env'),
-                                        required=VM_DISPATCHER[virt_type]['env'])
-            env_vars['server'] = check_env("VIRTWHO_" + virt_type.upper() + "_SERVER",
-                                           env_vars.get('server'),
-                                           required=VM_DISPATCHER[virt_type]['server'])
-            env_vars['username'] = check_env("VIRTWHO_" + virt_type.upper() + "_USERNAME",
-                                             env_vars.get('username'),
-                                             required=VM_DISPATCHER[virt_type]['username'])
+            keys = ['owner', 'env', 'server', 'username']
+            for key in keys:
+                val = check_env("VIRTWHO_" + virt_type.upper() + "_" + key.upper(),
+                                env_vars.get(key),
+                                required=VM_DISPATCHER[virt_type][key])
+                if val:
+                    env_vars[key] = val
         except OptionError as err:
-            errors.append(("error", "Error: reading environment variables for virt. type: %s: %s" % (
+            errors.append(("error", "Error: reading environment variables for virt type: %s: %s" % (
                 env_vars.get('virtType'), err)))
         else:
             if len(env_vars.get('password', '')) == 0:
                 env_vars['password'] = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
+    old_dict = dict(**env_vars)
+    # Remove empty values from env_vars
+    for key, value in old_dict.iteritems():
+        if value is None or value == "":
+            del env_vars[key]
     return env_vars, errors
 
 
@@ -355,13 +352,13 @@ def parse_cli_arguments():
         title="Subscription manager",
         description="Choose where the host/guest associations should be reported"
     )
-    manager_group.add_argument("--sam", action="store_const", dest="smType", const=SAT6, default=SAT6,
+    manager_group.add_argument("--sam", action="store_const", dest="sm_type", const=SAT6, default=SAT6,
                                help="[Deprecated] Report host/guest associations to the Subscription Asset Manager [default]")
-    manager_group.add_argument("--satellite6", action="store_const", dest="smType", const=SAT6,
+    manager_group.add_argument("--satellite6", action="store_const", dest="sm_type", const=SAT6,
                                help="[Deprecated] Report host/guest associations to the Satellite 6 server")
-    manager_group.add_argument("--satellite5", action="store_const", dest="smType", const=SAT5,
+    manager_group.add_argument("--satellite5", action="store_const", dest="sm_type", const=SAT5,
                                help="[Deprecated] Report host/guest associations to the Satellite 5 server")
-    manager_group.add_argument("--satellite", action="store_const", dest="smType", const=SAT5)
+    manager_group.add_argument("--satellite", action="store_const", dest="sm_type", const=SAT5)
 
     # FIXME: Remove all options of virtualization backend. Adding this wasn't happy design decision.
     libvirt_group = parser.add_argument_group(
@@ -479,7 +476,7 @@ def parse_options():
     # These options are deprecated
     DEPRECATED_OPTIONS = ['log_per_config', 'log_dir', 'log_file', 'reporter_id', 'virtType',
                           'owner', 'env', 'server', 'username', 'password',
-                          'sat_server', 'sat_username', 'sat_password',  'smType']
+                          'sat_server', 'sat_username', 'sat_password',  'sm_type']
     VIRT_TYPE_OPTIONS = ['owner', 'env', 'server', 'username', 'password']
     SAT_OPTION_MAP = {'sat_server':'satellite-server', 'sat_username':'satellite-username', 'sat_password':'satellite-password'}
 
@@ -503,7 +500,7 @@ def parse_options():
     for option in DEPRECATED_OPTIONS:
         display_option = option
         if option in cli_options and not cli_options[option] == defaults[option]:
-            if option == 'virtType' or option == 'smType':
+            if option == 'virtType' or option == 'sm_type':
                 display_option = cli_options[option]
             elif any(option in s for s in VIRT_TYPE_OPTIONS):
                 display_option = '%s-%s' % (cli_options['virtType'], option)

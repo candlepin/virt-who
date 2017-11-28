@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.0
+Version:        0.21.1
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -134,6 +134,20 @@ fi
 
 
 %changelog
+* Tue Nov 28 2017 Kevin Howell <khowell@redhat.com> 0.21.1-1
+- 1511308: Only ESX supports: exclude_host_parents and filter_host_parents.
+  (jhnidek@redhat.com)
+- 1509596: Use qemu+ssh transport if not provided (libvirt)
+  (csnyder@redhat.com)
+- 1511308: Xen and Hyper-V do not support some filter options
+  (jhnidek@redhat.com)
+- 1510760: Ensure virt-who exits properly (w/ no good conf)
+  (csnyder@redhat.com)
+- 1509606: Remove duplicate output of validation messages (csnyder@redhat.com)
+- 1509597: Fix issue with cli consistancy check for vdsm (csnyder@redhat.com)
+- 1509595: Only expect owner on HostGuestAssociationReports
+  (csnyder@redhat.com)
+
 * Mon Oct 30 2017 Christopher Snyder <csnyder@redhat.com> 0.21.0-1
 - Update hypervisorCheckInAsync test for new config sections
   (csnyder@redhat.com)

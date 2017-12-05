@@ -53,6 +53,7 @@ class TestConfigSection(TestBase):
     """
     Class used for testing of ConfigSection
     """
+    __marker = object()
 
     def __init__(self, *args, **kwargs):
         super(TestConfigSection, self).__init__(*args, **kwargs)
@@ -395,3 +396,124 @@ class TestConfigSection(TestBase):
                                           "accident?")
         self.assertEqual(config['test_key'], test_values['test_key'])
         self.assertEqual(config.state, ValidationState.VALID)
+
+    def _run_add_key_test(self, key, input_value=__marker, expected_value=__marker, add_key_kwargs=None,
+                          expected_in=True,
+                          expected_state=ValidationState.VALID,
+                          validation_return_val=None,
+                          expected_present_in_messages=True):
+        if not add_key_kwargs:
+            add_key_kwargs = {}
+
+        # Provide mock validation_method if one is not given
+        if 'validation_method' not in add_key_kwargs:
+            add_key_kwargs['validation_method'] = Mock()
+            add_key_kwargs['validation_method'].return_value = validation_return_val
+
+        config = ConfigSection('test', None)
+
+        config.add_key(key, **add_key_kwargs)
+
+        # Only update the values in the config section if we've been given an input value
+        if input_value is not self.__marker:
+            test_values = {key: input_value}
+            config.update(**test_values)
+
+        messages = config.validate()
+
+        # Assert the mock was called, if it was a mock (and we passed in an input_value
+        if input_value is not self.__marker and \
+                hasattr(add_key_kwargs['validation_method'], 'assert_called_once_with'):
+            add_key_kwargs['validation_method'].assert_called_once_with(key)
+
+        if expected_in:
+            self.assertIn(key, config, "The config does not contain the expected key")
+
+        if expected_value is not self.__marker:
+            self.assertEqual(config[key], expected_value, 'Expected key "%s" to be "%s" found "%s"' % (key, expected_value, config[key]))
+
+        if expected_present_in_messages:
+            self.assertTrue(any(key in message[1] for message in messages), 'Expected at least one mention of key "%s" in validation messages' % key)
+        else:
+            bad_messages = []
+            for message in messages:
+                if key in message[1]:
+                    bad_messages.append(message)
+            if bad_messages:
+                self.fail("Expected no mention of key '%s' in messages found: %s" % (key, bad_messages))
+
+        self.assertEqual(config.state, expected_state)
+        return config, messages
+
+    def test_add_key_restricted_with_default(self):
+        # Tests that a key added as restricted is not mentioned in validation output
+        # Restricted keys are meant to be included in the validation process but are not mentioned
+        # when missing with a default.
+        add_key_kwargs = {
+            'default': "default",
+            'restricted': True,
+        }
+        self._run_add_key_test('test_key', add_key_kwargs=add_key_kwargs,
+                               expected_value=add_key_kwargs['default'],
+                               expected_present_in_messages=False
+                               )
+        # Now with a value provided
+        self._run_add_key_test('test_key', add_key_kwargs=add_key_kwargs,
+                               expected_in=True, input_value='input',
+                               expected_value='input',
+                               expected_present_in_messages=False
+                               )
+
+    def test_add_key_restricted_and_required(self):
+        # Tests that a key added as restricted is not mentioned in validation output
+        # Restricted keys are meant to be included in the validation process but are not mentioned
+        # when missing with a default.
+        no_default = dict(
+                restricted=True,
+                required=True,
+        )
+        with_default = dict(
+                restricted=True,
+                required=True,
+                default="default"
+        )
+        # Tuples of args
+        cases = [
+            # No input_value given, and no default
+            dict(
+                add_key_kwargs=no_default,
+                expected_in=False,
+                expected_state=ValidationState.INVALID,
+                expected_present_in_messages=True,
+            ),
+            # A value given, expect the same value, no default
+            dict(
+                add_key_kwargs=no_default,
+                input_value='value',
+                expected_value='value',
+                expected_state=ValidationState.VALID,
+                expected_present_in_messages=False,
+            ),
+            # Default given, no input value, expect default value
+            dict(
+                add_key_kwargs=with_default,
+                expected_value=with_default['default'],
+                expected_state=ValidationState.VALID,
+                expected_present_in_messages=False,
+            ),
+            # Default given, with an input, expect input value
+            dict(
+                add_key_kwargs=with_default,
+                input_value='value',
+                expected_value='value',
+                expected_state=ValidationState.VALID,
+                expected_present_in_messages=False,
+            ),
+        ]
+
+        for index, case in enumerate(cases):
+            try:
+                self._run_add_key_test('test_key', **case)
+            except AssertionError:
+                print "Assertion error during case #%s" % index
+                raise

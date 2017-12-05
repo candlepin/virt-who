@@ -643,7 +643,7 @@ class ConfigSection(collections.MutableMapping):
         for key in self._invalid_keys.union(self.defaults.keys()):
             if self.has_default(key) and key not in self._values:
                 self._values[key] = self.defaults[key]
-                if key in self._required_keys:
+                if key in self._required_keys and key not in self._restricted:
                     message = 'Required option: "%s" is missing in: "%s" using default "%s"' % \
                               (key, self.name, self.defaults[key])
                     self.validation_messages.append(('warning', message))

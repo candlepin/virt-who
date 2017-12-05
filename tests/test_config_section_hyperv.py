@@ -37,3 +37,11 @@ class TestHyperVConfigSection(ConfigSectionValidationTests, TestBase):
         "owner": "admin",
         "env": "admin",
     }
+
+    REQUIRED_KEYS = set([
+        'type',
+        'server',
+        'username',
+        'password',
+    ])
+

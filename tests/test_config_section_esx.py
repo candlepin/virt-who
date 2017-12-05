@@ -39,3 +39,16 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
         "filter_host_parents": "'PARENT_A', 'PARENT_B'",
         "exclude_host_parents": "'PARENT_C_EXCLUDED'",
     }
+
+    REQUIRED_KEYS = set([
+        'type',
+        'server',
+        'username',
+        'password',
+    ])
+
+    KEYS_WITH_DEFAULTS = set([
+        'filter_host_parents',
+        'exclude_host_parents'
+    ])
+

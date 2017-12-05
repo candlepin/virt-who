@@ -71,8 +71,11 @@ class ConfigSectionValidationTests(object):
     # Should be changed for each set of tests, to make sure the right class is utilized
     CONFIG_CLASS = VirtConfigSection
 
-    def create_config(self):
-        return self.CONFIG_CLASS("test", None)
+    # should be a list of the keys which are required
+    REQUIRED_KEYS = set()
+
+    # Those keys that should have a default
+    KEYS_WITH_DEFAULTS = set()
 
     def _modified_dict(self, values, excluding=None, including=None):
         """
@@ -113,7 +116,8 @@ class ConfigSectionValidationTests(object):
         """
         config = self.CONFIG_CLASS.from_dict(self.VALID_CONFIG, "test", None)
 
-        self.assertIsInstance(config, self.CONFIG_CLASS, 'Wrong type of config, was "type" set correctly in "VALID_CONFIG"')
+        self.assertIsInstance(config, self.CONFIG_CLASS, 'Wrong type of config, was "type" set'
+                                                         'correctly in "VALID_CONFIG"?')
 
         # Having been updated, the config section needs validation
         self.assertEqual(config.state, ValidationState.NEEDS_VALIDATION)
@@ -133,7 +137,7 @@ class ConfigSectionValidationTests(object):
         """
         config = self.CONFIG_CLASS("test", None)
         # A sorted list of keys that are required, but have no default
-        target_keys = sorted(list(config._required_keys - set(config.defaults.keys())))
+        target_keys = sorted(list(self.REQUIRED_KEYS - self.KEYS_WITH_DEFAULTS))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 
@@ -151,7 +155,7 @@ class ConfigSectionValidationTests(object):
         NOTE: This does not account for modifications of default values made during validation.
         """
         config = self.CONFIG_CLASS("test", None)
-        target_keys = sorted(list(config._required_keys & set(config.defaults.keys())))
+        target_keys = sorted(list(self.REQUIRED_KEYS & self.KEYS_WITH_DEFAULTS))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 

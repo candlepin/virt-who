@@ -4,13 +4,17 @@
 %global python2_sitelib %{python_sitelib}
 %endif
 
+%global use_python3 0%{?fedora}
+%global python_ver %{?use_python3:python3}%{?!use_python3:python}
+%global python_exec %{?use_python3:%{__python3}}%{?!use_python3:%{__python2}}
+%global python_sitelib %{?use_python3:%{python3_sitelib}}%{?!use_python3:%{python2_sitelib}}
 %global release_number 1
 
 %global git_tag %{name}-%{version}-%{release_number}
 
 
 Name:           virt-who
-Version:        0.21.2
+Version:        0.22.0
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -21,23 +25,25 @@ Source0:        https://codeload.github.com/virt-who/virt-who/tar.gz/%{git_tag}#
 BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildArch:      noarch
-BuildRequires:  python2-devel
-BuildRequires:  python-setuptools
-Requires:       python-setuptools
-Requires:       libvirt-python
-# python-rhsm 1.10.10 has required call for guestId support
-Requires:       python-rhsm >= 1.10.10
+BuildRequires:  %{python_ver}-devel
+BuildRequires:  %{python_ver}-setuptools
+Requires:       %{python_ver}-setuptools
+#Requires:       libvirt-%{python_ver}
+# python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
+# with the python standard libraries where plausible
+Requires:       python-rhsm >= %{?use_python3:1.20}%{?!use_python3:1.10.10}
 # python-suds is required for vSphere support
-Requires:       python-suds
-# m2crypto is required for Hyper-V support
-Requires:       m2crypto
-Requires:       python-requests
+Requires:       %{python_ver}-suds
+# m2crypto OR python3-cryptography is required for Hyper-V support
+Requires:       %{?use_python3:python3-cryptography}%{?!use_python3:m2crypto}
+Requires:       %{python_ver}-requests
+Requires:       %{python_ver}-six
 # python-argparse is required for Python 2.6 on EL6
 %{?el6:Requires: python-argparse}
 Requires:       openssl
 
 %if %{use_systemd}
-Requires: systemd-python
+Requires: %{?use_python3:python3-systemd}%{?!use_python3:systemd-python}
 BuildRequires: systemd
 Requires(post): systemd
 Requires(preun): systemd
@@ -58,17 +64,17 @@ report them to the subscription manager.
 
 
 %build
-%{__python2} setup.py build
+%{python_exec} setup.py build
 
 %install
 rm -rf $RPM_BUILD_ROOT
-%{__python2} setup.py install --root %{buildroot}
-%{__python2} setup.py install_config --root %{buildroot}
-%{__python2} setup.py install_man_pages --root %{buildroot}
+%{python_exec} setup.py install --root %{buildroot}
+%{python_exec} setup.py install_config --root %{buildroot}
+%{python_exec} setup.py install_man_pages --root %{buildroot}
 %if %{use_systemd}
-%{__python2} setup.py install_systemd --root %{buildroot}
+%{python_exec} setup.py install_systemd --root %{buildroot}
 %else
-%{__python2} setup.py install_upstart --root %{buildroot}
+%{python_exec} setup.py install_upstart --root %{buildroot}
 %endif
 
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
@@ -116,7 +122,7 @@ fi
 %doc README.md LICENSE README.hyperv
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
-%{python2_sitelib}/*
+%{python_sitelib}/*
 %if %{use_systemd}
 %{_unitdir}/virt-who.service
 %else

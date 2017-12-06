@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for communication with RHEV-M, part of virt-who
 
@@ -18,7 +20,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import urlparse
+from six.moves import urllib
 import requests
 from requests.auth import HTTPBasicAuth
 from xml.etree import ElementTree
@@ -74,12 +76,12 @@ class RhevmConfigSection(VirtConfigSection):
 
         if "//" not in url:
             url = "//" + url
-        parsed = urlparse.urlsplit(url, "https")
+        parsed = urllib.parse.urlsplit(url, "https")
         if ":" not in parsed[1]:
             netloc = parsed[1] + ":8443"
         else:
             netloc = parsed[1]
-        url = urlparse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
+        url = urllib.parse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
 
         if url[-1] != '/':
             url += '/'
@@ -128,9 +130,9 @@ class RhevM(virt.Virt):
         hosts_endpoint = '/hosts'
         vms_endpoint = '/vms'
 
-        self.clusters_url = urlparse.urljoin(self.url, self.api_base + clusters_endpoint)
-        self.hosts_url = urlparse.urljoin(self.url, self.api_base + hosts_endpoint)
-        self.vms_url = urlparse.urljoin(self.url, self.api_base + vms_endpoint)
+        self.clusters_url = urllib.parse.urljoin(self.url, self.api_base + clusters_endpoint)
+        self.hosts_url = urllib.parse.urljoin(self.url, self.api_base + hosts_endpoint)
+        self.vms_url = urllib.parse.urljoin(self.url, self.api_base + vms_endpoint)
 
     def get_version(self):
         """
@@ -140,13 +142,13 @@ class RhevM(virt.Virt):
             headers = dict()
             headers['Version'] = '3'
             # We will store the api_base that seems to work and use that for future requests
-            response = requests.get(urlparse.urljoin(self.url, self.api_base),
+            response = requests.get(urllib.parse.urljoin(self.url, self.api_base),
                                     auth=self.auth,
                                     headers=headers,
                                     verify=False)
             if response.status_code == 404:
                 self.api_base = 'ovirt-engine/api'
-                response = requests.get(urlparse.urljoin(self.url, self.api_base),
+                response = requests.get(urllib.parse.urljoin(self.url, self.api_base),
                                         auth=self.auth,
                                         headers=headers,
                                         verify=False)
@@ -294,7 +296,7 @@ class RhevM(virt.Virt):
 
             hosts[host_id].guestIds.append(virt.Guest(guest_id, self.CONFIG_TYPE, state))
 
-        return {'hypervisors': hosts.values()}
+        return {'hypervisors': list(hosts.values())}
 
     def ping(self):
         return True

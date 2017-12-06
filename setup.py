@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 
+from __future__ import print_function
 import sys
 import os
 from setuptools import setup, find_packages
@@ -8,7 +9,7 @@ from shutil import copy, copyfileobj
 import gzip
 
 
-def install_file(filename, destination, file_mode=0644, dir_mode=0755):
+def install_file(filename, destination, file_mode=0o644, dir_mode=0o755):
     install_dir = os.path.dirname(destination)
     if not os.path.isdir(install_dir):
         os.makedirs(install_dir, dir_mode)
@@ -32,7 +33,7 @@ class InstallUpstart(install):
 
     def run(self, *args, **kwargs):
         root = self.root or ''
-        install_file('virt-who-initscript', '{root}/etc/rc.d/init.d/virt-who'.format(root=root), file_mode=0755)
+        install_file('virt-who-initscript', '{root}/etc/rc.d/init.d/virt-who'.format(root=root), file_mode=0o755)
 
 
 class InstallManPages(install):
@@ -54,7 +55,7 @@ class InstallManPages(install):
             filename = '{old_wd}/{name}.{number}'.format(old_wd=old_wd, name=name, number=number)
             dirname = 'usr/share/man/man{number}'.format(number=number)
             if not os.path.isdir(dirname):
-                os.makedirs(dirname, 0755)
+                os.makedirs(dirname, 0o755)
             outfile = '{dirname}/{name}.{number}.gz'.format(
                 dirname=dirname, name=name, number=number)
 

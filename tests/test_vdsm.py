@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of VDSM virtualization backend.
 
@@ -29,6 +30,8 @@ from virtwho.virt.vdsm.stomp import StompFrame, StompClient
 from virtwho.virt.vdsm.vdsm import VdsmConfigSection
 from virtwho.virt.virt import Guest
 
+import json
+
 
 class TestVdsm(TestBase):
 
@@ -46,7 +49,7 @@ class TestVdsm(TestBase):
         mock_jsonrpc_client_factory = MagicMock(return_value=self.mock_jsonrpc_client)
 
         self.patch_jsonrpc_client = patch('virtwho.virt.vdsm.vdsm.JsonRpcClient', mock_jsonrpc_client_factory)
-        self.patch_xmlrpclib = patch('virtwho.virt.vdsm.vdsm.xmlrpclib', MagicMock())
+        self.patch_xmlrpclib = patch('virtwho.virt.vdsm.vdsm.xmlrpc_client', MagicMock())
         self.patch_jsonrpc_client.start()
         self.patch_xmlrpclib.start()
 
@@ -215,11 +218,26 @@ class JsonRpcTest(TestCase):
                 jsonrpc_client.connect()
                 result = jsonrpc_client.call('test', foo='bar')
                 self.assertEquals(result, u'bar')
-                mock_stomp_client.send.assert_called_with(u'SEND', {
+                expected_command = u'SEND'
+                expected_headers = {
                     u'content-length': 74,
                     u'destination': u'jms.topic.vdsm_requests',
                     u'reply-to': u'42'
-                }, b'{"params": {"foo": "bar"}, "jsonrpc": "2.0", "method": "test", "id": "42"}')
+                }
+                expected_data = {
+                    "params": {"foo": "bar"}, "jsonrpc": "2.0", "method": "test", "id": "42"
+                }
+
+                # The data in the stomp_client.send call (2nd, and 3rd arguments) are dicts dumped
+                # as json to a bytes object. Because dictionaries are not guaranteed to be iterated
+                # over in the same order, these dicts do not appear equal on python 3.
+                # Comparing these using assertEqual will call the registered method associated with
+                # dicts (which does not care about order).
+                send_args = mock_stomp_client.send.call_args
+                self.assertEqual(send_args[0][0], expected_command)
+                self.assertEqual(send_args[0][1], expected_headers)
+                actual_data = json.loads(send_args[0][2])
+                self.assertEqual(actual_data, expected_data)
 
     def test_jsonrpc_client_payload_encoding_without_params(self):
         with patch('virtwho.virt.vdsm.jsonrpc.StompClient') as mock_client_factory:

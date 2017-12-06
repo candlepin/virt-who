@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import time
 
@@ -7,7 +8,7 @@ from fake_virt import FakeVirt, FakeHandler
 class Rhevm4Handler(FakeHandler):
     def do_GET(self):
         time.sleep(0.1)
-        print("DO GET", self.path)
+        print(("DO GET", self.path))
 
         if self.path == '/ovirt-engine/api':
             self.write_file('rhevm', 'rhev4_api.xml')
@@ -22,6 +23,7 @@ class Rhevm4Handler(FakeHandler):
             self.write_file('rhevm', 'rhevm_vms_%d.xml' % self.server._data_version.value)
         else:
             self.send_response(404)
+            self.end_headers()
 
     def check_version_header(self):
         if not self.headers['Version'] == '3':

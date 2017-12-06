@@ -1,10 +1,13 @@
+from __future__ import print_function
 
 import os
+import six
 import sys
 import tempfile
 import ssl
 import json
 import shutil
+import requests
 
 from fake_virt import FakeVirt, FakeHandler
 
@@ -13,36 +16,39 @@ from virtwho.manager.subscriptionmanager.subscriptionmanager import rhsm_config
 
 class SamHandler(FakeHandler):
     def do_GET(self):
-        print "[FakeSam] GET", self.path
+        print("[FakeSam] GET", self.path)
         if self.path.startswith('/status'):
-            self.wfile.write(json.dumps({
+            content = {
                 "result": "ok",
                 "managerCapabilities": [""]
-            }))
+            }
+            self.write_json(content)
         else:
-            self.wfile.write(json.dumps({
-                "result": "ok",
-            }))
+            content = {"result": "ok",
+            }
+            self.write_json(content)
 
     def do_POST(self):
-        print "[FakeSam] POST", self.path
+        print("[FakeSam] POST", self.path)
         if self.server.code:
-            self.send_response(self.server.code)
-            self.send_header("Retry-After", "60")
-            self.wfile.write(json.dumps({}))
+            self.write_json({}, status_code=self.server.code, headers={"Retry-After": "60"})
         elif self.path.startswith('/hypervisors'):
             size = int(self.headers["Content-Length"])
-            data = json.loads(self.rfile.read(size))
-            print "[FakeSam] putting in the queue:", data
+            incoming = self.rfile.read(size)
+            if isinstance(incoming, six.binary_type):
+                incoming = incoming.decode('utf-8')
+            data = json.loads(incoming)
+            print("[FakeSam] putting in the queue:", data)
             self.server.queue.put(data)
-            self.wfile.write(json.dumps({
+            content = {
                 "failedUpdate": [],
                 "updated": [],
                 "created": [],
-            }))
+            }
+            self.write_json(content, status_code=requests.codes.ok)
 
     def do_PUT(self):
-        print "PUT", self.path
+        print("PUT", self.path)
 
 
 class FakeSam(FakeVirt):
@@ -88,7 +94,7 @@ if __name__ == '__main__':
         code = int(sys.argv[1])
     else:
         code = None
-    from Queue import Queue
+    from six.moves.queue import Queue
     q = Queue()
     f = FakeSam(q, port=8443, code=code, host='0.0.0.0')
     f.run()

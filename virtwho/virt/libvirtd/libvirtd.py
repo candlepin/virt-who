@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for communication with libvirt, part of virt-who
 
@@ -21,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import time
 import libvirt
 import threading
-import urlparse
+from six.moves import urllib
 from xml.etree import ElementTree
 
 from virtwho.virt import (
@@ -60,7 +62,7 @@ class LibvirtdConfigSection(VirtConfigSection):
             url = self._values[key]
             if "//" not in url:
                 url = "//" + url
-            splitted_url = urlparse.urlsplit(url)
+            splitted_url = urllib.parse.urlsplit(url)
 
             hostname = splitted_url.hostname
 

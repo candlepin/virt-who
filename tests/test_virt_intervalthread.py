@@ -1,3 +1,4 @@
+from __future__ import print_function
 from base import TestBase
 
 from mock import patch, Mock, sentinel, call
@@ -123,7 +124,7 @@ class TestIntervalThreadTiming(TestBase):
         expected_calls = [call(expected_wait_interval) for x in range(wait_time)]
 
         interval_thread.wait(wait_time=wait_time)
-        self.assertEquals(interval_thread.is_terminated.call_count, wait_time)
+        self.assertEqual(interval_thread.is_terminated.call_count, wait_time)
         self.mock_time.assert_has_calls(expected_calls)
 
     def test_is_terminated_terminate_event(self):

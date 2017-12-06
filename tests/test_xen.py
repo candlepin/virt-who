@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of XenServer virtualization backend.
 
@@ -19,10 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import urllib2
+import six
+from six.moves import urllib
 from mock import patch, call, ANY
 from threading import Event
-from Queue import Queue
+from six.moves.queue import Queue
 
 from base import TestBase
 from proxy import Proxy
@@ -89,7 +91,7 @@ class TestXenConfigSection(TestBase):
                 'The original server URL was incomplete. It has been enhanced to https://10.0.0.101'
             )
         ]
-        self.assertEqual(expected_result, result)
+        six.assertCountEqual(self, expected_result, result)
 
     def test_validate_xen_section_missing_username_password(self):
         """
@@ -103,7 +105,7 @@ class TestXenConfigSection(TestBase):
             ('error', 'Required option: "username" not set.'),
             ('error', 'Required option: "password" not set.')
         ]
-        self.assertEqual(expected_result, result)
+        six.assertCountEqual(self, expected_result, result)
 
     def test_validate_xen_section_unsupported_filters(self):
         """
@@ -117,12 +119,11 @@ class TestXenConfigSection(TestBase):
         self.xen_config['filter_host_parents'] = 'host_parents'
         self.xen_config['exclude_host_parents'] = 'host_parents'
         result = self.xen_config.validate()
-        print(result)
         expected_result = [
             ('warning', 'Ignoring unknown configuration option "filter_host_parents"'),
             ('warning', 'Ignoring unknown configuration option "exclude_host_parents"')
         ]
-        self.assertEqual(expected_result, result)
+        six.assertCountEqual(self, expected_result, result)
 
 
 class TestXen(TestBase):
@@ -160,7 +161,7 @@ class TestXen(TestBase):
 
     @patch('virtwho.virt.xen.XenAPI.Session')
     def test_connection_timeout(self, session):
-        session.side_effect = urllib2.URLError('timed out')
+        session.side_effect = urllib.error.URLError('timed out')
         self.assertRaises(VirtError, self.run_once)
 
     @patch('virtwho.virt.xen.XenAPI.Session')

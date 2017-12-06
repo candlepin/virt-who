@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of RHEV-M virtualization backend.
 
@@ -22,7 +23,7 @@ import os
 import requests
 from mock import patch, call, ANY, MagicMock
 from threading import Event
-from Queue import Queue
+from six.moves.queue import Queue
 
 from base import TestBase
 from proxy import Proxy

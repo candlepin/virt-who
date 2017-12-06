@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for accessing vdsm, part of virt-who
 
@@ -20,11 +22,9 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
-
 import re
-import xmlrpclib
-from ConfigParser import SafeConfigParser, NoSectionError, NoOptionError
-import ssl
+from six.moves import xmlrpc_client
+from six.moves.configparser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
 
 from virtwho.virt import Virt, Guest
@@ -182,16 +182,16 @@ class Vdsm(Virt):
             transport = None
             if ssl_context:
                 if self._need_m2crypto():
-                    transport = xmlrpclib.SafeTransport(context=ssl_context)
+                    transport = xmlrpc_client.SafeTransport(context=ssl_context)
                 else:
                     from M2Crypto.m2xmlrpclib import SSL_Transport
                     transport = SSL_Transport(ssl_context)
                 uri = 'https://%s:%s' % (addr, self.management_port)
             else:
                 uri = 'http://%s:%s' % (addr, self.management_port)
-            xmlrpc_client = xmlrpclib.ServerProxy(uri, transport)
-            xmlrpc_client.system.listMethods()
-            self.xmlrpc_client = xmlrpc_client
+            xmlrpc_client_lib = xmlrpc_client.ServerProxy(uri, transport)
+            xmlrpc_client_lib.system.listMethods()
+            self.xmlrpc_client = xmlrpc_client_lib
             return True
         except Exception:  # NOTE: unfortunately there are many ways to fail, so the exception clause is broad
             if ssl_context:

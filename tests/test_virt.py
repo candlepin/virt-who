@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import os
 import tempfile
@@ -144,7 +145,7 @@ class TestDestinationThread(TestBase):
                                                oneshot=True, options=self.options)
         destination_thread.is_initial_run = False
         result_data = destination_thread._get_data()
-        self.assertEquals(result_data, datastore)
+        self.assertEqual(result_data, datastore)
 
     def test_get_data_ignore_same_reports(self):
         # Show that the data returned from _get_data does not include those
@@ -180,7 +181,7 @@ class TestDestinationThread(TestBase):
         destination_thread.is_initial_run = False
         destination_thread.last_report_for_source = last_report_for_source
         result_data = destination_thread._get_data()
-        self.assertEquals(result_data, expected_data)
+        self.assertEqual(result_data, expected_data)
 
     @patch('virtwho.virt.virt.Event')
     def test_send_data_quit_on_error_report(self, mock_event_class):
@@ -251,7 +252,7 @@ class TestDestinationThread(TestBase):
         options.print_ = False
 
         def check_hypervisorCheckIn(report, options=None):
-            self.assertEquals(report.association['hypervisors'],
+            self.assertEqual(report.association['hypervisors'],
                               data_to_send.values)
 
         manager.hypervisorCheckIn = Mock(side_effect=check_hypervisorCheckIn)
@@ -525,7 +526,7 @@ class TestDestinationThread(TestBase):
         destination_thread._send_data(data_to_send=data_to_send)
 
         expected_hashes = {}
-        for source_key, report in data_to_send.iteritems():
+        for source_key, report in data_to_send.items():
             expected_hashes[source_key] = report.hash
 
         self.assertEqual(destination_thread.last_report_for_source,

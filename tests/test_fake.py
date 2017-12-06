@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of Fake virtualization backend.
 
@@ -92,20 +93,20 @@ file=%s
 """ % self.hypervisor_file)
         effective_config = init_config({}, {}, config_dir=self.config_dir)
         manager = DestinationToSourceMapper(effective_config)
-        self.assertEquals(len(manager.configs), 1)
+        self.assertEqual(len(manager.configs), 1)
         virt = Virt.from_config(self.logger, manager.configs[0][1], None)
-        self.assertEquals(type(virt), FakeVirt)
+        self.assertEqual(type(virt), FakeVirt)
         mapping = virt.getHostGuestMapping()
         self.assertTrue("hypervisors" in mapping)
         hypervisors = mapping["hypervisors"]
-        self.assertEquals(len(hypervisors), 1)
+        self.assertEqual(len(hypervisors), 1)
         hypervisor = hypervisors[0]
-        self.assertEquals(type(hypervisor), Hypervisor)
-        self.assertEquals(hypervisor.hypervisorId, "60527517-6284-7593-6AAB-75BF2A6375EF")
-        self.assertEquals(len(hypervisor.guestIds), 1)
+        self.assertEqual(type(hypervisor), Hypervisor)
+        self.assertEqual(hypervisor.hypervisorId, "60527517-6284-7593-6AAB-75BF2A6375EF")
+        self.assertEqual(len(hypervisor.guestIds), 1)
         guest = hypervisor.guestIds[0]
-        self.assertEquals(guest.uuid, "07ED8178-95D5-4244-BC7D-582A54A48FF8")
-        self.assertEquals(guest.state, 1)
+        self.assertEqual(guest.uuid, "07ED8178-95D5-4244-BC7D-582A54A48FF8")
+        self.assertEqual(guest.state, 1)
 
     def test_read_hypervisor_from_non_hypervisor(self):
         with open(self.hypervisor_file, "w") as f:
@@ -140,14 +141,14 @@ file=%s
 
         effective_config = init_config({}, {}, config_dir=self.config_dir)
         manager = DestinationToSourceMapper(effective_config)
-        self.assertEquals(len(manager.configs), 1)
+        self.assertEqual(len(manager.configs), 1)
         virt = Virt.from_config(self.logger, manager.configs[0][1], None)
-        self.assertEquals(type(virt), FakeVirt)
+        self.assertEqual(type(virt), FakeVirt)
         guests = virt.listDomains()
-        self.assertEquals(len(guests), 1)
+        self.assertEqual(len(guests), 1)
         guest = guests[0]
-        self.assertEquals(guest.uuid, "9f06a84d-5f56-4e7e-be0c-937b3c1924d7")
-        self.assertEquals(guest.state, 1)
+        self.assertEqual(guest.uuid, "9f06a84d-5f56-4e7e-be0c-937b3c1924d7")
+        self.assertEqual(guest.state, 1)
 
     def test_read_non_hypervisor_from_hypervisor(self):
         with open(self.hypervisor_file, "w") as f:

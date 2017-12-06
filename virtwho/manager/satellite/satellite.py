@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for communication with Satellite (RHN Classic), part of virt-who
 
@@ -18,8 +20,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import xmlrpclib
-import pickle
+from six.moves import xmlrpc_client
+from six.moves import cPickle as pickle
 import json
 
 from virtwho.manager import Manager, ManagerError
@@ -75,9 +77,9 @@ class Satellite(Manager):
         self.logger.debug("Initializing satellite connection to %s", server)
         try:
             # We need two API endpoints: /XMLRPC and /rpc/api
-            self.server_xmlrpc = xmlrpclib.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
+            self.server_xmlrpc = xmlrpc_client.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
             server_api = server.replace('/XMLRPC', '/rpc/api')
-            self.server_rpcapi = xmlrpclib.ServerProxy(server_api, verbose=0, transport=RequestsXmlrpcTransport(server_api))
+            self.server_rpcapi = xmlrpc_client.ServerProxy(server_api, verbose=0, transport=RequestsXmlrpcTransport(server_api))
         except Exception as e:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server: " % str(e))
@@ -103,7 +105,7 @@ class Satellite(Manager):
         try:
             hypervisor_base_channel = self.server_rpcapi.channel.software.getDetails(session, base_channel_name)
             self.logger.debug("Using existing hypervisor-base channel")
-        except xmlrpclib.Fault as e:
+        except xmlrpc_client.Fault as e:
             if e.faultCode == -210:
                 # The channel doesn't exist yet
                 hypervisor_base_channel = None
@@ -148,7 +150,7 @@ class Satellite(Manager):
             raise SatelliteError("Unable to refresh HW profile: %s" % str(e))
         # save the hypervisor systemid
         try:
-            with open(systemid_filename, "w") as f:
+            with open(systemid_filename, "wb") as f:
                 pickle.dump(new_system, f)
         except (OSError, IOError) as e:
             self.logger.exception("Unable to write system id to %s: %s", systemid_filename, str(e))
@@ -234,7 +236,7 @@ class Satellite(Manager):
                 try:
                     self.logger.debug("Sending plan: %s", plan)
                     self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
-                except xmlrpclib.Fault as e:
+                except xmlrpc_client.Fault as e:
                     if e.faultCode == -9:
                         self.logger.warn("System was deleted from Satellite 5, reregistering")
                         hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId,

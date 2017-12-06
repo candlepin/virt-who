@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import time
 
@@ -7,7 +8,7 @@ from fake_virt import FakeVirt, FakeHandler
 class RhevmHandler(FakeHandler):
     def do_GET(self):
         time.sleep(0.1)
-        print("DO GET", self.path)
+        print(("DO GET", self.path))
         if self.path == '/api':
             self.write_file('rhevm', 'rhev3_api.xml')
         elif self.path == '/api/clusters':

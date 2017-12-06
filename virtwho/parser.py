@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 # Agent for reporting virtual guest IDs to subscription-manager
 #
@@ -286,7 +287,7 @@ def read_vm_backend_env_variables(env_vars):
                 env_vars['password'] = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
     old_dict = dict(**env_vars)
     # Remove empty values from env_vars
-    for key, value in old_dict.iteritems():
+    for key, value in old_dict.items():
         if value is None or value == "":
             del env_vars[key]
     return env_vars, errors
@@ -458,7 +459,7 @@ def parse_cli_arguments():
     defaults = vars(parser.parse_args([]))
 
     def get_non_default_options(_cli_options, _defaults):
-        return dict((option, value) for option, value in _cli_options.iteritems()
+        return dict((option, value) for option, value in _cli_options.items()
                     if _defaults.get(option, NotSetSentinel()) != value and value is not None)
 
     return get_non_default_options(cli_options, defaults), errors, defaults

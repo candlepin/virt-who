@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
 # Module for STOMP messaging, part of virt-who
 #
 # Copyright (C) 2018 Kevin Howell <khowell@redhat.com>
@@ -25,10 +27,9 @@ There are better developed STOMP libraries for Python available (such as stomper
 writing, only available in EPEL.
 """
 
-from __future__ import unicode_literals
-
 import logging
 import socket
+from six import text_type
 import uuid
 
 log = logging.getLogger(__name__)
@@ -81,11 +82,13 @@ class StompFrame(object):
 
         :return: bytes.
         """
-        frame_without_body = '{command}\n{headers}\n'.format(
-            command=self.command,
-            headers=self._encode_headers(),
-        ).encode('utf-8')
-        return frame_without_body + (self.body) + b'\x00'
+        frame = b'\n'.join([
+            self.command.encode('utf-8'),
+            self._encode_headers(),
+            self.body
+        ])
+        frame = frame + b'\x00'
+        return frame
 
     def _encode_headers(self):
         if not self.headers:
@@ -94,10 +97,10 @@ class StompFrame(object):
             [b':'.join(
                 [
                     self._escape_bytes(key.encode('utf-8')),
-                    self._escape_bytes(unicode(value).encode('utf-8')),
+                    self._escape_bytes(text_type(value).encode('utf-8')),
                 ]
             ) for key, value in sorted(self.headers.items())]  # sort the headers for predictable messages
-        ) + '\n'
+        ) + b'\n'
 
     @classmethod
     def _decode_headers(cls, data):
@@ -182,7 +185,7 @@ class StompClient(object):
                 self._validate_connected(self._recv_frame())
                 return  # success connecting
             except (socket.error, IOError) as e:
-                log.warning('Unable to connect %s:%s: %s' % (self.host, self.port, unicode(e)))
+                log.warning('Unable to connect %s:%s: %s' % (self.host, self.port, text_type(e)))
         raise IOError('Unable to connect to %s:%s' % (self.host, self.port))
 
     @staticmethod

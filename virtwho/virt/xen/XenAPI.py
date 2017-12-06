@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 # ===========================================================================
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of version 2.1 of the GNU Lesser General Public
@@ -44,11 +46,8 @@
 # OF THIS SOFTWARE.
 # --------------------------------------------------------------------
 
-import gettext
-import xmlrpclib
+from six.moves import xmlrpc_client
 
-
-translation = gettext.translation('xen-xm', fallback=True)
 
 
 API_VERSION_1_1 = '1.1'
@@ -64,7 +63,7 @@ class Failure(Exception):
             return str(self.details)
         except Exception as exn:
             import sys
-            print >>sys.stderr, exn
+            print(exn, file=sys.stderr)
             return "Xen-API failure: %s" % str(self.details)
 
     def _details_map(self):
@@ -82,7 +81,7 @@ class NewMaster(Exception):
             return str(self.details)
         except Exception as exn:
             import sys
-            print >>sys.stderr, exn
+            print(exn, file=sys.stderr)
             return "Xen-API failure: %s" % str(self.details)
 
     def new_master(self):
@@ -96,7 +95,7 @@ class NewMaster(Exception):
 _RECONNECT_AND_RETRY = (lambda _: ())
 
 
-class Session(xmlrpclib.ServerProxy):
+class Session(xmlrpc_client.ServerProxy):
     """A server proxy and session manager for communicating with xapi using
     the Xen-API.
 
@@ -109,7 +108,7 @@ class Session(xmlrpclib.ServerProxy):
     """
     def __init__(self, uri, transport=None, encoding=None, verbose=0,
                  allow_none=1):
-        xmlrpclib.ServerProxy.__init__(self, uri, transport, encoding,
+        xmlrpc_client.ServerProxy.__init__(self, uri, transport, encoding,
                                        verbose, allow_none)
         self.transport = transport
         self._session = None
@@ -135,16 +134,16 @@ class Session(xmlrpclib.ServerProxy):
                         self._login(self.last_login_method,
                                     self.last_login_params)
                     else:
-                        raise xmlrpclib.Fault(401, 'You must log in')
+                        raise xmlrpc_client.Fault(401, 'You must log in')
                 else:
                     return result
-            raise xmlrpclib.Fault(
+            raise xmlrpc_client.Fault(
                 500, 'Tried 3 times to get a valid session, but failed')
 
     def _login(self, method, params):
         result = _parse_result(getattr(self, 'session.%s' % method)(*params))
         if result == _RECONNECT_AND_RETRY:
-            raise xmlrpclib.Fault(
+            raise xmlrpc_client.Fault(
                 500, 'Received SESSION_INVALID when logging in')
         self._session = result
         self.last_login_method = method
@@ -178,17 +177,17 @@ class Session(xmlrpclib.ServerProxy):
         elif name.startswith('login') or name.startswith('slave_local'):
             return lambda *params: self._login(name, params)
         else:
-            return xmlrpclib.ServerProxy.__getattr__(self, name)
+            return xmlrpc_client.ServerProxy.__getattr__(self, name)
 
 
 def _parse_result(result):
-    if type(result) != dict or 'Status' not in result:
-        raise xmlrpclib.Fault(500, 'Missing Status in response from server' + result)
+    if not isinstance(result, dict) or 'Status' not in result:
+        raise xmlrpc_client.Fault(500, 'Missing Status in response from server' + result)
     if result['Status'] == 'Success':
         if 'Value' in result:
             return result['Value']
         else:
-            raise xmlrpclib.Fault(500,
+            raise xmlrpc_client.Fault(500,
                                   'Missing Value in response from server')
     else:
         if 'ErrorDescription' in result:
@@ -199,7 +198,7 @@ def _parse_result(result):
             else:
                 raise Failure(result['ErrorDescription'])
         else:
-            raise xmlrpclib.Fault(
+            raise xmlrpc_client.Fault(
                 500, 'Missing ErrorDescription in response from server')
 
 

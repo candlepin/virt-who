@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, unicode_literals
 # Module for JSON-RPC over STOMP, part of virt-who
 #
 # Copyright (C) 2018 Kevin Howell <khowell@redhat.com>
@@ -15,7 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-
 """
 Minimal implementation of the JSON-RPC specification (http://www.jsonrpc.org/specification) over STOMP to enable a
 client for VDSM.
@@ -24,10 +25,9 @@ There are better developed JSON-RPC libraries for Python available (such as json
 time of writing, only available in EPEL.
 """
 
-from __future__ import unicode_literals
-
 import json
 import ssl
+from six import text_type
 import uuid
 
 from virtwho.virt.vdsm.stomp import StompClient
@@ -44,7 +44,7 @@ class JsonRpcClient(object):
         :param ssl_context: SSL context if using TLS or None.
         :param timeout: timeout for blocking operations.
         """
-        self.id = unicode(uuid.uuid4())
+        self.id = text_type(uuid.uuid4())
         self.stomp = StompClient(host, port, ssl_context=ssl_context, timeout=timeout)
 
     def connect(self):
@@ -74,7 +74,7 @@ class JsonRpcClient(object):
         data_object = {
             'jsonrpc': '2.0',
             'method': method,
-            'id': unicode(uuid.uuid4())
+            'id': text_type(uuid.uuid4())
         }
         if params:
             data_object['params'] = {}

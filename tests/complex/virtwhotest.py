@@ -1,19 +1,23 @@
+from __future__ import print_function
 
 import os
 import signal
 import sys
 import socket
-from Queue import Empty
+from six.moves.queue import Empty
+from shutil import rmtree
 from multiprocessing import Process, Queue
+from mock import patch
 
 import json
-from tempfile import TemporaryFile
+from tempfile import TemporaryFile, mkdtemp
 
 from fake_sam import FakeSam
 
 import virtwho
 import virtwho.parser
 import virtwho.main
+import virtwho.log
 
 # hack to use unittest2 on python <= 2.6, unittest otherwise
 # based on python version
@@ -27,8 +31,8 @@ class TestBase(TestCase):
     @classmethod
     def setUpClass(cls):
         TestCase.setUpClass()
-        virtwho.parser.VIRTWHO_CONF_DIR = '/this/does/not/exist'
-        virtwho.parser.VIRTWHO_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
+        virtwho.config.VW_CONF_DIR = '/this/does/not/exist'
+        virtwho.config.VW_GENERAL_CONF_PATH = '/this/does/not/exist.conf'
         cls.queue = Queue()
         cls.sam = FakeSam(cls.queue)
         cls.sam.start()
@@ -48,6 +52,33 @@ class TestBase(TestCase):
                 break
         self.server.data_version = 0
 
+        # Logger patching
+        self.tmp_dir = mkdtemp()
+        logger_patcher = patch.multiple('virtwho.log.Logger', _log_dir=self.tmp_dir,
+                                         _stream_handler=None, _queue_logger=None)
+        logger_patcher.start()
+        self.addCleanup(logger_patcher.stop)
+        self.addCleanup(rmtree, self.tmp_dir)
+
+        log_patcher = patch.multiple('virtwho.log', DEFAULT_LOG_DIR=self.tmp_dir)
+        log_patcher.start()
+        self.addCleanup(log_patcher.stop)
+
+        rhsm_log_patcher = patch('rhsm.connection.log')
+        rhsm_log_patcher.start()
+        self.addCleanup(rhsm_log_patcher.stop)
+
+        # Reduce minimum send interval to allow for faster test completion
+        minimum_patcher = patch('virtwho.config.MinimumSendInterval', 2)
+        minimum_patcher.start()
+        self.addCleanup(minimum_patcher.stop)
+
+        # Mock PIDFILE (so we can run tests as an unprivledged user)
+        pid_file_name = self.tmp_dir + 'virt-who.pid'
+        pid_file_patcher = patch('virtwho.main.PIDFILE', pid_file_name)
+        pid_file_patcher.start()
+        self.addCleanup(pid_file_patcher.stop)
+
     def tearDown(self):
         self.process.terminate()
         self.process.join()
@@ -66,14 +97,11 @@ class TestBase(TestCase):
         virt-who process (or None if `background` is True) and stdout is
         stdout from the process (or None if `grab_stdout` is False).
         '''
-        old_minimum_send_interval = virtwho.config.MinimumSendInterval
-        virtwho.config.MinimumSendInterval = 2
-        virtwho.log.Logger._stream_handler = None
-        virtwho.log.Logger._queue_logger = None
+
         old_stdout = None
         if grab_stdout:
             old_stdout = sys.stdout
-            sys.stdout = TemporaryFile()
+            sys.stdout = TemporaryFile(mode='w+')
         sys.argv = ["virt-who"] + args
         code = None
         data = None
@@ -90,8 +118,6 @@ class TestBase(TestCase):
             data = sys.stdout.read()
             sys.stdout.close()
             sys.stdout = old_stdout
-
-        virtwho.config.MinimumSendInterval = old_minimum_send_interval
 
         return code, data
 
@@ -116,7 +142,7 @@ class VirtBackendTestMixin(object):
         self.assertEqual(len(diff), 0, "Hosts %s reported but not expected" % ",".join(diff))
         diff = set(expected.keys()) - set(reported.keys())
         self.assertEqual(len(diff), 0, "Hosts %s expected but not reported" % ",".join(diff))
-        for host, excepted_guests in expected.items():
+        for host, excepted_guests in list(expected.items()):
             reported_guests = reported[host]
             expected_guests_uuids = [guest['guestId'] for guest in excepted_guests]
             reported_guests_uuids = [guest['guestId'] for guest in reported_guests]
@@ -257,10 +283,10 @@ class VirtBackendTestMixin(object):
         """
         self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
         self.addCleanup(self.stop_virtwho)
-        self.assertEquals(self.process.is_alive(), True)
+        self.assertEqual(self.process.is_alive(), True)
         os.kill(self.process.pid, signal.SIGTERM)
         self.process.join(timeout=3)
-        self.assertEquals(self.process.is_alive(), False)
+        self.assertEqual(self.process.is_alive(), False)
 
     def test_reload_on_SIGHUP(self):
         """
@@ -285,7 +311,7 @@ proxy_hostname =
             rhsm_conf_file.flush()
         self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
         self.addCleanup(self.stop_virtwho)
-        self.assertEquals(self.process.is_alive(), True)
+        self.assertEqual(self.process.is_alive(), True)
 
         # We expect the queue to be empty until we the appropriate
         # configuration file is added
@@ -298,4 +324,4 @@ proxy_hostname =
             rhsm_conf_file.write(good_rhsm_conf)
         os.kill(self.process.pid, signal.SIGHUP)
         self.wait_for_assoc(4)
-        self.assertEquals(self.process.is_alive(), True)
+        self.assertEqual(self.process.is_alive(), True)

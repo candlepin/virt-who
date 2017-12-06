@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Basic module for tests,
 
@@ -101,7 +102,7 @@ class ConfigSectionValidationTests(object):
         excluding = excluding - including
 
         out = {}
-        for key in values.keys():
+        for key in list(values.keys()):
             if key in including or not including:
                 out[key] = values[key]
             if key in out and (key in excluding or (including and key not in including)):

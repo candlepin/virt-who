@@ -1,3 +1,4 @@
+from __future__ import print_function, absolute_import
 """
 Test for Satellite module, part of virt-who
 
@@ -24,8 +25,8 @@ import threading
 import tempfile
 import pickle
 import shutil
-import xmlrpclib
-from SimpleXMLRPCServer import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+from six.moves import xmlrpc_client
+from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from binascii import hexlify
 from mock import Mock, MagicMock, patch
 
@@ -90,7 +91,7 @@ class FakeSatellite(SimpleXMLRPCServer):
 
     def virt_notify(self, system_id, plan):
         if system_id != TEST_SYSTEM_ID:
-            raise xmlrpclib.Fault(-9, "Wrong system id")
+            raise xmlrpc_client.Fault(-9, "Wrong system id")
 
         if plan[0] != [0, 'exists', 'system', {'uuid': '0000000000000000', 'identity': 'host'}]:
             raise Exception("Wrong value for virt_notify: invalid format of first entry")
@@ -119,7 +120,7 @@ class FakeSatellite(SimpleXMLRPCServer):
                 'id': 42
             }
         else:
-            raise xmlrpclib.Fault(faultCode=-210, faultString='Not found')
+            raise xmlrpc_client.Fault(faultCode=-210, faultString='Not found')
 
     def create_channel(self, session, label, name, summary, archLabel, parentLabel):
         assert session == self.AUTH_TOKEN
@@ -336,6 +337,14 @@ class TestSatellite(TestBase):
 
 
 class TestSatelliteConfig(TestBase):
+
+    def setUp(self):
+        self.config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.config_dir)
+        conf_dir_patch = patch('virtwho.config.VW_CONF_DIR', self.config_dir)
+        conf_dir_patch.start()
+        self.addCleanup(conf_dir_patch.stop)
+
     def test_satellite_config_env(self):
         os.environ = {
             "VIRTWHO_SATELLITE": '1',
@@ -373,10 +382,8 @@ class TestSatelliteConfig(TestBase):
         self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_file(self):
-        config_dir = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, config_dir)
         # Username and password are required for a valid sat5 destination
-        with open(os.path.join(config_dir, "test.conf"), "w") as f:
+        with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write("""
 [test]
 type=libvirt
@@ -384,7 +391,7 @@ sat_server=sat.example.com
 sat_username=sat_username
 sat_password=sat_password
 """)
-        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        conf = parse_file(os.path.join(self.config_dir, "test.conf"))
         effective_config = EffectiveConfig()
         conf_values = conf.pop("test")
         effective_config["test"] = ConfigSection.from_dict(

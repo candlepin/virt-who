@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, print_function
 import time
 from threading import Event
 
@@ -12,7 +14,7 @@ try:
     from collections import OrderedDict
 except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from util import OrderedDict
+    from .util import OrderedDict
 
 
 class ReloadRequest(Exception):

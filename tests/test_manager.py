@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of subscription managers.
 
@@ -139,7 +140,7 @@ class TestSatellite(TestManager):
         manager = Manager.from_config(self.logger, config)
         self.assertRaises(ManagerError, manager.sendVirtGuests, self.domain_report)
 
-    @patch("xmlrpclib.ServerProxy")
+    @patch("six.moves.xmlrpc_client.ServerProxy")
     def test_hypervisorCheckIn(self, server):
         options = MagicMock()
         server.return_value.registration.new_system_user_pass.return_value = {

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for communication with vCenter/ESX, part of virt-who
 
@@ -19,21 +21,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import sys
 import suds
 import suds.transport
 import suds.client
 import requests
 import errno
 import stat
-from StringIO import StringIO
+from six import StringIO
+import six
 import io
 import logging
 from time import time
-from urllib2 import URLError
+from six.moves.urllib.error import URLError
 import socket
 from collections import defaultdict
-from httplib import HTTPException
+from six.moves.http_client import HTTPException
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
@@ -65,6 +67,7 @@ class FileAdapter(requests.adapters.BaseAdapter):
             resp_stat = os.fstat(resp.raw.fileno())
             if stat.S_ISREG(resp_stat.st_mode):
                 resp.headers['Content-Length'] = resp_stat.st_size
+            resp.status_code = requests.codes.ok
         return resp
 
     def close(self):
@@ -86,7 +89,7 @@ class RequestsTransport(suds.transport.Transport):
     def open(self, request):
         resp = self._session.get(request.url, headers=request.headers, verify=False)
         resp.raise_for_status()
-        return StringIO(resp.content)
+        return StringIO(resp.content.decode('utf-8', 'ignore'))
 
     def send(self, request):
         resp = self._session.post(
@@ -119,6 +122,7 @@ class Esx(virt.Virt):
         self.url = config['server']
         self.username = config['username']
         self.password = config['password']
+
         self.config = config
 
         self.filter = None
@@ -244,7 +248,7 @@ class Esx(virt.Virt):
 
     def getHostGuestMapping(self):
         mapping = {'hypervisors': []}
-        for host_id, host in self.hosts.items():
+        for host_id, host in list(self.hosts.items()):
             parent = host['parent'].value
             if self.config['exclude_host_parents'] is not None and parent in self.config['exclude_host_parents']:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
@@ -306,6 +310,29 @@ class Esx(virt.Virt):
             mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
 
+    @staticmethod
+    def _to_unicode(value):
+        try:
+            return six.text_type(value, 'utf-8')
+        except TypeError:
+            return value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = self._to_unicode(value)
+
+    @property
+    def username(self):
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = self._to_unicode(value)
+
     def login(self):
         """
         Log into ESX
@@ -341,8 +368,8 @@ class Esx(virt.Virt):
             logging.getLogger('suds.client').setLevel(logging.CRITICAL)
             self.client.service.Login(
                 _this=self.sc.sessionManager,
-                userName=unicode(self.username, 'utf-8'),
-                password=unicode(self.password, 'utf-8')
+                userName=self.username,
+                password=self.password
             )
             logging.getLogger('suds.client').setLevel(logging.ERROR)
         except requests.RequestException as e:
@@ -464,7 +491,7 @@ class Esx(virt.Virt):
         ts.name = name
         ts.type = type
         ts.path = path
-        if len(selectSet) > 0 and isinstance(selectSet[0], basestring):
+        if len(selectSet) > 0 and isinstance(selectSet[0], str):
             selectSet = self.createSelectionSpec(selectSet)
         ts.selectSet = selectSet
         return ts

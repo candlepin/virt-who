@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import sys
 import shutil
@@ -158,6 +159,13 @@ class TestSubscriptionManagerConfig(TestBase):
         cls.uep_connection = patch('rhsm.connection.UEPConnection', cls.sm.connection)
         cls.uep_connection.start()
         cls.sm.cert_uuid = 123
+
+    def setUp(self):
+        self.config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.config_dir)
+        conf_dir_patch = patch('virtwho.config.VW_CONF_DIR', self.config_dir)
+        conf_dir_patch.start()
+        self.addCleanup(conf_dir_patch.stop)
 
     @classmethod
     def tearDownClass(cls):

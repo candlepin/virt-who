@@ -487,7 +487,7 @@ class ConfigSection(collections.MutableMapping):
         self._required_keys = set()
         self._missing_required_keys = set()
         # Those values which should not be displayed
-        self._restricted = set(['virttype', 'sm_type'])
+        self._restricted = set(['virt_type', 'sm_type'])
 
         # Add section defaults
         for key, value in self.defaults.items():
@@ -743,7 +743,7 @@ class ConfigSection(collections.MutableMapping):
 
     @classmethod
     def from_dict(cls, values, section_name, wrapper):
-        virt_type = values.get('virttype', None) or values.get('type')
+        virt_type = values.get('virt_type', None) or values.get('type')
         sub_cls = cls.class_for_type(virt_type)
         section = sub_cls(section_name, wrapper)
         section.update(**values)
@@ -904,10 +904,10 @@ class VirtConfigSection(ConfigSection):
         super(VirtConfigSection, self).__setitem__(key, value)
 
     def _pre_validate(self):
-        # Used to allow virttype to be provided for type (if type was not given)
-        if 'virttype' in self._values and 'type' not in self._values:
-            self['type'] = self._values['virttype']
-            self.remove_key('virttype')
+        # Used to allow virt_type to be provided for type (if type was not given)
+        if 'virt_type' in self._values and 'type' not in self._values:
+            self['type'] = self._values['virt_type']
+            self.remove_key('virt_type')
         if 'sm_type' in self._values:
             if self._values['sm_type'] == SAT5:
                 self._required_keys.update(Satellite5DestinationInfo.required_kwargs)
@@ -1149,7 +1149,7 @@ DEFAULTS = {
     VW_GLOBAL: GlobalSection.get_defaults(),
     VW_ENV_CLI_SECTION_NAME: {
         'sm_type': 'sam',
-        'virttype': 'libvirt',
+        'virt_type': 'libvirt',
     },
 }
 

@@ -70,7 +70,7 @@ class StoreGroupArgument(Action):
         virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]
         """
         options = vars(namespace)
-        virt_type = options['virtType']
+        virt_type = options['virt_type']
         if virt_type is not None:
             # When virt_type was specified before this argument, then
             # group argument has to match the virt type
@@ -100,7 +100,7 @@ class StoreVirtType(Action):
 
     def __call__(self, parser, namespace, values, option_string=None):
         options = vars(namespace)
-        virt_type = options['virtType']
+        virt_type = options['virt_type']
         if virt_type is not None:
             raise OptionError("Error: setting virtualization backend to: %s. It is already set to: %s." %
                               (self.const, virt_type))
@@ -131,7 +131,7 @@ def check_argument_consistency(cli_options):
     # These options can be required
     REQUIRED_OPTIONS = ['owner', 'env', 'server', 'username']
 
-    virt_type = cli_options.get('virtType')
+    virt_type = cli_options.get('virt_type')
     sm_type = cli_options.get('sm_type')
 
     if sm_type == 'sam':
@@ -199,12 +199,12 @@ def read_config_env_variables():
         "VIRTWHO_SATELLITE6": ("sm_type", store_const, SAT6),
         "VIRTWHO_SATELLITE5": ("sm_type", store_const, SAT5),
         "VIRTWHO_SATELLITE": ("sm_type", store_const, SAT5),
-        "VIRTWHO_LIBVIRT": ("virtType", store_const, "libvirt"),
-        "VIRTWHO_VDSM": ("virtType", store_const, "vdsm"),
-        "VIRTWHO_ESX": ("virtType", store_const, "esx"),
-        "VIRTWHO_XEN": ("virtType", store_const, "xen"),
-        "VIRTWHO_RHEVM": ("virtType", store_const, "rhevm"),
-        "VIRTWHO_HYPERV": ("virtType", store_const, "hyperv"),
+        "VIRTWHO_LIBVIRT": ("virt_type", store_const, "libvirt"),
+        "VIRTWHO_VDSM": ("virt_type", store_const, "vdsm"),
+        "VIRTWHO_ESX": ("virt_type", store_const, "esx"),
+        "VIRTWHO_XEN": ("virt_type", store_const, "xen"),
+        "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
+        "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
         "VIRTWHO_INTERVAL": ("interval", store_value),
         "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
     }
@@ -271,8 +271,8 @@ def read_vm_backend_env_variables(env_vars):
         errors.append(("warning", "Env"))
         VM_DISPATCHER = {}
 
-    if env_vars.get('virtType') in VM_DISPATCHER.keys():
-        virt_type = env_vars['virtType']
+    if env_vars.get('virt_type') in VM_DISPATCHER.keys():
+        virt_type = env_vars['virt_type']
         try:
             keys = ['owner', 'env', 'server', 'username']
             for key in keys:
@@ -283,7 +283,7 @@ def read_vm_backend_env_variables(env_vars):
                     env_vars[key] = val
         except OptionError as err:
             errors.append(("error", "Error: reading environment variables for virt type: %s: %s" % (
-                env_vars.get('virtType'), err)))
+                env_vars.get('virt_type'), err)))
         else:
             if len(env_vars.get('password', '')) == 0:
                 env_vars['password'] = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
@@ -335,17 +335,17 @@ def parse_cli_arguments():
         title="Virtualization backend",
         description="Choose virtualization backend that should be used to gather host/guest associations"
     )
-    virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virtType", const="libvirt",
+    virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virt_type", const="libvirt",
                             default=None, help="[Deprecated] Use libvirt to list virtual guests")
-    virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virtType", const="vdsm",
+    virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virt_type", const="vdsm",
                             help="[Deprecated] Use vdsm to list virtual guests")
-    virt_group.add_argument("--esx", action=StoreVirtType, dest="virtType", const="esx",
+    virt_group.add_argument("--esx", action=StoreVirtType, dest="virt_type", const="esx",
                             help="[Deprecated] Register ESX machines using vCenter")
-    virt_group.add_argument("--xen", action=StoreVirtType, dest="virtType", const="xen",
+    virt_group.add_argument("--xen", action=StoreVirtType, dest="virt_type", const="xen",
                             help="[Deprecated] Register XEN machines using XenServer")
-    virt_group.add_argument("--rhevm", action=StoreVirtType, dest="virtType", const="rhevm",
+    virt_group.add_argument("--rhevm", action=StoreVirtType, dest="virt_type", const="rhevm",
                             help="[Deprecated] Register guests using RHEV-M")
-    virt_group.add_argument("--hyperv", action=StoreVirtType, dest="virtType", const="hyperv",
+    virt_group.add_argument("--hyperv", action=StoreVirtType, dest="virt_type", const="hyperv",
                             help="[Deprecated] Register guests using Hyper-V")
 
     manager_group = parser.add_argument_group(
@@ -474,7 +474,7 @@ def parse_options():
     """
 
     # These options are deprecated
-    DEPRECATED_OPTIONS = ['log_per_config', 'log_dir', 'log_file', 'reporter_id', 'virtType',
+    DEPRECATED_OPTIONS = ['log_per_config', 'log_dir', 'log_file', 'reporter_id', 'virt_type',
                           'owner', 'env', 'server', 'username', 'password',
                           'sat_server', 'sat_username', 'sat_password',  'sm_type']
     VIRT_TYPE_OPTIONS = ['owner', 'env', 'server', 'username', 'password']
@@ -500,10 +500,10 @@ def parse_options():
     for option in DEPRECATED_OPTIONS:
         display_option = option
         if option in cli_options and not cli_options[option] == defaults[option]:
-            if option == 'virtType' or option == 'sm_type':
+            if option == 'virt_type' or option == 'sm_type':
                 display_option = cli_options[option]
             elif any(option in s for s in VIRT_TYPE_OPTIONS):
-                display_option = '%s-%s' % (cli_options['virtType'], option)
+                display_option = '%s-%s' % (cli_options['virt_type'], option)
             elif option in SAT_OPTION_MAP:
                 display_option = SAT_OPTION_MAP[option]
             used_deprecated_cli_options.append(display_option)

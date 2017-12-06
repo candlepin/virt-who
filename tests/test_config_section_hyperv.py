@@ -45,3 +45,7 @@ class TestHyperVConfigSection(ConfigSectionValidationTests, TestBase):
         'password',
     ])
 
+    DEFAULTS = {
+        'hypervisor_id': 'uuid',
+        'sm_type': 'sam',
+    }

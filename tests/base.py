@@ -74,8 +74,8 @@ class ConfigSectionValidationTests(object):
     # should be a list of the keys which are required
     REQUIRED_KEYS = set()
 
-    # Those keys that should have a default
-    KEYS_WITH_DEFAULTS = set()
+    # Those keys that should have a default (along with their expected default value)
+    DEFAULTS = {}
 
     def _modified_dict(self, values, excluding=None, including=None):
         """
@@ -137,7 +137,7 @@ class ConfigSectionValidationTests(object):
         """
         config = self.CONFIG_CLASS("test", None)
         # A sorted list of keys that are required, but have no default
-        target_keys = sorted(list(self.REQUIRED_KEYS - self.KEYS_WITH_DEFAULTS))
+        target_keys = sorted(list(self.REQUIRED_KEYS - set(self.DEFAULTS.keys())))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 
@@ -155,7 +155,7 @@ class ConfigSectionValidationTests(object):
         NOTE: This does not account for modifications of default values made during validation.
         """
         config = self.CONFIG_CLASS("test", None)
-        target_keys = sorted(list(self.REQUIRED_KEYS & self.KEYS_WITH_DEFAULTS))
+        target_keys = sorted(list(self.REQUIRED_KEYS & set(self.DEFAULTS.keys())))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 
@@ -165,4 +165,4 @@ class ConfigSectionValidationTests(object):
 
         for key in target_keys:
             self.assertIn(key, config, "Key '%s' is missing from config")
-            self.assertEqual(config[key], config.defaults[key])
+            self.assertEqual(config[key], self.DEFAULTS[key])

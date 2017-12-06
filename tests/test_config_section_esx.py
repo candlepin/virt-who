@@ -21,6 +21,7 @@ Test validating of EsxConfigSection
 """
 
 from base import ConfigSectionValidationTests, TestBase
+from virtwho.parser import SAT6
 from virtwho.virt.esx.esx import EsxConfigSection
 
 
@@ -47,8 +48,11 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
         'password',
     ])
 
-    KEYS_WITH_DEFAULTS = set([
-        'filter_host_parents',
-        'exclude_host_parents'
-    ])
+    DEFAULTS = {
+        'filter_host_parents': None,
+        'exclude_host_parents': None,
+        'hypervisor_id': 'uuid',
+        'simplified_vim': True,
+        'sm_type': SAT6,
+    }
 

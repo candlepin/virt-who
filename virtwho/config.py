@@ -1063,7 +1063,7 @@ class VirtConfigSection(ConfigSection):
         """
         result = None
         sm_type = self._values['sm_type']
-        virt_type = self._values['type']
+        virt_type = self._values.get('type')
         if sm_type == 'sam' and (
                 (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
                 (virt_type == 'libvirt' and 'server' in self._values)):
@@ -1080,7 +1080,7 @@ class VirtConfigSection(ConfigSection):
         """
         result = None
         sm_type = self._values['sm_type']
-        virt_type = self._values['type']
+        virt_type = self._values.get('type')
         if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
             if key not in self:
                 result = (

@@ -47,7 +47,7 @@ GUEST_STATE_TO_SATELLITE = {
 
 
 class Satellite(Manager):
-    smType = "satellite"
+    sm_type = "satellite"
     """ Class for interacting with satellite (RHN Classic). """
     HYPERVISOR_SYSTEMID_FILE = "/var/lib/virt-who/hypervisor-systemid-%s"
 

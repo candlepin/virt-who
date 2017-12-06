@@ -58,7 +58,7 @@ class NamedOptions(object):
 
 
 class SubscriptionManager(Manager):
-    smType = "sam"
+    sm_type = "sam"
 
     """ Class for interacting subscription-manager. """
     def __init__(self, logger, options):

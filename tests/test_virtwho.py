@@ -219,13 +219,11 @@ class TestOptions(TestBase):
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
-            if virt == 'esx':
-                # ESX requires env and owner. Thus the env/cmdline is dropped
-                self.assertNotIn(VW_ENV_CLI_SECTION_NAME, options)
-                continue
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             if virt == 'rhevm':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
+            elif virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
@@ -247,6 +245,8 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             if virt == 'rhevm':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
+            elif virt == 'esx':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')

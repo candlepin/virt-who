@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.1
+Version:        0.21.2
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -134,6 +134,12 @@ fi
 
 
 %changelog
+* Thu Dec 07 2017 Christopher Snyder <csnyder@redhat.com> 0.21.2-1
+- 1510310: Ensure that owner and env are required where necessary
+  (csnyder@redhat.com)
+- 1512778: ESX should require username, password, and server values
+  (csnyder@redhat.com)
+
 * Tue Nov 28 2017 Kevin Howell <khowell@redhat.com> 0.21.1-1
 - 1511308: Only ESX supports: exclude_host_parents and filter_host_parents.
   (jhnidek@redhat.com)

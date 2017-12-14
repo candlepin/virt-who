@@ -169,8 +169,7 @@ def main():
         signal.signal(signal.SIGHUP, reload)
         signal.signal(signal.SIGTERM, atexit_fn)
 
-        executor.logger = logger = log.getLogger(name='main', config=None,
-                                                 queue=True)
+        executor.logger = logger = log.getLogger(name='main', queue=True)
 
         sd_notify("READY=1\nMAINPID=%d" % os.getpid())
         while True:

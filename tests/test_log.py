@@ -85,27 +85,22 @@ class TestLog(TestBase):
         mockQueueLogger = Mock(wraps=queueLogger)
         getQueueLogger.return_value = mockQueueLogger
 
-        config = Mock()
-        config.name = 'test'
-        config.log_file = 'test.log'
-        config.log_dir = '/test/'
-
         options = {
             'global':{
                 'debug': False,
                 'background': True,
                 'log_per_config': True,
-                'log_dir': '',
-                'log_file': '',
+                'log_dir': '/test/',
+                'log_file': 'test.log',
             },
         }
         log.init(options)
-        test_logger = log.getLogger(name='test', config=config)
+        test_logger = log.getLogger(config=options)
 
-        self.assertTrue(test_logger.name == 'virtwho.test')
+        self.assertTrue(test_logger.name == 'virtwho.test_log')
         self.assertTrue(len(test_logger.handlers) == 1)
         self.assertTrue(len(queueLogger.logger.handlers) == 1)
-        getFileHandler.assert_called_with(name=test_logger.name, config=config)
+        getFileHandler.assert_called_with(name=test_logger.name, config=options)
 
     @patch('os.path.isdir')
     @patch('logging.FileHandler._open')

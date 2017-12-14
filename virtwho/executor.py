@@ -58,8 +58,7 @@ class Executor(object):
         virts = []
         for name, config in self.dest_to_source_mapper.configs:
             try:
-                logger = log.getLogger(config=config)
-                virt = Virt.from_config(logger, config, self.datastore,
+                virt = Virt.from_config(self.logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
                                         interval=self.options[VW_GLOBAL]['interval'],
                                         oneshot=self.options[VW_GLOBAL]['oneshot'])

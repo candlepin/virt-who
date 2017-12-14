@@ -192,8 +192,8 @@ class Logger(object):
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):
         if name is None:
-            # Remove slashes and periods in the config.name (as that could mess logging up
-            name = config.name.replace('.', '').replace('/', '_') if config else 'main'
+            # Remove slashes and periods in the log_file (as that could mess logging up
+            name = config['global']['log_file'].replace('.', '_').replace('/', '_') if config else 'main'
         virt_who_logger_name = 'virtwho.' + name  # The name of the logger instance
 
         try:
@@ -262,7 +262,7 @@ class Logger(object):
     @classmethod
     def get_file_handler(cls, name, config=None):
         if cls._log_per_config:
-            log_file = getattr(config, 'log_file', None) or (name + '.log')
+            log_file = name + '.log'
         else:
             log_file = cls._log_file
 

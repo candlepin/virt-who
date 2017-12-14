@@ -36,7 +36,7 @@ except ImportError:
     from util import OrderedDict
 
 # Module-level logger
-logger = log.getLogger('config', queue=False)
+logger = log.getLogger(name='config', queue=False)
 
 _effective_config = None
 
@@ -1346,9 +1346,11 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     # Validate GlobalSection before use.
     effective_config[VW_GLOBAL].validate()
 
+    # Close existing logger
+    log.closeLogger(logger)
     # Initialize logger, the creation of this object is the earliest it can be done
     log.init(effective_config)
-    logger = log.getLogger('config', queue=False)
+    logger = log.getLogger(config=effective_config, queue=False)
 
     # Create the effective env / cli config from those values we've sorted out as non_global
     env_cli_sources = [env_non_globals, cli_non_globals]

@@ -494,7 +494,7 @@ def parse_options():
     # Ensure validation errors during effective config creation are logged
     errors.extend(effective_config.validation_messages)
 
-    logger = log.getLogger("init", queue=False)
+    logger = log.getLogger(config=effective_config, queue=False)
 
     used_deprecated_cli_options = []
     for option in DEPRECATED_OPTIONS:

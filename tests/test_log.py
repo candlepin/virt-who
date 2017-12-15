@@ -61,7 +61,6 @@ class TestLog(TestBase):
         conf_values = {
             'global': {
                 'debug': False,
-                'background': True,
                 'log_file': log.DEFAULT_LOG_FILE,
                 'log_dir': log.DEFAULT_LOG_DIR,
                 'log_per_config': False
@@ -74,7 +73,7 @@ class TestLog(TestBase):
         self.assertTrue(len(main_logger.handlers) == 1)
         self.assertTrue(isinstance(main_logger.handlers[0], log.QueueHandler))
         queue_handlers = queueLogger.logger.handlers
-        self.assertTrue(len(queue_handlers) == 1)
+        self.assertTrue(len(queue_handlers) == 2)
         self.assertEquals(queue_handlers[0].baseFilename, '%s/%s' % (log.DEFAULT_LOG_DIR, log.DEFAULT_LOG_FILE))
 
     @patch('virtwho.log.Logger.get_queue_logger')
@@ -88,7 +87,6 @@ class TestLog(TestBase):
         options = {
             'global':{
                 'debug': False,
-                'background': True,
                 'log_per_config': True,
                 'log_dir': '/test/',
                 'log_file': 'test.log',
@@ -99,7 +97,7 @@ class TestLog(TestBase):
 
         self.assertTrue(test_logger.name == 'virtwho.test_log')
         self.assertTrue(len(test_logger.handlers) == 1)
-        self.assertTrue(len(queueLogger.logger.handlers) == 1)
+        self.assertTrue(len(queueLogger.logger.handlers) == 2)
         getFileHandler.assert_called_with(name=test_logger.name, config=options)
 
     @patch('os.path.isdir')

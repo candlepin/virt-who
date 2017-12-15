@@ -30,8 +30,6 @@ set -a
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 set +a
 
-export VIRTWHO_BACKGROUND=1
-
 lockfile=/var/lock/subsys/virt-who
 
 start() {

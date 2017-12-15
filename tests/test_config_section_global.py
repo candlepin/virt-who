@@ -158,7 +158,6 @@ class TestGlobalConfigSection(TestBase):
         #     ),
         #     ('warning', 'Value for reporter_id not set, using default'),
         #     ('warning', 'Value for log_dir not set, using default'),
-        #     ('warning', 'background must be a valid boolean, using default. See man virt-who-config for more info')
         # ]
         self.assertGreater(len(validate_messages), 0)
         # self.assertEqual(expected_results, validate_messages)

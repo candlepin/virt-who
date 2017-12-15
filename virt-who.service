@@ -7,7 +7,6 @@ Type=notify
 PIDFile=/var/run/virt-who.pid
 ExecStart=/usr/bin/virt-who
 EnvironmentFile=-/etc/sysconfig/virt-who
-Environment=VIRTWHO_BACKGROUND=0
 TimeoutStopSec=5
 
 [Install]

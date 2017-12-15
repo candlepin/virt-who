@@ -172,11 +172,9 @@ class Logger(object):
     _level = logging.DEBUG
     _rhsm_level = logging.WARN
     _queue_logger = None
-    _background = False
 
     @classmethod
-    def initialize(cls, log_dir=None, log_file=None, log_per_config=None,
-                   debug=None, background=None):
+    def initialize(cls, log_dir=None, log_file=None, log_per_config=None, debug=None):
         # Set defaults if necessary
         if log_dir:
             cls._log_dir = log_dir
@@ -187,7 +185,6 @@ class Logger(object):
         cls._level = logging.DEBUG if debug else logging.INFO
         # We don't want INFO message from RHSM in non-debug mode
         cls._rhsm_level = logging.DEBUG if debug else logging.WARN
-        cls._background = bool(background)
 
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):
@@ -228,9 +225,8 @@ class Logger(object):
             # we're running under systemd, log to journal
             journal_handler = cls.get_journal_handler()
         else:
-            # we're not running under systemd, set up streamHandler if we're not running in the background
-            if not cls._background:
-                stream_handler = cls.get_stream_handler(name)
+            # we're not running under systemd, set up streamHandler
+            stream_handler = cls.get_stream_handler(name)
 
         if queue:
             queue_logger = cls.get_queue_logger()
@@ -318,9 +314,8 @@ def init(config):
     log_file = config['global']['log_file']
     log_per_config = config['global']['log_per_config']
     debug = config['global']['debug']
-    background = config['global']['background']
     return Logger.initialize(log_dir=log_dir, log_file=log_file, log_per_config=log_per_config,
-                             debug=debug, background=background)
+                             debug=debug)
 
 
 def getLogger(name=None, config=None, queue=True):
@@ -328,10 +323,6 @@ def getLogger(name=None, config=None, queue=True):
     This method does the setup necessary to create and connect both
     the main logger instance used from virtwho as well as loggers for
     all the connected virt backends
-
-    If virt-who is running in background mode, the double fork closes all the
-    filedescriptiors, disrupting communication to queue logger. So the
-    queue logger is created after the initialization phase (after the fork).
 
     First the logger is created without the queue and it's added later on
     (after the fork).

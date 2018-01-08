@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.2
+Version:        0.21.3
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -134,6 +134,9 @@ fi
 
 
 %changelog
+* Mon Jan 08 2018 Christopher Snyder <csnyder@redhat.com> 0.21.3-1
+- 1523548: Options log_dir and log_file are not ignored (jhnidek@redhat.com)
+
 * Thu Dec 07 2017 Christopher Snyder <csnyder@redhat.com> 0.21.2-1
 - 1510310: Ensure that owner and env are required where necessary
   (csnyder@redhat.com)

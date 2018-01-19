@@ -24,6 +24,7 @@ from base import TestBase
 
 from virtwho.virt.vdsm import Vdsm
 from virtwho.virt.vdsm.vdsm import VdsmConfigSection
+from virtwho.virt.virt import Guest
 
 
 class TestVdsm(TestBase):
@@ -37,9 +38,10 @@ class TestVdsm(TestBase):
     def setUp(self):
         config = self.create_config('test', None, type='vdsm')
 
-        def fakeSecureConnect(self):
+        def fake_secure_connect(self):
             return MagicMock()
-        Vdsm._secureConnect = fakeSecureConnect
+
+        Vdsm._secure_connect = fake_secure_connect
         self.vdsm = Vdsm(self.logger, config, None)
         self.vdsm.prepare()
 
@@ -64,4 +66,6 @@ class TestVdsm(TestBase):
         }
         domains = self.vdsm.listDomains()
         self.assertEquals([d.uuid for d in domains], ['1', '2', '3'])
+        self.assertEquals([d.state for d in domains], [Guest.STATE_SHUTOFF, Guest.STATE_RUNNING, Guest.STATE_RUNNING])
+        self.assertEqual([d.virtWhoType for d in domains], ['vdsm', 'vdsm', 'vdsm'])
         self.vdsm.server.list.assert_called_once_with(True)

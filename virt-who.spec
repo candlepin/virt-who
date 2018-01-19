@@ -34,6 +34,7 @@ Requires:       m2crypto
 Requires:       python-requests
 # python-argparse is required for Python 2.6 on EL6
 %{?el6:Requires: python-argparse}
+Requires:       openssl
 
 %if %{use_systemd}
 Requires: systemd-python

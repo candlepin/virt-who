@@ -48,6 +48,7 @@ VDSM_STATE_TO_GUEST_STATE = {
     'Powering up': Guest.STATE_SHUTOFF
 }
 
+
 class VdsmConfigSection(VirtConfigSection):
     """
     This class is used for validation of vdsm virtualization backend
@@ -62,6 +63,9 @@ class VdsmConfigSection(VirtConfigSection):
 
 
 class Vdsm(Virt):
+    """
+    Class for interacting with vdsmd daemon.
+    """
     CONFIG_TYPE = "vdsm"
 
     def __init__(self, logger, config, dest, terminate_event=None,
@@ -70,14 +74,15 @@ class Vdsm(Virt):
                                    terminate_event=terminate_event,
                                    interval=interval,
                                    oneshot=oneshot)
-        self._readConfig("/etc/vdsm/vdsm.conf")
+        self._read_config("/etc/vdsm/vdsm.conf")
+        self.server = None
 
     def isHypervisor(self):
         return False
 
-    def _readConfig(self, configName):
+    def _read_config(self, config_name):
         parser = SafeConfigParser()
-        parser.read(configName)
+        parser.read(config_name)
         try:
             self.ssl = parser.get("vars", "ssl").lower() in ["1", "true"]
         except (NoSectionError, NoOptionError):
@@ -95,37 +100,37 @@ class Vdsm(Virt):
         except (NoSectionError, NoOptionError):
             self.management_port = '54321'
 
-    def _getLocalVdsName(self, tsPath):
+    def _get_local_vds_name(self, trusted_store_path):
         p = subprocess.Popen([
             '/usr/bin/openssl', 'x509', '-noout', '-subject', '-in',
-            '%s/certs/vdsmcert.pem' % tsPath], stdout=subprocess.PIPE, close_fds=True)
+            '%s/certs/vdsmcert.pem' % trusted_store_path], stdout=subprocess.PIPE, close_fds=True)
         out, err = p.communicate()
         if p.returncode != 0:
             return '0'
         return re.search('/CN=([^/$\n]+)', out).group(1)
 
-    def _secureConnect(self):
-        addr = self._getLocalVdsName(self.trust_store_path)
+    def _secure_connect(self):
+        addr = self._get_local_vds_name(self.trust_store_path)
 
         from M2Crypto.m2xmlrpclib import SSL_Transport
         from M2Crypto import SSL
 
-        KEYFILE = self.trust_store_path + '/keys/vdsmkey.pem'
-        CERTFILE = self.trust_store_path + '/certs/vdsmcert.pem'
-        CACERT = self.trust_store_path + '/certs/cacert.pem'
+        key_file = self.trust_store_path + '/keys/vdsmkey.pem'
+        cert_file = self.trust_store_path + '/certs/vdsmcert.pem'
+        ca_cert = self.trust_store_path + '/certs/cacert.pem'
 
         ctx = SSL.Context()
 
         ctx.set_verify(SSL.verify_peer | SSL.verify_fail_if_no_peer_cert, 16)
-        ctx.load_verify_locations(CACERT)
-        ctx.load_cert(CERTFILE, KEYFILE)
+        ctx.load_verify_locations(ca_cert)
+        ctx.load_cert(cert_file, key_file)
 
         return xmlrpclib.Server('https://%s:%s' % (addr, self.management_port), SSL_Transport(ctx))
 
     def connect(self):
         if self.trust_store_path:
             try:
-                self.server = self._secureConnect()
+                self.server = self._secure_connect()
                 return
             except Exception as e:
                 self.logger.exception(e)
@@ -143,5 +148,5 @@ class Vdsm(Virt):
         else:
             for vm in response['vmList']:
                 status = VDSM_STATE_TO_GUEST_STATE.get(vm['status'], Guest.STATE_UNKNOWN)
-                domains.append(Guest(vm['vmId'], self, status))
+                domains.append(Guest(vm['vmId'], self.CONFIG_TYPE, status))
         return domains

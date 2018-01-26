@@ -198,6 +198,8 @@ class SubscriptionManager(Manager):
                 raise SubscriptionManagerError(
                     "Unable to obtain status from server, UEPConnection is likely not usable."
                 )
+        except rhsm_connection.RateLimitExceededException as e:
+            raise ManagerThrottleError(e.retry_after)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
 
@@ -229,8 +231,7 @@ class SubscriptionManager(Manager):
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
         except rhsm_connection.RateLimitExceededException as e:
-            retry_after = int(getattr(e, 'headers', {}).get('Retry-After', '60'))
-            raise ManagerThrottleError(retry_after)
+            raise ManagerThrottleError(e.retry_after)
         report.state = AbstractVirtReport.STATE_FINISHED
 
     def hypervisorCheckIn(self, report, options=None):
@@ -269,8 +270,7 @@ class SubscriptionManager(Manager):
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.RateLimitExceededException as e:
-            retry_after = int(getattr(e, 'headers', {}).get('Retry-After', '60'))
-            raise ManagerThrottleError(retry_after)
+            raise ManagerThrottleError(e.retry_after)
         except rhsm_connection.GoneException:
             raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
         except rhsm_connection.ConnectionException as e:

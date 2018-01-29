@@ -124,7 +124,6 @@ def main():
         print >> sys.stderr, msg
         exit(1, status=msg)
 
-
     if not options[VW_GLOBAL].is_valid():
         message = "Required section 'global' is invalid:\n"
         message += "\n".join([msg for (level, msg) in options[VW_GLOBAL].validation_messages])
@@ -159,13 +158,8 @@ def main():
 
     logger.info("Using reporter_id='%s'", options[VW_GLOBAL]['reporter_id'])
     log.closeLogger(logger)
-    if options[VW_GLOBAL]['background']:
-        # This DaemonContext seems to cause import issues
-        locker = lambda: daemon.DaemonContext(pidfile=lock)  # flake8: noqa
-    else:
-        locker = lambda: lock  # flake8: noqa
 
-    with locker():
+    with lock:
         signal.signal(signal.SIGHUP, reload)
         signal.signal(signal.SIGTERM, atexit_fn)
 

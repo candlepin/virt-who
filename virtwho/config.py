@@ -1108,7 +1108,6 @@ class GlobalSection(ConfigSection):
         self.add_key('oneshot', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('print_', validation_method=self._validate_str_to_bool, default=False, destination='print')
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
-        self.add_key('background', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])
         self.add_key('reporter_id', validation_method=self._validate_non_empty_string,
                      default=util.generateReporterId())

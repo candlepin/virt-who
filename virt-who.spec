@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.3
+Version:        0.21.4
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -135,6 +135,10 @@ fi
 
 
 %changelog
+* Tue Jan 30 2018 Christopher Snyder <csnyder@redhat.com> 0.21.4-1
+- 1353119: Add JSON-RPC support for VDSM (khowell@redhat.com)
+- 1509597: Enable to use virt-who with VDSM again (jhnidek@redhat.com)
+
 * Mon Jan 08 2018 Christopher Snyder <csnyder@redhat.com> 0.21.3-1
 - 1523548: Options log_dir and log_file are not ignored (jhnidek@redhat.com)
 

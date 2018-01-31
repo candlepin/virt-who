@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 Test of ESX virtualization backend.
 
@@ -17,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
+
 import os
 import requests
 import suds
@@ -69,6 +72,20 @@ class TestEsx(TestBase):
         mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None, transport=ANY)
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
+
+    @patch('suds.client.Client')
+    def test_connect_utf_password(self, mock_client):
+        mock_client.return_value.service.WaitForUpdatesEx.return_value = None
+        # Change password to include some UTF character
+        self.esx.password = 'Žluťoučký_kůň'
+        self.run_once()
+
+        self.assertTrue(mock_client.called)
+        mock_client.assert_called_with(ANY, location="https://localhost/sdk", cache=None, transport=ANY)
+        mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
+        mock_client.return_value.service.Login.assert_called_once_with(
+            _this=ANY, userName='username', password=u'Žluťoučký_kůň'
+        )
 
     @patch('suds.client.Client')
     def test_connection_timeout(self, mock_client):

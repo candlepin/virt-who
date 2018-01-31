@@ -1030,11 +1030,11 @@ class VirtConfigSection(ConfigSection):
             if username != NotSetSentinel:
                 try:
                     username.encode('latin1')
-                except UnicodeEncodeError:
+                except (UnicodeEncodeError, UnicodeDecodeError):
                     result = (
                         'warning',
                         "Value: {0} of option '{1}': is not in latin1 encoding".format(
-                            username.encode('utf-8'),
+                            username,
                             username_key
                         )
                     )

@@ -339,7 +339,11 @@ class Esx(virt.Virt):
         try:
             # Don't log message containing password
             logging.getLogger('suds.client').setLevel(logging.CRITICAL)
-            self.client.service.Login(_this=self.sc.sessionManager, userName=self.username, password=self.password)
+            self.client.service.Login(
+                _this=self.sc.sessionManager,
+                userName=unicode(self.username, 'utf-8'),
+                password=unicode(self.password, 'utf-8')
+            )
             logging.getLogger('suds.client').setLevel(logging.ERROR)
         except requests.RequestException as e:
             raise virt.VirtError(str(e))

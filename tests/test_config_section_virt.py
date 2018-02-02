@@ -206,7 +206,7 @@ class TestVirtConfigSection(TestBase):
         """
         self.init_virt_config_section()
         # First, change username to something exotic ;-)
-        self.virt_config['username'] = u'Jiří'
+        self.virt_config['username'] = 'Jiří'
         result = self.virt_config._validate_username('username')
         self.assertIsNotNone(result)
 

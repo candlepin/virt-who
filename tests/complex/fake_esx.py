@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 import sys
 import time
@@ -9,17 +10,20 @@ from fake_virt import FakeVirt, FakeHandler
 
 class EsxHandler(FakeHandler):
     def do_GET(self):
-        print '[FakeEsx] GET', self.path
+        print('[FakeEsx] GET', self.path)
 
     def do_POST(self):
-        print "[FakeEsx] POST", self.path
+        print("[FakeEsx] POST", self.path)
         if self.path == '/sdk':
-            length = int(self.headers.getheader('content-length'))
+            try:
+                length = int(self.headers.getheader('content-length'))
+            except AttributeError:
+                length = int(self.headers.get('content-length'))
             data = self.rfile.read(length)
             xml = ElementTree.fromstring(data)
             body = xml.find('{http://schemas.xmlsoap.org/soap/envelope/}Body')
             root = body[0]
-            print "[FakeEsx] post ", self.path, root.tag, self.server._data_version.value
+            print("[FakeEsx] post ", self.path, root.tag, self.server._data_version.value)
 
             if 'RetrieveServiceContent' in root.tag:
                 self.write_file('esx', 'esx_retrieveservicecontent.xml')

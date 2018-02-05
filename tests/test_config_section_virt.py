@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 #
 # This program is free software; you can redistribute it and/or
@@ -174,7 +175,7 @@ class TestVirtConfigSection(TestBase):
         del self.virt_config['password']
         # Set up corrupted encrypted password
         encrypted_pwd = Password.encrypt(password)
-        corrupted_encrypted_pwd = 'S' + encrypted_pwd[1:]
+        corrupted_encrypted_pwd = b'S' + encrypted_pwd[1:]
         self.virt_config['encrypted_password'] = hexlify(corrupted_encrypted_pwd)
         # Do own testing here
         result = self.virt_config._validate_encrypted_password('encrypted_password')

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+from __future__ import print_function
 """
 Test of ESX virtualization backend.
 
@@ -229,7 +229,7 @@ class TestEsx(TestBase):
         self.assertEqual(expected_report._assoc, result_report._assoc)
 
     def test_proxy(self):
-        self.esx.config.simplified_vim = True
+        self.esx.config['simplified_vim'] = True
         proxy = Proxy()
         self.addCleanup(proxy.terminate)
         proxy.start()

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, absolute_import
 import sys
 import logging
 import threading
@@ -12,7 +14,7 @@ def main():
     except KeyboardInterrupt:
         virtwho.main.exit(1)
     except Exception as e:
-        print >>sys.stderr, e
+        print(e, file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
         logger = logging.getLogger("virtwho.main")

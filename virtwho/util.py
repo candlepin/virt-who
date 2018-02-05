@@ -1,18 +1,26 @@
+from __future__ import print_function
 import socket
-import xmlrpclib
+import six
+from six.moves import xmlrpc_client
 import requests
 from abc import ABCMeta
 
 try:
-    from thread import get_ident as _get_ident
+    from six.moves._thread import get_ident as _get_ident
 except ImportError:  # pragma: no cover
-    from dummy_thread import get_ident as _get_ident
+    from six.moves._dummy_thread import get_ident as _get_ident
 
 try:
     from _abcoll import KeysView, ValuesView, ItemsView
 except ImportError:  # pragma: no cover
     pass
-from string import letters, digits
+
+from string import digits
+
+if not six.PY3:
+    from string import letters
+else:
+    from string import ascii_letters as letters
 
 
 __all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename', 'RequestsXmlrpcTransport')
@@ -44,7 +52,7 @@ class Singleton(ABCMeta):
 
 
 
-class RequestsXmlrpcTransport(xmlrpclib.SafeTransport):
+class RequestsXmlrpcTransport(xmlrpc_client.SafeTransport):
     """
     Transport for xmlrpclib that uses Requests instead of httplib.
 
@@ -56,7 +64,7 @@ class RequestsXmlrpcTransport(xmlrpclib.SafeTransport):
 
     def __init__(self, url, *args, **kwargs):
         self._url = url
-        xmlrpclib.SafeTransport.__init__(self, *args, **kwargs)
+        xmlrpc_client.SafeTransport.__init__(self, *args, **kwargs)
 
     def request(self, host, handler, request_body, verbose):
         """
@@ -67,7 +75,7 @@ class RequestsXmlrpcTransport(xmlrpclib.SafeTransport):
         try:
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise xmlrpclib.ProtocolError(self._url, resp.status_code, str(e), resp.headers)
+            raise xmlrpc_client.ProtocolError(self._url, resp.status_code, str(e), resp.headers)
         else:
             return self.parse_response(resp)
 
@@ -155,7 +163,7 @@ class OrderedDict(dict):  # pragma: no cover
     def clear(self):
         'od.clear() -> None.  Remove all items from od.'
         try:
-            for node in self.__map.itervalues():
+            for node in self.__map.values():
                 del node[:]
             root = self.__root
             root[:] = [root, root, None]
@@ -279,7 +287,7 @@ class OrderedDict(dict):  # pragma: no cover
         try:
             if not self:
                 return '%s()' % (self.__class__.__name__,)
-            return '%s(%r)' % (self.__class__.__name__, self.items())
+            return '%s(%r)' % (self.__class__.__name__, list(self.items()))
         finally:
             del _repr_running[call_key]
 
@@ -337,10 +345,10 @@ class OrderedDict(dict):  # pragma: no cover
 
 def decode(input):
     if isinstance(input, dict):
-        return dict((decode(key), decode(value)) for key, value in input.iteritems())
+        return dict((decode(key), decode(value)) for key, value in input.items())
     elif isinstance(input, list):
         return [decode(element) for element in input]
-    elif isinstance(input, unicode):
+    elif not six.PY3 and isinstance(input, six.text_type):
         return input.encode('utf-8')
     else:
         return input

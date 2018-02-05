@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for abstraction of all virtualization backends, part of virt-who
 
@@ -17,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
+
 
 import sys
 import time
@@ -208,12 +211,11 @@ class DomainListReport(AbstractVirtReport):
 
     @property
     def hash(self):
-        return hashlib.sha256(
-            json.dumps(
+        current_hash = json.dumps(
                 sorted([g.toDict() for g in self.guests], key=itemgetter('guestId')),
-                sort_keys=True) +
-            str(self.hypervisor_id)
-        ).hexdigest()
+                sort_keys=True)
+        current_hash += str(self.hypervisor_id)
+        return hashlib.sha256(current_hash.encode('utf-8')).hexdigest()
 
 
 class HostGuestAssociationReport(AbstractVirtReport):
@@ -268,7 +270,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
                 continue
 
             if self.filter_hosts is not None and self.filter_hosts != NotSetSentinel and not self._filter(
-                    host.hypervisorId,self.filter_hosts):
+                    host.hypervisorId, self.filter_hosts):
                 logger.debug("Skipping host '%s' because its uuid is not included", host.hypervisorId)
                 continue
 
@@ -277,13 +279,15 @@ class HostGuestAssociationReport(AbstractVirtReport):
 
     @property
     def serializedAssociation(self):
+        id_getter = itemgetter('hypervisorId')
         return {
-            'hypervisors': sorted([h.toDict() for h in self.association['hypervisors']], key=itemgetter('hypervisorId'))
+            'hypervisors': sorted([h.toDict() for h in self.association['hypervisors']],
+                                  key=lambda x: id_getter(id_getter(x)))
         }
 
     @property
     def hash(self):
-        return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True)).hexdigest()
+        return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True).encode('utf-8')).hexdigest()
 
 
 class IntervalThread(Thread):
@@ -565,7 +569,7 @@ class DestinationThread(IntervalThread):
         total_guests = 0
 
         # Reports of different types are handled differently
-        for source_key, report in data_to_send.iteritems():
+        for source_key, report in data_to_send.items():
             if getattr(self.config, 'owner', None) is None and \
                     isinstance(report, HostGuestAssociationReport):
                 # If the owner on our config is not defined, set it to the first report that
@@ -764,7 +768,7 @@ class Satellite5DestinationThread(DestinationThread):
         sources_erred = []  # Sources that have had some error this run
 
         # Reports of different types are handled differently
-        for source_key, report in data_to_send.iteritems():
+        for source_key, report in data_to_send.items():
             if isinstance(report, DomainListReport):
                 self.logger.warning("virt-who does not support sending local"
                                     "hypervisor data to satellite; use "

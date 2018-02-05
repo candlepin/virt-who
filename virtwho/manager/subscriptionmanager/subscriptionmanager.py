@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for communication with subscription-manager, part of virt-who
 
@@ -20,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import json
-from httplib import BadStatusLine
+from six.moves.http_client import BadStatusLine
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
@@ -95,11 +97,10 @@ class SubscriptionManager(Manager):
         if config is None:
             return
 
-        keys = config.keys()
         # Check 'owner' and 'env' only in situation, when these values
         # are set and rhsm_username and rhsm_password are not set
         if 'username' not in kwargs and 'password' not in kwargs and \
-                'owner' in keys and 'env' in keys:
+                'owner' in config.keys() and 'env' in config.keys():
             pass
         else:
             return
@@ -169,7 +170,7 @@ class SubscriptionManager(Manager):
                 rhsm_password = None
 
             # Testing for None is necessary, it might be an empty string
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 try:
                     from_config = config[kwargs_to_config[key]]
                     if from_config is not NotSetSentinel and from_config is \

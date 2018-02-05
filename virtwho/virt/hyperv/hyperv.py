@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, absolute_import
 """
 Module for communcating with Hyper-V, part of virt-who
 
@@ -20,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import sys
 import re
-import urlparse
+from six.moves import urllib
 import base64
 import struct
 from xml.etree import ElementTree
@@ -28,7 +30,7 @@ from requests.auth import AuthBase
 import requests
 
 from virtwho import virt
-import ntlm
+from . import ntlm
 from virtwho.config import VirtConfigSection
 
 try:
@@ -69,7 +71,7 @@ class HypervConfigSection(VirtConfigSection):
             if "//" not in url:
                 url_altered = True
                 url = "//" + url
-            parsed = urlparse.urlsplit(url, "http")
+            parsed = urllib.parse.urlsplit(url, "http")
             if ":" not in parsed[1]:
                 url_altered = True
                 if parsed[0] == "https":
@@ -83,7 +85,7 @@ class HypervConfigSection(VirtConfigSection):
                 path = "wsman"
             else:
                 path = parsed[2]
-            self.url = urlparse.urlunsplit((parsed[0], self.host, path, "", ""))
+            self.url = urllib.parse.urlunsplit((parsed[0], self.host, path, "", ""))
             self._values['url'] = self.url
             if url_altered:
                 result.append((
@@ -122,7 +124,7 @@ class HyperVAuth(AuthBase):
         request = self.prepare_resend(response)
 
         self.ntlm = ntlm.Ntlm()
-        negotiate = base64.b64encode(self.ntlm.negotiate_message(self.username))
+        negotiate = base64.b64encode(self.ntlm.negotiate_message(self.username)).decode('utf-8')
         request.headers["Authorization"] = "Negotiate %s" % negotiate
         r = response.connection.send(request, **kwargs)
         if r.status_code != 401:
@@ -140,6 +142,7 @@ class HyperVAuth(AuthBase):
             self.logger.warning("Wrong ntlm header: %s", auth_header)
 
         negotiate = base64.b64encode(self.ntlm.authentication_message(base64.b64decode(challenge), self.password))
+        negotiate = negotiate.decode('utf-8')
         request.headers["Authorization"] = "Negotiate %s" % negotiate
 
         # Encrypt body of original request and include it
@@ -162,25 +165,24 @@ class HyperVAuth(AuthBase):
         encrypted, signature = self.ntlm.encrypt(request.body)
 
         boundary = 'Encrypted Boundary'
-        body = b'''--{boundary}\r
+        body = '''--{boundary}\r
 Content-Type: application/HTTP-SPNEGO-session-encrypted\r
 OriginalContent: type={original};Length={length}\r
 --{boundary}\r
 Content-Type: application/octet-stream\r
-{header_len}{signature}{encrypted}--{boundary}--\r
 '''.format(
             original=request.headers["Content-Type"],
             length=len(encrypted),
-            header_len=struct.pack('<I', len(signature)),
-            signature=signature,
-            encrypted=encrypted,
             boundary=boundary)
+        header_len = struct.pack('<I', len(signature))
+        bin_body = body.encode('utf-8') + header_len + signature + encrypted
+        bin_body += '--{boundary}--\r\n'.format(boundary=boundary).encode('utf-8')
         request.headers["Content-Type"] = (
             'multipart/encrypted;'
             'protocol="application/HTTP-SPNEGO-session-encrypted";'
             'boundary="{boundary}"').format(boundary=boundary)
-        request.body = body
-        request.headers["Content-Length"] = len(body)
+        request.body = bin_body
+        request.headers["Content-Length"] = len(bin_body)
         return request
 
     def decrypt_response(self, response):
@@ -189,13 +191,14 @@ Content-Type: application/octet-stream\r
         if 'multipart/encrypted' not in content_type:
             # The response is not encrypted, just return it
             return response
-        data = response.raw.read(response.headers.get('Content-Length', 0))
+        data = response.raw.read(int(response.headers.get('Content-Length', 0))).decode('latin1')
         parts = re.split(r'-- ?Encrypted Boundary', data)
         try:
             body = parts[2].lstrip('\r\n').split('\r\n', 1)[1]
         except IndexError:
             self.logger.debug("Incorrect multipart data: %s", data)
             raise HyperVAuthFailed("Unable to decrypt sealed response: incorrect format")
+        body = body.encode('latin1')
         # First four bytes of body is signature length
         l = struct.unpack('<I', body[:4])[0]
         # Then there is signature with given length
@@ -213,7 +216,7 @@ Content-Type: application/octet-stream\r
         request = self.prepare_resend(response)
 
         passphrase = '%s:%s' % (self.username, self.password)
-        self.basic = 'Basic %s' % base64.b64encode(passphrase)
+        self.basic = 'Basic %s' % base64.b64encode(passphrase).decode('utf-8')
         request.headers['Authorization'] = self.basic
         request.headers['Content-Length'] = len(self._body)
         request.body = self._body

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import, print_function
 """
 Module for reading configuration files
 
@@ -19,21 +21,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import collections
+import six
 import os
 
-from ConfigParser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
+from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log, SAT5, SAT6
-from password import Password
+from .password import Password
 from binascii import unhexlify
-import hashlib
-import json
-import util
+from . import util
 
 try:
     from collections import OrderedDict
 except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from util import OrderedDict
+    from .util import OrderedDict
 
 # Module-level logger
 logger = log.getLogger(name='config', queue=False)
@@ -186,11 +187,11 @@ class Info(object):
         return not result
 
     def __iter__(self):
-        for key, value in self.__dict__["_options"].iteritems():
+        for key, value in self.__dict__["_options"].items():
             yield (key, value)
 
     def keys(self):
-        return self.__dict__['_options'].keys()
+        return list(self.__dict__['_options'].keys())
 
 
 # Should this be defined in the manager that actually requires these values?
@@ -235,9 +236,9 @@ default_destination_info.name = "default_destination"
 
 
 class StripQuotesConfigParser(SafeConfigParser):
-    def get(self, section, option):
+    def get(self, section, option, **kwargs):
         # Don't call super, SafeConfigParser is not inherited from object
-        value = SafeConfigParser.get(self, section, option)
+        value = SafeConfigParser.get(self, section, option, **kwargs)
         for quote in ('"', "'"):
             # Strip the quotes only when the value starts with quote,
             # ends with quote but doesn't contain it inside
@@ -313,7 +314,7 @@ class DestinationToSourceMapper(object):
                 current_sources.update(set([name]))
                 sources_without_destinations.difference_update(set([name]))
                 dest_to_source_map[dest] = current_sources
-        for dest, source_set in dest_to_source_map.iteritems():
+        for dest, source_set in dest_to_source_map.items():
             dest_to_source_map[dest] = sorted(list(source_set))
         sources_without_destinations = sorted(list(sources_without_destinations))
         return sources, dests, dest_to_source_map, sources_without_destinations
@@ -597,13 +598,13 @@ class ConfigSection(collections.MutableMapping):
         unknown_keys = self._unvalidated_keys.difference(self.validation_methods.keys())
         self._unvalidated_keys.difference_update(unknown_keys)
         # Validate those keys that need to be validated
-        for key, validation_method in self.validation_methods.iteritems():
+        for key, validation_method in self.validation_methods.items():
             if key not in self._unvalidated_keys:
                 continue
             messages = validation_method(key)
             key_invalid = False
             if messages is not None:
-                if type(messages) is list:
+                if isinstance(messages, list):
                     if any(message[0] == 'error' for message in messages):
                         key_invalid = True
                     validation_messages.extend(messages)
@@ -981,7 +982,8 @@ class VirtConfigSection(ConfigSection):
         else:
             if password != NotSetSentinel:
                 try:
-                    password.decode('UTF-8')
+                    if (not six.PY3 and isinstance(password, str)) or isinstance(password, bytes):
+                        password.decode('utf-8')
                 except UnicodeDecodeError:
                     result = (
                         'warning',
@@ -1007,7 +1009,7 @@ class VirtConfigSection(ConfigSection):
         else:
             try:
                 self._values[decrypted_pass_key] = Password.decrypt(unhexlify(pwd))
-            except (TypeError, IndexError):
+            except (TypeError, IndexError, UnicodeDecodeError):
                 result = (
                     'warning',
                     "Option \"{option}\" cannot be decrypted, possibly corrupted"
@@ -1204,10 +1206,10 @@ class EffectiveConfig(collections.MutableMapping):
     def filter_parameters(desired_parameters, values_to_filter):
         matching_parameters = {}
         non_matching_parameters = {}
-        for param, value in values_to_filter.iteritems():
+        for param, value in values_to_filter.items():
             if value is None:
                 continue
-            if type(value) is list:
+            if isinstance(value, list):
                 value = [str(item) for item in value]
             else:
                 value = str(value)
@@ -1302,7 +1304,7 @@ def _check_effective_config_validity(effective_config):
     return effective_config, validation_errors
 
 
-def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
+def init_config(env_options, cli_options, config_dir=None):
     """
     Initialize and return the effective virt-who configuration
     :param env_options: The dict of options parsed from the environment
@@ -1310,6 +1312,9 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     :param config_dir: The path to directory containing configuration files
     :return: EffectiveConfig
     """
+
+    if config_dir is None:
+        config_dir = VW_CONF_DIR
 
     validation_errors = []
     effective_config = EffectiveConfig()
@@ -1320,7 +1325,7 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
                                                               effective_config)
     effective_config[VW_ENV_CLI_SECTION_NAME].defaults = DEFAULTS[VW_ENV_CLI_SECTION_NAME]
 
-    global_required_params = effective_config[VW_GLOBAL].defaults.keys()
+    global_required_params = list(effective_config[VW_GLOBAL].defaults.keys())
 
     # Split environment variables values into global or non
     env_globals, env_non_globals = effective_config.filter_parameters(global_required_params,
@@ -1369,6 +1374,9 @@ def init_config(env_options, cli_options, config_dir=VW_CONF_DIR):
     all_sections_to_add.update(vw_conf)
     # also read all sections in conf files in the drop dir
     all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+    # We should ignore any additional sections defined as VW_GLOBAL as we've already parsed that
+    if VW_GLOBAL in all_sections_to_add:
+        del all_sections_to_add[VW_GLOBAL]
     # also read the files in the configs list from the configs var if defined
     for file_name in effective_config[VW_GLOBAL]['configs']:
         all_sections_to_add.update(parse_file(filename=file_name))

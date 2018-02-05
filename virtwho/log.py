@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for logging, part of virt-who
 
@@ -22,11 +24,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import logging
 import logging.handlers
 import traceback
-import cStringIO
 import os
 import sys
 import json
-from Queue import Empty, Queue
+from six import StringIO
+from six.moves.queue import Empty, Queue
 from threading import Thread
 
 from virtwho import util
@@ -64,7 +66,7 @@ class QueueHandler(logging.Handler):
         if self.level != logging.DEBUG:
             s = traceback.format_exception_only(ei[0], ei[1])[0]
         else:
-            sio = cStringIO.StringIO()
+            sio = StringIO()
             traceback.print_exception(ei[0], ei[1], ei[2], None, sio)
             s = sio.getvalue()
             sio.close()

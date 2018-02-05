@@ -1,7 +1,7 @@
 #!/usr/bin/python2
-# -*- coding:utf-8 -*-
-
+# -*- coding: utf-8 -*-
 from __future__ import print_function
+
 import os
 import sys
 from bs4 import BeautifulSoup

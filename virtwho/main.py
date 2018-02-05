@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function, absolute_import
 """
 Agent for reporting virtual guest IDs to subscription-manager
 
@@ -28,7 +30,7 @@ try:
     from collections import OrderedDict
 except ImportError:
     # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from util import OrderedDict
+    from .util import OrderedDict
 
 from virtwho import log
 from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
@@ -67,8 +69,8 @@ class PIDLock(object):
                 return True
             except OSError:
                 # Process no longer exists
-                print >> sys.stderr, "PID file exists but associated process " \
-                                     "does not, deleting PID file"
+                print("PID file exists but associated process " \
+                                     "does not, deleting PID file", file=sys.stderr)
                 os.remove(self.filename)
                 return False
         except Exception:
@@ -78,11 +80,11 @@ class PIDLock(object):
         # Write pid to pidfile
         try:
             with os.fdopen(
-                    os.open(self.filename, os.O_WRONLY | os.O_CREAT, 0600),
+                    os.open(self.filename, os.O_WRONLY | os.O_CREAT, 0o600),
                     'w') as f:
                 f.write("%d" % os.getpid())
         except Exception as e:
-            print >> sys.stderr, "Unable to create pid file: %s" % str(e)
+            print("Unable to create pid file: %s" % str(e), file=sys.stderr)
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
@@ -114,14 +116,14 @@ def main():
         logger, options = parse_options()
         # We now have the effective_config
     except OptionError as e:
-        print >> sys.stderr, str(e)
+        print(str(e), file=sys.stderr)
         exit(1, status="virt-who can't be started: %s" % str(e))
 
     lock = PIDLock(PIDFILE)
     if lock.is_locked():
         msg = "virt-who seems to be already running. If not, remove %s" % \
               PIDFILE
-        print >> sys.stderr, msg
+        print(msg, file=sys.stderr)
         exit(1, status=msg)
 
     if not options[VW_GLOBAL].is_valid():

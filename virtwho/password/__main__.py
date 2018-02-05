@@ -1,4 +1,6 @@
-#!/usr/bin/python2
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Command line script for password encryption.
 
@@ -51,24 +53,24 @@ def main():
     options, _args = parseOptions()
 
     if os.getuid() != 0:
-        print >>sys.stderr, "Only root can encrypt passwords"
+        print("Only root can encrypt passwords", file=sys.stderr)
         sys.exit(1)
 
     try:
         pwd = options.password or getpass("Password: ")
     except (KeyboardInterrupt, EOFError):
-        print
+        print()
         sys.exit(1)
     try:
         enc = Password.encrypt(pwd)
     except UnwritableKeyFile:
-        print >>sys.stderr, "Keyfile %s doesn't exist and can't be created, rerun as root" % Password.KEYFILE
+        print("Keyfile %s doesn't exist and can't be created, rerun as root" % Password.KEYFILE, file=sys.stderr)
         sys.exit(1)
     except InvalidKeyFile:
-        print >>sys.stderr, "Can't access keyfile %s, rerun as root" % Password.KEYFILE
+        print("Can't access keyfile %s, rerun as root" % Password.KEYFILE, file=sys.stderr)
         sys.exit(1)
-    print >>sys.stderr, "Use following as value for encrypted_password key in the configuration file:"
-    print hexlify(enc)
+    print("Use following as value for encrypted_password key in the configuration file:", file=sys.stderr)
+    print(hexlify(enc).decode())
 
 
 if __name__ == '__main__':

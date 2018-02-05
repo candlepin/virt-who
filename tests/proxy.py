@@ -1,7 +1,8 @@
+from __future__ import print_function
 
 
-from BaseHTTPServer import BaseHTTPRequestHandler
-import SocketServer
+from six.moves.BaseHTTPServer import BaseHTTPRequestHandler
+from six.moves import socketserver
 from threading import Thread, Event
 import random
 
@@ -14,7 +15,7 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.server.path = self.path
 
 
-class ProxyServer(SocketServer.TCPServer):
+class ProxyServer(socketserver.TCPServer):
     allow_reuse_address = True
 
 

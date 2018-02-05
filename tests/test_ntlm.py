@@ -1,4 +1,6 @@
+from __future__ import print_function
 
+from binascii import unhexlify
 from base import TestBase
 
 from virtwho.virt.hyperv.ntlm import (ntowfv2, ntlm_compute_response, Ntlm,
@@ -6,22 +8,19 @@ from virtwho.virt.hyperv.ntlm import (ntowfv2, ntlm_compute_response, Ntlm,
 
 
 def from_hex(hexStr):
-    bytes = []
-    hexStr = ''.join(hexStr.split(" "))
-    for i in range(0, len(hexStr), 2):
-        bytes.append(chr(int(hexStr[i:i + 2], 16)))
-    return ''.join(bytes)
+    return unhexlify(hexStr.replace(' ', ''))
 
 
 def to_hex_lines(s):
     lines = []
     for i in range(0, len(s), 8):
         part = s[i:i + 8]
-        lines.append(' '.join('%02X' % ord(x) for x in part))
+        line = ' '.join('{:02X}'.format(ord(x) if not isinstance(x, int) else x) for x in part)
+        lines.append(line)
     return lines
 
 
-class TestNtlm(TestBase):
+class TestNtlm(object):
     ''' Test of NTLM authentication and encryption. '''
 
     def assertHexEqual(self, h1, h2):
@@ -47,13 +46,13 @@ class TestNtlm(TestBase):
         domain = 'Domain'
         password = 'Password'
         workstation = 'COMPUTER'
-        time = '\x00' * 8
+        time = b'\x00' * 8
         client_challenge = from_hex('aa aa aa aa aa aa aa aa')
         server_challenge = from_hex('01 23 45 67 89 ab cd ef')
         target_info = from_hex('02 00 0c 00 44 00 6f 00 6d 00 61 00 69 00 6e 00 '
                                '01 00 0c 00 53 00 65 00 72 00 76 00 65 00 72 00 '
                                '00 00 00 00')
-        flags = '\x33\x82\x0A\x82'
+        flags = b'\x33\x82\x0A\x82'
 
         response_key_nt = response_key_lm = ntowfv2(password, user, domain)
         self.assertHexEqual(
@@ -110,7 +109,8 @@ class TestNtlm(TestBase):
         auth_message = AuthenticationMessage(
             user, password, domain, workstation, challenge_message.server_challenge,
             challenge_message.target_info, challenge_message.negotiate_flags,
-            client_challenge='\xAA' * 8, exported_session_key='U' * 16)
+            client_challenge=b'\xAA' * 8, exported_session_key=b'U' * 16)
+
         self.assertHexEqual(auth_message.data, authenticate)
 
         ntlm = Ntlm()
@@ -124,10 +124,10 @@ class TestNtlm(TestBase):
             ntlm.outgoing_signing_key,
             from_hex('47 88 dc 86 1b 47 82 f3 5d 43 fd 98 fe 1a 2d 39'))
 
-        encrypted, signature = ntlm.encrypt('Plaintext'.encode('utf-16-le'))
+        encrypted, signature = ntlm.encrypt('Plaintext'.encode('utf-8'))
         self.assertHexEqual(
             encrypted,
-            from_hex('54 e5 01 65 bf 19 36 dc 99 60 20 c1 81 1b 0f 06 fb 5f'))
+            from_hex('54 89 0C 0C B0 6D 3A A4 83'))
         self.assertHexEqual(
             signature,
-            from_hex('01 00 00 00 7f b3 8e c5 c5 5d 49 76 00 00 00 00'))
+            from_hex('01 00 00 00 71 25 99 58 FA 90 2D B2 00 00 00 00'))

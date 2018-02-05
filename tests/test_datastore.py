@@ -1,3 +1,4 @@
+from __future__ import print_function
 from base import TestBase
 from mock import sentinel, patch, MagicMock
 from threading import Lock
@@ -88,7 +89,7 @@ class TestDatastore(TestBase):
         self.mock_copy.deepcopy.side_effect = lambda x: x
         with patch.dict(datastore._datastore, test_item=expected_value):
             result = datastore.get("test_item", default=sentinel.default_value)
-            self.assertEquals(result, expected_value)
+            self.assertEqual(result, expected_value)
 
     def test_get_returns_correct_item(self):
         # Ensure that calling the get method returns the right value for a
@@ -99,7 +100,7 @@ class TestDatastore(TestBase):
                         test_item=sentinel.test_item_value):
             result = datastore.get("test_item")
         self.mock_copy.deepcopy.assert_called_with(sentinel.test_item_value)
-        self.assertEquals(result, sentinel.deep_copy_value_1)
+        self.assertEqual(result, sentinel.deep_copy_value_1)
 
     def test_put_locking(self):
         # Ensure that a lock is acquired before (and released after) updating a

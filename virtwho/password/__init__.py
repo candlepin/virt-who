@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import print_function
 """
 Module for encrypting and decrypting passwords.
 
@@ -21,9 +23,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import stat
-from M2Crypto import EVP
+import six
+if not six.PY3:
+    from M2Crypto import EVP
+else:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    from cryptography.hazmat.backends import default_backend
 from binascii import hexlify, unhexlify
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 
 __all__ = ['InvalidKeyFile', 'UnwritableKeyFile', 'Password']
@@ -37,6 +44,7 @@ class UnwritableKeyFile(Exception):
     pass
 
 
+
 class Password(object):
     KEYFILE = '/var/lib/virt-who/key'
     ENCRYPT = 1
@@ -44,20 +52,52 @@ class Password(object):
 
     BLOCKSIZE = 16
 
+    @staticmethod
+    def safe_ord(s):
+        """
+        Returns ord(s) if s is a string else if s is an int, returns the int other exceptions are
+        raised
+        :param s: str or int
+        :return: int
+        """
+        if isinstance(s, int):
+            return s
+        return ord(s)
+
     @classmethod
     def _pad(cls, s):
-        return s + (cls.BLOCKSIZE - len(s) % cls.BLOCKSIZE) * chr(cls.BLOCKSIZE - len(s) % cls.BLOCKSIZE)
+        padding_amount = cls.BLOCKSIZE - len(s) % cls.BLOCKSIZE
+        return s + (chr(padding_amount) * padding_amount).encode('ascii')
 
     @classmethod
     def _unpad(cls, s):
-        return s[0:-ord(s[-1])]
+        return s[0:-Password.safe_ord(s[-1])]
 
     @classmethod
     def _crypt(cls, op, key, iv, data):
-        cipher = EVP.Cipher(alg='aes_128_cbc', key=unhexlify(key), iv=unhexlify(iv), op=op, padding=False)
+        key = unhexlify(key)[:cls.BLOCKSIZE]
+        iv = unhexlify(iv)[:cls.BLOCKSIZE]
+
+        if not six.PY3:
+            return cls._crypt_py2(op, key, iv, data)
+
+        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+
+        if op == Password.ENCRYPT:
+            crypter = cipher.encryptor()
+        elif op == Password.DECRYPT:
+            crypter = cipher.decryptor()
+        else:
+            raise ValueError("Unable to perform op '%s'" % op)
+        value = crypter.update(data) + crypter.finalize()
+        return value
+
+    @classmethod
+    def _crypt_py2(cls, op, key, iv, data):
+        cipher = EVP.Cipher(alg='aes_128_cbc', key=key, iv=iv, op=op, padding=False)
         inf = StringIO(data)
         outf = StringIO()
-        while 1:
+        while True:
             buf = inf.read()
             if not buf:
                 break
@@ -68,13 +108,17 @@ class Password(object):
     @classmethod
     def encrypt(cls, password):
         key, iv = cls._read_or_generate_key_iv()
+        if isinstance(password, six.text_type):
+            password = password.encode('utf-8')
         return cls._crypt(cls.ENCRYPT, key, iv, cls._pad(password))
 
     @classmethod
     def decrypt(cls, enc):
         try:
             key, iv = cls._read_key_iv()
-            return cls._unpad(cls._crypt(cls.DECRYPT, key, iv, enc))
+            if isinstance(enc, six.text_type):
+                enc = enc.encode('utf-8')
+            return cls._unpad(cls._crypt(cls.DECRYPT, key, iv, enc)).decode('utf-8')
         except TypeError:
             raise InvalidKeyFile("Encryption key is invalid")
 
@@ -106,7 +150,7 @@ class Password(object):
         iv = hexlify(cls._generate_key())
         try:
             with open(cls.KEYFILE, 'w') as f:
-                f.write("%s\n%s\n" % (key, iv))
+                f.write("%s\n%s\n" % (key.decode(), iv.decode()))
         except IOError as e:
             raise UnwritableKeyFile(str(e))
         os.chmod(cls.KEYFILE, stat.S_IRUSR | stat.S_IWUSR)
@@ -114,4 +158,4 @@ class Password(object):
 
     @classmethod
     def _generate_key(cls):
-        return os.urandom(32)
+        return os.urandom(cls.BLOCKSIZE)

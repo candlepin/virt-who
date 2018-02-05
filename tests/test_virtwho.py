@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test for basic virt-who operations.
 
@@ -42,7 +43,7 @@ class TestOptions(TestBase):
         super(TestBase, self).tearDown()
 
     def clearEnv(self):
-        for key in os.environ.keys():
+        for key in list(os.environ.keys()):
             if key.startswith("VIRTWHO"):
                 del os.environ[key]
 

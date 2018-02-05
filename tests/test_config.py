@@ -1,3 +1,4 @@
+from __future__ import print_function
 # coding=utf-8
 """
 Test reading and writing configuration files as well as configuration objects.
@@ -20,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import sys
+import six
 import shutil
 from tempfile import mkdtemp
 from binascii import hexlify, unhexlify
@@ -73,7 +74,7 @@ def combine_dicts(*args):
 
 def append_number_to_all(in_dict, number):
     result = {}
-    for key, value in in_dict.iteritems():
+    for key, value in in_dict.items():
         result[key] = value + str(number)
     return result
 
@@ -130,12 +131,12 @@ class TestReadingConfigs(TestBase):
         """
         header = "[%s]\n" % in_dict.get("name", "test")
         body = "\n".join(["%s=%s" % (key, val) for key, val in
-                          in_dict.iteritems() if key is not "name"])
+                          in_dict.items() if key is not "name"])
         return header + body + "\n"
 
     def test_empty_config(self):
         config = init_config({}, {}, self.config_dir)
-        self.assertItemsEqual(config.keys(), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
+        six.assertCountEqual(self, list(config.keys()), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
 
     def assert_config_equals_default(self, config):
         self.assertEqual(config.name, "test")
@@ -163,13 +164,13 @@ class TestReadingConfigs(TestBase):
                 config_value = getattr(config, key)
             else:
                 config_value = config.get(key, None)
-            self.assertEquals(config_value, options[key])
+            self.assertEqual(config_value, options[key])
 
     def test_basic_config(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(default_config_values))
         config = init_config({}, {}, config_dir=self.config_dir)
-        self.assertItemsEqual(config.keys(), ['test', 'global'])
+        six.assertCountEqual(self, list(config.keys()), ['test', 'global'])
         self.assert_config_equals_default(config['test'])
 
     def test_invalid_config(self):
@@ -224,7 +225,7 @@ env=staging
     def testCryptedPassword(self, password):
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
-        crypted = hexlify(Password.encrypt(passwd))
+        crypted = hexlify(Password.encrypt(passwd)).decode('utf-8')
 
         filename = os.path.join(self.config_dir, "test.conf")
         with open(filename, "w") as f:
@@ -245,7 +246,7 @@ env=staging
     def testCryptedRHSMPassword(self, password):
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
-        crypted = hexlify(Password.encrypt(passwd))
+        crypted = hexlify(Password.encrypt(passwd)).decode('utf-8')
 
         filename = os.path.join(self.config_dir, "test.conf")
         with open(filename, "w") as f:
@@ -268,7 +269,7 @@ env=staging
     def testCryptedRHSMProxyPassword(self, password):
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))
         passwd = "TestSecretPassword!"
-        crypted = hexlify(Password.encrypt(passwd))
+        crypted = hexlify(Password.encrypt(passwd)).decode('utf-8')
 
         filename = os.path.join(self.config_dir, "test.conf")
         with open(filename, "w") as f:
@@ -385,7 +386,7 @@ type=esx
         self.assertEqual(manager.sources,
                          set([config_1['name'], config_2['name']]))
 
-        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_one_source_to_many_dests(self):
         # This tests that there can be one source that specifies
@@ -418,7 +419,7 @@ type=esx
                     TestReadingConfigs.dict_to_ini(config_2))
 
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_one_source_to_one_dest(self):
         config_1 = combine_dicts(TestReadingConfigs.source_options_1,
@@ -433,7 +434,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1))
 
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_two_sources_to_two_dests(self):
         config_1 = combine_dicts(TestReadingConfigs.source_options_1,
@@ -454,7 +455,7 @@ type=esx
                     TestReadingConfigs.dict_to_ini(config_2))
 
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_many_sources_to_many_dests(self):
         config_1 = combine_dicts(TestReadingConfigs.source_options_1,
@@ -497,7 +498,7 @@ type=esx
                     TestReadingConfigs.dict_to_ini(config_4))
 
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        self.assertEquals(manager.dest_to_sources_map, expected_mapping)
+        self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def testLibvirtConfig(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -603,7 +604,7 @@ rhsm_hostname=abc
         config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         # There should be only one config, and that should be the one that is valid
         self.assertEqual(len(config_manager.configs), 1)
-        self.assertEquals(config_manager.configs[0][1].name, valid_config_name)
+        self.assertEqual(config_manager.configs[0][1].name, valid_config_name)
 
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:

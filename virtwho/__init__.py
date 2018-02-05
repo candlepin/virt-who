@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 # Default interval for sending list of UUIDs
 DefaultInterval = 3600  # One per hour

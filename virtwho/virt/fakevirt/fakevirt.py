@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import print_function, absolute_import
 
 #
 # This program is free software; you can redistribute it and/or
@@ -50,7 +51,7 @@ class FakeVirtConfigSection(VirtConfigSection):
         # TODO Allow for specification of which key requires which parsed values
         try:
             is_hypervisor = self.get('is_hypervisor')
-            if type(is_hypervisor) is str:
+            if isinstance(is_hypervisor, str):
                 is_hypervisor = str_to_bool(is_hypervisor)
         except ValueError as e:
             message = "Error validating key '%s': '%s'" % (key, str(e))

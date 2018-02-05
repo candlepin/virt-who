@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# # -*- coding: utf-8 -*-
+from __future__ import print_function
+
 
 #
 # This program is free software; you can redistribute it and/or
@@ -16,9 +19,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+from __future__ import absolute_import
 from time import time
-import XenAPI
-from XenAPI import NewMaster, Failure
+from . import XenAPI
+from .XenAPI import NewMaster, Failure
 from collections import defaultdict
 import requests
 

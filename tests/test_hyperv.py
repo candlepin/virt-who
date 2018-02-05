@@ -1,3 +1,4 @@
+from __future__ import print_function
 """
 Test of Hyper-V virtualization backend.
 
@@ -21,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 from mock import patch, MagicMock, ANY
 from threading import Event
-from Queue import Queue
+from six.moves.queue import Queue
 import requests
 
 from base import TestBase
@@ -95,7 +96,7 @@ class HyperVMock(object):
 
     @classmethod
     def pull(cls, msg_id, data):
-        print "PULL", msg_id, data
+        print("PULL", msg_id, data)
         if msg_id is not None:
             s = []
             for key, value in data.items():
@@ -111,7 +112,7 @@ class HyperVMock(object):
                 </wsen:PullResponse>
             '''.format(str(msg_id).rjust(12, '0'), "\n".join(s)))
         else:
-            print "NONE"
+            print("NONE")
             return HyperVMock.envelope('''
                 <wsen:PullResponse>
                     <wsen:Items></wsen:Items>

@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.4
+Version:        0.21.5
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -135,6 +135,10 @@ fi
 
 
 %changelog
+* Tue Feb 06 2018 Christopher Snyder <csnyder@redhat.com> 0.21.5-1
+- 1492074: Enable login to ESX using password with UTF-8 string
+  (jhnidek@redhat.com)
+
 * Tue Jan 30 2018 Christopher Snyder <csnyder@redhat.com> 0.21.4-1
 - 1353119: Add JSON-RPC support for VDSM (khowell@redhat.com)
 - 1509597: Enable to use virt-who with VDSM again (jhnidek@redhat.com)

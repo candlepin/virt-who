@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import collections
 import six
 import os
+import uuid
 
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log, SAT5, SAT6
@@ -1093,9 +1094,40 @@ class VirtConfigSection(ConfigSection):
 
     def _validate_filter(self, filter_key):
         """
-        Try to validate filter option
+        Try to validate filter option. It can contain list of hostname and UUIDs
+        :param filter_key: key of filter ('filter_hosts', 'exclude_hosts')
+        :return: None or list of warnings
         """
-        return self._validate_list(filter_key)
+
+        # Check validity of list first
+        result = self._validate_list(filter_key)
+        if result is not None:
+            # When validation of list failed, then there is no reason for
+            # further validation, because self._values[filter_key] is empty
+            return result
+
+        hypervisor_id = self._values.get('hypervisor_id')
+
+        # When hypervisor_id is not 'uuid' (it is hostname or hwuuid), then
+        # filter should not contain any UUID, because no UUIDs will be gathered
+        # Note: example of hwuuid is e.g. 'host-9' (it doesn't look like UUID)
+        if hypervisor_id != 'uuid':
+            wrong_filter_values = []
+            for filter_value in self._values[filter_key]:
+                try:
+                    uuid.UUID(filter_value)
+                except ValueError:
+                    pass
+                else:
+                    wrong_filter_values.append(filter_value)
+            if len(wrong_filter_values) > 0:
+                result = (
+                    'warning',
+                    'Filter values: "%s" appear to be UUIDs. UUIDs are not gathered when hypervisor_id = "%s"' %
+                    (', '.join(wrong_filter_values), hypervisor_id)
+                )
+
+        return result
 
 
 class GlobalSection(ConfigSection):

@@ -1402,3 +1402,16 @@ def init_config(env_options, cli_options, config_dir=None):
             method(err[1])
 
     return effective_config
+
+
+# FIXME: This is a demonstration of how entry_points could be used in virt-who, not for actual use.
+def load_source_classes():
+    import pkg_resources
+    # A dict of "type" to Virt subclass for the given type
+    source_classes = {}
+    for entry_point in pkg_resources.iter_entry_points('virtwho.source_types'):
+        source_classes[entry_point.name] = entry_point.load()
+
+    # This dictionary could be used instead of requiring an import of all ConfigSection subclasses
+    # in this file, and then iterating through the subclasses
+    return source_classes

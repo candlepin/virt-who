@@ -98,7 +98,10 @@ setup(
         'console_scripts': [
             'virt-who = virtwho.__main__:main',
             'virt-who-password = virtwho.password.__main__:main'
-        ]
+        ],
+        'virtwho.source_types': [  # This replaces virtwho.config.VW_TYPES
+            'esx = virtwho.virt.esx:Esx',
+        ],
     },
     include_package_data=True,
     package_data={

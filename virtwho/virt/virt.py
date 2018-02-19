@@ -712,15 +712,18 @@ class DestinationThread(IntervalThread):
                         retry = False
                     except ManagerThrottleError as e:
                         if self._oneshot:
-                            self.logger.debug('429 encountered when sending virt guests in '
-                                              'oneshot mode, not retrying')
+                            self.logger.info(
+                                'Rate limit exceeded while sending host-guest mapping, please see: '
+                                'https://access.redhat.com/solutions/2212941. '
+                                'Running in one-shot mode, not retrying.')
                             sources_erred.append(source_key)
                             break
                         num_429_received += 1
                         retry_after = self.handle_429(e.retry_after, num_429_received)
-                        self.logger.debug('429 encountered when sending virt '
-                                          'guests.'
-                                          'Retrying after: %s', retry_after)
+                        self.logger.info(
+                            'Rate limit exceeded while sending host-guest mapping, please see: '
+                            'https://access.redhat.com/solutions/2212941. '
+                            'Retrying after: %s seconds.', retry_after)
                         self.wait(wait_time=retry_after)
                     except (ManagerError, ManagerFatalError):
                         self.logger.exception("Fatal error during send virt "

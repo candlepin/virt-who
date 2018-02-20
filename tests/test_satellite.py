@@ -30,7 +30,7 @@ from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandl
 from binascii import hexlify
 from mock import Mock, MagicMock, patch
 
-from base import TestBase
+from .base import TestBase
 
 from virtwho.config import DestinationToSourceMapper, EffectiveConfig, ConfigSection,\
     parse_file, Satellite5DestinationInfo, VirtConfigSection

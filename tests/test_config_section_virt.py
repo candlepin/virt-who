@@ -273,3 +273,53 @@ class TestVirtConfigSection(TestBase):
         self.init_virt_config_section()
         result = self.virt_config._validate_filter('filter_hosts')
         self.assertIsNone(result)
+
+    def test_validate_filter_hypervisor_id_hostname(self):
+        """
+        Test validation of host filter with hypervisor_id = hostname (default is uuid)
+        """
+        self.init_virt_config_section()
+        self.virt_config['hypervisor_id'] = 'hostname'
+        self.virt_config['filter_hosts'] = '*.example.com, www.company.com'
+        self.virt_config['exclude_hosts'] = ['foo.bar.com', 'pub.org', 'foo.net']
+        result = self.virt_config._validate_filter('filter_hosts')
+        self.assertIsNone(result)
+
+    def test_validate_wrong_filter_hypervisor_id_hostname(self):
+        """
+        Test validation of host filter with hypervisor_id = hostname and
+        filter containing some UUID. Some warning should be returned in this case
+        """
+        self.init_virt_config_section()
+        self.virt_config['hypervisor_id'] = 'hostname'
+        self.virt_config['filter_hosts'] = [
+            '*.example.com',
+            'www.company.com',
+            '118f4087-7535-4187-8bc2-8e07fc676156'
+        ]
+        self.virt_config['exclude_hosts'] = [
+            '446e2e7d-825a-5ca0-8cee-13ae9f56c903',
+            '4a9d7c0f-7058-4afd-8d06-42661872b48c',
+        ]
+        result = self.virt_config._validate_filter('filter_hosts')
+        self.assertIsNotNone(result)
+
+    def test_validate_wrong_filter_hypervisor_id_hwuuid(self):
+        """
+        Test validation of host filter with hypervisor_id = hwuuid and
+        filter containing some UUID. Some warning should be returned in this case
+        """
+        self.init_virt_config_section()
+        self.virt_config['type'] = 'esx'
+        self.virt_config['hypervisor_id'] = 'hwuuid'
+        self.virt_config['filter_hosts'] = [
+            'host-9',
+            'host-14',
+            '118f4087-7535-4187-8bc2-8e07fc676156'
+        ]
+        self.virt_config['exclude_hosts'] = [
+            '446e2e7d-825a-5ca0-8cee-13ae9f56c903',
+            '4a9d7c0f-7058-4afd-8d06-42661872b48c',
+        ]
+        result = self.virt_config._validate_filter('filter_hosts')
+        self.assertIsNotNone(result)

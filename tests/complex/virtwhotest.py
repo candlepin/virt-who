@@ -233,6 +233,9 @@ class VirtBackendTestMixin(object):
         code, out = self.run_virtwho(self.arguments + ['-p', '--debug'], grab_stdout=True)
         self.assertEqual(code, 0, "virt-who exited with wrong error code: %s" % code)
         returned = json.loads(out)
+        # Test facts
+        for hypervisor in returned['hypervisors']:
+            self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-compute-res'))
         # Transform it to the same format as assoc from SAM server
         assoc = dict((host['uuid'], host['guests']) for host in returned['hypervisors'])
         self.check_assoc(assoc, {

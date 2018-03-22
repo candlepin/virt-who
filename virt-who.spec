@@ -4,7 +4,7 @@
 %global python2_sitelib %{python_sitelib}
 %endif
 
-%global use_python3 0%{?fedora}
+%global use_python3 0%{?fedora} || (0%{?rhel} && 0%{?rhel} > 7)
 %global python_ver %{?use_python3:python3}%{?!use_python3:python}
 %global python_exec %{?use_python3:%{__python3}}%{?!use_python3:%{__python2}}
 %global python_sitelib %{?use_python3:%{python3_sitelib}}%{?!use_python3:%{python2_sitelib}}
@@ -31,7 +31,11 @@ Requires:       %{python_ver}-setuptools
 #Requires:       libvirt-%{python_ver}
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
-Requires:       python-rhsm >= %{?use_python3:1.20}%{?!use_python3:1.10.10}
+%if use_python3
+Requires:       python3-subscription-manager-rhsm
+%else
+Requires:       subscription-manager-rhsm
+%endif
 # python-suds is required for vSphere support
 Requires:       %{python_ver}-suds
 # m2crypto OR python3-cryptography is required for Hyper-V support

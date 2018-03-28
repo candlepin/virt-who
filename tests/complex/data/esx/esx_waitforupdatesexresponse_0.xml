@@ -79,7 +79,7 @@
                         <changeSet>
                             <name>parent</name>
                             <op>assign</op>
-                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                            <val type="ClusterComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
                         </changeSet>
                         <changeSet>
                             <name>vm</name>
@@ -122,7 +122,7 @@
                         <changeSet>
                             <name>parent</name>
                             <op>assign</op>
-                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                            <val type="ClusterComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
                         </changeSet>
                         <changeSet>
                             <name>vm</name>
@@ -161,7 +161,7 @@
                         <changeSet>
                             <name>parent</name>
                             <op>assign</op>
-                            <val type="ComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
+                            <val type="ClusterComputeResource" xsi:type="ManagedObjectReference">ha-compute-res</val>
                         </changeSet>
                         <changeSet>
                             <name>vm</name>

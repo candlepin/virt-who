@@ -104,6 +104,7 @@ class Hypervisor(object):
     CPU_SOCKET_FACT = 'cpu.cpu_socket(s)'
     HYPERVISOR_TYPE_FACT = 'hypervisor.type'
     HYPERVISOR_VERSION_FACT = 'hypervisor.version'
+    HYPERVISOR_CLUSTER = 'hypervisor.cluster'
 
     def __init__(self, hypervisorId, guestIds=None, name=None, facts=None):
         """

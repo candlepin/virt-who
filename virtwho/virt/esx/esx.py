@@ -303,6 +303,10 @@ class Esx(virt.Virt):
                 virt.Hypervisor.CPU_SOCKET_FACT: str(host['hardware.cpuInfo.numCpuPackages']),
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: host.get('config.product.name', 'vmware'),
             }
+
+            if host['parent'] and host['parent']._type == 'ClusterComputeResource':
+                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = host['parent'].value
+
             version = host.get('config.product.version', None)
             if version:
                 facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version

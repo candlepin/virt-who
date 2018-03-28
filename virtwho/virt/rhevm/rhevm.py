@@ -212,6 +212,7 @@ class RhevM(virt.Virt):
         mapping = {}
         hosts = {}
         clusters = set()
+        cluster_names = {}
 
         clusters_xml = self.get_xml(self.clusters_url)
         hosts_xml = self.get_xml(self.hosts_url)
@@ -221,6 +222,7 @@ class RhevM(virt.Virt):
         for cluster in clusters_xml.findall('cluster'):
             cluster_id = cluster.get('id')
             virt_service = cluster.find('virt_service').text
+            cluster_names[cluster_id] = cluster.find('name').text
             if virt_service.lower() == 'true':
                 clusters.add(cluster_id)
 
@@ -257,6 +259,14 @@ class RhevM(virt.Virt):
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
             }
+
+            try:
+                cluster_name = cluster_names[host_cluster_id]
+            except KeyError:
+                pass
+            else:
+                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = cluster_name
+
             try:
                 version = host.find('version').get('full_version')
                 if version:

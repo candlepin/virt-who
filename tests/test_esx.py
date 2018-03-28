@@ -119,6 +119,7 @@ class TestEsx(TestBase):
 
         fake_parent = MagicMock()
         fake_parent.value = 'Fake_parent'
+        fake_parent._type = 'ClusterComputeResource'
 
         fake_vm_id = MagicMock()
         fake_vm_id.value = 'guest1'
@@ -136,7 +137,7 @@ class TestEsx(TestBase):
                      'hardware.cpuInfo.numCpuPackages': '1',
                      'name': expected_hostname,
                      'parent': fake_parent,
-                     'vm': fake_vm
+                     'vm': fake_vm,
                      }
         fake_hosts = {'random-host-id': fake_host}
         self.esx.hosts = fake_hosts
@@ -155,6 +156,7 @@ class TestEsx(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_parent',
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]

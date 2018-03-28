@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <clusters>
     <cluster href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4" id="be0fa062-3be0-461a-bf43-ff7579c473e4">
-        <name>Cetus</name>
+        <name>ha-compute-res-01</name>
         <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/networks" rel="networks"/>
         <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/permissions" rel="permissions"/>
         <link href="/api/clusters/be0fa062-3be0-461a-bf43-ff7579c473e4/glustervolumes" rel="glustervolumes"/>
@@ -55,7 +55,7 @@
         <required_rng_sources/>
     </cluster>
     <cluster href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d" id="166b99a7-a40c-4823-8960-749a8985cd9d">
-        <name>CL32</name>
+        <name>ha-compute-res-02</name>
         <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/networks" rel="networks"/>
         <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/permissions" rel="permissions"/>
         <link href="/api/clusters/166b99a7-a40c-4823-8960-749a8985cd9d/glustervolumes" rel="glustervolumes"/>

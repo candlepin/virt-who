@@ -182,6 +182,7 @@ class TestRhevM(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
             }
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]
@@ -226,6 +227,7 @@ class TestRhevM(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
             }
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]

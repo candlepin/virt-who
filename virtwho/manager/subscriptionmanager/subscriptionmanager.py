@@ -326,7 +326,8 @@ class SubscriptionManager(Manager):
         return serialized_mapping
 
     def check_report_state(self, report):
-        job_id = report.job_id
+        # BZ 1554228
+        job_id = str(report.job_id)
         self._connect(report.config)
         self.logger.debug('Checking status of job %s', job_id)
         try:

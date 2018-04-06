@@ -886,8 +886,10 @@ class VirtConfigSection(ConfigSection):
         # Needed to allow us to parse the destination info
         self.add_key('sat_server', validation_method=lambda *args: None)
         self.add_key('server', validation_method=self._validate_server)
-        self.add_key('env', validation_method=self._validate_env)
-        self.add_key('owner', validation_method=self._validate_owner)
+        # self.add_key('env', validation_method=self._validate_env)
+        # self.add_key('owner', validation_method=self._validate_owner)
+        self.add_key('env', validation_method=self._validate_env, required=True)
+        self.add_key('owner', validation_method=self._validate_owner, required=True)
         self.add_key('filter_hosts', validation_method=self._validate_filter)
         self.add_key('exclude_hosts', validation_method=self._validate_filter)
         self.add_key('rhsm_proxy_hostname', validation_method=self._validate_non_empty_string)
@@ -908,12 +910,25 @@ class VirtConfigSection(ConfigSection):
         if 'virt_type' in self._values and 'type' not in self._values:
             self['type'] = self._values['virt_type']
             self.remove_key('virt_type')
+        # Logic of env and owner is little bit tricky :-(
         if 'sm_type' in self._values:
             if self._values['sm_type'] == SAT5:
                 self._required_keys.update(Satellite5DestinationInfo.required_kwargs)
                 # Owner and Env are only necessary for SAT6 and only for certain backends
                 self._required_keys.discard('owner')
                 self._required_keys.discard('env')
+            elif self._values['sm_type'] == SAT6:
+                if self['type'] == 'libvirt' and 'server' not in self._values:
+                    # Owner and Env are not necessary sam an libvirt virt backend
+                    self._required_keys.discard('owner')
+                    self._required_keys.discard('env')
+                elif self['type'] == 'vdsm':
+                    self._required_keys.discard('owner')
+                    self._required_keys.discard('env')
+                # TODO: is_hypervisor has to be true too, but it is hard to implement in this state
+                elif self['type'] == 'fake':
+                    self._required_keys.discard('owner')
+                    self._required_keys.discard('env')
         super(VirtConfigSection, self)._pre_validate()
 
     def _validate_sm_type(self, key):

@@ -36,6 +36,7 @@ from virtwho.password import Password
 LIBVIRT_SECTION_VALUES = {
     'type': 'libvirt',
     'server': '10.0.0.101',
+    'sm_type': 'sam',
     'username': 'admin',
     'password': 'top_secret',
     'env': '123456',

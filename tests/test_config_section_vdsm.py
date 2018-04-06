@@ -18,46 +18,28 @@ from __future__ import print_function
 #
 
 """
-Test validating of EsxConfigSection
+Test validating of VdsmConfigSection
 """
 
 from base import ConfigSectionValidationTests, TestBase
-from virtwho.parser import SAT6
-from virtwho.virt.esx.esx import EsxConfigSection
+from virtwho.virt.vdsm.vdsm import VdsmConfigSection
 
 
-class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
+class TestVdsmConfigSection(ConfigSectionValidationTests, TestBase):
     """
-    A group of tests to ensure proper validation of EsxConfigSections
+    A group of tests to ensure proper validation of XenConfigSections
     """
-    CONFIG_CLASS = EsxConfigSection
+    CONFIG_CLASS = VdsmConfigSection
     VALID_CONFIG = {
-        "type": "esx",
+        "type": "vdsm",
         "server": "1.2.3.4",
-        "username": "username",
-        "password": "password",
         "owner": "admin",
         "env": "admin",
-        "filter_host_parents": "'PARENT_A', 'PARENT_B'",
-        "exclude_host_parents": "'PARENT_C_EXCLUDED'",
     }
 
-    SAM_REQUIRED_KEYS = {
-        'type',
-        'server',
-        'username',
-        'password',
-        'owner',
-        'env'
-    }
-
-    SAT5_REQUIRED_KEYS = SAM_REQUIRED_KEYS - {'owner', 'env'}
+    SAM_REQUIRED_KEYS = set()
 
     DEFAULTS = {
-        'filter_host_parents': None,
-        'exclude_host_parents': None,
-        'hypervisor_id': 'uuid',
-        'simplified_vim': True,
-        'sm_type': SAT6,
+        'sm_type': 'sam',
     }
 

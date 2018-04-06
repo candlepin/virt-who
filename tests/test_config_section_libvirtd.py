@@ -34,6 +34,7 @@ from virtwho.config import EffectiveConfig, ConfigSection, parse_file
 from virtwho.virt.libvirtd.libvirtd import LibvirtdConfigSection
 
 MY_SECTION_NAME = 'test-libvirt'
+MY_SAT5_SECTION_NAME = 'test-sat5-libvirt'
 
 # Values used for testing VirtConfigSection
 LIBVIRT_SECTION_VALUES = {
@@ -51,6 +52,16 @@ type = libvirt
 server = ssh://192.168.122.10
 env = 123456
 owner = 123456
+"""
+
+# No env or owner is required for Satellite 5
+LIBVIRT_SAT5_SECTION_TEXT = """
+[test-sat5-libvirt]
+type = libvirt
+sm_type = satellite
+sat_server = https://sat5.company.com/XMLRPC
+sat_username = admin
+sat_password = secret
 """
 
 
@@ -177,13 +188,14 @@ class TestLibvirtdConfigSection(TestBase):
         six.assertCountEqual(self, result, expected_result)
         self.assertEqual(self.virt_config['server'], 'qemu+ssh://example.com/system?no_tty=1')
 
-    def test_validate_owner(self):
+    def test_validate_sam_owner(self):
         """
-        Test validation of owner option for libvirtd virt. backend
+        Test validation of owner option for libvirtd virt. backend and SAM destination
         """
         self.init_virt_config_section()
-        # When server is set, then owner has to be set too
+        # When server is set and SAM destination is used, then owner has to be set
         assert 'server' in self.virt_config
+        assert 'sam' == self.virt_config['sm_type']
         result = self.virt_config._validate_owner('owner')
         self.assertIsNone(result)
         # Delete 'owner' section
@@ -195,14 +207,28 @@ class TestLibvirtdConfigSection(TestBase):
         result = self.virt_config._validate_owner('owner')
         self.assertIsNone(result)
 
-    def test_validate_env(self):
+    def test_validate_sat5_owner(self):
         """
-        Test validation of owner option for libvirtd virt. backend.
+        Test validation of owner option for libvirtd virt. backend and SAT5 destination
+        """
+        self.init_virt_config_section()
+        self.virt_config['sm_type'] = 'satellite'
+        # When server is set and SAM destination is used, then owner has to be set
+        assert 'server' in self.virt_config
+        # Delete 'owner' section
+        del self.virt_config['owner']
+        result = self.virt_config._validate_owner('owner')
+        self.assertIsNone(result)
+
+    def test_validate_sam_env(self):
+        """
+        Test validation of owner option for libvirtd virt. backend. and SAM destination
         It is similar for owner
         """
         self.init_virt_config_section()
         # When server is set, then owner has to be set too
         assert 'server' in self.virt_config
+        assert 'sam' == self.virt_config['sm_type']
         result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
         # Delete 'env' section
@@ -211,6 +237,20 @@ class TestLibvirtdConfigSection(TestBase):
         self.assertIsNotNone(result)
         # Delete server too, then env need not to be set
         del self.virt_config['server']
+        result = self.virt_config._validate_env('env')
+        self.assertIsNone(result)
+
+    def test_validate_sat5_env(self):
+        """
+        Test validation of owner option for libvirtd virt. backend. and SAT5 destination
+        It is similar for owner
+        """
+        self.init_virt_config_section()
+        self.virt_config['sm_type'] = 'satellite'
+        # When server is set, then owner has to be set too
+        assert 'server' in self.virt_config
+        # Delete 'env' section
+        del self.virt_config['env']
         result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
 
@@ -297,7 +337,7 @@ class TestLibvirtEffectiveConfig(TestBase):
         """
         self.effective_config = EffectiveConfig()
 
-    def test_read_effective_config_from_file(self):
+    def test_read_sam_effective_config_from_file(self):
         config_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, config_dir)
         with open(os.path.join(config_dir, "test.conf"), "w") as f:
@@ -315,3 +355,23 @@ class TestLibvirtEffectiveConfig(TestBase):
         validate_messages = self.effective_config.validate()
         self.assertIsNotNone(validate_messages)
         del self.effective_config[MY_SECTION_NAME]
+
+    def test_read_sat5_effective_config_from_file(self):
+        config_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, config_dir)
+        with open(os.path.join(config_dir, "test.conf"), "w") as f:
+            f.write(LIBVIRT_SAT5_SECTION_TEXT)
+        conf = parse_file(os.path.join(config_dir, "test.conf"))
+        self.init_effective_config()
+        conf_values = conf.pop(MY_SAT5_SECTION_NAME)
+        self.effective_config[MY_SAT5_SECTION_NAME] = ConfigSection.from_dict(
+            conf_values,
+            MY_SAT5_SECTION_NAME,
+            self.effective_config
+        )
+        self.assertEqual(type(self.effective_config[MY_SAT5_SECTION_NAME]), LibvirtdConfigSection)
+        validate_messages = self.effective_config.validate()
+        self.assertEqual(self.effective_config[MY_SAT5_SECTION_NAME]['sat_server'], 'https://sat5.company.com/XMLRPC')
+        self.assertEqual(self.effective_config[MY_SAT5_SECTION_NAME]['sm_type'], 'satellite')
+        self.assertIsNotNone(validate_messages)
+        del self.effective_config[MY_SAT5_SECTION_NAME]

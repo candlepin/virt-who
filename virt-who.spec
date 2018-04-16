@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.5
+Version:        0.21.6
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -135,6 +135,10 @@ fi
 
 
 %changelog
+* Mon Apr 16 2018 William Poteat <wpoteat@redhat.com> 0.21.6-1
+- 1554228: Unicode issue on status update call (wpoteat@redhat.com)
+- Releasers (wpoteat@redhat.com)
+
 * Tue Feb 06 2018 Christopher Snyder <csnyder@redhat.com> 0.21.5-1
 - 1492074: Enable login to ESX using password with UTF-8 string
   (jhnidek@redhat.com)

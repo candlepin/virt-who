@@ -72,8 +72,11 @@ class ConfigSectionValidationTests(object):
     # Should be changed for each set of tests, to make sure the right class is utilized
     CONFIG_CLASS = VirtConfigSection
 
-    # should be a list of the keys which are required
-    REQUIRED_KEYS = set()
+    # should be a list of the keys which are required for sam destination
+    SAM_REQUIRED_KEYS = set()
+
+    # should be a list of the keys which are required for sam destination
+    SAT5_REQUIRED_KEYS = set()
 
     # Those keys that should have a default (along with their expected default value)
     DEFAULTS = {}
@@ -131,23 +134,41 @@ class ConfigSectionValidationTests(object):
         # There should be no error messages if this config section is valid
         self.assertFalse(any(message[0] == 'error' for message in messages))
 
-    def test_missing_required_no_default(self):
+    def test_missing_sam_required_no_default(self):
         """
         This tests that when a required key, which has no default, is missing, the config section
-        becomes invalid post-validation.
+        becomes invalid post-validation. This test is specific for SAM destination (candlepin server).
         """
         config = self.CONFIG_CLASS("test", None)
         # A sorted list of keys that are required, but have no default
-        target_keys = sorted(list(self.REQUIRED_KEYS - set(self.DEFAULTS.keys())))
+        target_keys = sorted(list(self.SAM_REQUIRED_KEYS - set(self.DEFAULTS.keys())))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 
         messages = config.validate()
 
-        self.assertEqual(config.state, ValidationState.INVALID)
-        self.assertTrue(any(message[0] == 'error' for message in messages))
+        if len(self.SAM_REQUIRED_KEYS) > 0:
+            self.assertEqual(config.state, ValidationState.INVALID)
+            self.assertTrue(any(message[0] == 'error' for message in messages))
 
-    def test_missing_required_with_default(self):
+    def test_missing_sat5_required_no_default(self):
+        """
+        This tests that when a required key, which has no default, is missing, the config section
+        becomes invalid post-validation. This test is specific for satellite 5 destination
+        """
+        config = self.CONFIG_CLASS("test", None)
+        # A sorted list of keys that are required, but have no default
+        target_keys = sorted(list(self.SAT5_REQUIRED_KEYS - set(self.DEFAULTS.keys())))
+        config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
+        config.update(**config_values)
+
+        messages = config.validate()
+
+        if len(self.SAT5_REQUIRED_KEYS) > 0:
+            self.assertEqual(config.state, ValidationState.INVALID)
+            self.assertTrue(any(message[0] == 'error' for message in messages))
+
+    def test_missing_sam_required_with_default(self):
         """
         Test that a config section given a set of values which are valid other than missing required
         keys which have defaults, will be valid post validation, and that the values for the
@@ -156,7 +177,7 @@ class ConfigSectionValidationTests(object):
         NOTE: This does not account for modifications of default values made during validation.
         """
         config = self.CONFIG_CLASS("test", None)
-        target_keys = sorted(list(self.REQUIRED_KEYS & set(self.DEFAULTS.keys())))
+        target_keys = sorted(list(self.SAM_REQUIRED_KEYS & set(self.DEFAULTS.keys())))
         config_values = self._modified_dict(self.VALID_CONFIG, excluding=target_keys)
         config.update(**config_values)
 

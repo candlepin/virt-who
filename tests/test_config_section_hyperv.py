@@ -39,12 +39,16 @@ class TestHyperVConfigSection(ConfigSectionValidationTests, TestBase):
         "env": "admin",
     }
 
-    REQUIRED_KEYS = set([
+    SAM_REQUIRED_KEYS = {
         'type',
         'server',
         'username',
         'password',
-    ])
+        'owner',
+        'env',
+    }
+
+    SAT5_REQUIRED_KEYS = SAM_REQUIRED_KEYS - {'owner', 'env'}
 
     DEFAULTS = {
         'hypervisor_id': 'uuid',

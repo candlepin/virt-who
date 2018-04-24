@@ -173,10 +173,11 @@ class StompClient(object):
                 if self.ssl_context:
                     if hasattr(self.ssl_context, 'wrap_socket'):
                         self.socket = self.ssl_context.wrap_socket(self.socket)
+                        self.socket.connect(addr)
                     else:
                         import M2Crypto.SSL.Connection
                         self.socket = M2Crypto.SSL.Connection(self.ssl_context)
-                self.socket.connect(addr)
+                        self.socket.connect((self.host, int(self.port)))
                 message = StompFrame('CONNECT', headers={
                     'accept-version': '1.2',
                     'host': self.host,

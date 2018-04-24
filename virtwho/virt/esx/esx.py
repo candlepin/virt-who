@@ -258,15 +258,20 @@ class Esx(virt.Virt):
                 continue
             guests = []
 
-            if self.config['hypervisor_id'] == 'uuid':
-                uuid = host['hardware.systemInfo.uuid']
-            elif self.config['hypervisor_id'] == 'hwuuid':
-                uuid = host_id
-            elif self.config['hypervisor_id'] == 'hostname':
-                uuid = host['config.network.dnsConfig.hostName']
-                domain_name = host['config.network.dnsConfig.domainName']
-                if domain_name:
-                    uuid = self._format_hostname(uuid, domain_name)
+            try:
+                if self.config['hypervisor_id'] == 'uuid':
+                    uuid = host['hardware.systemInfo.uuid']
+                elif self.config['hypervisor_id'] == 'hwuuid':
+                    uuid = host_id
+                elif self.config['hypervisor_id'] == 'hostname':
+                    uuid = host['config.network.dnsConfig.hostName']
+                    domain_name = host['config.network.dnsConfig.domainName']
+                    if domain_name:
+                        uuid = self._format_hostname(uuid, domain_name)
+            except KeyError:
+                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_id)
+                continue
+
             if host['vm']:
                 for vm_id in host['vm'].ManagedObjectReference:
                     if vm_id.value not in self.vms:

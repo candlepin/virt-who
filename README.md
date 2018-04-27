@@ -37,6 +37,7 @@ Backends for reporting hosts to guests association:
 * VMWare vCenter Server and ESX(i)
 * Hyper-V
 * Remote libvirt
+* Kubevirt
 
 
 ## Supported subscription managers

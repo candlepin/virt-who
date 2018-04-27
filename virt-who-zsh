@@ -57,4 +57,8 @@ _arguments -s -w \
   "(--xen-server $exargs)"--xen-server=+'[specify server URL]:URL:' \
   "(--xen-username $exargs)"--xen-username=+'[specify username]:username:' \
   "(--xen-password $exargs)"--xen-password=+'[specify password]:password:' \
+   - set7 \
+  "(--kubevirt $exargs)"--kubevirt'[register guests using Kubevirt]' \
+  "(--kubevirt-owner $exargs)"--kubevirt-owner=+'[specify owner]:owner:' \
+  "(--kubevirt-env $exargs)"--kubevirt-env=+'[specify environment]:env:' \
   && return 0

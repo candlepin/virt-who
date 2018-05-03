@@ -21,7 +21,7 @@ Acquire and send guest information each N seconds; note that this option is reco
 Print the host/guests association in JSON format to standard output
 .TP
 \fB\-c\fR, \fB\-\-config\fR
-Use configuration file directly, can be used multiple times. See virt-who-config(5) for details about configuration file format.
+Use configuration file directly (will override configuration from other files. 'global' and 'default' sections are not read in files passed in via this option, and are only read from /etc/virt-who.conf). Can be used multiple times. See virt-who-config(5) for details about configuration file format.
 .IP
 .SS Virtualization backend
 .IP

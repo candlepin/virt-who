@@ -317,7 +317,10 @@ def parse_cli_arguments():
     parser.add_argument("-p", "--print", action="store_true", dest="print_", default=False,
                         help="Print the host/guest association obtained from virtualization backend (implies oneshot)")
     parser.add_argument("-c", "--config", action="append", dest="configs", default=[],
-                        help="Configuration file that will be processed, can be used multiple times")
+                        help="Configuration file that will be processed and will override configuration \n"
+                             "from other files. 'global' and 'default' sections are not read in files passed in via \n"
+                             "this option, and are only read from /etc/virt-who.conf.\n"
+                             " Can be used multiple times")
     parser.add_argument("-m", "--log-per-config", action="store_true", dest="log_per_config", default=NotSetSentinel(),
                         help="[Deprecated] Write one log file per configured virtualization backend.\n"
                              "Implies a log_dir of %s/virtwho (Default: all messages are written to a single log file)"

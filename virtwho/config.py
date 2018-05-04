@@ -1417,16 +1417,24 @@ def init_config(env_options, cli_options, config_dir=None):
         del effective_config[VW_ENV_CLI_SECTION_NAME]
 
     all_sections_to_add = {}
-    # read additional sections from /etc/virt-who.conf
-    all_sections_to_add.update(vw_conf)
-    # also read all sections in conf files in the drop dir
-    all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
-    # We should ignore any additional sections defined as VW_GLOBAL as we've already parsed that
+
+    # read the files provided to the configs var if defined
+    for file_name in effective_config[VW_GLOBAL]['configs']:
+        logger.info("Using configuration passed in by -c/--configs; ignoring configuration files in '%s'", config_dir)
+        all_sections_to_add.update(parse_file(filename=file_name))
+
+    if len(all_sections_to_add) == 0:
+        # read sections from /etc/virt-who.conf
+        all_sections_to_add.update(vw_conf)
+        # also read all sections in conf files in the drop dir
+        all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+
+    # We should ignore any additional sections defined as VW_GLOBAL
+    # or VW_VIRT_DEFAULTS_SECTION_NAME as we've already parsed those
     if VW_GLOBAL in all_sections_to_add:
         del all_sections_to_add[VW_GLOBAL]
-    # also read the files in the configs list from the configs var if defined
-    for file_name in effective_config[VW_GLOBAL]['configs']:
-        all_sections_to_add.update(parse_file(filename=file_name))
+    if VW_VIRT_DEFAULTS_SECTION_NAME in all_sections_to_add:
+        del all_sections_to_add[VW_VIRT_DEFAULTS_SECTION_NAME]
 
     for section, values in all_sections_to_add.items():
         new_section = {}

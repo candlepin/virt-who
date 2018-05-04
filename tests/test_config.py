@@ -32,6 +32,8 @@ from base import TestBase, unittest
 
 from virtwho.config import DestinationToSourceMapper, parse_list, Satellite6DestinationInfo, init_config, \
     VW_GLOBAL, VW_ENV_CLI_SECTION_NAME
+import virtwho.config
+
 from virtwho.password import Password, InvalidKeyFile
 
 default_config_values = {
@@ -113,8 +115,13 @@ class TestReadingConfigs(TestBase):
 
     def setUp(self):
         self.config_dir = mkdtemp()
-        self.addCleanup(shutil.rmtree, self.config_dir)
+        self.custom_config_dir = mkdtemp()
+        self.general_config_file_dir = mkdtemp()
+        self.addCleanup(shutil.rmtree, self.config_dir, self.custom_config_dir, self.general_config_file_dir)
         self.logger = logging.getLogger("virtwho.main")
+
+    def tearDown(self):
+        virtwho.config.VW_GENERAL_CONF_PATH = '/etc/virt-who.conf'
 
     @staticmethod
     def dict_to_ini(in_dict):
@@ -605,6 +612,135 @@ rhsm_hostname=abc
         # There should be only one config, and that should be the one that is valid
         self.assertEqual(len(config_manager.configs), 1)
         self.assertEqual(config_manager.configs[0][1].name, valid_config_name)
+
+    def testCLIConfigOverridesDefaultDirectoryConfigs(self):
+        cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
+        with open(cli_config_file_path, "w") as f:
+            f.write("""
+[valid_cli_section]
+server=5.5.5.5
+username=admin1
+password=password1
+owner=owner1
+env=env1
+rhsm_hostname=abc1
+""")
+        cli_dict = {'configs': [cli_config_file_path]}
+
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[valid_default_dir_section]
+server=1.2.3.4
+username=admin
+password=password
+owner=owner
+env=env
+rhsm_hostname=abc
+""")
+        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        # There should be only one config, and that should be the one passed from the cli
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0][1]
+        self.assertEqual(config.name, "valid_cli_section")
+        self.assertEqual(config["server"], "5.5.5.5")
+        self.assertEqual(config["username"], "admin1")
+        self.assertEqual(config["password"], "password1")
+        self.assertEqual(config["owner"], "owner1")
+        self.assertEqual(config["env"], "env1")
+        self.assertEqual(config["rhsm_hostname"], "abc1")
+
+    def testCLIConfigOverridesGeneralConfigFile(self):
+        cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
+        with open(cli_config_file_path, "w") as f:
+            f.write("""
+[valid_cli_section]
+server=5.5.5.5
+username=admin1
+password=password1
+owner=owner1
+env=env1
+rhsm_hostname=abc1
+""")
+        cli_dict = {'configs': [cli_config_file_path]}
+
+        # alter the main conf file constant temporarily:
+        virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
+
+        with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
+            f.write("""
+[valid_default_main_conf_file_section]
+server=1.2.3.4
+username=admin
+password=password
+owner=owner
+env=env
+rhsm_hostname=abc
+""")
+        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        # There should be only one config, and that should be the one passed from the cli
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0][1]
+        self.assertEqual(config.name, "valid_cli_section")
+        self.assertEqual(config["server"], "5.5.5.5")
+        self.assertEqual(config["username"], "admin1")
+        self.assertEqual(config["password"], "password1")
+        self.assertEqual(config["owner"], "owner1")
+        self.assertEqual(config["env"], "env1")
+        self.assertEqual(config["rhsm_hostname"], "abc1")
+
+    def testCLIConfigOverridesGeneralConfigFileButStillReadsItsGlobalAndDefaultsSections(self):
+        cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
+        with open(cli_config_file_path, "w") as f:
+            f.write("""
+[valid_cli_section]
+server=5.5.5.5
+username=admin1
+password=password1
+owner=owner1
+env=env1
+rhsm_hostname=abc1
+""")
+        cli_dict = {'configs': [cli_config_file_path]}
+
+        # alter the main conf file constant temporarily:
+        virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
+
+        with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
+            f.write("""
+[global]
+interval=100
+log_file=rhsm45.log
+
+[defaults]
+hypervisor_id=hostname
+
+[valid_default_main_conf_file_section]
+server=1.2.3.4
+username=admin
+password=password
+owner=owner
+env=env
+rhsm_hostname=abc
+""")
+        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        # There should be only one config, and that should be the one passed from the cli
+        self.assertEqual(len(config_manager.configs), 1)
+        config = config_manager.configs[0][1]
+        self.assertEqual(config.name, "valid_cli_section")
+        self.assertEqual(config["server"], "5.5.5.5")
+        self.assertEqual(config["username"], "admin1")
+        self.assertEqual(config["password"], "password1")
+        self.assertEqual(config["owner"], "owner1")
+        self.assertEqual(config["env"], "env1")
+        self.assertEqual(config["rhsm_hostname"], "abc1")
+
+        # Also, check that the default section values from the VW_GENERAL_CONF_PATH file are still read
+        # (and used when any of the keys are missing in the virt config)
+        self.assertEqual(config["hypervisor_id"], "hostname")
+
+        # Additionally, the global section from the VW_GENERAL_CONF_PATH file should be read in
+        self.assertEqual(config_manager.effective_config["global"]["log_file"], "rhsm45.log")
+        self.assertEqual(config_manager.effective_config["global"]["interval"], 100)
 
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:

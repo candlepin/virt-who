@@ -14,7 +14,7 @@
 
 
 Name:           virt-who
-Version:        0.22.0
+Version:        0.22.1
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -145,6 +145,31 @@ fi
 
 
 %changelog
+* Mon May 07 2018 William Poteat <wpoteat@redhat.com> 0.22.1-1
+- 1542652: When the -c option is used, don't parse the default files
+  (nmoumoul@redhat.com)
+- 1569299: try/exception needed for hypervisor_id check (wpoteat@redhat.com)
+- Update tito releasers to include newer versions of fedora
+  (csnyder@redhat.com)
+- 1560461: Make env and owner options required for approprite cases
+  (jhnidek@redhat.com)
+- 1554228: Unicode issue on status update call (wpoteat@redhat.com)
+- 1387800: [RFE] virt-who can report cluster in host-to-guest mapping
+  (jhnidek@redhat.com)
+- Updates for future builds based on changing environments (wpoteat@redhat.com)
+- limit version of libvirt-python (wpoteat@redhat.com)
+- 1447022: Log warning, when wrong filter is in config file
+  (jhnidek@redhat.com)
+- 1511644: Support running virt-who on python 3 (csnyder@redhat.com)
+- 1520236: Do not log traceback, when server returns 429 http error
+  (jhnidek@redhat.com)
+- 1492074: Enable login to ESX using password with UTF-8 string
+  (jhnidek@redhat.com)
+- 1353119: Add JSON-RPC support for VDSM (khowell@redhat.com)
+- 1509597: Enable to use virt-who wih VDSM again (jhnidek@redhat.com)
+- 1522383: Remove global option background (jhnidek@redhat.com)
+- 1523548: Options log_dir and log_file are not ignored (jhnidek@redhat.com)
+
 * Thu Dec 07 2017 Christopher Snyder <csnyder@redhat.com> 0.21.2-1
 - 1510310: Ensure that owner and env are required where necessary
   (csnyder@redhat.com)

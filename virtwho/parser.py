@@ -41,6 +41,7 @@ SAT5_VM_DISPATCHER = {
     'rhevm': {'owner': False, 'env': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'env': False, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
+    'kubevirt': {'owner': False, 'env': False, 'server': False, 'username': False},
 }
 
 SAT6_VM_DISPATCHER = {
@@ -50,6 +51,7 @@ SAT6_VM_DISPATCHER = {
     'rhevm': {'owner': True, 'env': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'env': True, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
+    'kubevirt': {'owner': True, 'env': True, 'server': False, 'username': False},
 }
 
 
@@ -68,7 +70,7 @@ class StoreGroupArgument(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         """
         When the argument from group is used, then this argument has to match
-        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]
+        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]
         """
         options = vars(namespace)
         virt_type = options['virt_type']
@@ -203,6 +205,7 @@ def read_config_env_variables():
         "VIRTWHO_XEN": ("virt_type", store_const, "xen"),
         "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
         "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
+        "VIRTWHO_KUBEVIRT": ("virt_type", store_const, "kubevirt"),
         "VIRTWHO_INTERVAL": ("interval", store_value),
         "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
     }
@@ -301,7 +304,7 @@ def parse_cli_arguments():
     """
     parser = ArgumentParser(
         usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] "
-              "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen]",
+              "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
         description="Agent for reporting virtual guest IDs to subscription manager",
         epilog="virt-who also reads environment variables. They have the same name as "
                "command line arguments but uppercased, with underscore instead of dash "
@@ -348,6 +351,8 @@ def parse_cli_arguments():
                             help="[Deprecated] Register guests using RHEV-M")
     virt_group.add_argument("--hyperv", action=StoreVirtType, dest="virt_type", const="hyperv",
                             help="[Deprecated] Register guests using Hyper-V")
+    virt_group.add_argument("--kubevirt", action=StoreVirtType, dest="virt_type", const="kubevirt",
+                            help="[Deprecated] Register guests using Kubevirt")
 
     manager_group = parser.add_argument_group(
         title="Subscription manager",
@@ -451,6 +456,14 @@ def parse_cli_arguments():
     satellite_group.add_argument("--satellite-password", action="store", dest="sat_password", default="",
                                  help="[Deprecated] Password for connecting to Satellite server")
 
+    kubevirt_group = parser.add_argument_group(
+        title="Kubevirt options",
+        description="Use these options with --kubevirt"
+    )
+    kubevirt_group.add_argument("--kubevirt-owner", action=StoreGroupArgument, dest="owner", default="",
+                             help="[Deprecated] Organization who has purchased subscriptions of the products")
+    kubevirt_group.add_argument("--kubevirt-env", action=StoreGroupArgument, dest="env", default="",
+                             help="[Deprecated] Environment where Kubevirt belongs to")
 
     # Read option from CLI
     cli_options = vars(parser.parse_args())

@@ -2,7 +2,7 @@
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager, Satellite 6, or Satellite 5.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv]
+virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--kubevirt]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -244,6 +244,13 @@ Use Citrix XenServer as virtualization backend and specify option required to co
 Fake virtualization backend fetches the host/guests association from file. This can be useful in environments where the hypervisor is not accessible by virt-who.
 It's only available through configuration file, see virt-who-config(5) for details about configuration of this backend.
 
+.TP
+8. Kubevirt
+
+# virt-who --kubevirt --kubevirt-owner=KUBEVIRT_OWNER --kubevirt-env=KUBEVIRT_ENV
+
+Use Kubevirt as virtualization backend.
+
 
 .SS SUBSCRIPTION MANAGER
 
@@ -287,6 +294,7 @@ Here is a list of ports that need to be open for different hypervisors:
     XenServer: 443/tcp
     libvirt: depending on transport type, default (for remote connections) is qemu over ssh on port 22
     local libvirt and vdsm use local connections and don't need open ports
+    kubevirt: 8443/tcp
 
 virt-who also needs to have access to Subscription Asset Manager, Satellite 5, or Satellite 6. Default port is 443/tcp. All the ports might be changed by system administrators.
 

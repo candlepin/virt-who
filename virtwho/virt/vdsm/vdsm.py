@@ -26,6 +26,8 @@ import re
 from six.moves import xmlrpc_client
 from six.moves.configparser import SafeConfigParser, NoSectionError, NoOptionError
 import subprocess
+import ssl
+
 
 from virtwho.virt import Virt, Guest
 from virtwho.config import VirtConfigSection
@@ -127,7 +129,7 @@ class Vdsm(Virt):
         if not hasattr(ssl, 'create_default_context'):
             return False
         try:
-            xmlrpclib.ServerProxy('https://localhost', context=ssl.create_default_context())
+            xmlrpc_client.ServerProxy('https://localhost', context=ssl.create_default_context())
             return True
         except TypeError:
             return False

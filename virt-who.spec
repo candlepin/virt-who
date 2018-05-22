@@ -20,9 +20,8 @@ Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
 License:        GPLv2+
-URL:            https://github.com/virt-who/virt-who
-Source0:        https://codeload.github.com/virt-who/virt-who/tar.gz/%{git_tag}#/%{name}-%{version}.tar.gz
-BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+URL:            https://github.com/candlepin/virt-who
+Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      noarch
 BuildRequires:  %{python_ver}-devel
@@ -89,9 +88,6 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 
 # Don't run test suite in check section, because it need the system to be
 # registered to subscription-manager server
-
-%clean
-rm -rf $RPM_BUILD_ROOT
 
 %post
 %if %{use_systemd}
@@ -170,6 +166,9 @@ fi
 - 1522383: Remove global option background (jhnidek@redhat.com)
 - 1523548: Options log_dir and log_file are not ignored (jhnidek@redhat.com)
 
+* Fri Feb 09 2018 Fedora Release Engineering <releng@fedoraproject.org> - 0.17-5
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_28_Mass_Rebuild
+
 * Thu Dec 07 2017 Christopher Snyder <csnyder@redhat.com> 0.21.2-1
 - 1510310: Ensure that owner and env are required where necessary
   (csnyder@redhat.com)
@@ -223,6 +222,9 @@ fi
   (jhnidek@redhat.com)
 - 1408556: Log which owner updated mappings are being sent to
   (csnyder@redhat.com)
+
+* Thu Jul 27 2017 Fedora Release Engineering <releng@fedoraproject.org> - 0.17-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_27_Mass_Rebuild
 
 * Wed Jul 26 2017 Christopher Snyder <csnyder@redhat.com> 0.20.4-1
 - Point Source0 to GitHub (csnyder@redhat.com)
@@ -292,11 +294,23 @@ fi
 - 1299643: Update virt-who-config man page to include NO_PROXY
   (csnyder@redhat.com)
 
+* Sat Feb 11 2017 Fedora Release Engineering <releng@fedoraproject.org> - 0.17-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_26_Mass_Rebuild
+
 * Tue Oct 11 2016 Radek Novacek <rnovacek@redhat.com> 0.18-1
 - Version 0.18
 
+* Tue Jul 19 2016 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.17-2
+- https://fedoraproject.org/wiki/Changes/Automatic_Provides_for_Python_RPM_Packages
+
+* Tue May 24 2016 Radek Novacek <rnovacek@redhat.com> - 0.17-1
+- Rebase to 0.17
+
 * Tue May 17 2016 Radek Novacek <rnovacek@redhat.com> 0.17-1
 - Version 0.17
+
+* Fri Feb 05 2016 Fedora Release Engineering <releng@fedoraproject.org> - 0.8-13
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
 
 * Thu Dec 17 2015 Radek Novacek <rnovacek@redhat.com> 0.16-1
 - Version 0.16
@@ -405,11 +419,18 @@ fi
 * Tue Jun 23 2015 Radek Novacek <rnovacek@redhat.com> 0.14-1
 - Version 0.14
 
+* Fri Jun 19 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-12
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
 * Tue Mar 17 2015 Radek Novacek <rnovacek@redhat.com> 0.13-1
 - new package built with tito
 
 * Fri Feb 27 2015 Radek Novacek <rnovacek@redhat.com> 0.12-1
 - Version 0.12
+
+* Tue Feb 03 2015 Radek Novacek <rnovacek@redhat.com> 0.8-11
+- Fix permission of /etc/sysconfig/virt-who file
+- Resolves: #1186034
 
 * Mon Sep 08 2014 Radek Novacek <rnovacek@redhat.com> 0.11-1
 - Version 0.11
@@ -423,11 +444,67 @@ fi
 - Add dependency on m2crypto
 - Version 0.9
 
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-10
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Sun Aug 04 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-9
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Fri Jun 14 2013 Radek Novacek <rnovacek@redhat.com> 0.8-8
+- Increase ESXi compatibility
+- Resolves: rhbz#923760
+
+* Fri Feb 15 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-7
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
+* Tue Nov 27 2012 Radek Novacek <rnovacek@redhat.com> 0.8-6
+- Add systemd support
+- specfile cleanup
+
+* Thu Oct 25 2012 Radek Novacek <rnovacek@redhat.com> 0.8-5
+- Fix adding https:// to ESX url
+
+* Wed Oct 24 2012 Radek Novacek <rnovacek@redhat.com> 0.8-4
+- Help and manpage improvements
+
+* Wed Oct 17 2012 Radek Novacek <rnovacek@redhat.com> 0.8-3
+- Fix bugs in Hyper-V support (patch rebased)
+- Create PID file ASAP to prevent service stop fails
+
+* Thu Oct 11 2012 Radek Novacek <rnovacek@redhat.com> 0.8-2
+- Add support for accessing Hyper-V
+
+* Wed Sep 26 2012 Radek Novacek <rnovacek@redhat.com> 0.8-1
+- Upstream version 0.8
+- RFE: command line improvements
+- Add support for accessing RHEV-M
+- Fix printing tracebacks on terminal
+
 * Fri Sep 14 2012 Radek Novacek <rnovacek@redhat.com> 0.8-1
 - Version 0.8
 
 * Mon Jul 09 2012 Radek Novacek <rnovacek@redhat.com> 0.7-1
 - Version 0.7
+
+* Thu Apr 26 2012 Radek Novacek <rnovacek@redhat.com> 0.6-6
+- Handle unknown libvirt event properly
+
+* Wed Apr 18 2012 Radek Novacek <rnovacek@redhat.com> 0.6-5
+- Enable debug output to be written to stderr
+- Log guest list to log even in non-debug mode
+
+* Tue Apr 17 2012 Radek Novacek <rnovacek@redhat.com> 0.6-4
+- Fix regression in double fork patch
+
+* Wed Mar 28 2012 Radek Novacek <rnovacek@redhat.com> 0.6-3
+- Do double fork when daemon is starting
+
+* Fri Mar 09 2012 Radek Novacek <rnovacek@redhat.com> 0.6-2
+- Add python-suds require
+- Requires python-rhsm >= 0.98.6
+
+* Thu Mar 01 2012 Radek Novacek <rnovacek@redhat.com> 0.6-1
+- Rebase to virt-who-0.6
 
 * Mon Feb 13 2012 Radek Novacek <rnovacek@redhat.com> 0.6-1
 - Version 0.6
@@ -439,11 +516,21 @@ fi
 * Wed Nov 30 2011 Radek Novacek <rnovacek@redhat.com> 0.4-1
 - Version 0.4
 
+* Wed Oct 12 2011 Radek Novacek <rnovacek@redhat.com> 0.3-3
+- Use updateConsumer API instead of updateConsumerFact (fixes limit 255 chars of uuid list)
+- Requires python-rhsm >= 0.96.13
+
 * Thu Oct 06 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-2
 - Requires python-rhsm >= 0.96.13 (contains fix for char limit in uuid list)
 
+* Wed Sep 07 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-2
+- Add upstream patch that prevents failure when server not implements /status/ command
+
 * Thu Sep 01 2011 Radek Novacek <rnovacek@redhat.com> - 0.3-1
 - Add initscript and configuration file
+
+* Mon Aug 22 2011 Radek Novacek <rnovacek@redhat.com> - 0.2-2
+- Bump release because of tagging in wrong branch
 
 * Mon Aug 22 2011 Radek Novacek <rnovacek@redhat.com> - 0.2-1
 - Update to upstream version 0.2

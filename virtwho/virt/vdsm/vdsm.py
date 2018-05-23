@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import re
 from six.moves import xmlrpc_client
 from six.moves.configparser import SafeConfigParser, NoSectionError, NoOptionError
+import os
 import subprocess
 import ssl
 
@@ -126,6 +127,9 @@ class Vdsm(Virt):
         If the python version supports SSL contexts and allows specifying them in xmlrpc clients, we do not need
         M2Crypto.
         """
+        if 'RHSM_USE_M2CRYPTO' in os.environ and os.environ['RHSM_USE_M2CRYPTO'].lower() in ['true', '1', 'yes']:
+            return False
+
         if not hasattr(ssl, 'create_default_context'):
             return False
         try:

@@ -1,13 +1,14 @@
 language: python
 python:
   - "2.7"
+  - "3.6"
 env:
   - PYTHONPATH=.
 sudo: required
 dist: trusty
 install:
   - pip install -r requirements.txt
-  - pip install -U iniparse python-dateutil M2Crypto "libvirt-python<=4.0.0" unittest2 pytest-timeout mock
+  - pip install -U python-dateutil M2Crypto "libvirt-python<=4.0.0" unittest2 pytest-timeout mock
 script: py.test --timeout=30 -v
 before_install:
   - sudo apt-get update -qq

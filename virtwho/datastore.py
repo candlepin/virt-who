@@ -33,21 +33,21 @@ class Datastore(object):
     def put(self, key, value):
         """
         Stores the value, retrievable by key, in a threadsafe manner in the
-        underlying datastore. (Assumes all items are pickleable)
+        underlying datastore.
 
         @param key: The unique identifier for this value
         @type  key: str
 
         @param value: The object to store
         """
+        to_store = copy.deepcopy(value)
         with self._datastore_lock:
-            to_store = copy.deepcopy(value)
             self._datastore[key] = to_store
 
     def get(self, key, default=None):
         """
         Retrieves the value for the given key, in a threadsafe manner from the
-        underlying datastore. (Assumes all items in the datastore are pickled)
+        underlying datastore.
 
         @param key: The unique identifier for this value
         @type  key: str
@@ -60,8 +60,7 @@ class Datastore(object):
         """
         with self._datastore_lock:
             try:
-                item = copy.deepcopy(self._datastore[key])
-                return item
+                return self._datastore[key]
             except KeyError:
                 if default:
                     return default

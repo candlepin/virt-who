@@ -435,6 +435,9 @@ fi
 * Mon Sep 08 2014 Radek Novacek <rnovacek@redhat.com> 0.11-1
 - Version 0.11
 
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-10
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
 * Tue May 20 2014 Radek Novacek <rnovacek@redhat.com> 0.10-1
 - Add directory with configuration files
 - Version 0.10
@@ -443,9 +446,6 @@ fi
 - Remove libvirt dependency
 - Add dependency on m2crypto
 - Version 0.9
-
-* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-10
-- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
 
 * Sun Aug 04 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.8-9
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild

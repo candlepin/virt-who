@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.22.1
+Version:        0.22.2
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -160,6 +160,15 @@ fi
 
 
 %changelog
+* Thu May 31 2018 William Poteat <wpoteat@redhat.com> 0.22.2-1
+- Correct date ordering in changelog (wpoteat@redhat.com)
+- 1575513: Re-add changelog entries that were merged out. (wpoteat@redhat.com)
+- 1560598: Pass hostname to M2Crypto in STOMP client (khowell@redhat.com)
+- Make vdsm respect RHSM_USE_M2CRYPTO var (khowell@redhat.com)
+- Set up Travis CI to use Python 3 (jhnidek@redhat.com)
+- Fixing python 2 -> 3 issue (wpoteat@redhat.com)
+- kubevirt support (piotr.kliczewski@gmail.com)
+
 * Mon May 07 2018 William Poteat <wpoteat@redhat.com> 0.22.1-1
 - 1542652: When the -c option is used, don't parse the default files
   (nmoumoul@redhat.com)

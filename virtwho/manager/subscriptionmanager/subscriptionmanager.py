@@ -280,7 +280,7 @@ class SubscriptionManager(Manager):
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
 
         if is_async is True:
-            report.state = AbstractVirtReport.STATE_PROCESSING
+            report.state = AbstractVirtReport.STATE_CREATED
             report.job_id = result['id']
         else:
             report.state = AbstractVirtReport.STATE_FINISHED

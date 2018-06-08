@@ -291,32 +291,13 @@ class TestDestinationThread(TestBase):
         data_to_send = {'source1': report1,
                         'source2': report2}
         source_keys = ['source1', 'source2']
-        batch_report1 = Mock()  # The "report" to return from hypervisorCheckIn
+        batch_report1 = Mock()  # The "report" to check status
         batch_report1.state = AbstractVirtReport.STATE_CREATED
         datastore = {'source1': report1, 'source2': report2}
         manager = Mock()
-        manager.hypervisorCheckIn.return_value = batch_report1
+        items = [ManagerThrottleError(), ManagerThrottleError(), ManagerThrottleError(), AbstractVirtReport.STATE_FINISHED]
+        manager.check_report_state = Mock(side_effect=self.check_report_state_closure(items))
 
-        # A closure to allow us to have a function that "modifies" the given
-        # report in a predictable way.
-        # In this case I want to set the state of the report to STATE_FINISHED
-        # after the first try
-        def check_report_state_closure():
-            # The local variables we'd like to use to keep track of state
-            # must be in a dict (or some other mutable container) as all
-            # references in the enclosing scope in python 2.X are read-only
-            local_variables = {'count': 0}
-
-            def mock_check_report_state(report):
-                if local_variables['count'] > 1:
-                    report.state = AbstractVirtReport.STATE_FINISHED
-                else:
-                    report.state = AbstractVirtReport.STATE_CREATED
-                    local_variables['count'] += 1
-                return report
-            return mock_check_report_state
-        check_report_mock = check_report_state_closure()
-        manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
         config, d = self.create_fake_config('test', **self.default_config_args)
         terminate_event = Mock()
@@ -329,12 +310,12 @@ class TestDestinationThread(TestBase):
                                                dest=manager,
                                                interval=interval,
                                                terminate_event=terminate_event,
-                                               oneshot=True, options=self.options)
+                                               oneshot=False, options=self.options)
         # In this test we want to see that the wait method is called when we
         # expect and with what parameters we expect
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
-        destination_thread._send_data(data_to_send)
+        destination_thread.check_report_status(batch_report1)
         # There should be three waits, one after the job is submitted with duration of
         # MinimumJobPollingInterval. The second and third with duration MinimumJobPollInterval * 2
         # (and all subsequent calls as demonstrated by the third wait)
@@ -342,6 +323,24 @@ class TestDestinationThread(TestBase):
             call(wait_time=MinimumJobPollInterval),
             call(wait_time=MinimumJobPollInterval * 2),
             call(wait_time=MinimumJobPollInterval * 2)])
+
+
+    # A closure to allow us to have a function that "modifies" the given
+    # report in a predictable way.
+    # In this case I want to set the state of the report to STATE_FINISHED
+    # after the first try
+
+    def check_report_state_closure(self, items):
+        item_iterator = iter(items)
+
+        def mock_check_report_state(report):
+            item = next(item_iterator)
+            if isinstance(item, Exception):
+                raise item
+            report.state = item
+            return report
+
+        return mock_check_report_state
 
     def test_send_data_poll_async_429(self):
         # This test's that when a 429 is detected during async polling
@@ -368,28 +367,9 @@ class TestDestinationThread(TestBase):
         error_to_throw = ManagerThrottleError(retry_after=62)
 
         manager = Mock()
-        manager.hypervisorCheckIn.return_value = report1
-        # A closure to allow us to have a function that "modifies" the given
-        # report in a predictable way.
-        # In this case I want to set the state of the report to STATE_FINISHED
-        # after the first try
+        manager.hypervisorCheckIn = Mock(side_effect=[error_to_throw, report1])
+        expected_wait_calls = [call(wait_time=error_to_throw.retry_after)]
 
-        def check_report_state_closure(items):
-            item_iterator = iter(items)
-
-            def mock_check_report_state(report):
-                item = next(item_iterator)
-                if isinstance(item, Exception):
-                    raise item
-                report.state = item
-                return report
-            return mock_check_report_state
-        states = [error_to_throw, AbstractVirtReport.STATE_FINISHED]
-        expected_wait_calls = [call(wait_time=MinimumJobPollInterval),
-                               call(wait_time=error_to_throw.retry_after)]
-
-        check_report_mock = check_report_state_closure(states)
-        manager.check_report_state = Mock(side_effect=check_report_mock)
         logger = Mock()
         terminate_event = Mock()
         interval = 10  # Arbitrary for this test

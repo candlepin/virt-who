@@ -280,7 +280,7 @@ class SubscriptionManager(Manager):
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
 
         if is_async is True:
-            report.state = AbstractVirtReport.STATE_PROCESSING
+            report.state = AbstractVirtReport.STATE_CREATED
             report.job_id = result['id']
         else:
             report.state = AbstractVirtReport.STATE_FINISHED
@@ -356,6 +356,22 @@ class SubscriptionManager(Manager):
                 self.logger.error("Error during update list of guests: %s", str(fail))
             self.logger.debug("Number of mappings unchanged: %d", len(result_data.get('unchanged', [])))
             self.logger.info("Mapping for config \"%s\" updated", report.config.name)
+
+    def cancel_job(self, report):
+        # BZ 1554228
+        job_id = str(report.job_id)
+        self._connect(report.config)
+        self.logger.debug('Cancelling job %s', job_id)
+        try:
+            result = self.connection.cancelJob(job_id)
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.RateLimitExceededException as e:
+            raise ManagerThrottleError(e.retry_after)
+        except rhsm_connection.ConnectionException as e:
+            if hasattr(e, 'code'):
+                raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
+            raise ManagerError("Communication with subscription manager failed: %s" % str(e))
 
     def uuid(self):
         """ Read consumer certificate and get consumer UUID from it. """

@@ -105,6 +105,7 @@ class Hypervisor(object):
     HYPERVISOR_TYPE_FACT = 'hypervisor.type'
     HYPERVISOR_VERSION_FACT = 'hypervisor.version'
     HYPERVISOR_CLUSTER = 'hypervisor.cluster'
+    SYSTEM_UUID_FACT = 'dmi.system.uuid'
 
     def __init__(self, hypervisorId, guestIds=None, name=None, facts=None):
         """

@@ -430,6 +430,7 @@ class Libvirtd(Virt):
             Hypervisor.CPU_SOCKET_FACT: self._remote_host_sockets(),
             Hypervisor.HYPERVISOR_TYPE_FACT: self.virt.getType(),
             Hypervisor.HYPERVISOR_VERSION_FACT: self.virt.getVersion(),
+            Hypervisor.SYSTEM_UUID_FACT: self.host_capabilities_xml.find('host/uuid').text,
         }
         host = Hypervisor(hypervisorId=self._remote_host_id(),
                           guestIds=self._listDomains(),

@@ -228,7 +228,7 @@ class RhevM(virt.Virt):
 
         for host in hosts_xml.findall('host'):
             id = host.get('id')
-
+            system_uuid = ''
             # Check if host is in cluster that is "virt_service"
             host_cluster = host.find('cluster')
             host_cluster_id = host_cluster.get('id')
@@ -237,13 +237,20 @@ class RhevM(virt.Virt):
                 self.logger.debug('Cluster of host %s is not virt_service, skipped', id)
                 continue
 
+            try:
+                system_uuid = host.find('hardware_information').find('uuid').text
+            except AttributeError:
+                # The error is not important yet
+                self.logger.info("Unable to get hardware uuid for host %s ", id)
+
+
             if self.config['hypervisor_id'] == 'uuid':
                 host_id = id
             elif self.config['hypervisor_id'] == 'hwuuid':
-                try:
-                    host_id = host.find('hardware_information').find('uuid').text
-                except AttributeError:
-                    self.logger.warn("Host %s doesn't have hardware uuid", id)
+                if not system_uuid == '':
+                    host_id = system_uuid
+                else:
+                    self.logger.error("Host %s doesn't have hardware uuid", id)
                     continue
             elif self.config['hypervisor_id'] == 'hostname':
                 host_id = host.find('address').text
@@ -258,6 +265,7 @@ class RhevM(virt.Virt):
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                virt.Hypervisor.SYSTEM_UUID_FACT: system_uuid,
             }
 
             try:

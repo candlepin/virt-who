@@ -4,10 +4,16 @@
 %global python2_sitelib %{python_sitelib}
 %endif
 
-%global use_python3 0%{?fedora} || (0%{?rhel} && 0%{?rhel} > 7)
-%global python_ver %{?use_python3:python3}%{?!use_python3:python}
-%global python_exec %{?use_python3:%{__python3}}%{?!use_python3:%{__python2}}
-%global python_sitelib %{?use_python3:%{python3_sitelib}}%{?!use_python3:%{python2_sitelib}}
+%define use_python3 0%{?fedora} || (0%{?rhel} && 0%{?rhel} > 7)
+%if %{use_python3}
+%global python_ver python3
+%global python_exec %{__python3}
+%global python_sitelib %{python3_sitelib}
+%else
+%global python_ver python
+%global python_exec %{__python2}
+%global python_sitelib %{python2_sitelib}
+%endif
 %global release_number 1
 
 %global git_tag %{name}-%{version}-%{release_number}
@@ -30,7 +36,7 @@ Requires:       %{python_ver}-setuptools
 #Requires:       libvirt-%{python_ver}
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
-%if use_python3
+%if %{use_python3}
 Requires:       python3-subscription-manager-rhsm
 %else
 Requires:       subscription-manager-rhsm
@@ -38,7 +44,11 @@ Requires:       subscription-manager-rhsm
 # python-suds is required for vSphere support
 Requires:       %{python_ver}-suds
 # m2crypto OR python3-cryptography is required for Hyper-V support
-Requires:       %{?use_python3:python3-cryptography}%{?!use_python3:m2crypto}
+%if %{use_python3}
+Requires:       python3-cryptography
+%else
+Requires:       m2crypto
+%endif
 Requires:       %{python_ver}-requests
 Requires:       %{python_ver}-six
 # python-argparse is required for Python 2.6 on EL6
@@ -46,7 +56,11 @@ Requires:       %{python_ver}-six
 Requires:       openssl
 
 %if %{use_systemd}
-Requires: %{?use_python3:python3-systemd}%{?!use_python3:systemd-python}
+%if %{use_python3}
+Requires: python3-systemd
+%else
+Requires: systemd-python
+%endif
 BuildRequires: systemd
 Requires(post): systemd
 Requires(preun): systemd

@@ -60,6 +60,9 @@ HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
             <topology sockets="1" cores="6" threads="2"/>
         </cpu>
         <version full_version="1.2.3" />
+        <hardware_information>
+            <uuid>db5a7a9f-6e33-3bfd-8129-c8010e4e1497</uuid>
+        </hardware_information>
     </host>
 </hosts>
 '''.format(**uuids)
@@ -183,6 +186,7 @@ class TestRhevM(TestBase):
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
                 Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
+                Hypervisor.SYSTEM_UUID_FACT: 'db5a7a9f-6e33-3bfd-8129-c8010e4e1497',
             }
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]
@@ -228,6 +232,7 @@ class TestRhevM(TestBase):
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
                 Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
+                Hypervisor.SYSTEM_UUID_FACT: 'db5a7a9f-6e33-3bfd-8129-c8010e4e1497',
             }
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]

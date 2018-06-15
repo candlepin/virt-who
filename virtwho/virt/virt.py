@@ -303,16 +303,19 @@ class IntervalThread(Thread):
         self.terminate_event = terminate_event or self._internal_terminate_event
         self.interval = interval
         self._oneshot = oneshot
+        self.delta_time = 1.0
         super(IntervalThread, self).__init__()
 
     def wait(self, wait_time):
-        '''
+        """
         Wait `wait_time` seconds, could be interrupted by setting _terminate_event or _internal_terminate_event.
-        '''
-        for i in range(wait_time):
+        """
+        total_time = 0.0
+        while total_time < wait_time:
             if self.is_terminated():
                 break
-            time.sleep(1)
+            time.sleep(self.delta_time)
+            total_time += self.delta_time
 
     def is_terminated(self):
         """

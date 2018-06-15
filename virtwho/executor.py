@@ -118,6 +118,7 @@ class Executor(object):
         not quit yet.
         @rtype: list
         """
+        delta_time = 1.0
         total_waited = 0
         threads_not_terminated = list(threads)
         while len(threads_not_terminated) > 0:
@@ -131,9 +132,9 @@ class Executor(object):
                     threads_not_terminated.remove(thread)
             if not threads_not_terminated:
                 break
-            time.sleep(1)
+            time.sleep(delta_time)
             if max_wait_time is not None:
-                total_waited += 1
+                total_waited += 1 * 1.0/delta_time
         return threads_not_terminated
 
     @staticmethod

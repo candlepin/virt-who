@@ -10,8 +10,10 @@ class TestDatastore(TestBase):
     def setUp(self):
         copy_patcher = patch('virtwho.datastore.copy')
         self.mock_copy = copy_patcher.start()
-        self.mock_copy.deepcopy.side_effect = [sentinel.deep_copy_value_1,
-                                                sentinel.deep_copy_value_2]
+        self.mock_copy.deepcopy.side_effect = [
+            sentinel.deep_copy_value_1,
+            sentinel.deep_copy_value_2
+        ]
         self.addCleanup(copy_patcher.stop)
 
         lock_patcher = patch('virtwho.datastore.Lock')
@@ -99,8 +101,7 @@ class TestDatastore(TestBase):
         with patch.dict(datastore._datastore,
                         test_item=sentinel.test_item_value):
             result = datastore.get("test_item")
-        self.mock_copy.deepcopy.assert_called_with(sentinel.test_item_value)
-        self.assertEqual(result, sentinel.deep_copy_value_1)
+        self.assertEqual(result, sentinel.test_item_value)
 
     def test_put_locking(self):
         # Ensure that a lock is acquired before (and released after) updating a

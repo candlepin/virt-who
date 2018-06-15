@@ -111,9 +111,8 @@ class QueueLogger(object):
 
     @staticmethod
     def _log(logger, queue):
-        exit = False
-        while not exit:
-            record = None
+        want_exit = False
+        while not want_exit:
             try:
                 record = queue.get()
             except Empty:
@@ -123,7 +122,7 @@ class QueueLogger(object):
                 if to_log:
                     logger.handle(to_log)
             else:
-                exit = True
+                want_exit = True
 
     def start_logging(self):
         self._logging_thread.start()

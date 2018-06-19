@@ -23,6 +23,7 @@ configuration from environment variables.
 """
 
 import os
+import sys as _sys
 from argparse import ArgumentParser, Action
 
 from virtwho import log, MinimumSendInterval, DefaultInterval, SAT5, SAT6
@@ -359,9 +360,13 @@ def parse_cli_arguments():
         description="Choose where the host/guest associations should be reported"
     )
     manager_group.add_argument("--sam", action="store_const", dest="sm_type", const=SAT6, default=SAT6,
-                               help="[Deprecated] Report host/guest associations to the Subscription Asset Manager [default]")
+                               help="[Deprecated] Report host/guest associations to the Subscription Asset Manager, "
+                               "Satellite 6, or Red Hat Subscription Management (RHSM). "
+                               "This option specifies the default behaviour, and thus it is not used [default]")
     manager_group.add_argument("--satellite6", action="store_const", dest="sm_type", const=SAT6,
-                               help="[Deprecated] Report host/guest associations to the Satellite 6 server")
+                               help="[Deprecated] Report host/guest associations to the Subscription Asset Manager, "
+                               "Satellite 6, or Red Hat Subscription Management (RHSM)."
+                               "This option specifies the default behaviour, and thus it is not used [default]")
     manager_group.add_argument("--satellite5", action="store_const", dest="sm_type", const=SAT5,
                                help="[Deprecated] Report host/guest associations to the Satellite 5 server")
     manager_group.add_argument("--satellite", action="store_const", dest="sm_type", const=SAT5)
@@ -521,6 +526,15 @@ def parse_options():
             elif option in SAT_OPTION_MAP:
                 display_option = SAT_OPTION_MAP[option]
             used_deprecated_cli_options.append(display_option)
+
+    # These two flags set the value of sm_type to the default value ('sam'), so ArgumentParser will not
+    # include them in the cli_options list, thus we have to manually check for and add them to
+    # the deprecated list for them to be included in the warning:
+    if '--satellite6' in _sys.argv:
+        used_deprecated_cli_options.append('satellite6')
+    if '--sam' in _sys.argv:
+        used_deprecated_cli_options.append('sam')
+
     deprecated_options_msg = "The following cli options: %s are deprecated and will be removed " \
     "in the next release. Please see 'man virt-who-config' for details on adding a configuration "\
     "section."

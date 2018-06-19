@@ -50,13 +50,13 @@ Choose virtualization backend that should be used to gather host/guest associati
 Choose where the host/guest associations should be reported
 .TP
 \fB\-\-sam\fR
-[Deprecated] Report host/guest associations to the Subscription Asset Manager or Satellite 6 [default]
+[Deprecated] Report host/guest associations to the Subscription Asset Manager, Satellite 6, or Red Hat Subscription Management (RHSM). This option specifies the default behaviour, and thus it is not used [default]
 .TP
 \fB\-\-satellite5\fR
 [Deprecated] Report host/guest associations to the Satellite 5 server
-.IP
+.TP
 \fB\-\-satellite6\fR
-[Deprecated] Report host/guest associations to the Satellite 6 server
+[Deprecated] Report host/guest associations to the Subscription Asset Manager, Satellite 6, or Red Hat Subscription Management (RHSM). This option specifies the default behaviour, and thus it is not used [default]
 .IP
 .SS Libvirt options
 .IP
@@ -261,14 +261,14 @@ virt-who can report host/guest associations to Subscription Asset Manager (SAM),
 
 # virt-who --sam
 
-System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM is shared between subscription-manager and virt-who. This is default.
+System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM, or Satellite6, or Red Hat Subscription Management (RHSM) is shared between subscription-manager and virt-who. This option specifies the default behaviour, and thus it is not used.
 
 .TP
 2. Satellite 6
 
 # virt-who --satellite6
 
-System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to Satellite 6 is shared between subscription-manager and virt-who.
+System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM, or Satellite6, or Red Hat Subscription Management (RHSM) is shared between subscription-manager and virt-who. This option specifies the default behaviour, and thus it is not used.
 
 .TP
 2. Satellite 5

@@ -312,16 +312,28 @@ class SubscriptionManager(Manager):
 
         mapping = report.association
         serialized_mapping = {}
+        ids_seen = []
 
         if is_async:
+            hosts = []
             # Transform the mapping into the async version
-            serialized_mapping = {'hypervisors': [h.toDict() for h in mapping['hypervisors']]}
+            for hypervisor in mapping['hypervisors']:
+                if hypervisor.hypervisorId in ids_seen:
+                    self.logger.warning("The hypervisor id '%s' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server." % hypervisor.hypervisorId)
+                hosts.append(hypervisor.toDict())
+                ids_seen.append(hypervisor.hypervisorId)
+            serialized_mapping = {'hypervisors': hosts}
         else:
             # Reformat the data from the mapping to make it fit with
             # the old api.
             for hypervisor in mapping['hypervisors']:
+                if hypervisor.hypervisorId in ids_seen:
+                    self.logger.warning("The hypervisor id '%s' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server." % hypervisor.hypervisorId)
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
+                ids_seen.append(hypervisor.hypervisorId)
 
         return serialized_mapping
 

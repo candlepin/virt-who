@@ -26,7 +26,8 @@ class TestSubscriptionManager(TestBase):
         Guest('333', xvirt.CONFIG_TYPE, Guest.STATE_RUNNING),
     ]
     mapping = {
-        'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR')]
+        'hypervisors': [Hypervisor('123', guestList, name='TEST_HYPERVISOR'),
+                        Hypervisor('123', guestList, name='TEST_HYPERVISOR2')]
     }
     hypervisor_id = "HYPERVISOR_ID"
     uep_connection = None
@@ -72,6 +73,7 @@ class TestSubscriptionManager(TestBase):
         config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
         # Ensure the data takes the proper for for the old API
         self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
+        self.sm.logger = MagicMock()
         report = HostGuestAssociationReport(config, self.mapping)
         self.sm.hypervisorCheckIn(report)
         self.sm.connection.hypervisorCheckIn.assert_called_with(
@@ -79,6 +81,8 @@ class TestSubscriptionManager(TestBase):
             env,
             dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']),
             options=None)
+        self.sm.logger.warning.assert_called_with("The hypervisor id '123' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server.")
 
     @patch('rhsm.connection.UEPConnection')
     # def test_hypervisorCheckInAsync(self):
@@ -88,6 +92,7 @@ class TestSubscriptionManager(TestBase):
         config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner, 'env': env}, 'test', None)
         # Ensure we try out the new API
         rhsmconnection.return_value.has_capability.return_value = True
+        self.sm.logger = MagicMock()
         report = HostGuestAssociationReport(config, self.mapping)
         self.sm.hypervisorCheckIn(report)
         expected = {'hypervisors': [h.toDict() for h in self.mapping['hypervisors']]}
@@ -97,6 +102,8 @@ class TestSubscriptionManager(TestBase):
             expected,
             options=None
         )
+        self.sm.logger.warning.assert_called_with("The hypervisor id '123' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server.")
         self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
 
     @patch('rhsm.connection.UEPConnection')

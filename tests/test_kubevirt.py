@@ -89,7 +89,7 @@ class TestKubevirt(TestBase):
         kube_api.list_node.return_value = self.nodes()
 
         kubevirt_api = Mock()
-        kubevirt_api.list_virtual_machine_for_all_namespaces_0.return_value = self.vms()
+        kubevirt_api.list_virtual_machine_instance_for_all_namespaces.return_value = self.vms()
 
         self.kubevirt.kube_api = kube_api
         self.kubevirt.kubevirt_api = kubevirt_api

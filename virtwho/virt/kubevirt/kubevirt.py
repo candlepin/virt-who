@@ -53,10 +53,10 @@ class Kubevirt(virt.Virt):
         return os.environ['KUBECONFIG']
 
     def prepare(self):
-        self.kubevirt_api = self.kuebvirt()
+        self.kubevirt_api = self.virt()
         self.kube_api = self.kube()
 
-    def kuebvirt(self):
+    def virt(self):
         from kubernetes import config
         import kubevirt
 
@@ -74,7 +74,7 @@ class Kubevirt(virt.Virt):
         return self.kube_api.list_node()
 
     def get_vms(self):
-        return self.kubevirt_api.list_virtual_machine_for_all_namespaces_0()
+        return self.kubevirt_api.list_virtual_machine_instance_for_all_namespaces()
     
     def getHostGuestMapping(self):
         """

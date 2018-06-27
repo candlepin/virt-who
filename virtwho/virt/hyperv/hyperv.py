@@ -542,7 +542,7 @@ class HyperV(virt.Virt):
         https://social.technet.microsoft.com/Forums/windowsserver/en-US/dce2a4ec-10de-4eba-a19d-ae5213a2382d/how-to-tell-version-of-hyperv-installed?forum=winserverhyperv
         """
         vmmsVersion = ""
-        data = hypervsoap.Enumerate("select * from CIM_Datafile where FileName='vmms'", "root/cimv2")
+        data = hypervsoap.Enumerate("select * from CIM_Datafile where Path = '\\\\windows\\\\system32\\\\' and FileName='vmms'", "root/cimv2")
         for instance in hypervsoap.Pull(data, "root/cimv2"):
             if instance['Path'] == '\\windows\\system32\\':
                 vmmsVersion = instance['Version']

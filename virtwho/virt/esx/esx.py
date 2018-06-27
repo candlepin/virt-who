@@ -119,11 +119,9 @@ class Esx(virt.Virt):
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
-        self.url = config['server']
-        self.username = config['username']
-        self.password = config['password']
-
-        self.config = config
+        self.url = self.config['server']
+        self.username = self.config['username']
+        self.password = self.config['password']
 
         self.filter = None
         self.sc = None

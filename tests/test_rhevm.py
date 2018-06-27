@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function
 """
 Test of RHEV-M virtualization backend.
@@ -31,6 +33,7 @@ from proxy import Proxy
 from virtwho.virt import Virt, VirtError, Guest, Hypervisor
 from virtwho.virt.rhevm.rhevm import RhevmConfigSection
 from virtwho.datastore import Datastore
+import sys
 
 
 uuids = {
@@ -237,3 +240,23 @@ class TestRhevM(TestBase):
         )
         result = self.rhevm.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_unicode_password(self):
+        config = RhevmConfigSection('test', None)
+        config.update(type='rhevm', server='localhost',
+            username='username', password='password', owner='owner', env='env')
+        result = config.validate()
+        hasError = False
+        for level, message in result:
+            hasError = hasError or (level == 'error' and
+                message.startswith("The config value for 'password' must be in ASCII"))
+        self.assertFalse(hasError)
+        config = RhevmConfigSection('test', None)
+        config.update(type='rhevm', server='localhost',
+            username='username', password=u'1€345678', owner='owner', env='env')
+        result = config.validate()
+        hasError = False
+        for level, message in result:
+            hasError = hasError or (level == 'error' and
+                message.startswith("The config value for 'password' must be in ASCII"))
+        self.assertTrue(hasError or int(sys.version_info.major) >= 3)

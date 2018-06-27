@@ -109,7 +109,7 @@ class RhevM(virt.Virt):
         self.api_base = 'api'
         self.username = self.config['username']
         self.password = self.config['password']
-        self.auth = HTTPBasicAuth(self.config['username'], self.config['password'])
+        self.auth = HTTPBasicAuth(self.username.encode('utf-8'), self.password.encode('utf-8'))
         self.prepared = False
         self.clusters_url = None
         self.hosts_url = None

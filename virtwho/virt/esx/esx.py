@@ -28,7 +28,6 @@ import requests
 import errno
 import stat
 from six import StringIO
-import six
 import io
 import logging
 from time import time
@@ -119,11 +118,9 @@ class Esx(virt.Virt):
                                   terminate_event=terminate_event,
                                   interval=interval,
                                   oneshot=oneshot)
-        self.url = config['server']
-        self.username = config['username']
-        self.password = config['password']
-
-        self.config = config
+        self.url = self.config['server']
+        self.username = self.config['username']
+        self.password = self.config['password']
 
         self.filter = None
         self.sc = None
@@ -318,29 +315,6 @@ class Esx(virt.Virt):
 
             mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
-
-    @staticmethod
-    def _to_unicode(value):
-        try:
-            return six.text_type(value, 'utf-8')
-        except TypeError:
-            return value
-
-    @property
-    def password(self):
-        return self._password
-
-    @password.setter
-    def password(self, value):
-        self._password = self._to_unicode(value)
-
-    @property
-    def username(self):
-        return self._username
-
-    @username.setter
-    def username(self, value):
-        self._username = self._to_unicode(value)
 
     def login(self):
         """

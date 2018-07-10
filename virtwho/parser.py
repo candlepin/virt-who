@@ -296,6 +296,12 @@ def read_vm_backend_env_variables(env_vars):
             del env_vars[key]
     return env_vars, errors
 
+def get_version():
+    version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),'version.py')
+    version = {}
+    with open(version_file) as fp:
+        exec(fp.read(), version)
+    return "virt-who %s" % version['__version__']
 
 def parse_cli_arguments():
     """
@@ -304,7 +310,7 @@ def parse_cli_arguments():
     default options.
     """
     parser = ArgumentParser(
-        usage="virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] "
+        usage="virt-who [--version] [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] "
               "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
         description="Agent for reporting virtual guest IDs to subscription manager",
         epilog="virt-who also reads environment variables. They have the same name as "
@@ -335,6 +341,8 @@ def parse_cli_arguments():
                         help="[Deprecated] The file name to write logs to. (Default '%s')" % log.DEFAULT_LOG_FILE)
     parser.add_argument("-r", "--reporter-id", action="store", dest="reporter_id", default=NotSetSentinel(),
                         help="[Deprecated] Label host/guest associations obtained by this instance of virt-who with the provided id.")
+    parser.add_argument("--version", action="store_true", dest="version", default=False,
+                        help="Display the version information and exit")
 
     virt_group = parser.add_argument_group(
         title="Virtualization backend",
@@ -501,6 +509,10 @@ def parse_options():
 
     # Read command line arguments first
     cli_options, errors, defaults = parse_cli_arguments()
+
+    if 'version' in cli_options and cli_options['version']:
+        print(get_version())
+        exit(os.EX_OK)
 
     # Read configuration env. variables
     env_options = read_config_env_variables()

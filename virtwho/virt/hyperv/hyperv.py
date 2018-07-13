@@ -32,6 +32,7 @@ import requests
 from virtwho import virt
 from . import ntlm
 from virtwho.config import VirtConfigSection
+import six
 
 try:
     from uuid import uuid1
@@ -507,9 +508,9 @@ class HyperV(virt.Virt):
                                      terminate_event=terminate_event,
                                      interval=interval,
                                      oneshot=oneshot)
-        self.url = config['url']
-        self.username = config['username']
-        self.password = config['password']
+        self.url = self.config['url']
+        self.username = self.config['username']
+        self.password = self.config['password']
 
         # First try to use old API (root/virtualization namespace) if doesn't
         # work, go with root/virtualization/v2
@@ -624,3 +625,18 @@ class HyperV(virt.Virt):
 
     def ping(self):
         return True
+
+    @staticmethod
+    def _to_unicode(value):
+        try:
+            return six.text_type(value, 'utf-8')
+        except TypeError:
+            return value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = self._to_unicode(value)

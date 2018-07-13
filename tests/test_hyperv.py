@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import print_function
 """
 Test of Hyper-V virtualization backend.
@@ -141,7 +143,7 @@ class TestHyperV(TestBase):
             'type': 'hyperv',
             'server': 'localhost',
             'username': 'username',
-            'password': 'password',
+            'password': u'1€345678',
             'owner': 'owner',
             'env': 'env,'
         }

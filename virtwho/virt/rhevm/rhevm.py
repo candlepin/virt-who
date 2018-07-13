@@ -27,6 +27,8 @@ from xml.etree import ElementTree
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
+import six
+import sys
 
 
 RHEVM_STATE_TO_GUEST_STATE = {
@@ -95,6 +97,36 @@ class RhevmConfigSection(VirtConfigSection):
         else:
             return None
 
+    def _validate_unencrypted_password(self, pass_key):
+        """
+        Try to validate unencrypted password. It has to be latin1 encoded in the
+         version of python < 3
+        :param pass_key: This could be: 'password', 'rhsm_password',
+                         'rhsm_proxy_password' and 'sat_password'
+        """
+        result = super(RhevmConfigSection, self)._validate_unencrypted_password(pass_key)
+        if result is not None:
+            return result
+
+        try:
+            password = self._values[pass_key]
+        except KeyError:
+            result = (
+                'warning',
+                'Option: "%s" was not set in configuration: %s' % (pass_key, self.name)
+            )
+        else:
+            if int(sys.version_info.major) < 3 and pass_key == 'password':
+                try:
+                    password.decode('latin1')
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    result = (
+                        'error',
+                        "The config value for 'password' must be in ASCII encoding for python version %s.%s.%s and virtual type %s." %
+                            (sys.version_info.major, sys.version_info.minor, sys.version_info.micro, self._values['type'] )
+                    )
+        return result
+
 
 class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
@@ -109,7 +141,7 @@ class RhevM(virt.Virt):
         self.api_base = 'api'
         self.username = self.config['username']
         self.password = self.config['password']
-        self.auth = HTTPBasicAuth(self.config['username'], self.config['password'])
+        self.auth = HTTPBasicAuth(self.username, self.password)
         self.prepared = False
         self.clusters_url = None
         self.hosts_url = None
@@ -319,3 +351,17 @@ class RhevM(virt.Virt):
     def ping(self):
         return True
 
+    @staticmethod
+    def _to_unicode(value):
+        try:
+            return six.text_type(value, 'utf-8')
+        except TypeError:
+            return value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = self._to_unicode(value)

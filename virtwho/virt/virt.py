@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+
+
 """
 Module for abstraction of all virtualization backends, part of virt-who
 
@@ -482,6 +484,7 @@ class DestinationThread(IntervalThread):
         self.is_initial_run = True
         self.source_keys = source_keys
         self.last_report_for_source = {}  # Source_key to hash of last report
+        self.submitted_report_and_hash_for_source = {}  # Source key to submitted batch report and hash
         self.options = options
         self.reports_to_print = []  # A list of reports we would send but are
         #  going to print instead, to be used by the owner of the thread
@@ -509,13 +512,29 @@ class DestinationThread(IntervalThread):
         reports = {}
         for source_key in source_keys:
             report = self.source.get(source_key, NotSetSentinel)
-
             if report is None or report is NotSetSentinel:
                 if log_missing_reports:
                     self.logger.debug("No report available for source: %s" %
                                       source_key)
                 continue
-            if ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
+            if source_key in self.submitted_report_and_hash_for_source:
+                submitted_report = self.submitted_report_and_hash_for_source[source_key][0]
+                submitted_hash = self.submitted_report_and_hash_for_source[source_key][1]
+                self.check_report_status(submitted_report)
+                self.submitted_report_and_hash_for_source.pop(source_key)
+                if submitted_report.state == AbstractVirtReport.STATE_FINISHED:
+                    self.last_report_for_source[source_key] = submitted_hash
+                    if ignore_duplicates and report.hash == submitted_hash:
+                        self.logger.debug('Duplicate report found for config "%s", ignoring',
+                                          report.config.name)
+                        continue
+                elif submitted_report.state == AbstractVirtReport.STATE_PROCESSING:
+                    # still processing, skip this fabric on this cycle
+                    self.logger.warning('Job %s has not finished processing. Will check after next interval.',
+                                        str(submitted_report.job_id))
+                    self.submitted_report_and_hash_for_source[source_key] = (submitted_report, submitted_hash)
+                    continue
+            elif ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
                                                                                     None):
                 self.logger.debug('Duplicate report found for config "%s", ignoring',
                                   report.config.name)
@@ -653,54 +672,10 @@ class DestinationThread(IntervalThread):
                 self.wait(wait_time=self.interval_modifier)
                 self.interval_modifier = 0
 
-            num_429_received = 0
-            first_attempt = True
-            # Poll for async results if async (retrying where necessary)
-            while result and batch_host_guest_report.state not in [
-                AbstractVirtReport.STATE_CANCELED,
-                AbstractVirtReport.STATE_FAILED,
-                AbstractVirtReport.STATE_FINISHED] and not self.is_terminated():
-                if self.interval_modifier != 0:
-                    wait_time = self.interval_modifier
-                    self.interval_modifier = 0
-                elif not first_attempt:
-                    wait_time = MinimumJobPollInterval * 2
-                else:
-                    wait_time = MinimumJobPollInterval
-
-                self.wait(wait_time=wait_time)
-
-                try:
-                    self.dest.check_report_state(batch_host_guest_report)
-                except ManagerThrottleError as e:
-                    if self._oneshot:
-                        self.logger.debug('429 encountered when checking job state in '
-                                          'oneshot mode, not retrying')
-                        sources_sent.extend(reports_batched)
-                        break
-                    retry_after = self.handle_429(e.retry_after, num_429_received)
-                    self.logger.debug('429 encountered while checking job '
-                                      'state, checking again in "%s"', retry_after)
-                    self.interval_modifier = retry_after
-                except (ManagerError, ManagerFatalError):
-                    self.logger.exception("Error during job check: ")
-                    if self._oneshot:
-                        sources_sent.extend(reports_batched)
-                    break
-                # If we get here and have to try again, it's not our first rodeo...
-                first_attempt = False
-
-            # If the batch report did not reach the finished state
-            # we do not want to update which report we last sent (as we
-            # might want to try to send the same report again next time)
-            if batch_host_guest_report.state == \
-                    AbstractVirtReport.STATE_FINISHED:
-                # Update the hash of the info last sent for each source
-                # included in the successful report
+            if result:
                 for source_key in reports_batched:
-                    self.last_report_for_source[source_key] = data_to_send[
-                        source_key].hash
-                    sources_sent.append(source_key)
+                    self.submitted_report_and_hash_for_source[source_key] =\
+                        (batch_host_guest_report, data_to_send[source_key].hash)
 
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
@@ -755,6 +730,43 @@ class DestinationThread(IntervalThread):
             self.source_keys = [source_key for source_key in self.source_keys
                                 if source_key not in sources_sent]
         return
+
+    def check_report_status(self, report):
+        """
+        Checks at the server for the state of the previously submitted job. The state is recorded
+        in the passed-in report
+        """
+        self.logger.debug("Existing report state: %s" % report.state)
+        num_429_received = 0
+        first_attempt = True
+        while not report.state or report.state == AbstractVirtReport.STATE_CREATED\
+            or report.state == AbstractVirtReport.STATE_PROCESSING and first_attempt:
+            if self.interval_modifier != 0:
+                wait_time = self.interval_modifier
+                self.interval_modifier = 0
+            elif not first_attempt:
+                wait_time = MinimumJobPollInterval * 2
+            else:
+                wait_time = MinimumJobPollInterval
+
+            self.wait(wait_time=wait_time)
+
+            try:
+                self.dest.check_report_state(report)
+            except ManagerThrottleError as e:
+                if self._oneshot:
+                    self.logger.debug('429 encountered when checking job state in '
+                                      'oneshot mode, not retrying')
+                    break
+                retry_after = self.handle_429(e.retry_after, num_429_received)
+                self.logger.debug('429 encountered while checking job '
+                                  'state, checking again in "%s"', retry_after)
+                self.interval_modifier = retry_after
+            except (ManagerError, ManagerFatalError):
+                self.logger.exception("Error during job check: ")
+                break
+            # If we get here and have to try again, it's not our first rodeo...
+            first_attempt = False
 
 
 class Satellite5DestinationThread(DestinationThread):

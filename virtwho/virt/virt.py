@@ -22,8 +22,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-
-import sys
 import time
 import logging
 from operator import itemgetter
@@ -33,6 +31,7 @@ import json
 import hashlib
 import re
 import fnmatch
+import six
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
@@ -969,6 +968,29 @@ class Virt(IntervalThread):
         return value of isHypervisor method.
         '''
         raise NotImplementedError('This should be reimplemented in subclass')
+
+    @staticmethod
+    def _to_unicode(value):
+        try:
+            return six.text_type(value, 'utf-8')
+        except TypeError:
+            return value
+
+    @property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, value):
+        self._password = self._to_unicode(value)
+
+    @property
+    def username(self):
+        return self._username
+
+    @username.setter
+    def username(self, value):
+        self._username = self._to_unicode(value)
 
 
 info_to_destination_class = {

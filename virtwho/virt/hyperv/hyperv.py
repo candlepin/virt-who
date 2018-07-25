@@ -20,7 +20,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import sys
 import re
 from six.moves import urllib
 import base64
@@ -507,9 +506,9 @@ class HyperV(virt.Virt):
                                      terminate_event=terminate_event,
                                      interval=interval,
                                      oneshot=oneshot)
-        self.url = config['url']
-        self.username = config['username']
-        self.password = config['password']
+        self.url = self.config['url']
+        self.username = self.config['username']
+        self.password = self.config['password']
 
         # First try to use old API (root/virtualization namespace) if doesn't
         # work, go with root/virtualization/v2

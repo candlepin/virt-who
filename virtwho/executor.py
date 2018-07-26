@@ -51,7 +51,7 @@ class Executor(object):
         self.dest_to_source_mapper = DestinationToSourceMapper(options)
 
         for name, config in self.dest_to_source_mapper.configs:
-            logger.debug("Using config named '%s'" % name)
+            logger.info("Using config named '%s'" % name)
 
     def _create_virt_backends(self):
         """

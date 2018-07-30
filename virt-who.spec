@@ -33,7 +33,12 @@ BuildArch:      noarch
 BuildRequires:  %{python_ver}-devel
 BuildRequires:  %{python_ver}-setuptools
 Requires:       %{python_ver}-setuptools
-#Requires:       libvirt-%{python_ver}
+# libvirt python required for libvirt support
+%if (0%{?rhel} && 0%{?rhel} > 7 || 0%{?fedora})
+Requires:       %{python_ver}-libvirt
+%else
+Requires:       libvirt-python
+%endif
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
 %if %{use_python3}

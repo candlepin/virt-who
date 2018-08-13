@@ -243,21 +243,38 @@ class HostGuestAssociationReport(AbstractVirtReport):
                 pass
         self.exclude_hosts = exclude_hosts
         self.filter_hosts = filter_hosts
+        try:
+            self.filter_type = self._config['filter_type']
+        except KeyError:
+            # FIXME: default value should be there
+            self.filter_type = None
 
     def __repr__(self):
         return 'HostGuestAssociationReport({0.config!r}, {0._assoc!r}, {0.state!r})'.format(self)
 
     def _filter(self, host, filterlist):
         for i in filterlist:
-            if fnmatch.fnmatch(host.lower(), i.lower()):
-                # match is found
-                return True
-            try:
-                if re.match("^" + i + "$", host, re.IGNORECASE):
+            if self.filter_type is None:
+                if fnmatch.fnmatch(host.lower(), i.lower()):
                     # match is found
                     return True
-            except:
-                pass
+                try:
+                    if re.match("^" + i + "$", host, re.IGNORECASE):
+                        # match is found
+                        return True
+                except:
+                    pass
+            elif self.filter_type == "wildcards":
+                if fnmatch.fnmatch(host.lower(), i.lower()):
+                    # match is found
+                    return True
+            elif self.filter_type == "regex":
+                try:
+                    if re.match("^" + i + "$", host, re.IGNORECASE):
+                        # match is found
+                        return True
+                except:
+                    pass
         # no match
         return False
 

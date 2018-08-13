@@ -42,7 +42,8 @@ LIBVIRT_SECTION_VALUES = {
     'env': '123456',
     'owner': '123456',
     'hypervisor_id': 'uuid',
-    'filter_hosts': '*.example.com'
+    'filter_hosts': '*.example.com',
+    'filter_type': 'wildcards'
 }
 
 
@@ -273,6 +274,33 @@ class TestVirtConfigSection(TestBase):
         """
         self.init_virt_config_section()
         result = self.virt_config._validate_filter('filter_hosts')
+        self.assertIsNone(result)
+
+    def test_validate_missing_filter_type(self):
+        """
+        Test validation of missing filter type
+        """
+        self.init_virt_config_section()
+        del self.virt_config['filter_type']
+        result = self.virt_config._validate_filter('filter_hosts')
+        self.assertIsNotNone(result)
+
+    def test_validate_wrong_filter_type(self):
+        """
+        Test validation of wrong filter type
+        """
+        self.init_virt_config_section()
+        self.virt_config['filter_type'] = 'not_supported_filter_type'
+        result = self.virt_config._validate_filter_type('filter_type')
+        self.assertIsNotNone(result)
+
+    def test_validate_regex_filter_type(self):
+        """
+        Test validation of regex filter type
+        """
+        self.init_virt_config_section()
+        self.virt_config['filter_type'] = 'regex'
+        result = self.virt_config._validate_filter_type('filter_type')
         self.assertIsNone(result)
 
     def test_validate_filter_hypervisor_id_hostname(self):

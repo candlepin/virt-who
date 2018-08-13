@@ -33,6 +33,11 @@ class TestVirtInclude(TestBase):
         self.filter_hosts('filter_hosts=12?45')
         self.filter_hosts('filter_hosts=12[36]45')
 
+    def test_filter_hosts_glob_filter_type(self):
+        self.filter_hosts('filter_hosts=12*', 'filter_type=wildcards')
+        self.filter_hosts('filter_hosts=12?45', 'filter_type=wildcards')
+        self.filter_hosts('filter_hosts=12[36]45', 'filter_type=wildcards')
+
     def test_exclude_hosts_glob(self):
         self.filter_hosts('exclude_hosts=00*')
         self.filter_hosts('exclude_hosts=00?00')
@@ -42,6 +47,11 @@ class TestVirtInclude(TestBase):
         self.filter_hosts('filter_hosts=12.*')
         self.filter_hosts('filter_hosts=12.+45')
         self.filter_hosts('filter_hosts=12[36]45')
+
+    def test_filter_hosts_regex_filter_type(self):
+        self.filter_hosts('filter_hosts=12.*', 'filter_type=regex')
+        self.filter_hosts('filter_hosts=12.+45', 'filter_type=regex')
+        self.filter_hosts('filter_hosts=12[36]45', 'filter_type=regex')
 
     def test_exclude_hosts_regex(self):
         self.filter_hosts('exclude_hosts=00.*')
@@ -54,7 +64,7 @@ class TestVirtInclude(TestBase):
     def test_exclude_host_uuids(self):
         self.filter_hosts('exclude_host_uuids=00000')
 
-    def filter_hosts(self, config):
+    def filter_hosts(self, filter_something, filter_type=''):
         config_dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, config_dir)
         with open(os.path.join(config_dir, "test.conf"), "w") as f:
@@ -66,8 +76,9 @@ username=username
 password=password
 owner=owner
 env=env
-{config}
-""".format(config=config))
+{filter_something}
+{filter_type}
+""".format(filter_something=filter_something, filter_type=filter_type))
         conf = parse_file(os.path.join(config_dir, "test.conf"))
         test_conf_values = conf.pop('test')
         effective_config = EffectiveConfig()

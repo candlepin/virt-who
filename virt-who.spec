@@ -14,14 +14,13 @@
 %global python_exec %{__python2}
 %global python_sitelib %{python2_sitelib}
 %endif
-%global release_number 1
 
 %global git_tag %{name}-%{version}-%{release_number}
 
 
 Name:           virt-who
 Version:        0.22.2
-Release:        %{release_number}%{?dist}
+Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base

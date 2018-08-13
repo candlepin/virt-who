@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.22.2
+Version:        0.23.0
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -159,6 +159,72 @@ fi
 
 
 %changelog
+* Mon Aug 13 2018 William Poteat <wpoteat@redhat.com> 0.23.0-1
+- Release number (wpoteat@redhat.com)
+- releaser update for branch (wpoteat@redhat.com)
+- Automatic commit of package [virt-who] release [0.22.2-1].
+  (wpoteat@redhat.com)
+- template update (wpinheir@iroman.home)
+- template update (wpinheir@iroman.home)
+- 1596041: Make python libvirt required (wpoteat@redhat.com)
+- updating RHV/RHEV/XenServer information (wpinheir@iroman.home)
+- 1581021: Decode error from unicode passwords (wpoteat@redhat.com)
+- 1510920: Change the choreography for the job status check
+  (wpoteat@redhat.com)
+- ENT-493: Add option to command line to return version
+  (adarshvritant@gmail.com)
+- Update executor.py (all_bright@live.com)
+- Update for build process (wpoteat@redhat.com)
+- Fixed hyperv wmi query. Invalid response (500)
+  (njmiller@lakemichigancollege.edu)
+- 1432140: Log when a duplicate hypervisor id is detected [ENT-568]
+  (wpoteat@redhat.com)
+- 1368341: Warn that --sam/--satellite6 are unused & deprecated * Now logging a
+  warning when --sam/--satellite6 are used. * man page and --help output
+  updated to explaing that these options are unused and virt-who will report to
+  either sam/satellite/stage candlepin regardless of their being there.
+  (nmoumoul@redhat.com)
+- 1455062: Partial fix of high CPU usage, when many conf files used
+  (jhnidek@redhat.com)
+- Correction to the spec file condition for python 3 (wpoteat@redhat.com)
+- ENT-554 Host reports for libvirt and rhevm include the system hardware uuid
+  (wpoteat@redhat.com)
+- Add releaser for RHEL 7.6 (wpoteat@redhat.com)
+- Remove f26 releaser (f26 is EOL) (csnyder@redhat.com)
+
+* Mon Aug 13 2018 William Poteat <wpoteat@redhat.com>
+- Release number (wpoteat@redhat.com)
+- releaser update for branch (wpoteat@redhat.com)
+- Automatic commit of package [virt-who] release [0.22.2-1].
+  (wpoteat@redhat.com)
+- template update (wpinheir@iroman.home)
+- template update (wpinheir@iroman.home)
+- 1596041: Make python libvirt required (wpoteat@redhat.com)
+- updating RHV/RHEV/XenServer information (wpinheir@iroman.home)
+- 1581021: Decode error from unicode passwords (wpoteat@redhat.com)
+- 1510920: Change the choreography for the job status check
+  (wpoteat@redhat.com)
+- ENT-493: Add option to command line to return version
+  (adarshvritant@gmail.com)
+- Update executor.py (all_bright@live.com)
+- Update for build process (wpoteat@redhat.com)
+- Fixed hyperv wmi query. Invalid response (500)
+  (njmiller@lakemichigancollege.edu)
+- 1432140: Log when a duplicate hypervisor id is detected [ENT-568]
+  (wpoteat@redhat.com)
+- 1368341: Warn that --sam/--satellite6 are unused & deprecated * Now logging a
+  warning when --sam/--satellite6 are used. * man page and --help output
+  updated to explaing that these options are unused and virt-who will report to
+  either sam/satellite/stage candlepin regardless of their being there.
+  (nmoumoul@redhat.com)
+- 1455062: Partial fix of high CPU usage, when many conf files used
+  (jhnidek@redhat.com)
+- Correction to the spec file condition for python 3 (wpoteat@redhat.com)
+- ENT-554 Host reports for libvirt and rhevm include the system hardware uuid
+  (wpoteat@redhat.com)
+- Add releaser for RHEL 7.6 (wpoteat@redhat.com)
+- Remove f26 releaser (f26 is EOL) (csnyder@redhat.com)
+
 * Thu May 31 2018 William Poteat <wpoteat@redhat.com> 0.22.2-1
 - Correct date ordering in changelog (wpoteat@redhat.com)
 - 1575513: Re-add changelog entries that were merged out. (wpoteat@redhat.com)

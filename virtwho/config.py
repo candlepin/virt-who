@@ -49,6 +49,8 @@ VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 VW_ENV_CLI_SECTION_NAME = "env/cmdline"
 
+FILTER_TYPES = ("regex", "wildcards")
+
 # Default interval for sending list of UUIDs
 DefaultInterval = 3600  # One per hour
 MinimumSendInterval = 60  # One minute
@@ -891,6 +893,7 @@ class VirtConfigSection(ConfigSection):
         self.add_key('env', validation_method=self._validate_env, required=True)
         self.add_key('owner', validation_method=self._validate_owner, required=True)
         self.add_key('filter_hosts', validation_method=self._validate_filter)
+        self.add_key('filter_type', validation_method=self._validate_filter_type)
         self.add_key('exclude_hosts', validation_method=self._validate_filter)
         self.add_key('rhsm_proxy_hostname', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_proxy_port', validation_method=self._validate_non_empty_string)
@@ -1107,6 +1110,21 @@ class VirtConfigSection(ConfigSection):
                 )
         return result
 
+    def _validate_filter_type(self, key):
+        """
+        Try to validate type of filter
+        :param key: key of filter type (it should be always 'filter_type')
+        :return: None or list of warnings
+        """
+        result = None
+        filter_type = self._values.get('filter_type')
+        if filter_type not in FILTER_TYPES:
+            result = (
+                'error',
+                "'%s' must be one of: '%s'" % (key, ", ".join(FILTER_TYPES))
+            )
+        return result
+
     def _validate_filter(self, filter_key):
         """
         Try to validate filter option. It can contain list of hostname and UUIDs
@@ -1120,6 +1138,8 @@ class VirtConfigSection(ConfigSection):
             # When validation of list failed, then there is no reason for
             # further validation, because self._values[filter_key] is empty
             return result
+
+        result = []
 
         hypervisor_id = self._values.get('hypervisor_id')
 
@@ -1136,11 +1156,21 @@ class VirtConfigSection(ConfigSection):
                 else:
                     wrong_filter_values.append(filter_value)
             if len(wrong_filter_values) > 0:
-                result = (
+                result.append((
                     'warning',
                     'Filter values: "%s" appear to be UUIDs. UUIDs are not gathered when hypervisor_id = "%s"' %
                     (', '.join(wrong_filter_values), hypervisor_id)
-                )
+                ))
+
+        if 'filter_type' not in self:
+            result.append((
+                'warning',
+                '"%s" is set, but filter_type is not set. Possible values of filter_type: "%s". Using default: "wildcards".' %
+                (filter_key, ', '.join(FILTER_TYPES))
+            ))
+
+        if len(result) == 0:
+            result = None
 
         return result
 

@@ -235,7 +235,10 @@ class VirtBackendTestMixin(object):
         returned = json.loads(out)
         # Test facts
         for hypervisor in returned['hypervisors']:
-            self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-compute-res'))
+            if hypervisor['facts']['hypervisor.type'] == 'vmware':
+                self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-cluster-1'))
+            else:
+                self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-compute-res'))
         # Transform it to the same format as assoc from SAM server
         assoc = dict((host['uuid'], host['guests']) for host in returned['hypervisors'])
         self.check_assoc(assoc, {

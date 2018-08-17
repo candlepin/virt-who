@@ -118,7 +118,7 @@ class TestEsx(TestBase):
         expected_guest_state = Guest.STATE_RUNNING
 
         fake_parent = MagicMock()
-        fake_parent.value = 'Fake_parent'
+        fake_parent.value = 'fake_parent_id'
         fake_parent._type = 'ClusterComputeResource'
 
         fake_vm_id = MagicMock()
@@ -142,6 +142,9 @@ class TestEsx(TestBase):
         fake_hosts = {'random-host-id': fake_host}
         self.esx.hosts = fake_hosts
 
+        fake_cluster = {'name': 'Fake_cluster_name'}
+        self.esx.clusters = {'fake_parent_id': fake_cluster}
+
         expected_result = Hypervisor(
             hypervisorId=expected_hypervisorId,
             name=expected_hostname,
@@ -156,7 +159,7 @@ class TestEsx(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
-                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_parent',
+                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_cluster_name',
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
@@ -170,7 +173,8 @@ class TestEsx(TestBase):
         expected_guest_state = Guest.STATE_UNKNOWN
 
         fake_parent = MagicMock()
-        fake_parent.value = 'Fake_parent'
+        fake_parent.value = 'fake_parent_id'
+        fake_parent._type = 'ClusterComputeResource'
 
         fake_vm_id = MagicMock()
         fake_vm_id.value = 'guest1'
@@ -192,6 +196,9 @@ class TestEsx(TestBase):
         fake_hosts = {'random-host-id': fake_host}
         self.esx.hosts = fake_hosts
 
+        fake_cluster = {'name': 'Fake_cluster_name'}
+        self.esx.clusters = {'fake_parent_id': fake_cluster}
+
         expected_result = Hypervisor(
             hypervisorId=expected_hypervisorId,
             name=expected_hostname,
@@ -206,6 +213,7 @@ class TestEsx(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_cluster_name'
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]

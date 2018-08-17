@@ -146,6 +146,7 @@ class Esx(virt.Virt):
         last_version = 'last_version'  # Bogus value so version != last_version from the start
         self.hosts = defaultdict(Host)
         self.vms = defaultdict(VM)
+        self.clusters = defaultdict(Cluster)
         initial = True
         next_update = time()
 
@@ -307,7 +308,10 @@ class Esx(virt.Virt):
             }
 
             if host['parent'] and host['parent']._type == 'ClusterComputeResource':
-                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = host['parent'].value
+                cluster_id = host['parent'].value
+                # print('', self.clusters, cluster_id)
+                cluster = self.clusters[cluster_id]
+                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = cluster['name']
 
             version = host.get('config.product.version', None)
             if version:
@@ -379,6 +383,7 @@ class Esx(virt.Virt):
         pfs.objectSet = [oSpec]
         pfs.propSet = [
             self.createPropertySpec("VirtualMachine", ["config.uuid", "runtime.powerState"]),
+            self.createPropertySpec("ClusterComputeResource", ["name"]),
             self.createPropertySpec("HostSystem", ["name",
                                                    "vm",
                                                    "hardware.systemInfo.uuid",
@@ -402,6 +407,19 @@ class Esx(virt.Virt):
                     self.applyVirtualMachineUpdate(objectSet)
                 elif objectSet.obj._type == 'HostSystem':  # pylint: disable=W0212
                     self.applyHostSystemUpdate(objectSet)
+                elif objectSet.obj._type == 'ClusterComputeResource':
+                    self.applyClusterComputeResource(objectSet)
+
+    def applyClusterComputeResource(self, objectSet):
+        if objectSet.kind in ['enter', 'kind']:
+            cluster = self.clusters[objectSet.obj.value]
+            for change in objectSet.changeSet:
+                if change.op == 'assign' and hasattr(change, 'val'):
+                    cluster[change.name] = change.val
+        elif objectSet.kind == 'leave':
+            del self.clusters[objectSet.obj.value]
+        else:
+            self.logger.error("Unknown update objectSet type: %s", objectSet.kind)
 
     def applyVirtualMachineUpdate(self, objectSet):
         if objectSet.kind in ['enter', 'modify']:
@@ -497,6 +515,12 @@ class Host(dict):
 class VM(dict):
     def __init__(self):
         self.uuid = None
+
+
+class Cluster(dict):
+    def __init__(self):
+        self.name = None
+        self.hosts = []
 
 
 class EsxConfigSection(VirtConfigSection):

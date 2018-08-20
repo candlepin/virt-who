@@ -203,6 +203,15 @@
                             <val xsi:type="ArrayOfManagedObjectReference"></val>
                         </changeSet>
                     </objectSet>
+                    <objectSet>
+                        <kind>enter</kind>
+                        <obj type="ClusterComputeResource">ha-compute-res</obj>
+                        <changeSet>
+                            <name>name</name>
+                            <op>assign</op>
+                            <val xsi:type="xsd:string">ha-cluster-1</val>
+                        </changeSet>
+                    </objectSet>
                 </filterSet>
             </returnval>
         </WaitForUpdatesExResponse>

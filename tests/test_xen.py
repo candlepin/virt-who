@@ -115,6 +115,7 @@ class TestXenConfigSection(TestBase):
         self.init_virt_config_section()
         # Supported filter
         self.xen_config['filter_hosts'] = '*.company.com, *.company.net'
+        self.xen_config['filter_type'] = 'wildcards'
         # Unsupported filters
         self.xen_config['filter_host_parents'] = 'host_parents'
         self.xen_config['exclude_host_parents'] = 'host_parents'

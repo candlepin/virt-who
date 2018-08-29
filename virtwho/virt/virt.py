@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import time
-import logging
+from virtwho import log
 from operator import itemgetter
 from datetime import datetime
 from threading import Thread, Event
@@ -281,18 +281,24 @@ class HostGuestAssociationReport(AbstractVirtReport):
     @property
     def association(self):
         # Apply filter
-        logger = logging.getLogger("virtwho")
+        logger = log.getLogger(name='virt', queue=False)
         assoc = []
         for host in self._assoc['hypervisors']:
-            if self.exclude_hosts is not None and self.exclude_hosts != NotSetSentinel and self._filter(
-                    host.hypervisorId, self.exclude_hosts):
-                logger.debug("Skipping host '%s' because its uuid is excluded", host.hypervisorId)
-                continue
+            if self.exclude_hosts is not None and self.exclude_hosts != NotSetSentinel:
+                if self._filter(host.hypervisorId, self.exclude_hosts):
+                    logger.debug("Skipping host '%s' because its ID was excluded by filter '%s'" %
+                                 (host.hypervisorId, self.exclude_hosts))
+                    continue
+                else:
+                    logger.debug("Host %s passed filter %s" % (host.hypervisorId, self.exclude_hosts))
 
-            if self.filter_hosts is not None and self.filter_hosts != NotSetSentinel and not self._filter(
-                    host.hypervisorId, self.filter_hosts):
-                logger.debug("Skipping host '%s' because its uuid is not included", host.hypervisorId)
-                continue
+            if self.filter_hosts is not None and self.filter_hosts != NotSetSentinel:
+                if self._filter(host.hypervisorId, self.filter_hosts):
+                    logger.debug("Host %s passed filter %s" % (host.hypervisorId, self.filter_hosts))
+                else:
+                    logger.debug("Skipping host '%s' because its ID was not included in filter '%s'" %
+                                 (host.hypervisorId, self.filter_hosts))
+                    continue
 
             assoc.append(host)
         return {'hypervisors': assoc}

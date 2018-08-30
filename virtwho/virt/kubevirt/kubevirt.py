@@ -57,15 +57,23 @@ class Kubevirt(virt.Virt):
         self.kube_api = self.kube()
 
     def virt(self):
-        from kubernetes import config
-        import kubevirt
+        try:
+            from kubernetes import config
+            import kubevirt
+        except ImportError:
+            self.logger.warning("The kubevirt-python or the kubernetes-python package is missing")
+            self.stop()
 
         cl = config.kube_config._get_kube_config_loader_for_yaml_file(self.path)
         cl.load_and_set(kubevirt.configuration)
         return kubevirt.DefaultApi()
 
     def kube(self):
-        from kubernetes import client, config
+        try:
+            from kubernetes import client, config
+        except ImportError:
+            self.logger.warning("The kubevirt-python or the kubernetes-python package is missing")
+            self.stop()
 
         config.load_kube_config(config_file=self.path)
         return client.CoreV1Api()

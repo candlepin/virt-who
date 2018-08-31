@@ -106,6 +106,11 @@ class Kubevirt(virt.Virt):
         for vm in vms.items:
             metadata = vm.metadata
             host_name = vm.status.node_name
+
+            # a vm is not scheduled on any hosts
+            if host_name is None:
+                continue
+
             guest_id = metadata.namespace + '/' + metadata.name
             # a vm is always in running state
             status = virt.Guest.STATE_RUNNING

@@ -901,6 +901,72 @@ rhsm_insecure=2
         self.assertEqual(config["rhsm_proxy_password"], 'proxypass1')
         self.assertEqual(config["rhsm_insecure"], '1')
 
+    def testLineContinuationInConfig(self):
+        """ Test that when a config line that starts with space or tab, it is treated
+        as a continuation of the previous line.
+        :return:
+        """
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=http://1.2.3.4
+ value
+username=admin
+password=password
+owner=root
+env=staging
+    filter_hosts=abc.efg.com
+""")
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0][1]
+        self.assertEqual(config.name, "test1")
+
+        self.assertEqual(config["server"], 'http://1.2.3.4\nvalue')
+        self.assertEqual(config["env"], 'staging\nfilter_hosts=abc.efg.com')
+
+    @patch('logging.Logger.warn')
+    def testCommentedOutLineContinuationInConfig(self, logger_warn):
+        """Test that when a config line that starts with space or tab which is followed by a '#',
+        if we are running python2: it is treated as a continuation of the previous line,
+        but a warning is logged for the user.
+        If we are running python3: it is ignored as a comment, and no warning is logged.
+        :return:
+        """
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[test1]
+type=esx
+server=http://1.2.3.4
+ #value
+username=admin
+password=password
+owner=root
+env=staging
+    #filter_hosts=abc.efg.com
+""")
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        self.assertEqual(len(manager.configs), 1)
+        config = manager.configs[0][1]
+        self.assertEqual(config.name, "test1")
+
+        if six.PY2:
+            self.assertEqual(config["server"], "http://1.2.3.4\n#value")
+            self.assertEqual(config["env"], 'staging\n#filter_hosts=abc.efg.com')
+
+            # Check that the warning was logged twice, and it was last called for line number 10 of the conf file:
+            self.assertTrue(logger_warn.called)
+            self.assertEqual(logger_warn.call_count, 2)
+            logger_warn.assert_called_with('A line continuation (line starts with space) that is commented out '
+                                           'was detected in file %s, line number %s.', f.name, 10)
+        elif six.PY3:
+            self.assertEqual(config["server"], "http://1.2.3.4")
+            self.assertEqual(config["env"], 'staging')
+
+            self.assertFalse(logger_warn.called)
+            self.assertEqual(logger_warn.call_count, 0)
+
 
 class TestParseList(TestBase):
     def test_unquoted(self):

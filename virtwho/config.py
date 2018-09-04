@@ -25,7 +25,8 @@ import six
 import os
 import uuid
 
-from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
+from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError, ParsingError,\
+DEFAULTSECT
 from virtwho import log, SAT5, SAT6
 from .password import Password
 from binascii import unhexlify
@@ -248,6 +249,24 @@ class StripQuotesConfigParser(SafeConfigParser):
             if value.startswith(quote) and value.endswith(quote) and quote not in value[1:-1]:
                 return value.strip(quote)
         return value
+
+    def _read(self, fp, fpname):
+        """ If we're running python2, before reading the config file, parse through it to check if a commented out
+        continuation line was detected (line starts with spaces/tabs, followed by '#') and if so, warn the user.
+        Note: In python3, the configparser lib itself will remove commented out line continuations, so there is
+        no need to perform this check.
+        """
+        if six.PY2:
+            line_number = 0
+            for line in fp:
+                line_number = line_number + 1
+                if line[0] == ' ' or line[0] == '\t':
+                    if len(line.strip()) > 0 and line.strip()[0] == '#':
+                        # warn the user that a continuation of the previous line is commented out
+                        logger.warn("A line continuation (line starts with space) that is commented out "
+                                    "was detected in file %s, line number %s.", fpname, line_number)
+            fp.seek(0)
+        SafeConfigParser._read(self, fp, fpname)
 
 
 class DestinationToSourceMapper(object):

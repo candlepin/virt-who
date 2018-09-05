@@ -8,6 +8,7 @@ from distutils.command.install import install
 from shutil import copy, copyfileobj
 import gzip
 
+## Doc testing String ###
 
 def install_file(filename, destination, file_mode=0o644, dir_mode=0o755):
     install_dir = os.path.dirname(destination)

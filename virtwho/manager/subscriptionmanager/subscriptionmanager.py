@@ -23,6 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 import json
 from six.moves.http_client import BadStatusLine
+from six import string_types
 
 import rhsm.connection as rhsm_connection
 import rhsm.certificate as rhsm_certificate
@@ -363,6 +364,9 @@ class SubscriptionManager(Manager):
             result_data = result.get('resultData', {})
             if not result_data:
                 self.logger.warning("Job status report without resultData: %s", result)
+                return
+            if isinstance(result_data, string_types):
+                self.logger.warning("Job status report encountered the following error: %s", result_data)
                 return
             for fail in result_data.get('failedUpdate', []):
                 self.logger.error("Error during update list of guests: %s", str(fail))

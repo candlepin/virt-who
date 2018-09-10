@@ -390,21 +390,23 @@ class HyperVSoap(object):
         else:
             data = response.content
             try:
-                xml = ElementTree.fromstring(data)
-                errorcode = xml.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
+                xml_doc = ElementTree.fromstring(data)
+                errorcode = xml_doc.find('.//{http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/MSFT_WmiError}error_Code')
                 # Suppress reporting of invalid namespace, because we're testing
                 # both old and new namespaces that HyperV uses
                 if errorcode is None or errorcode.text != '2150858778':
-                    self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
+                    title = xml_doc.find('.//title')
+                    self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, title.text)
             except Exception:
-                self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, data)
+                self.logger.debug("Invalid response (%d) from Hyper-V", response.status_code)
+
             raise HyperVCallFailed("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
 
     @classmethod
-    def _Instance(cls, xml):
+    def _Instance(cls, xml_doc):
         def stripNamespace(tag):
             return tag[tag.find("}") + 1:]
-        children = xml.getchildren()
+        children = xml_doc.getchildren()
         if len(children) < 1:
             return None
         child = children[0]
@@ -416,10 +418,10 @@ class HyperVSoap(object):
     def Enumerate(self, query, namespace="root/virtualization"):
         data = self.generator.enumerateXML(query=query, namespace=namespace)
         body = self.post(data)
-        xml = ElementTree.fromstring(body)
-        if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
+        xml_doc = ElementTree.fromstring(body)
+        if xml_doc.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
-        responses = xml.findall("{%(s)s}Body/{%(wsen)s}EnumerateResponse" % self.generator.namespaces)
+        responses = xml_doc.findall("{%(s)s}Body/{%(wsen)s}EnumerateResponse" % self.generator.namespaces)
         if len(responses) < 1:
             raise HyperVException("Wrong reply format")
         contexts = responses[0].getchildren()
@@ -433,10 +435,10 @@ class HyperVSoap(object):
     def _PullOne(self, uuid, namespace):
         data = self.generator.pullXML(enumerationContext=uuid, namespace=namespace)
         body = self.post(data)
-        xml = ElementTree.fromstring(body)
-        if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
+        xml_doc = ElementTree.fromstring(body)
+        if xml_doc.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
-        responses = xml.findall("{%(s)s}Body/{%(wsen)s}PullResponse" % self.generator.namespaces)
+        responses = xml_doc.findall("{%(s)s}Body/{%(wsen)s}PullResponse" % self.generator.namespaces)
         if len(responses) < 0:
             raise HyperVException("Wrong reply format")
 
@@ -466,10 +468,10 @@ class HyperVSoap(object):
         '''
         data = self.generator.getSummaryInformationXML(namespace)
         body = self.post(data)
-        xml = ElementTree.fromstring(body)
-        if xml.tag != "{%(s)s}Envelope" % self.generator.namespaces:
+        xml_doc = ElementTree.fromstring(body)
+        if xml_doc.tag != "{%(s)s}Envelope" % self.generator.namespaces:
             raise HyperVException("Wrong reply format")
-        responses = xml.findall("{%(s)s}Body/{%(vsms)s}GetSummaryInformation_OUTPUT" % {
+        responses = xml_doc.findall("{%(s)s}Body/{%(vsms)s}GetSummaryInformation_OUTPUT" % {
             's': self.generator.namespaces['s'],
             'vsms': self.generator.vsms_namespace % {'ns': namespace}
         })

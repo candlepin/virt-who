@@ -31,7 +31,7 @@ from base import TestBase
 from proxy import Proxy
 
 from virtwho import DefaultInterval
-from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection
+from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection, HyperVSoap
 from virtwho.virt import VirtError, Guest, Hypervisor
 
 
@@ -253,3 +253,44 @@ class TestHyperV(TestBase):
         self.assertRaises(VirtError, self.run_once)
         self.assertIsNotNone(proxy.last_path, "Proxy was not called")
         self.assertEqual(proxy.last_path, 'http://localhost:5985/wsman')
+
+    @patch('requests.Session')
+    @patch('logging.Logger.debug')
+    def test_proxy_if_html_response_only_status_code_and_title_is_logged(self, logger_debug, session):
+        proxy_response = '''
+        <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+        <html>
+            <head>
+                <title>ERROR: The requested URL could not be retrieved</title>
+                <style type="text/css"></style>"
+            </head>
+            <body>
+            </body>
+        </html>'''
+
+        session.return_value.post.return_value.content = proxy_response
+        session.return_value.post.return_value.status_code = 403
+
+        self.assertRaises(VirtError, self.run_once)
+        logger_debug.assert_called_with('Invalid response (%d) from Hyper-V: %s', 403,
+                                        'ERROR: The requested URL could not be retrieved')
+
+    @patch('requests.Session')
+    @patch('logging.Logger.debug')
+    def test_proxy_if_html_parse_error_only_status_code_is_logged(self, logger_debug, session):
+        proxy_response = '''
+        <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+        <html>
+            <head>
+                <title>ERROR: The requested URL could not be retrieved</title>
+                <style type="text/css"></style>"
+            </head>
+            <body <!-- the incomplete tag will cause parse error -->
+            </body>
+        </html>'''
+
+        session.return_value.post.return_value.content = proxy_response
+        session.return_value.post.return_value.status_code = 403
+
+        self.assertRaises(VirtError, self.run_once)
+        logger_debug.assert_called_with('Invalid response (%d) from Hyper-V', 403)

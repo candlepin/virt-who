@@ -217,7 +217,7 @@ class VirtBackendTestMixin(object):
             ]
         })
 
-    def wait_for_assoc(self, timeout=3):
+    def wait_for_assoc(self, timeout=4):
         try:
             return self.queue.get(timeout=timeout)
         except Empty:

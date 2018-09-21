@@ -239,7 +239,8 @@ rhsm_password=passwd
             proxy_port='9090',
             proxy_user='proxy_user',
             proxy_password='proxy_password',
-            insecure='1')
+            insecure='1',
+            correlation_id=manager.correlation_id)
 
     @unittest.skip("skip until rhsm is fixed")
     @patch('rhsm.connection.RhsmProxyHTTPSConnection')

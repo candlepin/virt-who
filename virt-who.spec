@@ -265,6 +265,12 @@ fi
 - Add releaser for RHEL 7.6 (wpoteat@redhat.com)
 - Remove f26 releaser (f26 is EOL) (csnyder@redhat.com)
 
+* Sat Jul 14 2018 Fedora Release Engineering <releng@fedoraproject.org> - 0.22.2-1.2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_29_Mass_Rebuild
+
+* Tue Jun 19 2018 Miro Hrončok <mhroncok@redhat.com> - 0.22.2-1.1
+- Rebuilt for Python 3.7
+
 * Thu May 31 2018 William Poteat <wpoteat@redhat.com> 0.22.2-1
 - Correct date ordering in changelog (wpoteat@redhat.com)
 - 1575513: Re-add changelog entries that were merged out. (wpoteat@redhat.com)

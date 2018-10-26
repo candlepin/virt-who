@@ -4,6 +4,8 @@ import sys
 import shutil
 import tempfile
 
+import pytest
+import six
 from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
@@ -189,6 +191,7 @@ class TestSubscriptionManagerConfig(TestBase):
         manager = Manager.from_config(logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     def test_sm_config_cmd(self):
         os.environ = {}
         sys.argv = ["virt-who", "--sam", "--libvirt"]

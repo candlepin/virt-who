@@ -1,4 +1,6 @@
 from __future__ import print_function
+
+
 """
 Test for basic virt-who operations.
 
@@ -22,6 +24,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import sys
 import copy
 import os
+import pytest
+import six
 from mock import patch, Mock, call
 
 from base import TestBase
@@ -82,6 +86,7 @@ class TestOptions(TestBase):
         _, options = parse_options()
         self.assertEqual(options[VW_GLOBAL]['interval'], 3600)
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_consistency(self, parseFile, getLogger):
@@ -89,6 +94,7 @@ class TestOptions(TestBase):
         sys.argv = ["virtwho.py", "--libvirt", "--esx-username=admin"]
         self.assertRaises(OptionError, parse_options)
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_consistency_reverse_order(self, parseFile, getLogger):
@@ -96,6 +102,7 @@ class TestOptions(TestBase):
         sys.argv = ["virtwho.py", "--esx-username=admin", "--libvirt"]
         self.assertRaises(OptionError, parse_options)
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_missing_virt_backend(self, parseFile, getLogger):
@@ -103,6 +110,7 @@ class TestOptions(TestBase):
         sys.argv = ["virtwho.py", "--sam", "--esx-username=admin"]
         self.assertRaises(OptionError, parse_options)
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_order(self, parseFile, getLogger):
@@ -112,6 +120,7 @@ class TestOptions(TestBase):
         self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], "libvirt")
         self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], "admin")
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_hierarchy_for_reporter_id(self, parseFile, getLogger):
@@ -159,6 +168,7 @@ class TestOptions(TestBase):
         _, options = parse_options()
         self.assertTrue(options[VW_GLOBAL]['debug'])
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_virt(self, parseFile, getLogger):
@@ -203,6 +213,7 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'xpassword')
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_options_virt_satellite(self, parse_file, getLogger):
@@ -254,6 +265,7 @@ class TestOptions(TestBase):
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'xpassword')
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
     def test_missing_option(self, parseFile, getLogger):

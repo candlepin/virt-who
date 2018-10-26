@@ -1,4 +1,7 @@
 from __future__ import print_function, absolute_import
+
+import pytest
+
 """
 Test for Satellite module, part of virt-who
 
@@ -25,6 +28,7 @@ import threading
 import tempfile
 import pickle
 import shutil
+import six
 from six.moves import xmlrpc_client
 from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from binascii import hexlify
@@ -364,6 +368,7 @@ class TestSatelliteConfig(TestBase):
         manager = Manager.fromInfo(self.logger, effective_config, dest_info)
         self.assertTrue(isinstance(manager, Satellite))
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     def test_satellite_config_cmd(self):
         os.environ = {}
         sys.argv = ["virt-who", "--satellite",

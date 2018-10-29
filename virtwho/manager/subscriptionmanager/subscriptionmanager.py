@@ -32,6 +32,7 @@ import rhsm.config as rhsm_config
 from virtwho.config import NotSetSentinel
 from virtwho.manager import Manager, ManagerError, ManagerFatalError, ManagerThrottleError
 from virtwho.virt import AbstractVirtReport
+from virtwho.util import generate_correlation_id
 
 
 class SubscriptionManagerError(ManagerError):
@@ -73,6 +74,7 @@ class SubscriptionManager(Manager):
         self.key_file = None
         self.readConfig()
         self.connection = None
+        self.correlation_id = generate_correlation_id()
 
     def readConfig(self):
         """ Parse rhsm.conf in order to obtain consumer
@@ -193,6 +195,10 @@ class SubscriptionManager(Manager):
                     "Unable to read certificate, system is not registered or you are not root")
             kwargs['cert_file'] = self.cert_file
             kwargs['key_file'] = self.key_file
+
+        self.logger.info("X-Correlation-ID: %s", self.correlation_id)
+        if self.correlation_id:
+            kwargs['correlation_id'] = self.correlation_id
 
         self.connection = rhsm_connection.UEPConnection(**kwargs)
         try:

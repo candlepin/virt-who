@@ -4,6 +4,7 @@ import six
 from six.moves import xmlrpc_client
 import requests
 from abc import ABCMeta
+import uuid
 
 try:
     from six.moves._thread import get_ident as _get_ident
@@ -396,3 +397,7 @@ class DictItemsIter(object):
 
     def next(self):
         return self.__next__()
+
+
+def generate_correlation_id():
+    return str(uuid.uuid4()).replace('-', '')  # FIXME cp should accept -

@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from virtwho.virt.rhevm.rhevm import RhevmConfigSection
 from virtwhotest import TestBase, VirtBackendTestMixin
 
 from fake_rhevm import FakeRhevm
@@ -8,6 +9,13 @@ from fake_rhevm import FakeRhevm
 class RhevmTest(TestBase, VirtBackendTestMixin):
     virt = 'rhevm'
     hypervisorType = 'qemu'
+
+    @staticmethod
+    def create_config(name, wrapper, **kwargs):
+        config = RhevmConfigSection(name, wrapper)
+        config.update(**kwargs)
+        config.validate()
+        return config
 
     @classmethod
     def setUpClass(cls):

@@ -526,9 +526,11 @@ def parse_options():
     # Read configuration env. variables
     env_options = read_config_env_variables()
 
-    # Read environments variables for virtualization backends
-    env_options, env_errors = read_vm_backend_env_variables(env_options)
-    errors.extend(env_errors)
+    if six.PY2:
+        # Read environments variables for virtualization backends
+        env_options, env_errors = read_vm_backend_env_variables(env_options)
+        errors.extend(env_errors)
+
     # Create the effective config that virt-who will use to run
     effective_config = init_config(env_options, cli_options)
     # Ensure validation errors during effective config creation are logged

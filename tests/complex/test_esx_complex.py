@@ -14,6 +14,8 @@ class EsxTest(TestBase, VirtBackendTestMixin):
         TestBase.setUpClass()
         cls.server = FakeEsx()
         cls.server.start()
+        config = self.create_config(name='test', wrapper=None, type='rhevm', server='localhost', username=cls.server.username,
+                        password=cls.server.password, owner='owner', env='env')
         cls.arguments = [
             '--esx',
             '--esx-server=http://localhost:%s' % cls.server.port,

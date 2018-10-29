@@ -349,6 +349,7 @@ class TestSatelliteConfig(TestBase):
         conf_dir_patch.start()
         self.addCleanup(conf_dir_patch.stop)
 
+    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     def test_satellite_config_env(self):
         os.environ = {
             "VIRTWHO_SATELLITE": '1',

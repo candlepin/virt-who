@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.0
+Version:        0.24.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -161,6 +161,15 @@ fi
 
 
 %changelog
+* Mon Oct 29 2018 William Poteat <wpoteat@redhat.com> 0.24.1-1
+- Merge in changes from Fedora packaging (wpoteat@redhat.com)
+- ENT-826 Added correlation id to virt-who reports (nmoumoul@redhat.com)
+- Releaser addition for rhel-7.7 (wpoteat@redhat.com)
+- Install subscription-manager, not python-rhsm which is deprecated: - Removed
+  python-rhsm from the requirements, and added subscription-manager as
+  dependency. - Added some dependencies that travis requires to install
+  subscription-manager. (nmoumoul@redhat.com)
+
 * Wed Sep 19 2018 William Poteat <wpoteat@redhat.com> 0.24.0-1
 - Automatic commit of package [virt-who] release [0.22.2-1].
   (wpoteat@redhat.com)

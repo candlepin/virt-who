@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+from virtwho.datastore import Datastore
+from virtwho.virt import Virt
 from virtwho.virt.rhevm.rhevm import RhevmConfigSection
 from virtwhotest import TestBase, VirtBackendTestMixin
 
@@ -21,15 +23,10 @@ class RhevmTest(TestBase, VirtBackendTestMixin):
     def setUpClass(cls):
         TestBase.setUpClass()
         cls.server = FakeRhevm()
+        cls.create_config(name='test', wrapper=None, type='rhevm', server='http://localhost:%s/' % cls.server.port,
+               username=cls.server.username, password=cls.server.password, owner='owner', env='env')
+        cls.arguments = []
         cls.server.start()
-        cls.arguments = [
-            '--rhevm',
-            '--rhevm-server=http://localhost:%s/' % cls.server.port,
-            '--rhevm-username=%s' % cls.server.username,
-            '--rhevm-password=%s' % cls.server.password,
-            '--rhevm-owner=owner',
-            '--rhevm-env=env'
-        ]
 
     @classmethod
     def tearDownClass(cls):

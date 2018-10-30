@@ -27,7 +27,7 @@ import suds.client
 import requests
 import errno
 import stat
-from six import StringIO
+from six import BytesIO
 import io
 import logging
 from time import time
@@ -88,7 +88,7 @@ class RequestsTransport(suds.transport.Transport):
     def open(self, request):
         resp = self._session.get(request.url, headers=request.headers, verify=False)
         resp.raise_for_status()
-        return StringIO(resp.content.decode('utf-8', 'ignore'))
+        return BytesIO(resp.content)
 
     def send(self, request):
         resp = self._session.post(

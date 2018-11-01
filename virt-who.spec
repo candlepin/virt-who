@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.23.0
+Version:        0.23.1
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -159,6 +159,38 @@ fi
 
 
 %changelog
+* Thu Nov 01 2018 William Poteat <wpoteat@redhat.com> 0.23.1-1
+- 1637407: vCenter mapping info failure due to TypeError (wpoteat@redhat.com)
+- Merge in changes from Fedora packaging (wpoteat@redhat.com)
+- ENT-826 Added correlation id to virt-who reports (nmoumoul@redhat.com)
+- Install subscription-manager, not python-rhsm which is deprecated: - Removed
+  python-rhsm from the requirements, and added subscription-manager as
+  dependency. - Added some dependencies that travis requires to install
+  subscription-manager. (nmoumoul@redhat.com)
+- kubevirt: warn user that dependencies are missing
+  (piotr.kliczewski@gmail.com)
+- 1369634: Dont log proxy html errors for hyperv: - When hyperv gets an HTML
+  page as error response from a proxy, don't log the whole html, but try to
+  scrape the title off of it. - If scraping the title doesn't work, only log
+  the http error code. - Changed all variables named 'xml' to 'xml_doc' in
+  hyperv.py to avoid conflict with the new python keyword.
+  (nmoumoul@redhat.com)
+- 1599725: Handle job status report errors (nmoumoul@redhat.com)
+- 1557296: Warn of commented out lines prefixed with space/tab (ENT-606) - When
+  reading config files in python2, warn the user if a line continuation (starts
+  with space/tab) is followed by '#' (nmoumoul@redhat.com)
+- kubevirt: Ignore vmis in Scheduling (piotr.kliczewski@gmail.com)
+- kubevirt: rename virtual machine instance (piotr.kliczewski@gmail.com)
+- kubevirt: Update config (piotr.kliczewski@gmail.com)
+- Print/log debug information about filtered hosts (jhnidek@redhat.com)
+- 1577954: Added config option filter_type; ENT-580 (jhnidek@redhat.com)
+- Changed info about how filter_host_parents/exclude_host_parents filters work
+  (ktordeur@redhat.com)
+- Add release entry for RHEL 8 (wpoteat@redhat.com)
+- 1387800: set name of ESX cluster properly; ENT-793 (jhnidek@redhat.com)
+- template update (wpinheir@iroman.home)
+- template update (wpinheir@iroman.home)
+
 * Mon Aug 13 2018 William Poteat <wpoteat@redhat.com> 0.23.0-1
 - Release number (wpoteat@redhat.com)
 - releaser update for branch (wpoteat@redhat.com)

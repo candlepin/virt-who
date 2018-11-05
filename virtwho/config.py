@@ -1459,6 +1459,10 @@ def init_config(env_options, cli_options, config_dir=None):
             if key:
                 effective_config[VW_ENV_CLI_SECTION_NAME][key.lower()] = value
 
+    # 1638250: issue in the urllib or requests package in python 3
+    if 'http_proxy' in os.environ and 'https_proxy' not in os.environ:
+        os.environ['https_proxy'] = os.environ['http_proxy']
+
     # Now with the aggregate config data, run it through the appropriate class to get it validated/defaulted.
     effective_config[VW_ENV_CLI_SECTION_NAME] = VirtConfigSection.from_dict(effective_config[VW_ENV_CLI_SECTION_NAME], VW_ENV_CLI_SECTION_NAME, effective_config)
 

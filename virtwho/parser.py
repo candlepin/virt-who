@@ -325,7 +325,11 @@ def parse_cli_arguments():
     if six.PY3:
         parser = ArgumentParser(
             usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version]",
-            description="Agent for reporting virtual guest IDs to subscription manager"
+            description="Agent for reporting virtual guest IDs to subscription manager",
+            epilog = "virt-who also reads environment variables. They have the same name as "
+                  "command line arguments but uppercased, with underscore instead of dash "
+                  "and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are "
+                  "considered as disabled, non-empty as enabled."
         )
     parser.add_argument("-d", "--debug", action="store_true", dest="debug", default=False,
                         help="Enable debugging output")

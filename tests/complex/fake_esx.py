@@ -28,7 +28,7 @@ class EsxHandler(FakeHandler):
             if 'RetrieveServiceContent' in root.tag:
                 self.write_file('esx', 'esx_retrieveservicecontent.xml')
             elif 'Login' in root.tag:
-                if root.find('{urn:vim25}userName').text != 'A!bc\n 3#\'"' or root.find('{urn:vim25}password').text != 'A!bc\n 3#\'"':
+                if root.find('{urn:vim25}userName').text != 'A!bc3#\'"' or root.find('{urn:vim25}password').text != 'A!bc3#\'"':
                     self.send_error(401, 'Cannot complete login due to an incorrect user name or password.')
                 self.write_file('esx', 'esx_loginresponse.xml')
             elif 'Logout' in root.tag:

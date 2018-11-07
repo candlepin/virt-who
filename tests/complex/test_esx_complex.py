@@ -1,5 +1,9 @@
 from __future__ import print_function
 
+import os
+import tempfile
+import shutil
+
 from virtwhotest import TestBase, VirtBackendTestMixin
 
 from fake_esx import FakeEsx
@@ -14,13 +18,19 @@ class EsxTest(TestBase, VirtBackendTestMixin):
         TestBase.setUpClass()
         cls.server = FakeEsx()
         cls.server.start()
+        cls.config_dir = tempfile.mkdtemp()
+        with open(os.path.join(cls.config_dir, "test.conf"), "w") as f:
+            f.write(("""
+[test]
+type=esx
+server=http://localhost:%s
+username=%s
+password=%s
+owner=owner
+env=env
+""") % (cls.server.port, cls.server.username, cls.server.password))
         cls.arguments = [
-            '--esx',
-            '--esx-server=http://localhost:%s' % cls.server.port,
-            '--esx-username=%s' % cls.server.username,
-            '--esx-password=%s' % cls.server.password,
-            '--esx-owner=owner',
-            '--esx-env=env'
+            '-c=%s' % os.path.join(cls.config_dir, "test.conf")
         ]
 
     @classmethod
@@ -28,3 +38,4 @@ class EsxTest(TestBase, VirtBackendTestMixin):
         TestBase.tearDownClass()
         cls.server.terminate()
         cls.server.join()
+        shutil.rmtree(cls.config_dir)

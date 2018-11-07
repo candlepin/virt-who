@@ -115,7 +115,7 @@ class Vdsm(Virt):
         out, err = p.communicate()
         if p.returncode != 0:
             return '0'
-        return re.search('CN *= *([^,/$\n]+)', out).group(1)
+        return re.search('CN *= *([^,/$\n]+)', out.decode('UTF-8')).group(1)
 
     def _get_addr(self):
         return self._get_local_vds_name(self.trust_store_path)

@@ -86,11 +86,11 @@ class FakeVirt(Process):
 
     @property
     def username(self):
-        return 'A!bc\n 3#\'"'
+        return 'A!bc3#\'"'
 
     @property
     def password(self):
-        return 'A!bc\n 3#\'"'
+        return 'A!bc3#\'"'
 
     @property
     def data_version(self):

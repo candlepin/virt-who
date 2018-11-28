@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.23.1
+Version:        0.23.2
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -159,6 +159,9 @@ fi
 
 
 %changelog
+* Wed Nov 28 2018 William Poteat <wpoteat@redhat.com> 0.23.2-1
+- 1638250: Proxy issue when https not specified (wpoteat@redhat.com)
+
 * Thu Nov 01 2018 William Poteat <wpoteat@redhat.com> 0.23.1-1
 - 1637407: vCenter mapping info failure due to TypeError (wpoteat@redhat.com)
 - Merge in changes from Fedora packaging (wpoteat@redhat.com)

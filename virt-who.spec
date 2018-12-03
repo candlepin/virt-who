@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.23.2
+Version:        0.23.3
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -164,6 +164,12 @@ fi
 
 
 %changelog
+* Mon Dec 03 2018 William Poteat <wpoteat@redhat.com> 0.23.3-1
+- ENT-896: Disable deprecated configuration options in python 3
+  (wpoteat@redhat.com)
+- 1650133: setuptools naming change (wpoteat@redhat.com)
+- Update branch definition for RHEL 8.0 branch (wpoteat@redhat.com)
+
 * Wed Nov 28 2018 William Poteat <wpoteat@redhat.com> 0.23.2-1
 - 1638250: Proxy issue when https not specified (wpoteat@redhat.com)
 

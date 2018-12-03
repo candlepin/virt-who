@@ -33,7 +33,12 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  %{python_ver}-devel
 BuildRequires:  %{python_ver}-setuptools
-Requires:       %{python_ver}-setuptools
+# rhel 8 has different naming going forward
+%if (0%{?rhel} && 0%{?rhel} >= 8)
+Requires:      platform-python-setuptools
+%else
+Requires:      %{python_ver}-setuptools
+%endif
 # libvirt python required for libvirt support
 %if (0%{?rhel} && 0%{?rhel} > 7 || 0%{?fedora})
 Requires:       %{python_ver}-libvirt

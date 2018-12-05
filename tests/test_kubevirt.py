@@ -38,7 +38,7 @@ class TestKubevirt(TestBase):
 
     def setUp(self):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', env='env')
+                                    owner='owner', env='env', kubeconfig='/etc/hosts')
         with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
             self.kubevirt = Virt.from_config(self.logger, config, Datastore())
 

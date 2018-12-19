@@ -19,7 +19,7 @@
 #
 from __future__ import absolute_import
 
-import os
+import os.path
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
@@ -34,6 +34,20 @@ class KubevirtConfigSection(VirtConfigSection):
                                                     wrapper,
                                                     *args,
                                                     **kwargs)
+        self.add_key('kubeconfig', validation_method=self._validate_path, required=True)
+
+    def _validate_path(self, key='kubeconfig'):
+        """
+        Do validation of kubernetes config file location
+        return: Return None or info/warning/error
+        """
+        path = self._values[key]
+        if os.path.isfile(path):
+            return [(
+                    'warning',
+                    "Kubeconfig file was not found at %s" % path
+                )]
+        return None
 
 
 class Kubevirt(virt.Virt):
@@ -46,11 +60,7 @@ class Kubevirt(virt.Virt):
                                        terminate_event=terminate_event,
                                        interval=interval,
                                        oneshot=oneshot)
-        self.path = self._config_path()
-
-    def _config_path(self):
-        # kubeconfig - check whether we can/need to pass it as argument
-        return os.environ['KUBECONFIG']
+        self.path = self.config['kubeconfig']
 
     def prepare(self):
         self.kubevirt_api = self.virt()

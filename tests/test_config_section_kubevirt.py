@@ -32,6 +32,7 @@ class TestKubevirtConfigSection(ConfigSectionValidationTests, TestBase):
         "server": "1.2.3.4",
         "owner": "admin",
         "env": "admin",
+        "kubeconfig": "/etc/hosts",
     }
 
     SAM_REQUIRED_KEYS = set()

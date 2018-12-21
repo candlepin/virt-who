@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.1
+Version:        0.24.2
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -166,6 +166,18 @@ fi
 
 
 %changelog
+* Fri Dec 21 2018 William Poteat <wpoteat@redhat.com> 0.24.2-1
+- 1657104: Remove references to removed command line options
+  (wpoteat@redhat.com)
+- Fixing kubevirt config path argument (piotr.kliczewski@gmail.com)
+- fix travis run (wpoteat@redhat.com)
+- 1650133: setuptools naming change (wpoteat@redhat.com)
+- 1638250: Proxy issue when https not specified (wpoteat@redhat.com)
+- Update branch definition for RHEL 8.0 branch (wpoteat@redhat.com)
+- ENT-896: Disable deprecated configuration options in python 3
+  (wpoteat@redhat.com)
+- 1637407: vCenter mapping info failure due to TypeError (wpoteat@redhat.com)
+
 * Mon Oct 29 2018 William Poteat <wpoteat@redhat.com> 0.24.1-1
 - Merge in changes from Fedora packaging (wpoteat@redhat.com)
 - ENT-826 Added correlation id to virt-who reports (nmoumoul@redhat.com)

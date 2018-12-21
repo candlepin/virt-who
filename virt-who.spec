@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.23.3
+Version:        0.23.4
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -164,6 +164,10 @@ fi
 
 
 %changelog
+* Fri Dec 21 2018 William Poteat <wpoteat@redhat.com> 0.23.4-1
+- 1657104: Remove references to removed command line options
+  (wpoteat@redhat.com)
+
 * Mon Dec 03 2018 William Poteat <wpoteat@redhat.com> 0.23.3-1
 - ENT-896: Disable deprecated configuration options in python 3
   (wpoteat@redhat.com)

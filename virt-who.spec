@@ -19,7 +19,7 @@
 
 
 Name:           virt-who
-Version:        0.23.4
+Version:        0.23.5
 Release:        1%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -164,6 +164,9 @@ fi
 
 
 %changelog
+* Thu Jan 10 2019 William Poteat <wpoteat@redhat.com> 0.23.5-1
+- 1638250: Improved fix for http proxy issue (wpoteat@redhat.com)
+
 * Fri Dec 21 2018 William Poteat <wpoteat@redhat.com> 0.23.4-1
 - 1657104: Remove references to removed command line options
   (wpoteat@redhat.com)

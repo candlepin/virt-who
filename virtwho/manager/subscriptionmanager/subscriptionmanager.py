@@ -144,6 +144,7 @@ class SubscriptionManager(Manager):
             'proxy_port': self.rhsm_config.get('server', 'proxy_port'),
             'proxy_user': self.rhsm_config.get('server', 'proxy_user'),
             'proxy_password': self.rhsm_config.get('server', 'proxy_password'),
+            'no_proxy': self.rhsm_config.get('server', 'no_proxy'),
             'insecure': self.rhsm_config.get('server', 'insecure')
         }
         kwargs_to_config = {
@@ -154,6 +155,7 @@ class SubscriptionManager(Manager):
             'proxy_port': 'rhsm_proxy_port',
             'proxy_user': 'rhsm_proxy_user',
             'proxy_password': 'rhsm_proxy_password',
+            'no_proxy': 'rhsm_no_proxy',
             'insecure': 'rhsm_insecure'
         }
 

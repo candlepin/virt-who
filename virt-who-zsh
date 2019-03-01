@@ -61,4 +61,11 @@ _arguments -s -w \
   "(--kubevirt $exargs)"--kubevirt'[register guests using Kubevirt]' \
   "(--kubevirt-owner $exargs)"--kubevirt-owner=+'[specify owner]:owner:' \
   "(--kubevirt-env $exargs)"--kubevirt-env=+'[specify environment]:env:' \
+   - set8 \
+  "(--nutanix $exargs)"--nutanix'[register guests using Nutanix]' \
+  "(--nutanix-owner $exargs)"--nutanix-owner=+'[specify owner]:owner:' \
+  "(--nutanix-env $exargs)"--nutanix-env=+'[specify environment]:env:' \
+  "(--nutanix-server $exargs)"--nutanix-server=+'[specify server URL]:URL:' \
+  "(--nutanix-username $exargs)"--nutanix-username=+'[specify username]:username:' \
+  "(--nutanix-password $exargs)"--nutanix-password=+'[specify password]:password:' \
   && return 0

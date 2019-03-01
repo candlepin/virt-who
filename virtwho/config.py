@@ -44,7 +44,7 @@ logger = log.getLogger(name='config', queue=False)
 _effective_config = None
 
 VW_CONF_DIR = "/etc/virt-who.d/"
-VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt")
+VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "nutanix")
 VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
@@ -1085,7 +1085,7 @@ class VirtConfigSection(ConfigSection):
         Try to validate server definition
         """
         result = None
-        # Server option must be there for ESX, RHEVM, and HYPERV
+        # Server option must be there for ESX, RHEVM, HYPERV and NUTANIX
         if key not in self._values:
             if 'type' in self._values and self._values['type'] in ['libvirt', 'vdsm', 'fake']:
                 self._values[key] = ''
@@ -1105,7 +1105,7 @@ class VirtConfigSection(ConfigSection):
         sm_type = self._values['sm_type']
         virt_type = self._values.get('type')
         if sm_type == 'sam' and (
-                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
+                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen', 'nutanix')) or
                 (virt_type == 'libvirt' and 'server' in self._values)):
             if key not in self:
                 result = (
@@ -1121,7 +1121,7 @@ class VirtConfigSection(ConfigSection):
         result = None
         sm_type = self._values['sm_type']
         virt_type = self._values.get('type')
-        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen', 'nutanix'):
             if key not in self:
                 result = (
                     'warning',

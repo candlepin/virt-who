@@ -172,7 +172,7 @@ class TestOptions(TestBase):
     @patch('virtwho.config.parse_file')
     def test_options_virt(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
-        for virt in ['esx', 'hyperv', 'rhevm']:
+        for virt in ['esx', 'hyperv', 'rhevm', 'nutanix']:
             self.clearEnv()
             sys.argv = ["virtwho.py", "--%s" % virt, "--%s-owner=owner" % virt,
                         "--%s-env=env" % virt, "--%s-server=localhost" % virt,
@@ -186,6 +186,8 @@ class TestOptions(TestBase):
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
             elif virt == 'rhevm':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
+            elif virt == 'nutanix':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
@@ -207,6 +209,8 @@ class TestOptions(TestBase):
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
             elif virt == 'rhevm':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
+            elif virt == 'nutanix':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
@@ -217,7 +221,7 @@ class TestOptions(TestBase):
     @patch('virtwho.config.parse_file')
     def test_options_virt_satellite(self, parse_file, getLogger):
         self.setUpParseFile(parse_file)
-        for virt in ['hyperv', 'esx', 'rhevm']:
+        for virt in ['hyperv', 'esx', 'rhevm', 'nutanix']:
             self.clearEnv()
             sys.argv = ["virtwho.py",
                         "--satellite",
@@ -234,6 +238,8 @@ class TestOptions(TestBase):
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
             elif virt == 'esx':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
+            elif virt == 'nutanix':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
@@ -257,6 +263,8 @@ class TestOptions(TestBase):
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:8443/')
             elif virt == 'esx':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
+            elif virt == 'nutanix':
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
@@ -270,11 +278,11 @@ class TestOptions(TestBase):
     def test_missing_option(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
         for smType in ['satellite', 'sam']:
-            for virt in ['libvirt', 'vdsm', 'xen', 'esx', 'hyperv', 'rhevm', 'kubevirt']:
+            for virt in ['libvirt', 'vdsm', 'xen', 'esx', 'hyperv', 'rhevm', 'kubevirt', 'nutanix']:
                 for missing in ['server', 'username', 'password', 'env', 'owner']:
                     self.clearEnv()
                     sys.argv = ["virtwho.py", "--%s" % smType, "--%s" % virt]
-                    if virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm']:
+                    if virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm', 'nutanix']:
                         if missing != 'server':
                             sys.argv.append("--%s-server=localhost" % virt)
                         if missing != 'username':

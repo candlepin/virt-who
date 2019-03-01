@@ -1,0 +1,83 @@
+{
+  "metadata": {
+    "grand_total_entities": 4,
+    "total_entities": 4,
+    "count": 4,
+    "start_index": 0,
+    "end_index": 4
+  },
+  "entities": [
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "0bb9eaec-1947-472b-aa05-cb9ea89230eb",
+      "memory_mb": 2048,
+      "name": "VM3",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "d1501a9c-b778-4e45-aaa0-a71471709911",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    },
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "description": "testing",
+      "ha_priority": 0,
+      "memory_mb": 4096,
+      "name": "my first vm",
+      "num_cores_per_vcpu": 2,
+      "num_vcpus": 2,
+      "power_state": "off",
+      "timezone": "America/New_York",
+      "uuid": "112fb34e-2abc-43a3-b878-ac91710a82cf",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 1
+    },
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "0bb9eaec-1947-472b-aa05-cb9ea89230eb",
+      "memory_mb": 2048,
+      "name": "VM2",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "4fb6f7a3-6e34-46bf-87b0-6eb769e89c27",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    },
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "0bb9eaec-1947-472b-aa05-cb9ea89230eb",
+      "memory_mb": 2048,
+      "name": "VM1",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "5e6778c4-d991-4ae7-8ac5-a0247cb61d38",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    }
+  ]
+}

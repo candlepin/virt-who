@@ -1,0 +1,11 @@
+In order to make the virt-who connection to Nutanix work, the firewall must
+allow access to the Nutanix API Server.  You must also specify valid credentials
+that has read/view access to all clusters, hosts and vms.
+
+Please note the following known issues:
+
+* Results are not paginated; depending on the number of clusters, hosts or vms,
+only a single page will be processed.  Sites with large numbers may experience
+issues with incomplete data.
+
+* VM UUID may not match with dmidecode hardware UUID's, this needs verified.

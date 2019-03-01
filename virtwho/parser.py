@@ -45,6 +45,7 @@ SAT5_VM_DISPATCHER = {
     'hyperv': {'owner': False, 'env': False, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
     'kubevirt': {'owner': False, 'env': False, 'server': False, 'username': False, 'kubeconfig': True},
+    'nutanix': {'owner': False, 'env': False, 'server': True, 'username': True},
 }
 
 SAT6_VM_DISPATCHER = {
@@ -55,6 +56,7 @@ SAT6_VM_DISPATCHER = {
     'hyperv': {'owner': True, 'env': True, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
     'kubevirt': {'owner': True, 'env': True, 'server': False, 'username': False, 'kubeconfig': True},
+    'nutanix': {'owner': True, 'env': True, 'server': True, 'username': True},
 }
 
 
@@ -73,7 +75,7 @@ class StoreGroupArgument(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         """
         When the argument from group is used, then this argument has to match
-        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]
+        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--nutanix]
         """
         options = vars(namespace)
         virt_type = options['virt_type']
@@ -209,6 +211,7 @@ def read_config_env_variables():
         "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
         "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
         "VIRTWHO_KUBEVIRT": ("virt_type", store_const, "kubevirt"),
+        "VIRTWHO_NUTANIX": ("virt_type", store_const, "nutanix"),
         "VIRTWHO_INTERVAL": ("interval", store_value),
         "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
     }
@@ -315,7 +318,7 @@ def parse_cli_arguments():
         parser = ArgumentParser(
             usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version] "
                   "[-m] [-l LOG_DIR] [-f LOG_FILE] [-r REPORTER_ID] [--sam|--satellite5|--satellite6] "
-                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
+                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--nutanix]",
             description="Agent for reporting virtual guest IDs to subscription manager",
             epilog="virt-who also reads environment variables. They have the same name as "
                    "command line arguments but uppercased, with underscore instead of dash "
@@ -376,6 +379,8 @@ def parse_cli_arguments():
                                 help="[Deprecated] Register guests using Hyper-V")
         virt_group.add_argument("--kubevirt", action=StoreVirtType, dest="virt_type", const="kubevirt",
                                 help="[Deprecated] Register guests using Kubevirt")
+        virt_group.add_argument("--nutanix", action=StoreVirtType, dest="virt_type", const="nutanix",
+                                help="[Deprecated] Register guests using Nutanix")
 
         manager_group = parser.add_argument_group(
             title="Subscription manager",
@@ -491,6 +496,26 @@ def parse_cli_arguments():
                                  help="[Deprecated] Organization who has purchased subscriptions of the products")
         kubevirt_group.add_argument("--kubevirt-env", action=StoreGroupArgument, dest="env", default="",
                                  help="[Deprecated] Environment where Kubevirt belongs to")
+
+        nutanix_group = parser.add_argument_group(
+            title="Nutanix options",
+            description="Use these options with --nutanix"
+        )
+        nutanix_group.add_argument("--nutanix-owner", action=StoreGroupArgument, dest="owner", default="",
+                                 help="[Deprecated] Organization who has purchased subscriptions of the products")
+        nutanix_group.add_argument("--nutanix-env", action=StoreGroupArgument, dest="env", default="",
+                                 help="[Deprecated] Environment where the Nutanix belongs to")
+        nutanix_group.add_argument("--nutanix-server", action=StoreGroupArgument, dest="server", default="",
+                                 help="[Deprecated] URL of the Nutanix server to connect to (preferable use secure connection"
+                                      "- https://<ip or domain name>:<secure port, usually 9440>)")
+        nutanix_group.add_argument("--nutanix-username", action=StoreGroupArgument, dest="username", default="",
+                                 help="[Deprecated] Username for connecting to Nutanix API")
+        nutanix_group.add_argument("--nutanix-password", action=StoreGroupArgument, dest="password", default="",
+                                 help="[Deprecated] Password for connecting to Nutanix API")
+        nutanix_group.add_argument("--nutanix-ssl_verify", action=StoreGroupArgument, dest="ssl_verify", default="",
+                                 help="[Deprecated] Require SSL Verification")
+        nutanix_group.add_argument("--nutanix-api_base", action=StoreGroupArgument, dest="api_base", default="",
+                                 help="[Deprecated] Specify a different API base when building URLs")
 
     # Read option from CLI
     cli_options = vars(parser.parse_args())

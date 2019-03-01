@@ -42,7 +42,7 @@ class KubevirtConfigSection(VirtConfigSection):
         return: Return None or info/warning/error
         """
         path = self._values[key]
-        if os.path.isfile(path):
+        if not os.path.isfile(path):
             return [(
                     'warning',
                     "Kubeconfig file was not found at %s" % path

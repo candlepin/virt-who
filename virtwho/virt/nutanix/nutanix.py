@@ -168,8 +168,11 @@ class Nutanix(virt.Virt):
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))
         # FIXME: other errors
+        if not response.content or len(response.content) == 0:
+            raise virt.VirtError("No content response from Nutanix server")
 
         response_json = json.loads(response.content)
+
         if 'metadata' in response_json.keys():
             grand_total_entities = response_json['metadata']['grand_total_entities']
             count = response_json['metadata']['count']

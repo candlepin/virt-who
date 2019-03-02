@@ -39,7 +39,7 @@
         "5": null,
         "6": null
       },
-      "name": "localhost.localdomain",
+      "name": "hostname.localdomain",
       "service_vmexternal_ip": "172.30.0.5",
       "service_vmnat_ip": null,
       "service_vmnat_port": null,

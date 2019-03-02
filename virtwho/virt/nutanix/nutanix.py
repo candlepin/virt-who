@@ -261,9 +261,10 @@ class Nutanix(virt.Virt):
                 self.logger.info('Cluster of host %s is not found, skipped', host_uuid)
                 continue
 
-            sockets = host['num_cpu_sockets']
-            if not sockets:
-                sockets = "1"
+            if 'num_cpu_sockets' in host.keys():
+                sockets = int(host['num_cpu_sockets'])
+            else:
+                sockets = 1
 
             hypervisor_type = host['hypervisor_type']
             if not hypervisor_type:

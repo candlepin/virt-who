@@ -617,7 +617,7 @@ class TestNutanix(TestBase):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = uuids['host']
         expected_guestId = uuids['vm']
-        expected_guest_state = Guest.STATE_ON
+        expected_guest_state = Guest.STATE_RUNNING
 
         get.side_effect = [
             MagicMock(content=CLUSTERS_JSON),

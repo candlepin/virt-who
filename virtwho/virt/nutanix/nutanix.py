@@ -56,6 +56,7 @@ class NutanixConfigSection(VirtConfigSection):
     """
 
     VIRT_TYPE = 'nutanix'
+    HYPERVISOR_TYPE = 'kKvm'
     HYPERVISOR_ID = ('uuid', 'hwuuid', 'hostname')
 
     def __init__(self, section_name, wrapper, *args, **kwargs):
@@ -268,7 +269,7 @@ class Nutanix(virt.Virt):
 
             hypervisor_type = host['hypervisor_type']
             if not hypervisor_type:
-                hypervisor_type = "kKvm"
+                hypervisor_type = NutanixConfigSection.HYPERVISOR_TYPE
 
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,

@@ -643,7 +643,7 @@ class TestNutanix(TestBase):
             ],
             facts={
                 Hypervisor.CPU_SOCKET_FACT: 1,
-                Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
+                Hypervisor.HYPERVISOR_TYPE_FACT: NutanixConfigSection.HYPERVISOR_TYPE,
                 Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }
@@ -688,7 +688,7 @@ class TestNutanix(TestBase):
             ],
             facts={
                 Hypervisor.CPU_SOCKET_FACT: 1,
-                Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
+                Hypervisor.HYPERVISOR_TYPE_FACT: NutanixConfigSection.HYPERVISOR_TYPE,
                 Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }

@@ -15,7 +15,7 @@ class NutanixHandler(FakeHandler):
         elif self.path == '/PrismGateway/services/rest/v2.0/hosts':
             self.write_file('nutanix', 'hosts.json')
         elif self.path == '/PrismGateway/services/rest/v2.0/vms':
-            self.write_file('nutanix', 'vms.json')
+            self.write_file('nutanix', 'vms_%d.json' % self.server._data_version.value)
         else:
             self.send_response(404)
             self.end_headers()

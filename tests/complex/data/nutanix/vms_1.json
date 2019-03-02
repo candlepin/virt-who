@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "grand_total_entities": 3,
+    "total_entities": 3,
+    "count": 3,
+    "start_index": 1,
+    "end_index": 3
+  },
+  "entities": [
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "5627a268-f036-4f5d-b9a3-0183ec736913",
+      "memory_mb": 2048,
+      "name": "atomic_restore_test",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "9844af5d-101b-40ea-a125-8bf1a02f888b",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    },
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "5627a268-f036-4f5d-b9a3-0183ec736913",
+      "memory_mb": 2048,
+      "name": "rfescalate",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "640bb2fe-fa3b-48cb-89d0-193c13b15663",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    },
+    {
+      "allow_live_migrate": true,
+      "gpus_assigned": false,
+      "ha_priority": 0,
+      "host_uuid": "5627a268-f036-4f5d-b9a3-0183ec736913",
+      "memory_mb": 2048,
+      "name": "RHEL7TestBed",
+      "num_cores_per_vcpu": 1,
+      "num_vcpus": 1,
+      "power_state": "on",
+      "timezone": "UTC",
+      "uuid": "c0667b9d-64e1-480c-8b82-c1b1c06614e7",
+      "vm_features": {
+        "AGENT_VM": false,
+        "VGA_CONSOLE": true
+      },
+      "vm_logical_timestamp": 3
+    }
+  ]
+}

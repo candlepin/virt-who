@@ -43,8 +43,8 @@ uuids = {
 }
 
 
-CLUSTERS_JSON = '''{
-  "metadata": {
+CLUSTERS_JSON = '''{{
+  "metadata": {{
     "grand_total_entities": 1,
     "total_entities": 1,
     "filter_criteria": "",
@@ -53,9 +53,9 @@ CLUSTERS_JSON = '''{
     "count": 1,
     "start_index": 1,
     "end_index": 1
-  },
+  }},
   "entities": [
-    {
+    {{
       "id": "{cluster}::2247383588839889017",
       "uuid": "{cluster}",
       "cluster_incarnation_id": 5725941660045689159,
@@ -98,7 +98,7 @@ CLUSTERS_JSON = '''{
       "service_centers": [],
       "http_proxies": [],
       "rackable_units": [
-        {
+        {{
           "id": 8,
           "rackable_unit_uuid": "44db4ec6-da0c-4cc2-acfd-69bf28026770",
           "model": "Null",
@@ -114,50 +114,50 @@ CLUSTERS_JSON = '''{
           "node_uuids": [
             "0bb9eaec-1947-472b-aa05-cb9ea89230eb"
           ]
-        }
+        }}
       ],
       "public_keys": [],
       "smtp_server": null,
       "hypervisor_types": [
         "kKvm"
       ],
-      "cluster_redundancy_state": {
+      "cluster_redundancy_state": {{
         "current_redundancy_factor": 1,
         "desired_redundancy_factor": 1,
-        "redundancy_status": {
+        "redundancy_status": {{
           "kCassandraPrepareDone": true,
           "kZookeeperPrepareDone": true
-        }
-      },
+        }}
+      }},
       "multicluster": false,
       "cloudcluster": false,
       "has_self_encrypting_drive": false,
       "is_upgrade_in_progress": false,
-      "security_compliance_config": {
+      "security_compliance_config": {{
         "schedule": "DAILY",
         "enable_aide": false,
         "enable_core": false,
         "enable_high_strength_password": false,
         "enable_banner": false,
         "enable_snmpv3_only": false
-      },
-      "hypervisor_security_compliance_config": {
+      }},
+      "hypervisor_security_compliance_config": {{
         "schedule": "DAILY",
         "enable_aide": false,
         "enable_core": false,
         "enable_high_strength_password": false,
         "enable_banner": false
-      },
-      "hypervisor_lldp_config": {
+      }},
+      "hypervisor_lldp_config": {{
         "enable_lldp_tx": true
-      },
+      }},
       "cluster_arch": "X86_64",
       "iscsi_config": null,
       "domain": null,
       "nos_cluster_and_hosts_domain_joined": false,
       "all_hyperv_nodes_in_failover_cluster": false,
       "credential": null,
-      "stats": {
+      "stats": {{
         "hypervisor_avg_io_latency_usecs": "0",
         "num_read_iops": "0",
         "hypervisor_write_io_bandwidth_kBps": "0",
@@ -248,8 +248,8 @@ CLUSTERS_JSON = '''{
         "write_io_ppm": "500000",
         "controller_avg_write_io_latency_usecs": "0",
         "content_cache_logical_memory_usage_bytes": "169834120"
-      },
-      "usage_stats": {
+      }},
+      "usage_stats": {{
         "data_reduction.overall.saving_ratio_ppm": "-1",
         "storage.reserved_free_bytes": "0",
         "storage_tier.das-sata.usage_bytes": "0",
@@ -288,21 +288,21 @@ CLUSTERS_JSON = '''{
         "data_reduction.dedup.saving_ratio_ppm": "-1",
         "storage_tier.ssd.pinned_bytes": "0",
         "storage.reserved_capacity_bytes": "0"
-      },
+      }},
       "enforce_rackable_unit_aware_placement": false,
       "disable_degraded_node_monitoring": false,
       "common_criteria_mode": false,
       "enable_on_disk_dedup": null,
       "management_servers": null,
       "fault_tolerance_domain_type": "NODE"
-    }
+    }}
   ]
-}
+}}
 '''.format(**uuids)
 
 
-HOSTS_JSON = '''{
-  "metadata": {
+HOSTS_JSON = '''{{
+  "metadata": {{
     "grand_total_entities": 1,
     "total_entities": 1,
     "filter_criteria": "",
@@ -311,14 +311,14 @@ HOSTS_JSON = '''{
     "count": 1,
     "start_index": 1,
     "end_index": 1
-  },
+  }},
   "entities": [
-    {
+    {{
       "service_vmid": "cf76a19a-3ba2-4147-9f30-4f7786d81879::2",
       "uuid": "{host}",
-      "disk_hardware_configs": {
+      "disk_hardware_configs": {{
         "1": null,
-        "2": {
+        "2": {{
           "serial_number": "local-ssd-1",
           "disk_id": "cf76a19a-3ba2-4147-9f30-4f7786d81879::9",
           "disk_uuid": "3009bfd0-3075-47be-8562-a1e3d0075dcd",
@@ -336,12 +336,12 @@ HOSTS_JSON = '''{
           "target_firmware_version": "1",
           "can_add_as_new_disk": false,
           "can_add_as_old_disk": false
-        },
+        }},
         "3": null,
         "4": null,
         "5": null,
         "6": null
-      },
+      }},
       "name": "hostname.domainname",
       "service_vmexternal_ip": "172.30.0.5",
       "service_vmnat_ip": null,
@@ -360,11 +360,11 @@ HOSTS_JSON = '''{
       "ipmi_username": null,
       "ipmi_password": null,
       "monitored": true,
-      "position": {
+      "position": {{
         "ordinal": 1,
         "name": "",
         "physical_position": null
-      },
+      }},
       "serial": "172-30-0-5",
       "block_serial": "null",
       "block_model": "Null",
@@ -407,7 +407,7 @@ HOSTS_JSON = '''{
       "bmc_model": null,
       "hba_firmwares_list": null,
       "cluster_uuid": "{cluster}",
-      "stats": {
+      "stats": {{
         "hypervisor_avg_io_latency_usecs": "0",
         "num_read_iops": "0",
         "hypervisor_write_io_bandwidth_kBps": "0",
@@ -489,8 +489,8 @@ HOSTS_JSON = '''{
         "write_io_ppm": "533333",
         "controller_avg_write_io_latency_usecs": "0",
         "content_cache_logical_memory_usage_bytes": "169834120"
-      },
-      "usage_stats": {
+      }},
+      "usage_stats": {{
         "storage_tier.das-sata.usage_bytes": "0",
         "storage.capacity_bytes": "192547704127",
         "storage.logical_usage_bytes": "300941312",
@@ -501,30 +501,30 @@ HOSTS_JSON = '''{
         "storage_tier.das-sata.free_bytes": "0",
         "storage.usage_bytes": "271417344",
         "storage_tier.ssd.free_bytes": "192276286783"
-      },
+      }},
       "has_csr": false,
       "host_nic_ids": [],
       "host_gpus": null,
       "gpu_driver_version": null,
       "host_type": "HYPER_CONVERGED",
-      "key_management_device_to_certificate_status": {},
+      "key_management_device_to_certificate_status": {{}},
       "host_in_maintenance_mode": null
-    }
+    }}
   ]
-}
+}}
 '''.format(**uuids)
 
 
-VMS_JSON = '''{
-  "metadata": {
+VMS_JSON = '''{{
+  "metadata": {{
     "grand_total_entities": 1,
     "total_entities": 1,
     "count": 1,
     "start_index": 0,
     "end_index": 1
-  },
+  }},
   "entities": [
-    {
+    {{
       "allow_live_migrate": true,
       "gpus_assigned": false,
       "ha_priority": 0,
@@ -536,14 +536,14 @@ VMS_JSON = '''{
       "power_state": "on",
       "timezone": "UTC",
       "uuid": "{vm}",
-      "vm_features": {
+      "vm_features": {{
         "AGENT_VM": false,
         "VGA_CONSOLE": true
-      },
+      }},
       "vm_logical_timestamp": 3
-    }
+    }}
   ]
-}
+}}
 '''.format(**uuids)
 
 class TestNutanix(TestBase):

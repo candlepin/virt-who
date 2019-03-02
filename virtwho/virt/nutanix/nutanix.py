@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from six.moves import urllib
 import requests
 from requests.auth import HTTPBasicAuth
-import json
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
@@ -66,7 +65,7 @@ class NutanixConfigSection(VirtConfigSection):
         self.add_key('filter_host_parents', validation_method=self._validate_filter, default=None)
         self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
         self.add_key('ssl_verify', validation_method=self._validate_str_to_bool, default=True)
-        self.add_key('api_base', validation_method=self._validate_non_empty_string,
+        self.add_key('api_base', validation_method=self._validate_api_base,
                      default='/PrismGateway/services/rest/v2.0/')
 
     def _validate_server(self, key='server'):
@@ -102,6 +101,32 @@ class NutanixConfigSection(VirtConfigSection):
             )]
 
         return None
+
+    def _validate_api_base(self, key='api_base'):
+        """
+        Do validation of the api_base option
+        return: Return None or info/warning/error
+        """
+        if not self._values[key] or self._values[key] == "":
+            return [(
+                'error',
+                "Nutanix api_base is not specified"
+            )]
+
+        api_base = self._values[key]
+
+        if api_base[-1] != '/':
+            api_base += '/'
+
+        if api_base != self._values[key]:
+            self._values[key] = api_base
+            return [(
+                'info',
+                "The original api_base was incomplete. It has been enhanced to %s" % url
+            )]
+
+        return None
+
 
 class Nutanix(virt.Virt):
     CONFIG_TYPE = "nutanix"
@@ -146,15 +171,15 @@ class Nutanix(virt.Virt):
         See https://developer.nutanix.com/reference/prism_element/v2/api/
         """
         # https://developer.nutanix.com/reference/prism_element/v2/api/clusters/get-clusters-getclusters
-        clusters_endpoint = self.api_base + '/clusters'
+        clusters_endpoint = self.api_base + 'clusters'
         self.clusters_url = urllib.parse.urljoin(self.server, clusters_endpoint)
 
         # https://developer.nutanix.com/reference/prism_element/v2/api/hosts/get-hosts-gethosts
-        hosts_endpoint = self.api_base + '/hosts'
+        hosts_endpoint = self.api_base + 'hosts'
         self.hosts_url = urllib.parse.urljoin(self.server, hosts_endpoint)
 
         # https://developer.nutanix.com/reference/prism_element/v2/api/vms/get-vms-getvms
-        vms_endpoint = self.api_base + '/vms'
+        vms_endpoint = self.api_base + 'vms'
         self.vms_url = urllib.parse.urljoin(self.server, vms_endpoint)
 
     def get(self, url):
@@ -165,20 +190,17 @@ class Nutanix(virt.Virt):
             headers = dict()
             response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
             response.raise_for_status()
-
-            response_json = response.json()
-            if 'metadata' in response_json.keys():
-                grand_total_entities = response_json['metadata']['grand_total_entities']
-                count = response_json['metadata']['count']
-                if grand_total_entities != count:
-                    self.logger.error('Nutanix module does not yet support multi-page result sets')
-
-            return response_json
-
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))
-        except Exception as oe:
-            raise virt.VirtError("Unknown error to connect to Nutanix server: %s" % str(oe))
+
+        response_json = response.json()
+        if 'metadata' in response_json.keys():
+            grand_total_entities = response_json['metadata']['grand_total_entities']
+            count = response_json['metadata']['count']
+            if grand_total_entities != count:
+                self.logger.error('Nutanix module does not yet support multi-page result sets')
+
+        return response_json
 
         # FIXME: other errors
 

@@ -620,7 +620,7 @@ class TestNutanix(TestBase):
 
     @patch('requests.get')
     def test_getHostGuestMapping(self, get):
-        expected_hostname = 'hostname.domainname'
+        expected_hostname = uuids['host_name']
         expected_hypervisorId = uuids['host']
         expected_guestId = uuids['vm']
         expected_guest_state = Guest.STATE_RUNNING
@@ -688,7 +688,7 @@ class TestNutanix(TestBase):
             facts={
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
-                Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
+                Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }
         )

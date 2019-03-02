@@ -666,8 +666,8 @@ class TestNutanix(TestBase):
         expected_guest_state = Guest.STATE_RUNNING
 
         get.side_effect = [
-            MagicMock(content=CLUSTERS_JSON),
-            MagicMock(content=HOSTS_JSON),
+            MagicMock(status_code=200, content=CLUSTERS_JSON),
+            MagicMock(status_code=200, content=HOSTS_JSON),
         ]
 
         expected_result = Hypervisor(
@@ -682,7 +682,7 @@ class TestNutanix(TestBase):
             ],
             facts={
                 Hypervisor.CPU_SOCKET_FACT: '1',
-                Hypervisor.HYPERVISOR_TYPE_FACT: 'nutanix',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
                 Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }

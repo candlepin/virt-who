@@ -32,7 +32,7 @@ from base import TestBase
 from proxy import Proxy
 
 from virtwho.virt import Virt, VirtError, Guest, Hypervisor
-from virtwho.virt.rhevm.rhevm import NutanixConfigSection
+from virtwho.virt.nutanix.nutanix import NutanixConfigSection
 from virtwho.datastore import Datastore
 
 

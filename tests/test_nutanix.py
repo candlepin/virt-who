@@ -580,11 +580,11 @@ class TestNutanix(TestBase):
 
         self.assertEqual(get.call_count, 3)
         get.assert_has_calls([
-            call('https://localhost:9440/PrismGateway/services/rest/v2.0/clusters', auth=ANY, verify=ANY),
+            call('https://localhost:9440/PrismGateway/services/rest/v2.0/clusters', auth=ANY, headers=ANY, verify=ANY),
             call().raise_for_status(),
-            call('https://localhost:9440/PrismGateway/services/rest/v2.0/hosts', auth=ANY, verify=ANY),
+            call('https://localhost:9440/PrismGateway/services/rest/v2.0/hosts', auth=ANY, headers=ANY, verify=ANY),
             call().raise_for_status(),
-            call('https://localhost:9440/PrismGateway/services/rest/v2.0/vms', auth=ANY, verify=ANY),
+            call('https://localhost:9440/PrismGateway/services/rest/v2.0/vms', auth=ANY, headers=ANY, verify=ANY),
             call().raise_for_status(),
         ])
         self.assertEqual(get.call_args[1]['auth'].username, u'username'.encode('utf-8'))

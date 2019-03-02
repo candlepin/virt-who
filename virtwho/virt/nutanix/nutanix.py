@@ -192,8 +192,8 @@ class Nutanix(virt.Virt):
             response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
             response.raise_for_status()
 
-            if response.status != 200:
-                raise virt.VirtError("Bad status code from Nutanix server: %s" % str(response.status))
+            if response.status_code != 200:
+                raise virt.VirtError("Bad status code from Nutanix server: %s" % str(response.status_code))
 
         except Exception as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))

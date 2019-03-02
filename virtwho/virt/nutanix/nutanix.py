@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 from six.moves import urllib
 import requests
 from requests.auth import HTTPBasicAuth
+import json
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
@@ -190,17 +191,25 @@ class Nutanix(virt.Virt):
             headers = dict()
             response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
             response.raise_for_status()
+
+            if response.status != 200:
+                raise virt.VirtError("Bad status code from Nutanix server: %s" % str(response.status))
+
         except Exception as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))
 
-        response_json = response.json()
-        if 'metadata' in response_json.keys():
-            grand_total_entities = response_json['metadata']['grand_total_entities']
-            count = response_json['metadata']['count']
-            if grand_total_entities != count:
-                self.logger.error('Nutanix module does not yet support multi-page result sets')
+        try:
+            response_json = json.loads(response.content)
 
-        return response_json
+            if 'metadata' in response_json.keys():
+                grand_total_entities = response_json['metadata']['grand_total_entities']
+                count = response_json['metadata']['count']
+                if grand_total_entities != count:
+                    self.logger.error('Nutanix module does not yet support multi-page result sets')
+
+            return response_json
+        except Exception as e:
+            raise virt.VirtError("Error parsing response from Nutanix server")
 
         # FIXME: other errors
 

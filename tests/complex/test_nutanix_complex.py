@@ -11,7 +11,7 @@ from fake_nutanix import FakeNutanix
 
 class NutanixTest(TestBase, VirtBackendTestMixin):
     virt = 'nutanix'
-    hypervisorType = 'qemu'
+    hypervisorType = 'kKvm'
 
     @classmethod
     def setUpClass(cls):

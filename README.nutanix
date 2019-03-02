@@ -9,3 +9,5 @@ only a single page will be processed.  Sites with large numbers may experience
 issues with incomplete data.
 
 * VM UUID may not match with dmidecode hardware UUID's, this needs verified.
+
+* All tests are passing, however, login failures need to be reworked.

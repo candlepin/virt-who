@@ -41,6 +41,11 @@ Backends for reporting hosts to guests association:
 * Kubevirt
 * XenServer
 
+## Incubated hypervisors
+
+The following backends are included but not necessarily supported:
+* Fake Virt
+* Nutanix
 
 ## Supported subscription managers
 

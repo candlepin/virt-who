@@ -203,12 +203,18 @@ class Nutanix(virt.Virt):
         vms_json = self.get(self.vms_url)
 
         # Find all the clusters
+        if not 'entities' in clusters_json.keys():
+            self.logger.warning("List of clusters does not have any entities")
+            return '{}'
         for cluster in clusters_json['entities']:
             cluster_uuid = cluster['uuid']
             cluster_names[cluster_uuid] = cluster['name']
             clusters.add(cluster_uuid)
 
         # Find all the hosts
+        if not 'entities' in hosts_json.keys():
+            self.logger.warning("List of hosts does not have any entities")
+            return '{}'
         for host in hosts_json['entities']:
             host_uuid = host['uuid']
             host_cluster_uuid = host['cluster_uuid']
@@ -251,6 +257,9 @@ class Nutanix(virt.Virt):
             mapping[host_uuid] = []
 
         # find all the vms
+        if not 'entities' in vms_json.keys():
+            self.logger.warning("List of vms does not have any entities")
+            return '{}'
         for vm in vms_json['entities']:
             guest_id = vm['uuid']
             host_uuid = vm['host_uuid']

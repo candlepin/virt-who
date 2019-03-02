@@ -187,7 +187,7 @@ class TestOptions(TestBase):
             elif virt == 'rhevm':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:8443/')
             elif virt == 'nutanix':
-                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')
@@ -239,7 +239,7 @@ class TestOptions(TestBase):
             elif virt == 'esx':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
             elif virt == 'nutanix':
-                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost:9440/')
+                self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost:9440/')
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'localhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'username')

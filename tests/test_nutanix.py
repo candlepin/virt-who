@@ -649,6 +649,12 @@ class TestNutanix(TestBase):
             }
         )
         result = self.nutanix.getHostGuestMapping()['hypervisors'][0]
+        print('expected -----')
+        print(expected_result)
+
+        print ('result ------')
+        print(result)
+
         self.assertEqual(expected_result.toDict(), result.toDict())
 
     def test_proxy(self):

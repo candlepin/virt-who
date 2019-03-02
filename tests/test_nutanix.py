@@ -638,7 +638,7 @@ class TestNutanix(TestBase):
             ],
             facts={
                 Hypervisor.CPU_SOCKET_FACT: '1',
-                Hypervisor.HYPERVISOR_TYPE_FACT: 'nutanix',
+                Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
                 Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }

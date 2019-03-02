@@ -267,7 +267,7 @@ class Nutanix(virt.Virt):
 
             hypervisor_type = host['hypervisor_type']
             if not hypervisor_type:
-                hypervisor_type = "nutanix"
+                hypervisor_type = "kKvm"
 
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,

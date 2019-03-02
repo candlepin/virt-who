@@ -655,7 +655,7 @@ class TestNutanix(TestBase):
 
         self.assertRaises(VirtError, self.run_once)
         self.assertIsNotNone(proxy.last_path, "Proxy was not called")
-        self.assertEqual(proxy.last_path, 'localhost:8443')
+        self.assertEqual(proxy.last_path, 'localhost:9440')
 
     @patch('requests.get')
     def test_new_status(self, get):

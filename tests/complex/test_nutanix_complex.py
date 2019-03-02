@@ -9,7 +9,7 @@ from virtwhotest import TestBase, VirtBackendTestMixin
 from fake_nutanix import FakeNutanix
 
 
-class Rhevm4Test(TestBase, VirtBackendTestMixin):
+class NutanixTest(TestBase, VirtBackendTestMixin):
     virt = 'nutanix'
     hypervisorType = 'qemu'
 

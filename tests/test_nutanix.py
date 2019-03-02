@@ -673,6 +673,7 @@ class TestNutanix(TestBase):
         get.side_effect = [
             MagicMock(status_code=200, content=CLUSTERS_JSON),
             MagicMock(status_code=200, content=HOSTS_JSON),
+            MagicMock(status_code=200, content=VMS_JSON),
         ]
 
         expected_result = Hypervisor(

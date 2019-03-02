@@ -188,8 +188,7 @@ class Nutanix(virt.Virt):
         Call Nutanix and retrieve what's on given url.  Currently does not paginate.
         """
         try:
-            headers = dict()
-            response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
+            response = requests.get(url, auth=self.auth, verify=self.ssl_verify)
             response.raise_for_status()
 
             if response.status_code != 200:

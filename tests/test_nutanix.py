@@ -642,19 +642,13 @@ class TestNutanix(TestBase):
                 )
             ],
             facts={
-                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.CPU_SOCKET_FACT: 1,
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
                 Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }
         )
         result = self.nutanix.getHostGuestMapping()['hypervisors'][0]
-        print('expected -----')
-        print(expected_result)
-
-        print ('result ------')
-        print(result)
-
         self.assertEqual(expected_result.toDict(), result.toDict())
 
     def test_proxy(self):
@@ -692,7 +686,7 @@ class TestNutanix(TestBase):
                 )
             ],
             facts={
-                Hypervisor.CPU_SOCKET_FACT: '1',
+                Hypervisor.CPU_SOCKET_FACT: 1,
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
                 Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],

@@ -190,7 +190,7 @@ class Nutanix(virt.Virt):
             headers = dict()
             response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
             response.raise_for_status()
-        except requests.RequestException as e:
+        except Exception as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))
 
         response_json = response.json()

@@ -66,7 +66,8 @@ class NutanixConfigSection(VirtConfigSection):
         self.add_key('filter_host_parents', validation_method=self._validate_filter, default=None)
         self.add_key('exclude_host_parents', validation_method=self._validate_filter, default=None)
         self.add_key('ssl_verify', validation_method=self._validate_str_to_bool, default=True)
-        self.add_key('api_base', validation_method=self._validate_str_to_bool, default=True)
+        self.add_key('api_base', validation_method=self._validate_non_empty_string,
+                     default='/PrismGateway/services/rest/v2.0/')
 
     def _validate_server(self, key='server'):
         """

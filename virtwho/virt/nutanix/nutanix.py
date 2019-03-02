@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0103,C0301,C0413,missing-docstring
+
 from __future__ import print_function
 """
 Module for communication with Nutanix
@@ -71,7 +73,7 @@ class NutanixConfigSection(VirtConfigSection):
         Do validation of server option specific for this virtualization backend
         return: Return None or info/warning/error
         """
-        if not self._values[key] or self._values[key] = "":
+        if not self._values[key] or self._values[key] == "":
             return [(
                 'error',
                 "Nutanix server is not specified"
@@ -94,12 +96,11 @@ class NutanixConfigSection(VirtConfigSection):
         if url != self._values[key]:
             self._values[key] = url
             return [(
-                    'info',
-                    "The original server URL was incomplete. It has been enhanced to %s" % url
-                )]
-        else:
-            return None
+                'info',
+                "The original server URL was incomplete. It has been enhanced to %s" % url
+            )]
 
+        return None
 
 class Nutanix(virt.Virt):
     CONFIG_TYPE = "nutanix"
@@ -107,9 +108,9 @@ class Nutanix(virt.Virt):
     def __init__(self, logger, config, dest, terminate_event=None,
                  interval=None, oneshot=False):
         super(Nutanix, self).__init__(logger, config, dest,
-                                    terminate_event=terminate_event,
-                                    interval=interval,
-                                    oneshot=oneshot)
+                                      terminate_event=terminate_event,
+                                      interval=interval,
+                                      oneshot=oneshot)
         # Default: ""
         self.server = self.config['server']
 
@@ -145,21 +146,22 @@ class Nutanix(virt.Virt):
         """
         # https://developer.nutanix.com/reference/prism_element/v2/api/clusters/get-clusters-getclusters
         clusters_endpoint = self.api_base + '/clusters'
-        self.clusters_url = urllib.parse.urljoin(self.url, clusters_endpoint)
+        self.clusters_url = urllib.parse.urljoin(self.server, clusters_endpoint)
 
         # https://developer.nutanix.com/reference/prism_element/v2/api/hosts/get-hosts-gethosts
         hosts_endpoint = self.api_base + '/hosts'
-        self.hosts_url = urllib.parse.urljoin(self.url, hosts_endpoint)
+        self.hosts_url = urllib.parse.urljoin(self.server, hosts_endpoint)
 
         # https://developer.nutanix.com/reference/prism_element/v2/api/vms/get-vms-getvms
         vms_endpoint = self.api_base + '/vms'
-        self.vms_url = urllib.parse.urljoin(self.url, vms_endpoint)
+        self.vms_url = urllib.parse.urljoin(self.server, vms_endpoint)
 
     def get(self, url):
         """
         Call Nutanix and retrieve what's on given url.  Currently does not paginate.
         """
         try:
+            headers = dict()
             response = requests.get(url, auth=self.auth, verify=self.ssl_verify, headers=headers)
             response.raise_for_status()
         except requests.RequestException as e:
@@ -172,7 +174,6 @@ class Nutanix(virt.Virt):
             count = response_json['metadata']['count']
             if grand_total_entities != count:
                 self.logger.error('Nutanix module does not yet support multi-page result sets')
-                continue
 
         return response_json
 
@@ -185,10 +186,11 @@ class Nutanix(virt.Virt):
         {'hypervisors': [Hypervisor1, ...]
         }
         """
-        mapping = {}
-        hosts = {}
         clusters = set()
         cluster_names = {}
+        hosts = {}
+        host_names = {}
+        mapping = {}
 
         clusters_json = self.get(self.clusters_url)
         hosts_json = self.get(self.hosts_url)
@@ -206,11 +208,11 @@ class Nutanix(virt.Virt):
             host_cluster_uuid = host['cluster_uuid']
 
             if self.config['exclude_host_parents'] is not None and host_uuid in self.config['exclude_host_parents']:
-                self.logger.debug("Skipping host '%s' because its excluded", host_id)
+                self.logger.debug("Skipping host '%s' because its excluded", host_uuid)
                 continue
 
             if self.config['filter_host_parents'] is not None and host_uuid not in self.config['filter_host_parents']:
-                self.logger.debug("Skipping host '%s' because its not included", host_id)
+                self.logger.debug("Skipping host '%s' because its not included", host_uuid)
                 continue
 
             if host_cluster_uuid not in clusters:
@@ -279,6 +281,8 @@ class Nutanix(virt.Virt):
 
         return {'hypervisors': list(hosts.values())}
 
-    def ping(self):
+    def listDomains(self):
         return True
 
+    def ping(self):
+        return True

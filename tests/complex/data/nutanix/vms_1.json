@@ -52,7 +52,7 @@
       "name": "RHEL7TestBed",
       "num_cores_per_vcpu": 1,
       "num_vcpus": 1,
-      "power_state": "on",
+      "power_state": "off",
       "timezone": "UTC",
       "uuid": "c0667b9d-64e1-480c-8b82-c1b1c06614e7",
       "vm_features": {

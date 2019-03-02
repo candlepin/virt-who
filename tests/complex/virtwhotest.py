@@ -237,6 +237,8 @@ class VirtBackendTestMixin(object):
         for hypervisor in returned['hypervisors']:
             if hypervisor['facts']['hypervisor.type'] == 'vmware':
                 self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-cluster-1'))
+            elif hypervisor['facts']['hypervisor.type'] == 'kKvm':
+                self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('nutanixCluster'))
             else:
                 self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-compute-res'))
         # Transform it to the same format as assoc from SAM server

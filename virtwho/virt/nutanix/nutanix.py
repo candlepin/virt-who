@@ -313,7 +313,7 @@ class Nutanix(virt.Virt):
                 continue
 
             try:
-                status = vm['status']
+                status = vm['power_state']
                 state = NUTANIX_STATE_TO_GUEST_STATE.get(status, virt.Guest.STATE_UNKNOWN)
             except AttributeError:
                 self.logger.warning(

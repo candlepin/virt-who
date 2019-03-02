@@ -23,7 +23,7 @@ class NutanixTest(TestBase, VirtBackendTestMixin):
             f.write(("""
 [test]
 type=nutanix
-server=https://localhost:%s/
+server=http://localhost:%s/
 username=%s
 password=%s
 owner=owner

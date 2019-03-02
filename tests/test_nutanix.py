@@ -621,9 +621,9 @@ class TestNutanix(TestBase):
         expected_guest_state = Guest.STATE_RUNNING
 
         get.side_effect = [
-            MagicMock(content=CLUSTERS_JSON),
-            MagicMock(content=HOSTS_JSON),
-            MagicMock(content=VMS_JSON),
+            MagicMock(status_code=200, content=CLUSTERS_JSON),
+            MagicMock(status_code=200, content=HOSTS_JSON),
+            MagicMock(status_code=200, content=VMS_JSON),
         ]
 
         expected_result = Hypervisor(

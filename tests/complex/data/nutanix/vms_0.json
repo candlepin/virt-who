@@ -11,7 +11,7 @@
       "allow_live_migrate": true,
       "gpus_assigned": false,
       "ha_priority": 0,
-      "host_uuid": "4172853d-e72a-493a-883b-8761f5daa5eb",
+      "host_uuid": "5627a268-f036-4f5d-b9a3-0183ec736913",
       "memory_mb": 2048,
       "name": "atomic_restore_test",
       "num_cores_per_vcpu": 1,

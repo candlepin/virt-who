@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=C0103,C0301,C0413,missing-docstring,W0212
 
 from __future__ import print_function
 """
@@ -22,9 +23,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
+from threading import Event
 import requests
 from mock import patch, call, ANY, MagicMock
-from threading import Event
 from six.moves.queue import Queue
 
 from base import TestBase
@@ -554,8 +555,10 @@ class TestNutanix(TestBase):
         return config
 
     def setUp(self):
-        config = self.create_config(name='test', wrapper=None, type='nutanix', server='localhost', username='username',
-                        password=u'1€345678', owner='owner', env='env', ssl_verify='False')
+        config = self.create_config(name='test', wrapper=None, type='nutanix',
+                                    server='localhost', username='username',
+                                    password=u'1€345678', owner='owner',
+                                    env='env', ssl_verify='False')
 
         self.nutanix = Virt.from_config(self.logger, config, Datastore())
         self.nutanix.build_urls()

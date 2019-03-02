@@ -6,24 +6,24 @@ import shutil
 
 from virtwhotest import TestBase, VirtBackendTestMixin
 
-from fake_rhevm4 import FakeRhevm4
+from fake_nutanix import FakeNutanix
 
 
 class Rhevm4Test(TestBase, VirtBackendTestMixin):
-    virt = 'rhevm'
+    virt = 'nutanix'
     hypervisorType = 'qemu'
 
     @classmethod
     def setUpClass(cls):
         TestBase.setUpClass()
-        cls.server = FakeRhevm4()
+        cls.server = FakeNutanix()
         cls.server.start()
         cls.config_dir = tempfile.mkdtemp()
         with open(os.path.join(cls.config_dir, "test.conf"), "w") as f:
             f.write(("""
 [test]
-type=rhevm
-server=http://localhost:%s/
+type=nutanix
+server=https://localhost:%s/
 username=%s
 password=%s
 owner=owner

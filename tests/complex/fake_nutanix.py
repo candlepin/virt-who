@@ -26,5 +26,5 @@ class FakeNutanix(FakeVirt):
         self.server._data_version = self._data_version
 
 if __name__ == '__main__':
-    rhevm = FakeRhevm4(port=9440)
+    rhevm = FakeNutanix(port=9440)
     rhevm.run()

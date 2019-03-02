@@ -561,7 +561,7 @@ class TestNutanix(TestBase):
                                     env='env', ssl_verify='False')
 
         self.nutanix = Virt.from_config(self.logger, config, Datastore())
-        self.nutanix.build_urls()
+        self.nutanix.prepare()
 
     def run_once(self, queue=None):
         """Run Nutanix in oneshot mode"""

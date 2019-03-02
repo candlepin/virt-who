@@ -168,18 +168,20 @@ class Nutanix(virt.Virt):
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to Nutanix server: %s" % str(e))
         # FIXME: other errors
-        if not response.content or len(response.content) == 0:
-            raise virt.VirtError("No content response from Nutanix server")
 
-        response_json = json.loads(response.content)
+        try:
+            response_json = json.loads(response.content)
 
-        if 'metadata' in response_json.keys():
-            grand_total_entities = response_json['metadata']['grand_total_entities']
-            count = response_json['metadata']['count']
-            if grand_total_entities != count:
-                self.logger.error('Nutanix module does not yet support multi-page result sets')
+            if 'metadata' in response_json.keys():
+                grand_total_entities = response_json['metadata']['grand_total_entities']
+                count = response_json['metadata']['count']
+                if grand_total_entities != count:
+                    self.logger.error('Nutanix module does not yet support multi-page result sets')
 
-        return response_json
+            return response_json
+        except json.JSONDecodeError as je:
+            raise virt.VirtError("Invalid content response from Nutanix server, wasn't proper JSON")
+
 
     def getHostGuestMapping(self):
         """

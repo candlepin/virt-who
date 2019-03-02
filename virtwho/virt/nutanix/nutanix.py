@@ -263,7 +263,7 @@ class Nutanix(virt.Virt):
 
             sockets = host['num_cpu_sockets']
             if not sockets:
-                sockets = "unknown"
+                sockets = "1"
 
             hypervisor_type = host['hypervisor_type']
             if not hypervisor_type:
@@ -272,6 +272,7 @@ class Nutanix(virt.Virt):
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: hypervisor_type,
+                virt.Hypervisor.HYPERVISOR_CLUSTER: cluster_names[host_cluster_uuid],
                 virt.Hypervisor.SYSTEM_UUID_FACT: host_uuid,
             }
 

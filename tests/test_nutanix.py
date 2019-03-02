@@ -37,9 +37,14 @@ from virtwho.datastore import Datastore
 
 
 uuids = {
-    'cluster': '00000000-0000-0000-0000-000000000001',
-    'host': '00000000-0000-0000-0000-000000000002',
-    'vm': '00000000-0000-0000-0000-000000000003',
+    'cluster': 'cf76a19a-3ba2-4147-9f30-4f7786d81879',
+    'cluster_name': 'nutanixCluster',
+
+    'host': '0bb9eaec-1947-472b-aa05-cb9ea89230eb',
+    'host_name': 'hostname.localdomain',
+
+    'vm': 'd1501a9c-b778-4e45-aaa0-a71471709911',
+    'vm_name': 'vmname.localdomain',
 }
 
 
@@ -60,7 +65,7 @@ CLUSTERS_JSON = '''{{
       "uuid": "{cluster}",
       "cluster_incarnation_id": 5725941660045689159,
       "cluster_uuid": "{cluster}",
-      "name": "Cetus",
+      "name": "{cluster_name}",
       "cluster_external_ipaddress": "172.30.0.2",
       "cluster_external_data_services_ipaddress": null,
       "cluster_masquerading_ipaddress": null,
@@ -314,7 +319,7 @@ HOSTS_JSON = '''{{
   }},
   "entities": [
     {{
-      "service_vmid": "cf76a19a-3ba2-4147-9f30-4f7786d81879::2",
+      "service_vmid": "{cluster}::2",
       "uuid": "{host}",
       "disk_hardware_configs": {{
         "1": null,
@@ -342,7 +347,7 @@ HOSTS_JSON = '''{{
         "5": null,
         "6": null
       }},
-      "name": "hostname.domainname",
+      "name": "{host_name}",
       "service_vmexternal_ip": "172.30.0.5",
       "service_vmnat_ip": null,
       "service_vmnat_port": null,
@@ -530,7 +535,7 @@ VMS_JSON = '''{{
       "ha_priority": 0,
       "host_uuid": "{host}",
       "memory_mb": 2048,
-      "name": "VM3",
+      "name": "{vm_name}",
       "num_cores_per_vcpu": 1,
       "num_vcpus": 1,
       "power_state": "on",
@@ -639,7 +644,7 @@ class TestNutanix(TestBase):
             facts={
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'kKvm',
-                Hypervisor.HYPERVISOR_CLUSTER: 'Cetus',
+                Hypervisor.HYPERVISOR_CLUSTER: uuids['cluster_name'],
                 Hypervisor.SYSTEM_UUID_FACT: uuids['host'],
             }
         )

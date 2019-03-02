@@ -671,7 +671,7 @@ class TestNutanix(TestBase):
 
     @patch('requests.get')
     def test_new_status(self, get):
-        expected_hostname = 'hostname.domainname'
+        expected_hostname = uuids['host_name']
         expected_hypervisorId = uuids['host']
         expected_guestId = uuids['vm']
         expected_guest_state = Guest.STATE_RUNNING

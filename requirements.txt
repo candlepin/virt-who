@@ -7,3 +7,4 @@ requests>=2.0
 m2crypto;python_version<"3.0"
 six
 cryptography
+PyYAML

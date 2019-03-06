@@ -43,56 +43,45 @@ class TestKubevirt(TestBase):
             self.kubevirt = Virt.from_config(self.logger, config, Datastore())
 
     def nodes(self):
-        metadata = Mock()
-        metadata.name = "master"
+        node = {
+            'metadata': {
+                'name': 'master'
+            },
+            'status': {
+                'nodeInfo': {
+                    'machineID': '52c01ad890e84b15a1be4be18bd64ecd',
+                    'kubeletVersion': 'v1.9.1+a0ce1bc657'
+                },
+                'addresses': [
+                    {'address': 'master'}
+                ],
+                'allocatable' : {
+                    'cpu': '2'
+                }
+            }
+        }
 
-        node_info = Mock()
-        node_info.machine_id = "52c01ad890e84b15a1be4be18bd64ecd"
-        node_info.kubelet_version = "v1.9.1+a0ce1bc657"
-
-        address = Mock()
-        address.address = "master"
-
-        status = Mock()
-        status.node_info = node_info
-        status.addresses = [address]
-        status.allocatable = {"cpu": "2"}
-
-        node = Mock()
-        node.metadata = metadata
-        node.status = status
-
-        nodes = Mock()
-        nodes.items = [node]
-
-        return nodes
+        return {'items': [node]}
 
     def vms(self):
-        metadata = Mock()
-        metadata.name = "win-2016"
-        metadata.namespace = "default"
+        vm = {
+            'metadata': {
+                'name': 'win-2016',
+                'namespace': 'default',
+            },
+            'status': {
+                'nodeName': 'master',
+            }
+        }
 
-        status = Mock()
-        status.node_name = "master"
-
-        vm = Mock()
-        vm.metadata = metadata
-        vm.status = status
-
-        vms = Mock()
-        vms.items = [vm]
-
-        return vms
+        return {'items': [vm]}
 
     def test_getHostGuestMapping(self):
-        kube_api = Mock()
-        kube_api.list_node.return_value = self.nodes()
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
 
-        kubevirt_api = Mock()
-        kubevirt_api.list_virtual_machine_instance_for_all_namespaces.return_value = self.vms()
-
-        self.kubevirt.kube_api = kube_api
-        self.kubevirt.kubevirt_api = kubevirt_api
+        self.kubevirt._client = client
 
         expected_result = Hypervisor(
             hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',

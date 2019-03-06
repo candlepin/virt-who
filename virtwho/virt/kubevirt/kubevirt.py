@@ -1,5 +1,5 @@
 #
-# Copyright 2018 Red Hat, Inc.
+# Copyright 2019 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import os.path
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
+from virtwho.virt.kubevirt.client import KubeClient
 
 
 class KubevirtConfigSection(VirtConfigSection):
@@ -60,40 +61,11 @@ class Kubevirt(virt.Virt):
                                        terminate_event=terminate_event,
                                        interval=interval,
                                        oneshot=oneshot)
-        self.path = self.config['kubeconfig']
+        self._path = self.config['kubeconfig']
 
     def prepare(self):
-        self.kubevirt_api = self.virt()
-        self.kube_api = self.kube()
+        self._client = KubeClient(self._path)
 
-    def virt(self):
-        try:
-            from kubernetes import config
-            import kubevirt
-        except ImportError:
-            self.logger.warning("The kubevirt-python or the kubernetes-python package is missing")
-            self.stop()
-
-        cl = config.kube_config._get_kube_config_loader_for_yaml_file(self.path)
-        cl.load_and_set(kubevirt.configuration)
-        return kubevirt.DefaultApi()
-
-    def kube(self):
-        try:
-            from kubernetes import client, config
-        except ImportError:
-            self.logger.warning("The kubevirt-python or the kubernetes-python package is missing")
-            self.stop()
-
-        config.load_kube_config(config_file=self.path)
-        return client.CoreV1Api()
-
-    def get_nodes(self):
-        return self.kube_api.list_node()
-
-    def get_vms(self):
-        return self.kubevirt_api.list_virtual_machine_instance_for_all_namespaces()
-    
     def getHostGuestMapping(self):
         """
         Returns dictionary containing a list of virt.Hypervisors
@@ -105,31 +77,31 @@ class Kubevirt(virt.Virt):
         """
         hosts = {}
 
-        nodes = self.get_nodes()
-        vms = self.get_vms()
+        nodes = self._client.get_nodes()
+        vms = self._client.get_vms()
 
-        for node in nodes.items:
-            status = node.status
-            version = status.node_info.kubelet_version
-            name = node.metadata.name
-            host_id = status.node_info.machine_id
-            address = status.addresses[0].address
+        for node in nodes['items']:
+            status = node['status']
+            version = status['nodeInfo']['kubeletVersion']
+            name = node['metadata']['name']
+            host_id = status['nodeInfo']['machineID']
+            address = status['addresses'][0]['address']
             facts = {
-                virt.Hypervisor.CPU_SOCKET_FACT: status.allocatable["cpu"],
+                virt.Hypervisor.CPU_SOCKET_FACT: status['allocatable']["cpu"],
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 virt.Hypervisor.HYPERVISOR_VERSION_FACT: version
             }
             hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=address, facts=facts)
-        
-        for vm in vms.items:
-            metadata = vm.metadata
-            host_name = vm.status.node_name
+
+        for vm in vms['items']:
+            metadata = vm['metadata']
+            host_name = vm['status']['nodeName']
 
             # a vm is not scheduled on any hosts
             if host_name is None:
                 continue
 
-            guest_id = metadata.namespace + '/' + metadata.name
+            guest_id = metadata['namespace'] + '/' + metadata['name']
             # a vm is always in running state
             status = virt.Guest.STATE_RUNNING
             hosts[host_name].guestIds.append(virt.Guest(guest_id, self.CONFIG_TYPE, status))

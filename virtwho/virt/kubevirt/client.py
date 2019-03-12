@@ -50,6 +50,7 @@ class KubeClient:
         )
 
         self.host = cfg.host
+        self.token = cfg.token
         self._version = self._kubevirt_version()
 
     def get_nodes(self):
@@ -67,6 +68,7 @@ class KubeClient:
 
         header_params['Accept'] = 'application/json'
         header_params['Content-Type'] = 'application/json'
+        header_params['Authorization'] = self.token
 
         url = self.host + path
 

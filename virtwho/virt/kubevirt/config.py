@@ -23,6 +23,7 @@ import atexit
 import base64
 import os
 import tempfile
+import urllib3
 import yaml
 
 
@@ -118,9 +119,30 @@ class KubeConfigLoader(object):
         if 'insecure-skip-tls-verify' in self._cluster:
             self.verify_ssl = not self._cluster['insecure-skip-tls-verify']
 
+    def _load_authentication(self):
+        if self._load_user_token():
+            return
+        self._load_user_pass_token()
+
+    def _load_user_token(self):
+        token = FileOrData(
+            self._user, 'tokenFile', 'token',
+            file_base_path=self._config_base_path,
+            base64_file_content=False).as_data()
+        if token:
+            self.token = "Bearer %s" % token
+            return True
+
+    def _load_user_pass_token(self):
+        if 'username' in self._user and 'password' in self._user:
+            self.token = urllib3.util.make_headers(
+                basic_auth=(self._user['username'] + ':' +
+                            self._user['password'])).get('authorization')
+            return True
+
     def _set_config(self, client_configuration):
         if 'token' in self.__dict__:
-            client_configuration.api_key['authorization'] = self.token
+            client_configuration.token = self.token
         # copy these keys directly from self to configuration object
         keys = ['host', 'ssl_ca_cert', 'cert_file', 'key_file', 'verify_ssl']
         for key in keys:
@@ -128,6 +150,7 @@ class KubeConfigLoader(object):
                 setattr(client_configuration, key, getattr(self, key))
 
     def load_and_set(self, client_configuration):
+        self._load_authentication()
         self._load_cluster_info()
         self._set_config(client_configuration)
 

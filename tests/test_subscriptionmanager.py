@@ -221,6 +221,7 @@ rhsm_proxy_password=proxy_password
 rhsm_insecure=1
 rhsm_username=user
 rhsm_password=passwd
+rhsm_no_proxy=filter
 """)
 
         config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=config_dir))
@@ -242,6 +243,7 @@ rhsm_password=passwd
             proxy_port='9090',
             proxy_user='proxy_user',
             proxy_password='proxy_password',
+            no_proxy='filter',
             insecure='1',
             correlation_id=manager.correlation_id)
 

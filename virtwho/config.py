@@ -227,6 +227,7 @@ class Satellite6DestinationInfo(Info):
         "rhsm_proxy_port",
         "rhsm_proxy_user",
         "rhsm_proxy_password",
+        "rhsm_no_proxy",
         "rhsm_insecure",
     )
 
@@ -920,6 +921,7 @@ class VirtConfigSection(ConfigSection):
         self.add_key('rhsm_port', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_prefix', validation_method=self._validate_non_empty_string)
         self.add_key('rhsm_insecure', validation_method=self._validate_non_empty_string)
+        self.add_key('rhsm_no_proxy', validation_method=self._validate_non_empty_string)
 
     def __setitem__(self, key, value):
         for old_key, new_key in self.RENAMED_OPTIONS:

@@ -608,17 +608,20 @@ class HyperV(virt.Virt):
             hostname = instance["DNSHostName"]
             socket_count = instance["NumberOfProcessors"]
 
+        uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
+        system_uuid = None
+        for instance in hypervsoap.Pull(uuid, "root/cimv2"):
+            system_uuid = HyperV.decodeWinUUID(instance["UUID"])
+
         if self.config['hypervisor_id'] == 'uuid':
-            uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
-            host = None
-            for instance in hypervsoap.Pull(uuid, "root/cimv2"):
-                host = HyperV.decodeWinUUID(instance["UUID"])
+            host = system_uuid
         elif self.config['hypervisor_id'] == 'hostname':
             host = hostname
         facts = {
             virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
             virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',
             virt.Hypervisor.HYPERVISOR_VERSION_FACT: vmmsVersion,
+            virt.Hypervisor.SYSTEM_UUID_FACT: system_uuid
         }
         hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests, facts=facts)
         return {'hypervisors': [hypervisor]}

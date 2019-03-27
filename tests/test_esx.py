@@ -160,6 +160,7 @@ class TestEsx(TestBase):
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
                 Hypervisor.HYPERVISOR_CLUSTER: 'Fake_cluster_name',
+                Hypervisor.SYSTEM_UUID_FACT: expected_hypervisorId
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
@@ -213,7 +214,8 @@ class TestEsx(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'vmware',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
-                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_cluster_name'
+                Hypervisor.HYPERVISOR_CLUSTER: 'Fake_cluster_name',
+                Hypervisor.SYSTEM_UUID_FACT: expected_hypervisorId
             }
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]

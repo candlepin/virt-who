@@ -305,6 +305,7 @@ class Esx(virt.Virt):
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: str(host['hardware.cpuInfo.numCpuPackages']),
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: host.get('config.product.name', 'vmware'),
+                virt.Hypervisor.SYSTEM_UUID_FACT: host['hardware.systemInfo.uuid']
             }
 
             if host['parent'] and host['parent']._type == 'ClusterComputeResource':

@@ -237,6 +237,7 @@ class TestHyperV(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '0.1.2345.67890',
+                Hypervisor.SYSTEM_UUID_FACT: expected_hypervisorId
             }
         )
         result = self.hyperv.getHostGuestMapping()['hypervisors'][0]

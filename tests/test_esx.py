@@ -166,6 +166,41 @@ class TestEsx(TestBase):
         self.assertEqual(expected_result.toDict(), result.toDict())
 
     @patch('suds.client.Client')
+    def test_getHostGuestMappingNoHostName(self, mock_client):
+        expected_hypervisorId = 'Fake_uuid'
+        expected_guestId = 'guest1UUID'
+        expected_guest_state = Guest.STATE_RUNNING
+
+        fake_parent = MagicMock()
+        fake_parent.value = 'fake_parent_id'
+        fake_parent._type = 'ClusterComputeResource'
+
+        fake_vm_id = MagicMock()
+        fake_vm_id.value = 'guest1'
+
+        fake_vm = MagicMock()
+        fake_vm.ManagedObjectReference = [fake_vm_id]
+        fake_vms = {'guest1': {'runtime.powerState': 'poweredOn',
+                               'config.uuid': expected_guestId}}
+        self.esx.vms = fake_vms
+
+        fake_host = {'hardware.systemInfo.uuid': expected_hypervisorId,
+                     'config.network.dnsConfig.domainName': 'domainname',
+                     'config.product.version': '1.2.3',
+                     'hardware.cpuInfo.numCpuPackages': '1',
+                     'parent': fake_parent,
+                     'vm': fake_vm,
+                     }
+        fake_hosts = {'random-host-id': fake_host}
+        self.esx.hosts = fake_hosts
+
+        fake_cluster = {'name': 'Fake_cluster_name'}
+        self.esx.clusters = {'fake_parent_id': fake_cluster}
+
+        assert (len(self.esx.getHostGuestMapping()['hypervisors']) == 0)
+
+
+    @patch('suds.client.Client')
     def test_getHostGuestMapping_incomplete_data(self, mock_client):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'

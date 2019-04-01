@@ -174,6 +174,7 @@ class Xen(virt.Virt):
             version = record.get('software_version', {}).get('product_version')
             if version:
                 facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
+            facts[virt.Hypervisor.SYSTEM_UUID_FACT] = record["uuid"]
 
             if self.config['hypervisor_id'] == 'uuid':
                 uuid = record["uuid"]

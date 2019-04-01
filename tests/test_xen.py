@@ -229,6 +229,7 @@ class TestXen(TestBase):
                 Hypervisor.CPU_SOCKET_FACT: '1',
                 Hypervisor.HYPERVISOR_TYPE_FACT: 'XenServer',
                 Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                Hypervisor.SYSTEM_UUID_FACT: expected_hypervisorId
             }
         )
         self.xen._prepare()
@@ -285,6 +286,7 @@ class TestXen(TestBase):
                     Hypervisor.CPU_SOCKET_FACT: '1',
                     Hypervisor.HYPERVISOR_TYPE_FACT: 'XenServer',
                     Hypervisor.HYPERVISOR_VERSION_FACT: '1.2.3',
+                    Hypervisor.SYSTEM_UUID_FACT: expected_hypervisorId + str(i)
                 }
             ) for i in range(3)]
         self.xen._prepare()

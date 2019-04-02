@@ -299,8 +299,8 @@ class Esx(virt.Virt):
                 if domain_name:
                     name = self._format_hostname(name, domain_name)
             except KeyError:
-                self.logger.debug("Unable to determine hostname for host '%s'", uuid)
-                name = ''
+                self.logger.debug("Unable to determine hostname for host '%s'. Ommitting from report", uuid)
+                continue
 
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: str(host['hardware.cpuInfo.numCpuPackages']),

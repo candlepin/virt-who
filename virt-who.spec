@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.2
+Version:        0.24.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,30 @@ fi
 
 
 %changelog
+* Wed Apr 03 2019 William Poteat <wpoteat@redhat.com> 0.24.4-1
+- 1667522: Omit ESX host from report when no hostname is present
+  (wpoteat@redhat.com)
+- 1693858: Send hardware uuid on every check in for system reconcilliation
+  (wpoteat@redhat.com)
+- kubevirt: provide user authentication (piotr.kliczewski@gmail.com)
+- 1486270: pass no_proxy from config files (wpoteat@redhat.com)
+- kubevirt: drop kubernetes and kubevirt dependencies
+  (piotr.kliczewski@gmail.com)
+- 1638250: Improved fix for http proxy issue (wpoteat@redhat.com)
+- Update releaser (wpoteat@redhat.com)
+
+* Wed Apr 03 2019 William Poteat <wpoteat@redhat.com>
+- 1667522: Omit ESX host from report when no hostname is present
+  (wpoteat@redhat.com)
+- 1693858: Send hardware uuid on every check in for system reconcilliation
+  (wpoteat@redhat.com)
+- kubevirt: provide user authentication (piotr.kliczewski@gmail.com)
+- 1486270: pass no_proxy from config files (wpoteat@redhat.com)
+- kubevirt: drop kubernetes and kubevirt dependencies
+  (piotr.kliczewski@gmail.com)
+- 1638250: Improved fix for http proxy issue (wpoteat@redhat.com)
+- Update releaser (wpoteat@redhat.com)
+
 * Fri Dec 21 2018 William Poteat <wpoteat@redhat.com> 0.24.2-1
 - 1657104: Remove references to removed command line options
   (wpoteat@redhat.com)

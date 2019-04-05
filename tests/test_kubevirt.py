@@ -36,12 +36,6 @@ class TestKubevirt(TestBase):
         config.validate()
         return config
 
-    def setUp(self):
-        config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', env='env', kubeconfig='/etc/hosts')
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
-            self.kubevirt = Virt.from_config(self.logger, config, Datastore())
-
     def nodes(self):
         node = {
             'metadata': {
@@ -53,7 +47,10 @@ class TestKubevirt(TestBase):
                     'kubeletVersion': 'v1.9.1+a0ce1bc657'
                 },
                 'addresses': [
-                    {'address': 'master'}
+                    {'address': '192.168.122.140',
+                     'type': 'InternalIP'},
+                    {'address': 'minikube',
+                     'type': 'Hostname'}
                 ],
                 'allocatable' : {
                     'cpu': '2'
@@ -104,23 +101,62 @@ class TestKubevirt(TestBase):
         client.get_nodes.return_value = self.nodes()
         client.get_vms.return_value = self.vms()
 
-        self.kubevirt._client = client
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', env='env', kubeconfig='/etc/hosts')
 
-        expected_result = Hypervisor(
-            hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
-            name='master',
-            guestIds=[
-                Guest(
-                    'f83c5f73-5244-4bd1-90cf-02bac2dda608',
-                    self.kubevirt.CONFIG_TYPE,
-                    Guest.STATE_RUNNING,
-                )
-            ],
-            facts={
-                Hypervisor.CPU_SOCKET_FACT: '2',
-                Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
-                Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
-            }
-        )
-        result = self.kubevirt.getHostGuestMapping()['hypervisors'][0]
-        self.assertEqual(expected_result.toDict(), result.toDict())
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='master',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.CPU_SOCKET_FACT: '2',
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_getHostGuestMapping_with_hm(self):
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', env='env', kubeconfig='/etc/hosts',
+                                    hypervisor_id='hostname')
+
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='minikube',
+                name='master',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.CPU_SOCKET_FACT: '2',
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())

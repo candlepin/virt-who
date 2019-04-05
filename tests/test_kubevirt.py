@@ -69,6 +69,29 @@ class TestKubevirt(TestBase):
                 'name': 'win-2016',
                 'namespace': 'default',
             },
+            'spec': {
+                'domain': {
+                    'devices': {
+                        'disks': [
+                            {'disk': {'bus': 'virtio'}, 'name': 'containerdisk'}
+                        ],
+                        'interfaces': [
+                            {'bridge': {}, 'name': 'default'}
+                        ],
+                    },
+                    'features': {
+                        'acpi': {
+                            'enabled': 'true'
+                        }
+                    },
+                    'firmware': {
+                        'uuid': 'f83c5f73-5244-4bd1-90cf-02bac2dda608'
+                    },
+                    'machine': {
+                        'type': 'q35'
+                    }
+                }
+            },
             'status': {
                 'nodeName': 'master',
             }
@@ -88,7 +111,7 @@ class TestKubevirt(TestBase):
             name='master',
             guestIds=[
                 Guest(
-                    'default/win-2016',
+                    'f83c5f73-5244-4bd1-90cf-02bac2dda608',
                     self.kubevirt.CONFIG_TYPE,
                     Guest.STATE_RUNNING,
                 )

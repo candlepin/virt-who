@@ -94,14 +94,14 @@ class Kubevirt(virt.Virt):
             hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=address, facts=facts)
 
         for vm in vms['items']:
-            metadata = vm['metadata']
+            spec = vm['spec']
             host_name = vm['status']['nodeName']
 
             # a vm is not scheduled on any hosts
             if host_name is None:
                 continue
 
-            guest_id = metadata['namespace'] + '/' + metadata['name']
+            guest_id = spec['domain']['firmware']['uuid']
             # a vm is always in running state
             status = virt.Guest.STATE_RUNNING
             hosts[host_name].guestIds.append(virt.Guest(guest_id, self.CONFIG_TYPE, status))

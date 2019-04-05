@@ -29,6 +29,7 @@ from virtwho.virt.kubevirt.client import KubeClient
 class KubevirtConfigSection(VirtConfigSection):
 
     VIRT_TYPE = 'kubevirt'
+    HYPERVISOR_ID = ('uuid', 'hostname')
 
     def __init__(self, section_name, wrapper, *args, **kwargs):
         super(KubevirtConfigSection, self).__init__(section_name,
@@ -84,14 +85,23 @@ class Kubevirt(virt.Virt):
             status = node['status']
             version = status['nodeInfo']['kubeletVersion']
             name = node['metadata']['name']
-            host_id = status['nodeInfo']['machineID']
-            address = status['addresses'][0]['address']
+
+            uuid = status['nodeInfo']['machineID']
+            if self.config['hypervisor_id'] == 'uuid':
+                host_id = uuid
+            elif self.config['hypervisor_id'] == 'hostname':
+                # set to uuid if hostname not available
+                host_id = uuid
+                for addr in status['addresses']:
+                    if addr['type'] == 'Hostname':
+                        host_id = addr['address']
+
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: status['allocatable']["cpu"],
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 virt.Hypervisor.HYPERVISOR_VERSION_FACT: version
             }
-            hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=address, facts=facts)
+            hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=name, facts=facts)
 
         for vm in vms['items']:
             spec = vm['spec']

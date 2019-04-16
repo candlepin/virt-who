@@ -884,7 +884,6 @@ class VirtConfigSection(ConfigSection):
         super(VirtConfigSection, self).__init__(section_name, wrapper)
         self.add_key('type', validation_method=self._validate_virt_type, default='libvirt')
         self.add_key('sm_type', validation_method=self._validate_sm_type, default="sam", restricted=True)
-        self.add_key('is_hypervisor', validation_method=self._validate_str_to_bool, default=True)
         self.add_key('hypervisor_id', validation_method=self._validate_hypervisor_id, default='uuid')
         # Unencrypted passwords
         self.add_key('password', validation_method=self._validate_unencrypted_password)

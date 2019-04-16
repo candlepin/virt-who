@@ -588,7 +588,7 @@ class ConfigSection(collections.MutableMapping):
                    self.defaults[default_key] is not None:
                     self.validation_messages.append(
                         (
-                            'warning',
+                            'debug',
                             'Value for "%s" not set, using default: %s' %
                             (default_key, self.defaults[default_key])
                         )
@@ -1516,7 +1516,7 @@ def init_config(env_options, cli_options, config_dir=None):
     # Log pending errors
     for err in validation_errors:
         method = getattr(logger, err[0])
-        if method is not None and err[0] in ['error', 'warning', 'info']:
+        if method is not None and err[0] in ['error', 'warning', 'info', 'debug']:
             method(err[1])
 
     return effective_config

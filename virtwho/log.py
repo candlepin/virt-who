@@ -209,7 +209,7 @@ class Logger(object):
         cls._logs[virt_who_logger_name] = logger
         # Because we are using or own queue logger we don't want any of the loggers to propagate
         logger.propagate = False
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(cls._level)
 
         # Show logging from RHSM in the log when DEBUG is enabled
         rhsm_logger = logging.getLogger("rhsm")

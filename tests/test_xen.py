@@ -46,8 +46,7 @@ XEN_SECTION_VALUES = {
     'password': 'secret_password',
     'env': '123456',
     'owner': '123456',
-    'hypervisor_id': 'uuid',
-    'is_hypervisor': 'true'
+    'hypervisor_id': 'uuid'
 }
 
 

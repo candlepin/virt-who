@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.4
+Version:        0.24.5
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,11 @@ fi
 
 
 %changelog
+* Wed Apr 17 2019 William Poteat <wpoteat@redhat.com> 0.24.5-1
+- 1695538: Provide support for hypervisor_id option
+  (piotr.kliczewski@gmail.com)
+- 1695519: use correct uuid in kubevirt report (piotr.kliczewski@gmail.com)
+
 * Wed Apr 03 2019 William Poteat <wpoteat@redhat.com> 0.24.4-1
 - 1667522: Omit ESX host from report when no hostname is present
   (wpoteat@redhat.com)

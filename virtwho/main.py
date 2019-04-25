@@ -34,7 +34,6 @@ except ImportError:
 
 from virtwho import log
 from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
-from virtwho.daemon import daemon
 from virtwho.executor import Executor, ReloadRequest, ExitRequest
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
@@ -103,9 +102,13 @@ def atexit_fn(*args, **kwargs):
     executor = None
 
 
-def reload(signal, stackframe):
+def reload(sig, stackframe):
     if executor:
+        # Ignore signal SIGHUP during reloading executor
+        # See bug: https://bugzilla.redhat.com/show_bug.cgi?id=1506167
+        signal.signal(signal.SIGHUP, lambda _sig, _stack: None)
         executor.reload()
+        signal.signal(signal.SIGHUP, reload)
         raise ReloadRequest()
     exit(1, status="virt-who cannot reload, exiting")
 

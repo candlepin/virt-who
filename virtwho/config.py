@@ -30,6 +30,7 @@ DEFAULTSECT
 from virtwho import log, SAT5, SAT6
 from .password import Password
 from binascii import unhexlify
+from binascii import Error as BinasciiError
 from . import util
 
 try:
@@ -1048,7 +1049,7 @@ class VirtConfigSection(ConfigSection):
         else:
             try:
                 self._values[decrypted_pass_key] = Password.decrypt(unhexlify(pwd))
-            except (TypeError, IndexError, UnicodeDecodeError):
+            except (TypeError, IndexError, UnicodeDecodeError, BinasciiError):
                 result = (
                     'warning',
                     "Option \"{option}\" cannot be decrypted, possibly corrupted"

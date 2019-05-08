@@ -352,3 +352,20 @@ class TestVirtConfigSection(TestBase):
         ]
         result = self.virt_config._validate_filter('filter_hosts')
         self.assertIsNotNone(result)
+
+    def test_validate_wrong_values_in_encrypted_password(self):
+        """
+        Test of validation of corrupted encrypted password
+        """
+        self.init_virt_config_section()
+        self.mock_pwd_file()
+        # Safe current password
+        password = self.virt_config['password']
+        # Delete unencrypted password first
+        del self.virt_config['password']
+        # Set up corrupted encrypted password
+        self.virt_config['encrypted_password'] = 'xxxx'
+        # Do own testing here
+        result = self.virt_config._validate_encrypted_password('encrypted_password')
+        self.assertIsNotNone(result)
+        self.unmock_pwd_file()

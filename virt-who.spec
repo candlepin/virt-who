@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.4
+Version:        0.25.0
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,28 @@ fi
 
 
 %changelog
+* Mon May 13 2019 William Poteat <wpoteat@redhat.com> 0.25.0-1
+- Update releasers (wpoteat@redhat.com)
+- 1641953: Virt-who fails if one hypervisor has wrong encrypted password
+  (wpoteat@redhat.com)
+- 1506167: Ignore new SIGHUP signals during signal handling
+  (jhnidek@redhat.com)
+- 1522661: Constrict is_hypervisor field to fake virt (wpoteat@redhat.com)
+- 1695538: Provide support for hypervisor_id option
+  (piotr.kliczewski@gmail.com)
+- 1695519: use correct uuid in kubevirt report (piotr.kliczewski@gmail.com)
+
+* Mon May 13 2019 William Poteat <wpoteat@redhat.com>
+- Update releasers (wpoteat@redhat.com)
+- 1641953: Virt-who fails if one hypervisor has wrong encrypted password
+  (wpoteat@redhat.com)
+- 1506167: Ignore new SIGHUP signals during signal handling
+  (jhnidek@redhat.com)
+- 1522661: Constrict is_hypervisor field to fake virt (wpoteat@redhat.com)
+- 1695538: Provide support for hypervisor_id option
+  (piotr.kliczewski@gmail.com)
+- 1695519: use correct uuid in kubevirt report (piotr.kliczewski@gmail.com)
+
 * Wed Apr 03 2019 William Poteat <wpoteat@redhat.com> 0.24.4-1
 - 1667522: Omit ESX host from report when no hostname is present
   (wpoteat@redhat.com)

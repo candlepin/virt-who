@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.0
+Version:        0.25.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,9 @@ fi
 
 
 %changelog
+* Tue May 14 2019 William Poteat <wpoteat@redhat.com> 0.25.1-1
+- Update to spec for pyyaml package (wpoteat@redhat.com)
+
 * Mon May 13 2019 William Poteat <wpoteat@redhat.com> 0.25.0-1
 - Update releasers (wpoteat@redhat.com)
 - 1641953: Virt-who fails if one hypervisor has wrong encrypted password

@@ -33,7 +33,7 @@ Source0:        %{name}-%{version}.tar.gz
 BuildArch:      noarch
 BuildRequires:  %{python_ver}-devel
 BuildRequires:  %{python_ver}-setuptools
-BuildRequires:  PyYAML
+BuildRequires:  %{python_ver}-pyyaml
 # rhel 8 has different naming going forward
 %if (0%{?rhel} && 0%{?rhel} >= 8)
 Requires:      platform-python-setuptools
@@ -66,7 +66,7 @@ Requires:       %{python_ver}-six
 # python-argparse is required for Python 2.6 on EL6
 %{?el6:Requires: python-argparse}
 Requires:       openssl
-Requires:       PyYAML
+Requires:       %{python_ver}-pyyaml
 
 %if %{use_systemd}
 %if %{use_python3}

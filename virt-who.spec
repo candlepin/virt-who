@@ -10,7 +10,7 @@
 
 
 Name:           virt-who
-Version:        0.21.6
+Version:        0.21.8
 Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -135,6 +135,12 @@ fi
 
 
 %changelog
+* Tue May 14 2019 William Poteat <wpoteat@redhat.com> 0.21.8-1
+- 1705919: try/exception needed for hypervisor_id check (wpoteat@redhat.com)
+
+* Tue May 14 2019 William Poteat <wpoteat@redhat.com>
+- 1705919: try/exception needed for hypervisor_id check (wpoteat@redhat.com)
+
 * Mon Apr 16 2018 William Poteat <wpoteat@redhat.com> 0.21.6-1
 - 1554228: Unicode issue on status update call (wpoteat@redhat.com)
 - Releasers (wpoteat@redhat.com)

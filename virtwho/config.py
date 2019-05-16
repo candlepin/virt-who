@@ -1088,12 +1088,12 @@ class VirtConfigSection(ConfigSection):
         """
         result = None
         # Server option must be there for ESX, RHEVM, and HYPERV
-        if key not in self._values:
+        if key not in self._values or len(self._values[key]) == 0:
             if 'type' in self._values and self._values['type'] in ['libvirt', 'vdsm', 'fake']:
                 self._values[key] = ''
             else:
                 result = (
-                    'warning',
+                    'error',
                     "Option %s needs to be set in config: '%s'" % (key, self.name)
                 )
 

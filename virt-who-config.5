@@ -179,6 +179,13 @@ The default port number is 8443 (that was used the default in RHEV-M <= 3.0). Ne
 
 server=<HOSTNAME_OR_IP_ADDRESS>:<PORT_NUMBER>
 
+.SS KUBEVIRT BACKEND
+
+Kubevirt backend uses a Kubernetes configuration file where there are cluster connection details and an authentication token. There is no need to provide a hostname nor user credentials.
+Before using the kubeconfig file please make sure to login to the cluster so the token is written to the file. To login you need to run:
+
+oc login --username=myuser --password=mypass
+
 .SS FAKE BACKEND
 
 Fake backend reads host/guests associations from the file on disk, for example:

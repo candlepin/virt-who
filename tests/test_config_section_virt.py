@@ -39,7 +39,6 @@ LIBVIRT_SECTION_VALUES = {
     'sm_type': 'sam',
     'username': 'admin',
     'password': 'top_secret',
-    'env': '123456',
     'owner': '123456',
     'hypervisor_id': 'uuid',
     'filter_hosts': '*.example.com',
@@ -251,14 +250,6 @@ class TestVirtConfigSection(TestBase):
             self.virt_config['type'] = virt_type
             result = self.virt_config._validate_server('server')
             self.assertIsNone(result)
-
-    def test_validate_environment(self):
-        """
-        Test validation of env option 
-        """
-        self.init_virt_config_section()
-        result = self.virt_config._validate_env('env')
-        self.assertIsNone(result)
 
     def test_validate_owner(self):
         """

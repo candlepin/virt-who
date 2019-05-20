@@ -38,23 +38,23 @@ from virtwho.virt.virt import Virt
 VIRT_BACKENDS = Virt.hypervisor_types()
 
 SAT5_VM_DISPATCHER = {
-    'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
-    'esx': {'owner': False, 'env': False, 'server': True, 'username': True},
-    'xen': {'owner': False, 'env': False, 'server': True, 'username': True},
-    'rhevm': {'owner': False, 'env': False, 'server': True, 'username': True},
-    'hyperv': {'owner': False, 'env': False, 'server': True, 'username': True},
-    'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
-    'kubevirt': {'owner': False, 'env': False, 'server': False, 'username': False, 'kubeconfig': True},
+    'libvirt': {'owner': False, 'server': False, 'username': False},
+    'esx': {'owner': False, 'server': True, 'username': True},
+    'xen': {'owner': False, 'server': True, 'username': True},
+    'rhevm': {'owner': False, 'server': True, 'username': True},
+    'hyperv': {'owner': False, 'server': True, 'username': True},
+    'vdsm': {'owner': False, 'server': False, 'username': False},
+    'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True},
 }
 
 SAT6_VM_DISPATCHER = {
-    'libvirt': {'owner': False, 'env': False, 'server': False, 'username': False},
-    'esx': {'owner': True, 'env': True, 'server': True, 'username': True},
-    'xen': {'owner': True, 'env': True, 'server': True, 'username': True},
-    'rhevm': {'owner': True, 'env': True, 'server': True, 'username': True},
-    'hyperv': {'owner': True, 'env': True, 'server': True, 'username': True},
-    'vdsm': {'owner': False, 'env': False, 'server': False, 'username': False},
-    'kubevirt': {'owner': True, 'env': True, 'server': False, 'username': False, 'kubeconfig': True},
+    'libvirt': {'owner': False, 'server': False, 'username': False},
+    'esx': {'owner': True, 'server': True, 'username': True},
+    'xen': {'owner': True, 'server': True, 'username': True},
+    'rhevm': {'owner': True, 'server': True, 'username': True},
+    'hyperv': {'owner': True, 'server': True, 'username': True},
+    'vdsm': {'owner': False, 'server': False, 'username': False},
+    'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True},
 }
 
 
@@ -135,7 +135,7 @@ def check_argument_consistency(cli_options):
     """
     errors = []
     # These options can be required
-    REQUIRED_OPTIONS = ['owner', 'env', 'server', 'username']
+    REQUIRED_OPTIONS = ['owner', 'server', 'username']
 
     virt_type = cli_options.get('virt_type')
     sm_type = cli_options.get('sm_type')
@@ -278,7 +278,7 @@ def read_vm_backend_env_variables(env_vars):
     if env_vars.get('virt_type') in VM_DISPATCHER.keys():
         virt_type = env_vars['virt_type']
         try:
-            keys = ['owner', 'env', 'server', 'username']
+            keys = ['owner', 'server', 'username']
             for key in keys:
                 val = check_env("VIRTWHO_" + virt_type.upper() + "_" + key.upper(),
                                 env_vars.get(key),
@@ -518,7 +518,7 @@ def parse_options():
     DEPRECATED_OPTIONS = ['log_per_config', 'log_dir', 'log_file', 'reporter_id', 'virt_type',
                           'owner', 'env', 'server', 'username', 'password',
                           'sat_server', 'sat_username', 'sat_password',  'sm_type']
-    VIRT_TYPE_OPTIONS = ['owner', 'env', 'server', 'username', 'password']
+    VIRT_TYPE_OPTIONS = ['owner', 'server', 'username', 'password']
     SAT_OPTION_MAP = {'sat_server':'satellite-server', 'sat_username':'satellite-username', 'sat_password':'satellite-password'}
 
     # Read command line arguments first

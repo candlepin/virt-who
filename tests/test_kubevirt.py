@@ -102,7 +102,7 @@ class TestKubevirt(TestBase):
         client.get_vms.return_value = self.vms()
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', env='env', kubeconfig='/etc/hosts')
+                                    owner='owner', kubeconfig='/etc/hosts')
 
         with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
             kubevirt = Virt.from_config(self.logger, config, Datastore())
@@ -134,7 +134,7 @@ class TestKubevirt(TestBase):
         client.get_vms.return_value = self.vms()
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', env='env', kubeconfig='/etc/hosts',
+                                    owner='owner', kubeconfig='/etc/hosts',
                                     hypervisor_id='hostname')
 
         with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):

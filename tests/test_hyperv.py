@@ -145,7 +145,6 @@ class TestHyperV(TestBase):
             'username': 'username',
             'password': u'1€345678',
             'owner': 'owner',
-            'env': 'env,'
         }
         config = HypervConfigSection('test', None)
         config.update(**config_values)

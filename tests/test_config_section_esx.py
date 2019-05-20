@@ -37,7 +37,6 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
         "username": "username",
         "password": "password",
         "owner": "admin",
-        "env": "admin",
         "filter_host_parents": "'PARENT_A', 'PARENT_B'",
         "exclude_host_parents": "'PARENT_C_EXCLUDED'",
     }
@@ -48,10 +47,9 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
         'username',
         'password',
         'owner',
-        'env'
     }
 
-    SAT5_REQUIRED_KEYS = SAM_REQUIRED_KEYS - {'owner', 'env'}
+    SAT5_REQUIRED_KEYS = SAM_REQUIRED_KEYS - {'owner'}
 
     DEFAULTS = {
         'filter_host_parents': None,

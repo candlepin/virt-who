@@ -137,6 +137,9 @@ When this propery is not set, then virt-who tries to detect wildcards or regular
 .TP
 \fBhypervisor_id\fR
 Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. \fBhwuuid\fR is applicable to esx and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
+.TP
+\fB#kubeconfig\fR
+Path to Kubernetes configuration file which contains authentication and connection details. Used by kubevirt option
 
 .SH EXAMPLE
 [test-esx]

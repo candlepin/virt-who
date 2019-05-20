@@ -30,7 +30,6 @@ server=http://localhost:%s/
 username=%s
 password=%s
 owner=owner
-env=env
 """) % (cls.server.port, cls.server.username, cls.server.password))
         cls.arguments = [
             '-c=%s' % os.path.join(cls.config_dir, "test.conf")

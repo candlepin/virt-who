@@ -31,7 +31,6 @@ class TestKubevirtConfigSection(ConfigSectionValidationTests, TestBase):
         "type": "kubevirt",
         "server": "1.2.3.4",
         "owner": "admin",
-        "env": "admin",
         "kubeconfig": "/etc/hosts",
     }
 

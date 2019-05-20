@@ -215,7 +215,6 @@ class Satellite5DestinationInfo(Info):
 # Should this be defined in the manager that actually requires these values?
 class Satellite6DestinationInfo(Info):
     required_kwargs = (
-        "env",
         "owner",
     )
     optional_kwargs = (
@@ -908,9 +907,6 @@ class VirtConfigSection(ConfigSection):
         # Needed to allow us to parse the destination info
         self.add_key('sat_server', validation_method=lambda *args: None)
         self.add_key('server', validation_method=self._validate_server)
-        # self.add_key('env', validation_method=self._validate_env)
-        # self.add_key('owner', validation_method=self._validate_owner)
-        self.add_key('env', validation_method=self._validate_env, required=True)
         self.add_key('owner', validation_method=self._validate_owner, required=True)
         self.add_key('filter_hosts', validation_method=self._validate_filter)
         self.add_key('filter_type', validation_method=self._validate_filter_type)
@@ -934,25 +930,21 @@ class VirtConfigSection(ConfigSection):
         if 'virt_type' in self._values and 'type' not in self._values:
             self['type'] = self._values['virt_type']
             self.remove_key('virt_type')
-        # Logic of env and owner is little bit tricky :-(
+        # Logic of owner is little bit tricky :-(
         if 'sm_type' in self._values:
             if self._values['sm_type'] == SAT5:
                 self._required_keys.update(Satellite5DestinationInfo.required_kwargs)
-                # Owner and Env are only necessary for SAT6 and only for certain backends
+                # Owner is only necessary for SAT6 and only for certain backends
                 self._required_keys.discard('owner')
-                self._required_keys.discard('env')
             elif self._values['sm_type'] == SAT6:
                 if self['type'] == 'libvirt' and 'server' not in self._values:
-                    # Owner and Env are not necessary sam an libvirt virt backend
+                    # Owner is not necessary sam an libvirt virt backend
                     self._required_keys.discard('owner')
-                    self._required_keys.discard('env')
                 elif self['type'] == 'vdsm':
                     self._required_keys.discard('owner')
-                    self._required_keys.discard('env')
                 # TODO: is_hypervisor has to be true too, but it is hard to implement in this state
                 elif self['type'] == 'fake':
                     self._required_keys.discard('owner')
-                    self._required_keys.discard('env')
         super(VirtConfigSection, self)._pre_validate()
 
     def _validate_sm_type(self, key):
@@ -1097,23 +1089,6 @@ class VirtConfigSection(ConfigSection):
                     "Option %s needs to be set in config: '%s'" % (key, self.name)
                 )
 
-        return result
-
-    def _validate_env(self, key):
-        """
-        Try to validate environment option
-        """
-        result = None
-        sm_type = self._values['sm_type']
-        virt_type = self._values.get('type')
-        if sm_type == 'sam' and (
-                (virt_type in ('esx', 'rhevm', 'hyperv', 'xen')) or
-                (virt_type == 'libvirt' and 'server' in self._values)):
-            if key not in self:
-                result = (
-                    'warning',
-                    "Option `%s` needs to be set in config: '%s'" % (key, self.name)
-                )
         return result
 
     def _validate_owner(self, key):

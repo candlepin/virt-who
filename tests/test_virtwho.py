@@ -175,13 +175,12 @@ class TestOptions(TestBase):
         for virt in ['esx', 'hyperv', 'rhevm']:
             self.clearEnv()
             sys.argv = ["virtwho.py", "--%s" % virt, "--%s-owner=owner" % virt,
-                        "--%s-env=env" % virt, "--%s-server=localhost" % virt,
+                        "--%s-server=localhost" % virt,
                         "--%s-username=username" % virt,
                         "--%s-password=password" % virt]
             _, options = parse_options()
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'owner')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'env')
             if virt == 'esx':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://localhost')
             elif virt == 'rhevm':
@@ -202,7 +201,6 @@ class TestOptions(TestBase):
             _, options = parse_options()
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['type'], virt)
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
             if virt == 'esx':
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'https://xlocalhost')
             elif virt == 'rhevm':
@@ -260,7 +258,6 @@ class TestOptions(TestBase):
             else:
                 self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['server'], 'xlocalhost')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['owner'], 'xowner')
-            self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['env'], 'xenv')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['username'], 'xusername')
             self.assertEqual(options[VW_ENV_CLI_SECTION_NAME]['password'], 'xpassword')
 
@@ -271,7 +268,7 @@ class TestOptions(TestBase):
         self.setUpParseFile(parseFile)
         for smType in ['satellite', 'sam']:
             for virt in ['libvirt', 'vdsm', 'xen', 'esx', 'hyperv', 'rhevm', 'kubevirt']:
-                for missing in ['server', 'username', 'password', 'env', 'owner']:
+                for missing in ['server', 'username', 'password', 'owner']:
                     self.clearEnv()
                     sys.argv = ["virtwho.py", "--%s" % smType, "--%s" % virt]
                     if virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm']:
@@ -281,13 +278,11 @@ class TestOptions(TestBase):
                             sys.argv.append("--%s-username=username" % virt)
                         if missing != 'password':
                             sys.argv.append("--%s-password=password" % virt)
-                        if missing != 'env':
-                            sys.argv.append("--%s-env=env" % virt)
                         if missing != 'owner':
                             sys.argv.append("--%s-owner=owner" % virt)
 
                     if virt not in ('libvirt', 'vdsm', 'kubevirt') and missing != 'password':
-                        if smType == 'satellite' and missing in ['env', 'owner']:
+                        if smType == 'satellite' and missing in ['owner']:
                             continue
                         self.assertRaises(OptionError, parse_options)
 

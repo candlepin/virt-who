@@ -44,7 +44,6 @@ class TestEsx(TestBase):
             'username': 'username',
             'password': 'password',
             'owner': 'owner',
-            'env': 'env',
         }
         config = EsxConfigSection('test', None)
         config.update(**config_values)

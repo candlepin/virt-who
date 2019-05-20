@@ -34,7 +34,6 @@ class TestVdsmConfigSection(ConfigSectionValidationTests, TestBase):
         "type": "vdsm",
         "server": "1.2.3.4",
         "owner": "admin",
-        "env": "admin",
     }
 
     SAM_REQUIRED_KEYS = set()

@@ -145,8 +145,8 @@ class TestConfigSection(TestBase):
         self.my_config['my_bool'] = True
         result = self.my_config.validate()
         expected_result = [
-            ('warning', 'Value for "my_list" not set, using default: []'),
-            ('warning', 'Value for "my_str" not set, using default: bar'),
+            ('debug', 'Value for "my_list" not set, using default: []'),
+            ('debug', 'Value for "my_str" not set, using default: bar'),
         ]
         # We do not particularly care about the ordering here, just that the lists contain the same
         # elements.

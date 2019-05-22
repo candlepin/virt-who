@@ -1219,17 +1219,17 @@ class GlobalSection(ConfigSection):
         result = None
         try:
             self._values[key] = int(self._values[key])
-
-            if self._values[key] < MinimumSendInterval:
-                message = "Interval value can't be lower than {min} seconds. Default value of " \
-                          "{min} " \
-                          "seconds will be used.".format(min=DefaultInterval)
-                result = ("warning", message)
-                self._values['interval'] = DefaultInterval
-        except KeyError:
-            result = ('warning', '%s is missing' % key)
         except (TypeError, ValueError) as e:
-            result = ('warning', '%s was not set to a valid integer: %s' % (key, str(e)))
+            self._values[key] = 0
+        except KeyError:
+            return ('warning', '%s is missing' % key)
+
+        if self._values[key] < MinimumSendInterval:
+            message = "Interval value can't be lower than {min} seconds. Default value of " \
+                      "{default} " \
+                      "seconds will be used.".format(min=MinimumSendInterval, default=DefaultInterval)
+            result = ("warning", message)
+            self._values['interval'] = DefaultInterval
         return result
 
     def _validate_configs(self):

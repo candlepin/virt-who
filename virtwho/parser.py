@@ -335,7 +335,7 @@ def parse_cli_arguments():
                         help="Enable debugging output")
     parser.add_argument("-o", "--one-shot", action="store_true", dest="oneshot", default=False,
                         help="Send the list of guest IDs and exit immediately")
-    parser.add_argument("-i", "--interval", type=int, dest="interval", default=NotSetSentinel(),
+    parser.add_argument("-i", "--interval", dest="interval", default=NotSetSentinel(),
                         help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_argument("-p", "--print", action="store_true", dest="print_", default=False,
                         help="Print the host/guest association obtained from virtualization backend (implies oneshot)")

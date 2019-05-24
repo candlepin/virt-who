@@ -40,7 +40,6 @@ MY_SAT5_SECTION_NAME = 'test-sat5-libvirt'
 LIBVIRT_SECTION_VALUES = {
     'type': 'libvirt',
     'server': 'ssh://10.0.0.101/system',
-    'env': '123456',
     'owner': '123456',
     'hypervisor_id': 'uuid',
     'filter_hosts': '*.example.com'
@@ -50,7 +49,6 @@ LIBVIRT_SECTION_TEXT = """
 [test-libvirt]
 type = libvirt
 server = ssh://192.168.122.10
-env = 123456
 owner = 123456
 """
 
@@ -218,40 +216,6 @@ class TestLibvirtdConfigSection(TestBase):
         # Delete 'owner' section
         del self.virt_config['owner']
         result = self.virt_config._validate_owner('owner')
-        self.assertIsNone(result)
-
-    def test_validate_sam_env(self):
-        """
-        Test validation of owner option for libvirtd virt. backend. and SAM destination
-        It is similar for owner
-        """
-        self.init_virt_config_section()
-        # When server is set, then owner has to be set too
-        assert 'server' in self.virt_config
-        assert 'sam' == self.virt_config['sm_type']
-        result = self.virt_config._validate_env('env')
-        self.assertIsNone(result)
-        # Delete 'env' section
-        del self.virt_config['env']
-        result = self.virt_config._validate_env('env')
-        self.assertIsNotNone(result)
-        # Delete server too, then env need not to be set
-        del self.virt_config['server']
-        result = self.virt_config._validate_env('env')
-        self.assertIsNone(result)
-
-    def test_validate_sat5_env(self):
-        """
-        Test validation of owner option for libvirtd virt. backend. and SAT5 destination
-        It is similar for owner
-        """
-        self.init_virt_config_section()
-        self.virt_config['sm_type'] = 'satellite'
-        # When server is set, then owner has to be set too
-        assert 'server' in self.virt_config
-        # Delete 'env' section
-        del self.virt_config['env']
-        result = self.virt_config._validate_env('env')
         self.assertIsNone(result)
 
     def test_validate_unencrypted_password(self):

@@ -44,7 +44,6 @@ XEN_SECTION_VALUES = {
     'server': 'https://10.0.0.101',
     'username': 'root',
     'password': 'secret_password',
-    'env': '123456',
     'owner': '123456',
     'hypervisor_id': 'uuid'
 }
@@ -137,7 +136,7 @@ class TestXen(TestBase):
 
     def setUp(self):
         config = self.create_config(name='test', wrapper=None, type='xen', server='localhost', username='username',
-                        password='password', owner='owner', env='env')
+                        password='password', owner='owner')
         self.xen = Virt.from_config(self.logger, config, Datastore(), interval=DefaultInterval)
 
     def run_once(self, queue=None):

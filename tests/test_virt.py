@@ -75,7 +75,6 @@ server=does.not.exist
 username=username
 password=password
 owner=owner
-env=env
 {filter_something}
 {filter_type}
 """.format(filter_something=filter_something, filter_type=filter_type))

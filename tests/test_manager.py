@@ -43,7 +43,7 @@ class TestManager(TestBase):
     guestInfo = [guest1]
     hypervisor_id = "HYPERVISOR_ID"
 
-    config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'OWNER', 'env': 'ENV'}, 'test', None)
+    config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'OWNER'}, 'test', None)
     host_guest_report = HostGuestAssociationReport(config, {
         'hypervisors': [
             Hypervisor('9c927368-e888-43b4-9cdb-91b10431b258', []),
@@ -81,7 +81,7 @@ class TestSubscriptionManager(TestManager):
         create_from_file.return_value.cert_uuid = {'CN': 'Test'}
         connection.return_value = MagicMock()
         connection.return_value.has_capability = MagicMock(return_value=False)
-        connection.return_value.getConsumer = MagicMock(return_value={'environment': {'name': 'ENV'}})
+        connection.return_value.getConsumer = MagicMock(return_value={})
         connection.return_value.getOwner = MagicMock(return_value={'key': 'OWNER'})
 
     @patch("rhsm.connection.UEPConnection")
@@ -101,7 +101,6 @@ class TestSubscriptionManager(TestManager):
     def test_hypervisorCheckIn(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
         config, d = self.create_fake_config('test', **self.default_config_args)
-        d['env'] = 'ENV'
         d['owner'] = 'OWNER'
         manager = Manager.from_config(self.logger, config)
         # TODO additional mocking. Specifically, mock out the host_guest_report and config...
@@ -109,7 +108,7 @@ class TestSubscriptionManager(TestManager):
         manager.hypervisorCheckIn(self.host_guest_report)
         manager.connection.hypervisorCheckIn.assert_called_with(
             d['owner'],
-            d['env'],
+            '',
             dict(
                 (
                     host.hypervisorId,

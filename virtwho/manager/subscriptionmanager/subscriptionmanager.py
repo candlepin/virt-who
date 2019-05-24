@@ -87,52 +87,6 @@ class SubscriptionManager(Manager):
         self.cert_file = os.path.join(consumer_cert_dir, cert)
         self.key_file = os.path.join(consumer_cert_dir, key)
 
-    def _check_owner_lib(self, kwargs, config):
-        """
-        Try to check values of env and owner. These values has to be
-        equal to values obtained from Satellite server.
-        :param kwargs: dictionary possibly containing valid username and
-                       password used for connection to rhsm
-        :param config: Configuration of virt-who
-        :return: None
-        """
-
-        if config is None:
-            return
-
-        # Check 'owner' and 'env' only in situation, when these values
-        # are set and rhsm_username and rhsm_password are not set
-        if 'username' not in kwargs and 'password' not in kwargs and \
-                'owner' in config.keys() and 'env' in config.keys():
-            pass
-        else:
-            return
-
-        uuid = self.uuid()
-        consumer = self.connection.getConsumer(uuid)
-
-        if 'environment' in consumer:
-            environment = consumer['environment']
-        else:
-            return
-
-        if environment:
-            environment_name = environment['name']
-            owner = self.connection.getOwner(uuid)
-            owner_id = owner['key']
-
-            if config['owner'] != owner_id:
-                raise ManagerError(
-                    "Cannot send data to: %s, because owner from configuration: %s is different" %
-                    (owner_id, config['owner'])
-                )
-
-            if config['env'] != environment_name:
-                raise ManagerError(
-                    "Cannot send data to: %s, because Satellite env: %s differs from configuration: %s" %
-                    (owner_id, environment_name, config['env'])
-                )
-
     def _connect(self, config=None):
         """ Connect to the subscription-manager. """
 
@@ -213,8 +167,6 @@ class SubscriptionManager(Manager):
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
 
-        self._check_owner_lib(kwargs, config)
-
         return self.connection
 
     def sendVirtGuests(self, report, options=None):
@@ -267,7 +219,7 @@ class SubscriptionManager(Manager):
             try:
                 result = self.connection.hypervisorCheckIn(
                     report.config['owner'],
-                    report.config['env'],
+                    '',
                     serialized_mapping,
                     options=named_options)  # pylint:disable=unexpected-keyword-arg
             except TypeError:
@@ -276,7 +228,7 @@ class SubscriptionManager(Manager):
                 self.logger.debug(
                     "hypervisorCheckIn method in python-rhsm doesn't understand options parameter, ignoring"
                 )
-                result = self.connection.hypervisorCheckIn(report.config['owner'], report.config['env'], serialized_mapping)
+                result = self.connection.hypervisorCheckIn(report.config['owner'], '', serialized_mapping)
         except BadStatusLine:
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.RateLimitExceededException as e:

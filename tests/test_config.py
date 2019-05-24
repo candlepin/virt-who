@@ -43,7 +43,6 @@ default_config_values = {
     "username": "admin",
     "password": "password",
     "owner": "root",
-    "env": "staging",
     "rhsm_username": "admin",
     "rhsm_password": "password",
     "rhsm_hostname": "host",
@@ -98,7 +97,6 @@ class TestReadingConfigs(TestBase):
     }
     dest_options = {
         "owner": "root",
-        "env": "staging",
         "rhsm_username": "rhsm_admin",
         "rhsm_password": "rhsm_password",
         "rhsm_hostname": "host",
@@ -152,7 +150,6 @@ class TestReadingConfigs(TestBase):
         self.assertEqual(config['username'], "admin")
         self.assertEqual(config['password'], "password")
         self.assertEqual(config['owner'], "root")
-        self.assertEqual(config['env'], "staging")
         self.assertEqual(config['rhsm_username'], 'admin')
         self.assertEqual(config['rhsm_password'], 'password')
         self.assertEqual(config['rhsm_hostname'], 'host')
@@ -221,7 +218,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 """)
         os.chmod(filename, 0)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -243,7 +239,6 @@ server=1.2.3.4
 username=admin
 encrypted_password=%s
 owner=root
-env=staging
 """ % crypted)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -266,7 +261,6 @@ password=bacon
 rhsm_username=admin
 rhsm_encrypted_password=%s
 owner=root
-env=staging
 """ % crypted)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -288,7 +282,6 @@ username=admin
 password=bacon
 rhsm_encrypted_proxy_password=%s
 owner=root
-env=staging
 """ % crypted)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -516,7 +509,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -530,7 +522,6 @@ env=staging
         self.assertEqual(config["username"], "admin")
         self.assertEqual(config["password"], "password")
         self.assertEqual(config["owner"], "root")
-        self.assertEqual(config["env"], "staging")
 
     def testEsxDisableSimplifiedVim(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -541,32 +532,12 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 simplified_vim=false
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         _, config = manager.configs[0]
         self.assertFalse(config['simplified_vim'])
-
-    def testMissingEnvOption(self):
-        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
-            f.write("""
-[test1]
-type=esx
-server=1.2.3.4
-username=admin
-password=password
-owner=root
-rhsm_hostname=abc
-""")
-        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
-        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
-        # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        # There should be no configs parsed successfully, therefore the list of configs should
-        # be empty
-        self.assertEqual(len(config_manager.configs), 0)
 
     def testMissingOwnerOption(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -576,7 +547,6 @@ type=esx
 server=1.2.3.4
 username=admin
 password=password
-env=env
 rhsm_hostname=abc
 """)
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
@@ -597,7 +567,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=owner
-env=env
 rhsm_hostname=abc
 
 [invalid_missing_owner]
@@ -605,7 +574,6 @@ type=esx
 server=1.2.3.4
 username=admin
 password=password
-env=env
 rhsm_hostname=abc
 """ % {'valid_config_name': valid_config_name})
         config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -622,7 +590,6 @@ server=5.5.5.5
 username=admin1
 password=password1
 owner=owner1
-env=env1
 rhsm_hostname=abc1
 """)
         cli_dict = {'configs': [cli_config_file_path]}
@@ -634,7 +601,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=owner
-env=env
 rhsm_hostname=abc
 """)
         config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
@@ -646,7 +612,6 @@ rhsm_hostname=abc
         self.assertEqual(config["username"], "admin1")
         self.assertEqual(config["password"], "password1")
         self.assertEqual(config["owner"], "owner1")
-        self.assertEqual(config["env"], "env1")
         self.assertEqual(config["rhsm_hostname"], "abc1")
 
     def testCLIConfigOverridesGeneralConfigFile(self):
@@ -658,7 +623,6 @@ server=5.5.5.5
 username=admin1
 password=password1
 owner=owner1
-env=env1
 rhsm_hostname=abc1
 """)
         cli_dict = {'configs': [cli_config_file_path]}
@@ -673,7 +637,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=owner
-env=env
 rhsm_hostname=abc
 """)
         config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
@@ -685,7 +648,6 @@ rhsm_hostname=abc
         self.assertEqual(config["username"], "admin1")
         self.assertEqual(config["password"], "password1")
         self.assertEqual(config["owner"], "owner1")
-        self.assertEqual(config["env"], "env1")
         self.assertEqual(config["rhsm_hostname"], "abc1")
 
     def testCLIConfigOverridesGeneralConfigFileButStillReadsItsGlobalAndDefaultsSections(self):
@@ -697,7 +659,6 @@ server=5.5.5.5
 username=admin1
 password=password1
 owner=owner1
-env=env1
 rhsm_hostname=abc1
 """)
         cli_dict = {'configs': [cli_config_file_path]}
@@ -719,7 +680,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=owner
-env=env
 rhsm_hostname=abc
 """)
         config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
@@ -731,7 +691,6 @@ rhsm_hostname=abc
         self.assertEqual(config["username"], "admin1")
         self.assertEqual(config["password"], "password1")
         self.assertEqual(config["owner"], "owner1")
-        self.assertEqual(config["env"], "env1")
         self.assertEqual(config["rhsm_hostname"], "abc1")
 
         # Also, check that the default section values from the VW_GENERAL_CONF_PATH file are still read
@@ -751,7 +710,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertTrue("test1" not in [name for (name, config) in manager.configs],
@@ -766,7 +724,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 filter_host_uuids=12345
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -782,7 +739,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 filter_hosts=12345
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -798,7 +754,6 @@ server="http://1.2.3.4"
 username='admin'
 password=p"asswor'd
 owner=" root "
-env='"staging"'
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -809,7 +764,6 @@ env='"staging"'
         self.assertEqual(config["username"], "admin")
         self.assertEqual(config["password"], "p\"asswor'd")
         self.assertEqual(config["owner"], " root ")
-        self.assertEqual(config["env"], '"staging"')
 
     def testUnicode(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -820,7 +774,6 @@ server=http://žluťoučký servřík
 username=username
 password=password
 owner=здравствуйте
-env=العَرَبِيَّة
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
@@ -832,7 +785,6 @@ env=العَرَبِيَّة
         self.assertEqual(config["username"], "username")
         self.assertEqual(config["password"], "password")
         self.assertEqual(config["owner"], "здравствуйте")
-        self.assertEqual(config["env"], 'العَرَبِيَّة')
 
     def testConfigFileExtensions(self):
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
@@ -843,7 +795,6 @@ server=1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
 rhsm_username=rhsm_admin1
 rhsm_password=rhsm_password1
 rhsm_hostname=host1
@@ -863,7 +814,6 @@ server=1.2.3.5
 username=admin
 password=password
 owner=root
-env=staging
 rhsm_username=rhsm_admin2
 rhsm_password=rhsm_password2
 rhsm_hostname=host2
@@ -889,7 +839,6 @@ rhsm_insecure=2
         self.assertEqual(config["username"], "admin")
         self.assertEqual(config["password"], "password")
         self.assertEqual(config["owner"], "root")
-        self.assertEqual(config["env"], "staging")
         self.assertEqual(config["rhsm_username"], 'rhsm_admin1')
         self.assertEqual(config["rhsm_password"], 'rhsm_password1')
         self.assertEqual(config["rhsm_hostname"], 'host1')
@@ -915,7 +864,6 @@ server=http://1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
     filter_hosts=abc.efg.com
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -924,7 +872,6 @@ env=staging
         self.assertEqual(config.name, "test1")
 
         self.assertEqual(config["server"], 'http://1.2.3.4\nvalue')
-        self.assertEqual(config["env"], 'staging\nfilter_hosts=abc.efg.com')
 
     @patch('logging.Logger.warn')
     def testCommentedOutLineContinuationInConfig(self, logger_warn):
@@ -943,7 +890,6 @@ server=http://1.2.3.4
 username=admin
 password=password
 owner=root
-env=staging
     #filter_hosts=abc.efg.com
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
@@ -953,16 +899,15 @@ env=staging
 
         if six.PY2:
             self.assertEqual(config["server"], "http://1.2.3.4\n#value")
-            self.assertEqual(config["env"], 'staging\n#filter_hosts=abc.efg.com')
+            self.assertEqual(config["owner"], 'root\n#filter_hosts=abc.efg.com')
 
             # Check that the warning was logged twice, and it was last called for line number 10 of the conf file:
             self.assertTrue(logger_warn.called)
             self.assertEqual(logger_warn.call_count, 2)
             logger_warn.assert_called_with('A line continuation (line starts with space) that is commented out '
-                                           'was detected in file %s, line number %s.', f.name, 10)
+                                           'was detected in file %s, line number %s.', f.name, 9)
         elif six.PY3:
             self.assertEqual(config["server"], "http://1.2.3.4")
-            self.assertEqual(config["env"], 'staging')
 
             self.assertFalse(logger_warn.called)
             self.assertEqual(logger_warn.call_count, 0)

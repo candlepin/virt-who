@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.2
+Version:        0.25.3
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,21 @@ fi
 
 
 %changelog
+* Fri May 24 2019 William Poteat <wpoteat@redhat.com> 0.25.3-1
+- 1530290: Remove enviroment as an input variable for the hypervisor check in
+  (wpoteat@redhat.com)
+- 1523482: 1519704: Interval value set to empty string will revert to default
+  value (wpoteat@redhat.com)
+- 1522384: Log at debug level when config uses default entries
+  (wpoteat@redhat.com)
+- 1708524: update man page with kubevirt backend information
+  (piotr.kliczewski@gmail.com)
+- 1708534: add kubeconfig to template (piotr.kliczewski@gmail.com)
+- 1516209: Configuration should be deemed invalid when server is not specified
+  (wpoteat@redhat.com)
+- 1640967: Add xen type listing in /etc/virt-who.d/template.conf
+  (wpoteat@redhat.com)
+
 * Tue May 14 2019 William Poteat <wpoteat@redhat.com> 0.25.2-1
 - Update to spec for pyyaml package (wpoteat@redhat.com)
 

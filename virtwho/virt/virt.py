@@ -912,6 +912,7 @@ class Virt(IntervalThread):
         import virtwho.virt.hyperv  # flake8: noqa
         import virtwho.virt.fakevirt  # flake8: noqa
         import virtwho.virt.kubevirt  # flake8: noqa
+        import virtwho.virt.ahv       # flake8: noqa
 
         return [subcls for subcls in cls.__subclasses__()]
 

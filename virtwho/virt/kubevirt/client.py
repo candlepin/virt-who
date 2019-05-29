@@ -84,14 +84,16 @@ class KubeClient:
         # In the python 3, the response.data is bytes.
         # we need to decode it to string.
         if PY3:
-            r.data = r.data.decode('utf8')
+            data = r.data.decode('utf8')
+        else:
+            data = r.data
 
         if not 200 <= r.status <= 299:
             raise ApiException(http_resp=r)
 
         # fetch data from response object
         try:
-            data = json.loads(r.data)
+            data = json.loads(data)
         except ValueError:
             data = r.data
 

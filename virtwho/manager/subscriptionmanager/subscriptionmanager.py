@@ -275,6 +275,10 @@ class SubscriptionManager(Manager):
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
 
         return result
+=======
+        connection = self._connect(config)
+        connection.hypervisorHeartbeat(config['owner'], named_options)
+>>>>>>> 8136c24... 1652549: Add heartbeat call to virt-who cycle
 
     def _is_rhsm_server_async(self, report, connection=None):
         """

@@ -107,6 +107,20 @@ class TestSubscriptionManager(TestBase):
         self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
 
     @patch('rhsm.connection.UEPConnection')
+    # def test_hypervisorHeartbeat(self):
+    def test_hypervisorHeartbeat(self, rhsmconnection):
+        owner = 'owner'
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': owner}, 'test', None)
+        # Ensure we try out the new API
+        rhsmconnection.return_value.has_capability.return_value = True
+        self.sm.logger = MagicMock()
+        self.sm.hypervisorHeartbeat(config, options=None)
+        self.sm.connection.hypervisorHeartbeat.assert_called_with(
+            owner,
+            None
+        )
+
+    @patch('rhsm.connection.UEPConnection')
     def test_job_status(self, rhsmconnection):
         rhsmconnection.return_value.has_capability.return_value = True
         config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'owner'}, 'test', None)

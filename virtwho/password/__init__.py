@@ -44,7 +44,6 @@ class UnwritableKeyFile(Exception):
     pass
 
 
-
 class Password(object):
     KEYFILE = '/var/lib/virt-who/key'
     ENCRYPT = 1

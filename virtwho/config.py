@@ -28,7 +28,7 @@ import uuid
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError, ParsingError,\
 DEFAULTSECT
 from virtwho import log, SAT5, SAT6
-from .password import Password
+from .password import Password, InvalidKeyFile
 from binascii import unhexlify
 from . import util
 
@@ -1045,6 +1045,11 @@ class VirtConfigSection(ConfigSection):
                     'warning',
                     "Option \"{option}\" cannot be decrypted, possibly corrupted"
                     .format(option=pass_key)
+                )
+            except InvalidKeyFile as err:
+                result = (
+                    'error',
+                    "Unable to read key file: %s" % str(err)
                 )
         return result
 

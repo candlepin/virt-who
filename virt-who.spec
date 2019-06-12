@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.3
+Version:        0.25.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,15 @@ fi
 
 
 %changelog
+* Wed Jun 12 2019 William Poteat <wpoteat@redhat.com> 0.25.4-1
+- 1718304: Fix issue when instance["BIOSGUID"] returns None
+  (phess@users.noreply.github.com)
+- 1652549: Add heartbeat call to virt-who cycle (wpoteat@redhat.com)
+- 1472727: Log error, when encrypted password is missing; ENT-1344
+  (jhnidek@redhat.com)
+- 1714133: can't set data property (piotr.kliczewski@gmail.com)
+- Add Nutanix AHV support for RHSS + UTs. (amir00018@gmail.com)
+
 * Fri May 24 2019 William Poteat <wpoteat@redhat.com> 0.25.3-1
 - 1530290: Remove enviroment as an input variable for the hypervisor check in
   (wpoteat@redhat.com)

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.3
+Version:        0.25.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -50,9 +50,9 @@ Requires:       libvirt-python
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
 %if %{use_python3}
-Requires:       python3-subscription-manager-rhsm
+Requires:       python3-subscription-manager-rhsm > 1.25.6
 %else
-Requires:       subscription-manager-rhsm
+Requires:       subscription-manager-rhsm > 1.25.6
 %endif
 # python-suds is required for vSphere support
 Requires:       %{python_ver}-suds
@@ -169,6 +169,15 @@ fi
 
 
 %changelog
+* Wed Jun 12 2019 William Poteat <wpoteat@redhat.com> 0.25.4-1
+- 1718304: Fix issue when instance["BIOSGUID"] returns None
+  (phess@users.noreply.github.com)
+- 1652549: Add heartbeat call to virt-who cycle (wpoteat@redhat.com)
+- 1472727: Log error, when encrypted password is missing; ENT-1344
+  (jhnidek@redhat.com)
+- 1714133: can't set data property (piotr.kliczewski@gmail.com)
+- Add Nutanix AHV support for RHSS + UTs. (amir00018@gmail.com)
+
 * Fri May 24 2019 William Poteat <wpoteat@redhat.com> 0.25.3-1
 - 1530290: Remove enviroment as an input variable for the hypervisor check in
   (wpoteat@redhat.com)

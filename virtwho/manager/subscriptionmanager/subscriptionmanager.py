@@ -247,6 +247,17 @@ class SubscriptionManager(Manager):
             report.state = AbstractVirtReport.STATE_FINISHED
         return result
 
+    def hypervisorHeartbeat(self, config, options=None):
+        if options:
+            named_options = NamedOptions()
+            for key, value in options['global'].items():
+                setattr(named_options, key, value)
+        else:
+            named_options = None
+
+        connection = self._connect(config)
+        connection.hypervisorHeartbeat(config['owner'], named_options)
+
     def _is_rhsm_server_async(self, report, connection=None):
         """
         Check if server has capability 'hypervisor_async'.

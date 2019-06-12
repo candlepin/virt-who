@@ -596,6 +596,11 @@ class DestinationThread(IntervalThread):
         @param data_to_send: A dict of source_keys, report
         @type: dict
         """
+
+        if not isinstance(data_to_send, ErrorReport):
+            # Ping all hypervisors for this reporter to update check in time regardless of change
+            self.dest.hypervisorHeartbeat(config=self.config, options=self.options)
+
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')
             return

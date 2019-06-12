@@ -583,7 +583,8 @@ class HyperV(virt.Virt):
         for instance in hypervsoap.Pull(uuid):
             try:
                 uuid = instance["BIOSGUID"]
-            except KeyError:
+                assert uuid is not None
+            except (KeyError, AssertionError):
                 self.logger.warning("Guest without BIOSGUID found, ignoring")
                 continue
 

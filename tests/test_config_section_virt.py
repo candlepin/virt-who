@@ -156,6 +156,24 @@ class TestVirtConfigSection(TestBase):
         self.assertEqual(password, decrypted_password)
         self.unmock_pwd_file()
 
+    def test_validate_encrypted_password_missing_key(self):
+        """
+        Test of validation of encrypted password
+        """
+        self.init_virt_config_section()
+        self.mock_pwd_file()
+        # Safe current password
+        password = self.virt_config['password']
+        # Delete unencrypted password first
+        del self.virt_config['password']
+        # Set up encrypted password
+        self.virt_config['encrypted_password'] = hexlify(Password.encrypt(password))
+        # Simulate deleting of key file
+        Password.KEYFILE = '/path/to/file/that/does/not/exists'
+        # Do own testing here
+        result = self.virt_config._validate_encrypted_password('encrypted_password')
+        self.assertIsNotNone(result)
+
     def test_validate_missing_encrypted_password(self):
         """
         Test of validation of missing encrypted password

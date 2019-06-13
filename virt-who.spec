@@ -1,8 +1,4 @@
 %define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
-%if !%{use_systemd}
-%global __python2 %{__python}
-%global python2_sitelib %{python_sitelib}
-%endif
 
 %define use_python3 0%{?fedora} || (0%{?rhel} && 0%{?rhel} > 7)
 %if %{use_python3}
@@ -10,6 +6,10 @@
 %global python_exec %{__python3}
 %global python_sitelib %{python3_sitelib}
 %else
+%if !%{use_systemd}
+%global __python2 %{__python}
+%global python2_sitelib %{python_sitelib}
+%endif
 %global python_ver python
 %global python_exec %{__python2}
 %global python_sitelib %{python2_sitelib}

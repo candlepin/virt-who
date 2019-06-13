@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.5
+Version:        0.25.6
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Thu Jun 13 2019 William Poteat <wpoteat@redhat.com> 0.25.6-1
+- Update for build system (wpoteat@redhat.com)
+
 * Thu Jun 13 2019 William Poteat <wpoteat@redhat.com> 0.25.5-1
 - Prepare downstream release (wpoteat@redhat.com)
 - Patch to exclude AHV from RPM (wpoteat@redhat.com)

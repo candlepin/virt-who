@@ -176,7 +176,6 @@ fi
 - 1472727: Log error, when encrypted password is missing; ENT-1344
   (jhnidek@redhat.com)
 - 1714133: can't set data property (piotr.kliczewski@gmail.com)
-- Add Nutanix AHV support for RHSS + UTs. (amir00018@gmail.com)
 
 * Fri May 24 2019 William Poteat <wpoteat@redhat.com> 0.25.3-1
 - 1530290: Remove enviroment as an input variable for the hypervisor check in

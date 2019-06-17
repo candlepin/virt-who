@@ -481,9 +481,9 @@ class HyperVSoap(object):
         si_namespace = self.generator.si_namespace % {'ns': namespace}
         for node in responses[0].getchildren():
             if 'SummaryInformation' in node.tag:
-                elementName = node.find("{%(si)s}ElementName" % {'si': si_namespace}).text
+                name = node.find("{%(si)s}Name" % {'si': si_namespace}).text
                 enabledState = node.find("{%(si)s}EnabledState" % {'si': si_namespace}).text
-                info[elementName] = ENABLED_STATE_TO_GUEST_STATE.get(enabledState, virt.Guest.STATE_UNKNOWN)
+                info[name] = ENABLED_STATE_TO_GUEST_STATE.get(enabledState, virt.Guest.STATE_UNKNOWN)
         return info
 
 
@@ -558,7 +558,7 @@ class HyperV(virt.Virt):
             try:
                 # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
                 uuid = hypervsoap.Enumerate(
-                    "select BIOSGUID, ElementName "
+                    "select BIOSGUID, VirtualSystemIdentifier "
                     "from Msvm_VirtualSystemSettingData "
                     "where SettingType = 3",
                     "root/virtualization")
@@ -571,7 +571,7 @@ class HyperV(virt.Virt):
             # Filter out Planned VMs and snapshots, see
             # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
             uuid = hypervsoap.Enumerate(
-                "select BIOSGUID, ElementName "
+                "select BIOSGUID, VirtualSystemIdentifier "
                 "from Msvm_VirtualSystemSettingData "
                 "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
                 "root/virtualization/v2")
@@ -589,15 +589,15 @@ class HyperV(virt.Virt):
                 continue
 
             try:
-                elementName = instance["ElementName"]
+                system_Id = instance["VirtualSystemIdentifier"]
             except KeyError:
-                self.logger.warning("Guest %s is missing ElementName", uuid)
+                self.logger.warning("Guest %s is missing VirtualSystemIdentifier", uuid)
                 continue
 
             try:
-                state = guest_states[elementName]
+                state = guest_states[system_Id]
             except KeyError:
-                self.logger.warning("Unknown state for guest %s", elementName)
+                self.logger.warning("Unknown state for guest %s", uuid)
                 state = virt.Guest.STATE_UNKNOWN
 
             guests.append(virt.Guest(HyperV.decodeWinUUID(uuid), self.CONFIG_TYPE, state))

@@ -90,7 +90,7 @@ with open('virtwho/version.py') as ver_file:
 
 setup(
     name='virt-who',
-    version='0.24.6',
+    version='0.24.7',
     description='virt-who is agent for reporting virtual guest IDs to subscription manager.',
     # long_description=open('README.md').read(),
     author='Radek Novacek',

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.6
+Version:        0.24.7
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,12 @@ fi
 
 
 %changelog
+* Mon Jun 17 2019 William Poteat <wpoteat@redhat.com> 0.24.7-1
+- 1718304: Fix issue when instance["BIOSGUID"] returns None
+  (phess@users.noreply.github.com)
+- 1472727: Log error, when encrypted password is missing; ENT-1344
+  (jhnidek@redhat.com)
+
 * Fri May 24 2019 William Poteat <wpoteat@redhat.com> 0.24.6-1
 - 1530290: Remove enviroment as an input variable for the hypervisor check in
   (wpoteat@redhat.com)

@@ -25,8 +25,7 @@ import six
 import os
 import uuid
 
-from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError, ParsingError,\
-DEFAULTSECT
+from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log, SAT5, SAT6
 from .password import Password, InvalidKeyFile
 from binascii import unhexlify

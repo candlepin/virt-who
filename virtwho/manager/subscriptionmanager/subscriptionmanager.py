@@ -247,6 +247,35 @@ class SubscriptionManager(Manager):
             report.state = AbstractVirtReport.STATE_FINISHED
         return result
 
+    def hypervisorHeartbeat(self, config, options=None):
+        """
+        Send heart beat to candlepin server
+        :param config: reference on configuration
+        :param options: other options
+        """
+        if options:
+            named_options = NamedOptions()
+            for key, value in options['global'].items():
+                setattr(named_options, key, value)
+        else:
+            named_options = None
+
+        try:
+            connection = self._connect(config)
+            result = connection.hypervisorHeartbeat(config['owner'], named_options)
+        except BadStatusLine:
+            raise ManagerError("Communication with subscription manager interrupted")
+        except rhsm_connection.RateLimitExceededException as e:
+            raise ManagerThrottleError(e.retry_after)
+        except rhsm_connection.GoneException:
+            raise ManagerError("Communication with subscription manager failed: consumer no longer exists")
+        except rhsm_connection.ConnectionException as e:
+            if hasattr(e, 'code'):
+                raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
+            raise ManagerError("Communication with subscription manager failed: %s" % str(e))
+
+        return result
+
     def _is_rhsm_server_async(self, report, connection=None):
         """
         Check if server has capability 'hypervisor_async'.

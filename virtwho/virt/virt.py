@@ -598,8 +598,15 @@ class DestinationThread(IntervalThread):
         """
 
         if not isinstance(data_to_send, ErrorReport):
-            # Ping all hypervisors for this reporter to update check in time regardless of change
-            self.dest.hypervisorHeartbeat(config=self.config, options=self.options)
+            if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
+                # Ping all hypervisors for this reporter to update check in time regardless of change
+                try:
+                    self.dest.hypervisorHeartbeat(config=self.config, options=self.options)
+                except ManagerThrottleError as err:
+                    self.logger.debug("429 encountered while heartbeat: %s" % str(err))
+                    # TODO: when we are sending heartbeats too fast, then we should wait err.retry_after seconds
+                except ManagerError as err:
+                    self.logger.exception("Error during heartbeat: %s" % str(err))
 
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')

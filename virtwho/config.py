@@ -383,6 +383,8 @@ class DestinationToSourceMapper(object):
 def _all_parser_sections(parser):
     all_sections = {}
     for section in parser.sections():
+        if len(section.strip()) == 0:
+            continue
         all_sections[section] = {}
         for option in parser.options(section):
             all_sections[section][option] = parser.get(section, option)
@@ -1343,7 +1345,7 @@ class EffectiveConfig(collections.MutableMapping):
                 if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME]]
 
 
-def _check_effective_config_validity(effective_config):
+def _check_effective_config_validity(effective_config, config_files_not_complete):
     validation_errors = effective_config.validate()
     valid_virt_sections = {}
     invalid_virt_sections = {}
@@ -1370,7 +1372,7 @@ def _check_effective_config_validity(effective_config):
     # fallback to using libvirt as default virt backend
     # only if we did not have a non_default env/cmdline config
     if not has_non_default_env_cli and len(effective_config.virt_sections()) == 0 and len(
-            invalid_virt_sections) == 0:
+            invalid_virt_sections) == 0 and not config_files_not_complete:
         effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
                 DEFAULTS[VW_ENV_CLI_SECTION_NAME],
                 VW_ENV_CLI_SECTION_NAME,
@@ -1462,6 +1464,7 @@ def init_config(env_options, cli_options, config_dir=None):
     all_sections_to_add = {}
 
     # read the files provided to the configs var if defined
+    has_files_not_sections = False
     for file_name in effective_config[VW_GLOBAL]['configs']:
         logger.info("Using configuration passed in by -c/--configs; ignoring configuration files in '%s'", config_dir)
         all_sections_to_add.update(parse_file(filename=file_name))
@@ -1471,6 +1474,7 @@ def init_config(env_options, cli_options, config_dir=None):
         all_sections_to_add.update(vw_conf)
         # also read all sections in conf files in the drop dir
         all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+        has_files_not_sections = len(all_sections_to_add) == 0
 
     # We should ignore any additional sections defined as VW_GLOBAL
     # or VW_VIRT_DEFAULTS_SECTION_NAME as we've already parsed those
@@ -1490,7 +1494,11 @@ def init_config(env_options, cli_options, config_dir=None):
             continue
         effective_config[section] = new_section
 
-    effective_config, errors = _check_effective_config_validity(effective_config)
+    # if global is all we have here and we did have .conf files
+    config_files_not_complete = len(effective_config) == 1 and 'global' in effective_config and has_files_not_sections
+    if config_files_not_complete:
+        validation_errors.append(('error', 'The configuration files do not have any valid section headers'))
+    effective_config, errors = _check_effective_config_validity(effective_config, config_files_not_complete)
     validation_errors.extend(errors)
 
     # Log pending errors

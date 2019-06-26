@@ -183,12 +183,8 @@ class TestReadingConfigs(TestBase):
 Malformed configuration file
 """)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        # If there are only invalid configurations specified, and nothing has been specified via
-        # the command line or ENV then we should use the default
-        # TODO Remove the default hard-coded behaviour, and allow virt-who to output a
-        # configuration that will cause it to behave equivalently
-        self.assertEqual(len(manager.configs), 1)
-        self.assertEqual(manager.configs[0][0], VW_ENV_CLI_SECTION_NAME)
+        # If there is a config file but it is bad, then no config is returned
+        self.assertEqual(len(manager.configs), 0)
 
     def test_invalid_type(self):
         filename = os.path.join(self.config_dir, "test.conf")
@@ -221,8 +217,8 @@ owner=root
 """)
         os.chmod(filename, 0)
         manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
-        # There should be at least one 'env/cmdline' section
-        self.assertEqual(len(manager.configs), 1)
+        # If there is a config file but it is bad, then no config is returned
+        self.assertEqual(len(manager.configs), 0)
 
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedPassword(self, password):
@@ -543,6 +539,59 @@ simplified_vim=false
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write("""
 [test1]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+rhsm_hostname=abc
+""")
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
+        # include the invalid one
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
+
+        def testEmptySectionName(self):
+            with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+                f.write("""
+[]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+rhsm_hostname=abc
+""")
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
+        # include the invalid one
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
+
+    def testWhitespaceSectionName(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
+[   ]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+rhsm_hostname=abc
+""")
+        # Instantiating the DestinationToSourceMapper with an invalid config should not fail
+        # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
+        # include the invalid one
+        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        # There should be no configs parsed successfully, therefore the list of configs should
+        # be empty
+        self.assertEqual(len(config_manager.configs), 0)
+
+    def testMissingSectionName(self):
+        with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
+            f.write("""
 type=esx
 server=1.2.3.4
 username=admin

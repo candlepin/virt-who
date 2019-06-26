@@ -45,7 +45,7 @@ class HyperVMock(object):
         elif 'uuid:00000000-0000-0000-0000-000000000005' in data:
             return HyperVMock.pull(0, {
                 'BIOSGUID': '{78563412-AB90-EFCD-1234-567890ABCDEF}',
-                'ElementName': '',
+                'VirtualSystemIdentifier': '',
             })
         elif 'GetSummaryInformation_INPUT' in data:
             return HyperVMock.summary_information()

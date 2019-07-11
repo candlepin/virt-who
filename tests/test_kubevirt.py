@@ -122,6 +122,7 @@ class TestKubevirt(TestBase):
                 facts={
                     Hypervisor.CPU_SOCKET_FACT: '2',
                     Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
                     Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
                 }
             )
@@ -155,6 +156,7 @@ class TestKubevirt(TestBase):
                 facts={
                     Hypervisor.CPU_SOCKET_FACT: '2',
                     Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
                     Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
                 }
             )

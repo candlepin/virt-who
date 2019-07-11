@@ -99,6 +99,8 @@ class Kubevirt(virt.Virt):
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: status['allocatable']["cpu"],
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                # this should be hardware uniqe identifier but k8s api gives us only machineID
+                virt.Hypervisor.SYSTEM_UUID_FACT: status['nodeInfo']['machineID'],
                 virt.Hypervisor.HYPERVISOR_VERSION_FACT: version
             }
             hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=name, facts=facts)

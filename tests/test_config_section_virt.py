@@ -198,9 +198,12 @@ class TestVirtConfigSection(TestBase):
         self.virt_config['encrypted_password'] = hexlify(corrupted_encrypted_pwd)
         # Do own testing here
         result = self.virt_config._validate_encrypted_password('encrypted_password')
-        self.assertIsNone(result)
-        decrypted_password = self.virt_config.get('password')
-        self.assertNotEqual(password, decrypted_password)
+        # It is interesting that decryption of corrupted password is successful sometimes and sometimes not
+        if result is not None:
+            self.assertEqual(result, ('warning', 'Option "encrypted_password" cannot be decrypted, possibly corrupted'))
+        else:
+            decrypted_password = self.virt_config.get('password')
+            self.assertNotEqual(password, decrypted_password)
         self.unmock_pwd_file()
 
     def test_validate_correct_username(self):

@@ -26,6 +26,11 @@ import os
 import uuid
 
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
+try:
+    from six.moves.configparser import DuplicateOptionError
+except ImportError:
+    DuplicateOptionError = None
+
 from virtwho import log, SAT5, SAT6
 from .password import Password, InvalidKeyFile
 from binascii import unhexlify
@@ -382,6 +387,8 @@ class DestinationToSourceMapper(object):
 def _all_parser_sections(parser):
     all_sections = {}
     for section in parser.sections():
+        if len(section.strip()) == 0:
+            continue
         all_sections[section] = {}
         for option in parser.options(section):
             all_sections[section][option] = parser.get(section, option)
@@ -391,7 +398,21 @@ def _all_parser_sections(parser):
 def parse_file(filename):
     # Parse a file into a dict of name: options_dict
     # options_dict is a dict of option_name: value
-    parser = StripQuotesConfigParser()
+
+    # First try to find duplicates, which are not critical, but
+    # it breaks parsing the config file
+    if six.PY3:
+        parser = StripQuotesConfigParser(strict=True)
+        try:
+            parser.read(filename)
+        except DuplicateOptionError as err:
+            logger.warning(str(err))
+        except Exception as err:
+            pass
+        parser = StripQuotesConfigParser(strict=False)
+    else:
+        parser = StripQuotesConfigParser()
+
     sections = {}
 
     try:
@@ -410,6 +431,8 @@ def parse_file(filename):
         # When a configuration section has an Invalid Option, continue
         # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
         logger.warn("Invalid configuration detected: %s", str(e))
+    except DuplicateOptionError as e:
+        logger.warning(str(e))
     except Exception as e:
         logger.error('Config file "%s" skipped because of an error: %s',
                      filename, str(e))
@@ -1328,6 +1351,28 @@ class EffectiveConfig(collections.MutableMapping):
             all_sections.update(parse_file(os.path.join(config_dir, conf)))
         return all_sections
 
+    @staticmethod
+    def has_config_files_in_drop_dir(config_dir=VW_CONF_DIR):
+        """
+        Determine if there are configuration files in the specified directory
+         Ignores template.conf file
+        :return: boolean
+        """
+        try:
+            all_dir_content = set(os.listdir(config_dir))
+            conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
+        except OSError:
+            logger.warn("Configuration directory '%s' doesn't exist or is not accessible",
+                        config_dir)
+            return False
+
+        if not conf_files:
+            return False
+        elif len(conf_files) == 1 and 'template.conf' in conf_files:
+            return False
+        else:
+            return True
+
     def is_default(self, section, option):
         return self._sections[section].is_default(option)
 
@@ -1342,7 +1387,7 @@ class EffectiveConfig(collections.MutableMapping):
                 if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME]]
 
 
-def _check_effective_config_validity(effective_config):
+def _check_effective_config_validity(effective_config, config_files_not_complete):
     validation_errors = effective_config.validate()
     valid_virt_sections = {}
     invalid_virt_sections = {}
@@ -1369,7 +1414,7 @@ def _check_effective_config_validity(effective_config):
     # fallback to using libvirt as default virt backend
     # only if we did not have a non_default env/cmdline config
     if not has_non_default_env_cli and len(effective_config.virt_sections()) == 0 and len(
-            invalid_virt_sections) == 0:
+            invalid_virt_sections) == 0 and not config_files_not_complete:
         effective_config[VW_ENV_CLI_SECTION_NAME] = ConfigSection.from_dict(
                 DEFAULTS[VW_ENV_CLI_SECTION_NAME],
                 VW_ENV_CLI_SECTION_NAME,
@@ -1461,6 +1506,7 @@ def init_config(env_options, cli_options, config_dir=None):
     all_sections_to_add = {}
 
     # read the files provided to the configs var if defined
+    has_files_not_sections = False
     for file_name in effective_config[VW_GLOBAL]['configs']:
         logger.info("Using configuration passed in by -c/--configs; ignoring configuration files in '%s'", config_dir)
         all_sections_to_add.update(parse_file(filename=file_name))
@@ -1470,6 +1516,7 @@ def init_config(env_options, cli_options, config_dir=None):
         all_sections_to_add.update(vw_conf)
         # also read all sections in conf files in the drop dir
         all_sections_to_add.update(effective_config.all_drop_dir_config_sections(config_dir=config_dir))
+        has_files_not_sections = len(all_sections_to_add) == 0 and effective_config.has_config_files_in_drop_dir(config_dir=config_dir)
 
     # We should ignore any additional sections defined as VW_GLOBAL
     # or VW_VIRT_DEFAULTS_SECTION_NAME as we've already parsed those
@@ -1489,7 +1536,11 @@ def init_config(env_options, cli_options, config_dir=None):
             continue
         effective_config[section] = new_section
 
-    effective_config, errors = _check_effective_config_validity(effective_config)
+    # if global is all we have here and we did have .conf files
+    config_files_not_complete = len(effective_config) == 1 and 'global' in effective_config and has_files_not_sections
+    if config_files_not_complete:
+        validation_errors.append(('error', 'The configuration files do not have any valid section headers'))
+    effective_config, errors = _check_effective_config_validity(effective_config, config_files_not_complete)
     validation_errors.extend(errors)
 
     # Log pending errors

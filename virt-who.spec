@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.6
+Version:        0.25.7
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,13 @@ fi
 
 
 %changelog
+* Fri Jul 12 2019 William Poteat <wpoteat@redhat.com> 0.25.7-1
+- 1499679: Check for duplicates in conf file; ENT-249 (jhnidek@redhat.com)
+- 1720154: Provide SYSTEM_UUID_FACT (piotr.kliczewski@gmail.com)
+- 1516120: Handling for incorrect config section headers (wpoteat@redhat.com)
+- 1722560: Make heartbeat more robust (jhnidek@redhat.com)
+- 1416298: Use unique guest attribute for state tracking (wpoteat@redhat.com)
+
 * Thu Jun 13 2019 William Poteat <wpoteat@redhat.com> 0.25.6-1
 - Update for build system (wpoteat@redhat.com)
 

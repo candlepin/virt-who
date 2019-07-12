@@ -220,6 +220,22 @@ owner=root
         # If there is a config file but it is bad, then no config is returned
         self.assertEqual(len(manager.configs), 0)
 
+    def test_config_duplicate_keys(self):
+        filename = os.path.join(self.config_dir, "test.conf")
+        with open(filename, "w") as f:
+            f.write("""
+[test]
+type=esx
+server=1.2.3.4
+username=admin
+password=password
+owner=root
+owner=tester
+""")
+        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        self.assertEqual(len(manager.configs), 1)
+        self.assertEqual(manager.configs[0][1]['owner'], 'tester')
+
     @patch('virtwho.password.Password._read_key_iv')
     def testCryptedPassword(self, password):
         password.return_value = (hexlify(Password._generate_key()), hexlify(Password._generate_key()))

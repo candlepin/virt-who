@@ -26,6 +26,11 @@ import os
 import uuid
 
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
+try:
+    from six.moves.configparser import DuplicateOptionError
+except ImportError:
+    DuplicateOptionError = None
+
 from virtwho import log, SAT5, SAT6
 from .password import Password, InvalidKeyFile
 from binascii import unhexlify
@@ -393,7 +398,21 @@ def _all_parser_sections(parser):
 def parse_file(filename):
     # Parse a file into a dict of name: options_dict
     # options_dict is a dict of option_name: value
-    parser = StripQuotesConfigParser()
+
+    # First try to find duplicates, which are not critical, but
+    # it breaks parsing the config file
+    if six.PY3:
+        parser = StripQuotesConfigParser(strict=True)
+        try:
+            parser.read(filename)
+        except DuplicateOptionError as err:
+            logger.warning(str(err))
+        except Exception as err:
+            pass
+        parser = StripQuotesConfigParser(strict=False)
+    else:
+        parser = StripQuotesConfigParser()
+
     sections = {}
 
     try:
@@ -412,6 +431,8 @@ def parse_file(filename):
         # When a configuration section has an Invalid Option, continue
         # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
         logger.warn("Invalid configuration detected: %s", str(e))
+    except DuplicateOptionError as e:
+        logger.warning(str(e))
     except Exception as e:
         logger.error('Config file "%s" skipped because of an error: %s',
                      filename, str(e))

@@ -277,20 +277,12 @@ def read_vm_backend_env_variables(env_vars):
 
     if env_vars.get('virt_type') in VM_DISPATCHER.keys():
         virt_type = env_vars['virt_type']
-        try:
-            keys = ['owner', 'server', 'username']
-            for key in keys:
-                val = check_env("VIRTWHO_" + virt_type.upper() + "_" + key.upper(),
-                                env_vars.get(key),
-                                required=VM_DISPATCHER[virt_type][key])
-                if val:
-                    env_vars[key] = val
-        except OptionError as err:
-            errors.append(("error", "Error: reading environment variables for virt type: %s: %s" % (
-                env_vars.get('virt_type'), err)))
-        else:
-            if len(env_vars.get('password', '')) == 0:
-                env_vars['password'] = os.getenv("VIRTWHO_" + virt_type.upper() + "_PASSWORD", "")
+
+        keys = ['owner', 'server', 'username','password']
+        for key in keys:
+            if len(env_vars.get(key, '')) == 0:
+                env_vars[key] = os.getenv("VIRTWHO_" + virt_type.upper() + "_" + key.upper(), "")
+
     old_dict = dict(**env_vars)
     # Remove empty values from env_vars
     for key, value in old_dict.items():

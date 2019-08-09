@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.24.7
+Version:        0.26.0
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,16 @@ fi
 
 
 %changelog
+* Thu Aug 08 2019 William Poteat <wpoteat@redhat.com> 0.26.0-1
+- 1530254: Update checking on environment variables (wpoteat@redhat.com)
+- 1714456: Update description of 'print_' config option (wpoteat@redhat.com)
+- 1720051: Restore the entries marked as deprecated (wpoteat@redhat.com)
+- 1652549: Add heartbeat call to virt-who cycle (wpoteat@redhat.com)
+- 1720154: Provide SYSTEM_UUID_FACT (piotr.kliczewski@gmail.com)
+- 1516120: Handling for incorrect config section headers (wpoteat@redhat.com)
+- 1722560: Make heartbeat more robust (jhnidek@redhat.com)
+- 1416298: Use unique guest attribute for state tracking (wpoteat@redhat.com)
+
 * Mon Jun 17 2019 William Poteat <wpoteat@redhat.com> 0.24.7-1
 - 1718304: Fix issue when instance["BIOSGUID"] returns None
   (phess@users.noreply.github.com)

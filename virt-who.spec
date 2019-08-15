@@ -49,9 +49,9 @@ Requires:       libvirt-python
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
 %if %{use_python3}
-Requires:       python3-subscription-manager-rhsm > 1.25.6
+Requires:       python3-subscription-manager-rhsm >= 1.24.14
 %else
-Requires:       subscription-manager-rhsm > 1.25.6
+Requires:       subscription-manager-rhsm >= 1.24.14
 %endif
 # python-suds is required for vSphere support
 Requires:       %{python_ver}-suds

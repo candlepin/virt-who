@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.26.0
+Version:        0.26.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,10 @@ fi
 
 
 %changelog
+* Thu Aug 15 2019 William Poteat <wpoteat@redhat.com> 0.26.1-1
+- 1447633: Update spec file to match RHEL 7.8 Subscription Manager
+  (wpoteat@redhat.com)
+
 * Thu Aug 08 2019 William Poteat <wpoteat@redhat.com> 0.26.0-1
 - 1530254: Update checking on environment variables (wpoteat@redhat.com)
 - 1714456: Update description of 'print_' config option (wpoteat@redhat.com)

@@ -400,6 +400,7 @@ class TestAhv(TestBase):
         self.ahv = Virt.from_config(self.logger, config, Datastore(),
                                     interval=DefaultInterval)
 
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface._progressbar')
     def run_once(self, queue=None):
         """Run AHV in oneshot mode."""
         self.ahv._oneshot = True
@@ -475,52 +476,54 @@ class TestAhv(TestBase):
         mock_post.return_value.status_code = 409
         self.assertRaises(VirtError, self.run_once)
 
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
     @patch.object(Session, 'get')
-    def test_no_retry_http_erros_PE(self, mock_get):
+    def test_no_retry_http_erros_PE(self, mock_get, mock_get_vm):
         mock_get.return_value.ok = False
         mock_get.return_value.status_code = 400
         mock_get.return_value.text = 'Bad Request'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_get.return_value.status_code = 404
         mock_get.return_value.text = 'Not Found Error'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_get.return_value.status_code = 500
         mock_get.return_value.text = 'Internal Server Error'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_get.return_value.status_code = 502
         mock_get.return_value.tex = 'Bad Gateway'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_get.return_value.status_code = 503
         mock_get.return_value.text = 'Service Unavailable '
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
     @patch.object(Session, 'post')
-    def test_no_retry_http_erros_PC(self, mock_post):
+    def test_no_retry_http_erros_PC(self, mock_post, mock_get_vm):
         self.setUp(is_pc=True)
         mock_post.return_value.ok = False
         mock_post.return_value.status_code = 400
         mock_post.return_value.text = 'Bad Request'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_post.return_value.status_code = 404
         mock_post.return_value.text = 'Not Found Error'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_post.return_value.status_code = 500
         mock_post.return_value.text = 'Internal Server Error'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_post.return_value.status_code = 502
         mock_post.return_value.tex = 'Bad Gateway'
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
         mock_post.return_value.status_code = 503
         mock_post.return_value.text = 'Service Unavailable '
-        self.assertRaises(VirtError, self.run_once)
+        self.assertEqual(mock_get_vm.return_value, None)
 
     @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.build_host_to_uvm_map')
     def test_getHostGuestMapping(self, host_to_uvm_map):
@@ -560,3 +563,4 @@ class TestAhv(TestBase):
         for index in range(0, len(result)):
           self.assertEqual(expected_result[index].toDict(),
                            result[index].toDict())
+

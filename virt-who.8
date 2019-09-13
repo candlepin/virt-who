@@ -61,7 +61,7 @@ Here is a list of ports that need to be open for different hypervisors:
     RHEV-M: 443/tcp or 8443/tcp (depending on version)
     XenServer: 443/tcp
     libvirt: depending on transport type, default (for remote connections) is qemu over ssh on port 22
-    local libvirt and vdsm use local connections and don't need open ports
+    local libvirt uses a local connection and doesn't need an open port
     kubevirt: 8443/tcp
 
 virt-who also needs to have access to Subscription Asset Manager, Satellite 5, or Satellite 6. Default port is 443/tcp. All the ports might be changed by system administrators.

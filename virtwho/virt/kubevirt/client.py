@@ -24,8 +24,11 @@ import ssl
 import urllib3
 
 from six import PY3
+from urllib3.util.timeout import Timeout
 
 from virtwho.virt.kubevirt import config
+
+_TIMEOUT = 60
 
 
 class KubeClient:
@@ -73,10 +76,12 @@ class KubeClient:
         url = self.host + path
 
         try:
+            timeout = Timeout(connect=_TIMEOUT, read=_TIMEOUT)
             r = self._pool_manager.request("GET", url,
                                           fields=None,
                                           preload_content=True,
-                                          headers=header_params)
+                                          headers=header_params,
+                                          timeout=timeout)
         except urllib3.exceptions.SSLError as e:
             msg = "{0}\n{1}".format(type(e).__name__, str(e))
             raise ApiException(status=0, reason=msg)

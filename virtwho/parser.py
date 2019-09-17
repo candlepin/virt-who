@@ -43,7 +43,6 @@ SAT5_VM_DISPATCHER = {
     'xen': {'owner': False, 'server': True, 'username': True},
     'rhevm': {'owner': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'server': True, 'username': True},
-    'vdsm': {'owner': False, 'server': False, 'username': False},
     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True},
     'ahv' : {'owner': False, 'server': False, 'username': False},
 }
@@ -54,7 +53,6 @@ SAT6_VM_DISPATCHER = {
     'xen': {'owner': True, 'server': True, 'username': True},
     'rhevm': {'owner': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'server': True, 'username': True},
-    'vdsm': {'owner': False, 'server': False, 'username': False},
     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True},
     'ahv' : {'owner': False, 'server': False, 'username': False},
 }
@@ -74,7 +72,7 @@ class StoreGroupArgument(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         """
         When the argument from group is used, then this argument has to match
-        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
+        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
         """
         options = vars(namespace)
         virt_type = options['virt_type']
@@ -204,7 +202,6 @@ def read_config_env_variables():
         "VIRTWHO_SATELLITE5": ("sm_type", store_const, SAT5),
         "VIRTWHO_SATELLITE": ("sm_type", store_const, SAT5),
         "VIRTWHO_LIBVIRT": ("virt_type", store_const, "libvirt"),
-        "VIRTWHO_VDSM": ("virt_type", store_const, "vdsm"),
         "VIRTWHO_ESX": ("virt_type", store_const, "esx"),
         "VIRTWHO_XEN": ("virt_type", store_const, "xen"),
         "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
@@ -309,7 +306,7 @@ def parse_cli_arguments():
         parser = ArgumentParser(
             usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version] "
                   "[-m] [-l LOG_DIR] [-f LOG_FILE] [-r REPORTER_ID] [--sam|--satellite5|--satellite6] "
-                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
+                  "[--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
             description="Agent for reporting virtual guest IDs to subscription manager",
             epilog="virt-who also reads environment variables. They have the same name as "
                    "command line arguments but uppercased, with underscore instead of dash "
@@ -358,8 +355,6 @@ def parse_cli_arguments():
         )
         virt_group.add_argument("--libvirt", action=StoreVirtType, dest="virt_type", const="libvirt",
                                 default=None, help="[Deprecated] Use libvirt to list virtual guests")
-        virt_group.add_argument("--vdsm", action=StoreVirtType, dest="virt_type", const="vdsm",
-                                help="[Deprecated] Use vdsm to list virtual guests")
         virt_group.add_argument("--esx", action=StoreVirtType, dest="virt_type", const="esx",
                                 help="[Deprecated] Register ESX machines using vCenter")
         virt_group.add_argument("--xen", action=StoreVirtType, dest="virt_type", const="xen",

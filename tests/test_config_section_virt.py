@@ -263,7 +263,7 @@ class TestVirtConfigSection(TestBase):
         """
         self.init_virt_config_section()
         # These backends do not require server option in configuration
-        virt_backends_not_requiring_server = ('libvirt', 'vdsm', 'fake')
+        virt_backends_not_requiring_server = ('libvirt', 'fake')
         # Delete server option
         del self.virt_config['server']
         # Test all of vm backend types

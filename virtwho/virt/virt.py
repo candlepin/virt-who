@@ -920,7 +920,6 @@ class Virt(IntervalThread):
         import virtwho.virt.esx  # flake8: noqa
         import virtwho.virt.xen  # flake8: noqa
         import virtwho.virt.rhevm  # flake8: noqa
-        import virtwho.virt.vdsm  # flake8: noqa
         import virtwho.virt.hyperv  # flake8: noqa
         import virtwho.virt.fakevirt  # flake8: noqa
         import virtwho.virt.kubevirt  # flake8: noqa

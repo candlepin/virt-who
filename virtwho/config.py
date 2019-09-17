@@ -49,7 +49,7 @@ logger = log.getLogger(name='config', queue=False)
 _effective_config = None
 
 VW_CONF_DIR = "/etc/virt-who.d/"
-VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv")
+VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv")
 VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
@@ -962,8 +962,6 @@ class VirtConfigSection(ConfigSection):
                 if self['type'] == 'libvirt' and 'server' not in self._values:
                     # Owner is not necessary sam an libvirt virt backend
                     self._required_keys.discard('owner')
-                elif self['type'] == 'vdsm':
-                    self._required_keys.discard('owner')
                 # TODO: is_hypervisor has to be true too, but it is hard to implement in this state
                 elif self['type'] == 'fake':
                     self._required_keys.discard('owner')
@@ -1108,7 +1106,7 @@ class VirtConfigSection(ConfigSection):
         result = None
         # Server option must be there for ESX, RHEVM, and HYPERV
         if key not in self._values or len(self._values[key]) == 0:
-            if 'type' in self._values and self._values['type'] in ['libvirt', 'vdsm', 'fake']:
+            if 'type' in self._values and self._values['type'] in ['libvirt', 'fake']:
                 self._values[key] = ''
             else:
                 result = (

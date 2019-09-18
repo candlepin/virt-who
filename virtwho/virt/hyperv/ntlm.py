@@ -260,7 +260,7 @@ class NegotiateMessage(OutgoingMessage):
             self.params['negotiate_flags'] = self.DEFAULTS['negotiate_flags']
         if domain_len > 0:
             self.params['negotiate_flags'] |= NTLM_NegotiateOemDomainSupplied
-        return OutgoingMessage._format(self) + self.domain + self.workstation
+        return OutgoingMessage._format(self) + self.domain.encode('utf-8') + self.workstation.encode('utf-8')
 
 
 class ChallengeMessage(IncomingMessage):

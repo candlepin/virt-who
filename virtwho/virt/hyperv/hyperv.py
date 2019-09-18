@@ -59,14 +59,13 @@ class HypervConfigSection(VirtConfigSection):
         self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
 
     def _validate_server(self, key):
-        url_altered = False
+        error = super(HypervConfigSection, self)._validate_server(key)
+        if error is None:
 
-        result = []
-        if key not in self._values:
-            self._values[key] = ''
-        else:
+            url_altered = False
+            result = []
+
             url = self._values[key]
-
             if "//" not in url:
                 url_altered = True
                 url = "//" + url
@@ -91,10 +90,9 @@ class HypervConfigSection(VirtConfigSection):
                     'info',
                     "The original server URL was incomplete. It has been enhanced to %s" % self.url
                 ))
-        if len(result) == 0:
-            return None
-        else:
             return result
+
+        return error
 
 
 class HyperVAuth(AuthBase):

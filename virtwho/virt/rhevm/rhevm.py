@@ -72,28 +72,33 @@ class RhevmConfigSection(VirtConfigSection):
         Do validation of server option specific for this virtualization backend
         return: Return None or info/warning/error
         """
-        url = self._values[key]
+        error = super(RhevmConfigSection, self)._validate_server(key)
+        if error is None:
 
-        if "//" not in url:
-            url = "//" + url
-        parsed = urllib.parse.urlsplit(url, "https")
-        if ":" not in parsed[1]:
-            netloc = parsed[1] + ":8443"
-        else:
-            netloc = parsed[1]
-        url = urllib.parse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
+            result = []
+            url = self._values[key]
 
-        if url[-1] != '/':
-            url += '/'
+            if "//" not in url:
+                url = "//" + url
+            parsed = urllib.parse.urlsplit(url, "https")
+            if ":" not in parsed[1]:
+                netloc = parsed[1] + ":8443"
+            else:
+                netloc = parsed[1]
+            url = urllib.parse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
 
-        if url != self._values[key]:
-            self._values[key] = url
-            return [(
-                    'info',
-                    "The original server URL was incomplete. It has been enhanced to %s" % url
-                )]
-        else:
-            return None
+            if url[-1] != '/':
+                url += '/'
+
+            if url != self._values[key]:
+                self._values[key] = url
+                result.append((
+                        'info',
+                        "The original server URL was incomplete. It has been enhanced to %s" % url
+                    ))
+            return result
+
+        return error
 
 
 class RhevM(virt.Virt):

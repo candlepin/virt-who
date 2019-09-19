@@ -51,23 +51,24 @@ class XenConfigSection(VirtConfigSection):
         Do validation of server option specific for this virtualization backend
         return: None or info-warning/error
         """
+        error = super(XenConfigSection, self)._validate_server(key)
+        if error is None:
 
-        result = []
+            result = []
 
-        # Url must contain protocol (usually https://)
-        url = self._values[key]
-        if "://" not in url:
-            url = "https://%s" % url
-            result.append((
-                'info',
-                "The original server URL was incomplete. It has been enhanced to %s" % url
-            ))
-            self._values[key] = url
-
-        if len(result) > 0:
+            if key in self._values and len(self._values[key]) > 0:
+                # Url must contain protocol (usually https://)
+                url = self._values[key]
+                if "://" not in url:
+                    url = "https://%s" % url
+                    result.append((
+                        'info',
+                        "The original server URL was incomplete. It has been enhanced to %s" % url
+                    ))
+                    self._values[key] = url
             return result
-        else:
-            return None
+
+        return error
 
 
 class Xen(virt.Virt):

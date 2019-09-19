@@ -86,9 +86,6 @@ These should be defined in the configuration file or in environment variables
 \fB\-\-esx\-owner\fR=\fIOWNER\fR
 [Deprecated] Organization who has purchased subscriptions of the products
 .TP
-\fB\-\-esx\-env\fR=\fIENV\fR
-[Deprecated] Environment where the vCenter server belongs to
-.TP
 \fB\-\-esx\-server\fR=\fISERVER\fR
 [Deprecated] URL of the vCenter server to connect to
 .TP
@@ -105,9 +102,6 @@ These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-rhevm\-owner\fR=\fIOWNER\fR
 [Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-rhevm\-env\fR=\fIENV\fR
-[Deprecated] Environment where the RHEV\-M belongs to
 .TP
 \fB\-\-rhevm\-server\fR=\fISERVER\fR
 [Deprecated] URL of the RHEV\-M server to connect to
@@ -126,9 +120,6 @@ These should be defined in the configuration file or in environment variables
 \fB\-\-hyperv\-owner\fR=\fIOWNER\fR
 [Deprecated] Organization who has purchased subscriptions of the products
 .TP
-\fB\-\-hyperv\-env\fR=\fIENV\fR
-[Deprecated] Environment where the Hyper\-V belongs to
-.TP
 \fB\-\-hyperv\-server\fR=\fISERVER\fR
 [Deprecated] URL of the Hyper\-V server to connect to
 .TP
@@ -144,9 +135,6 @@ These should be defined in the configuration file or in environment variables
 .TP
 \fB\-\-xen\-owner\fR=\fIOWNER\fR
 [Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-xen\-env\fR=\fIENV\fR
-[Deprecated] Environment where the XenServer belongs to
 .TP
 \fB\-\-xen\-server\fR=\fISERVER\fR
 [Deprecated] URL of the XenServer server to connect to
@@ -213,28 +201,28 @@ Use vdsm as virtualization backend.
 .TP
 3. ESX
 
-# virt-who --esx --esx-owner=ESX_OWNER --esx-env=ESX_ENV --esx-server=ESX_SERVER --esx-username=ESX_USERNAME --esx-password=ESX_PASSWORD
+# virt-who --esx --esx-owner=ESX_OWNER --esx-server=ESX_SERVER --esx-username=ESX_USERNAME --esx-password=ESX_PASSWORD
 
 Use ESX (vCenter) as virtualization backend and specify option required to connect to ESX server.
 
 .TP
 4. RHEV-M
 
-# virt-who --rhevm --rhevm-owner=RHEVM_OWNER --rhevm-env=RHEVM_ENV --rhevm-server=RHEVM_SERVER --rhevm-username=RHEVM_USERNAME --rhevm-password=RHEVM_PASSWORD
+# virt-who --rhevm --rhevm-owner=RHEVM_OWNER --rhevm-server=RHEVM_SERVER --rhevm-username=RHEVM_USERNAME --rhevm-password=RHEVM_PASSWORD
 
 Use RHEV-M as virtualization backend and specify option required to connect to RHEV-M server.
 
 .TP
 5. Hyper-V
 
-# virt-who --hyperv --hyperv-owner=HYPERV_OWNER --hyperv-env=HYPERV_ENV --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
+# virt-who --hyperv --hyperv-owner=HYPERV_OWNER --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
 
 Use Hyper-V as virtualization backend and specify option required to connect to Hyper-V server.
 
 .TP
 6. XenServer
 
-# virt-who --xen --xen-owner=XEN_OWNER --xen-env=XEN_ENV --xen-server=XEN_SERVER --xen-username=XEN_USERNAME --xen-password=XEN_PASSWORD
+# virt-who --xen --xen-owner=XEN_OWNER --xen-server=XEN_SERVER --xen-username=XEN_USERNAME --xen-password=XEN_PASSWORD
 
 Use Citrix XenServer as virtualization backend and specify option required to connect to XenServer server.
 
@@ -247,7 +235,7 @@ It's only available through configuration file, see virt-who-config(5) for detai
 .TP
 8. Kubevirt
 
-# virt-who --kubevirt --kubevirt-owner=KUBEVIRT_OWNER --kubevirt-env=KUBEVIRT_ENV
+# virt-who --kubevirt --kubevirt-owner=KUBEVIRT_OWNER
 
 Use Kubevirt as virtualization backend.
 

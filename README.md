@@ -30,7 +30,6 @@ virt-who can obtain list of guest running on given machine or association betwee
 
 Backends for reporting list of guest running on given machine:
 * libvirt
-* vdsm
 
 Backends for reporting hosts to guests association:
 * RHEV-M (3.x)

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.26.2
+Version:        0.26.3
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,12 @@ fi
 
 
 %changelog
+* Fri Sep 20 2019 William Poteat <wpoteat@redhat.com> 0.26.3-1
+- 1745768: Make message unicode safe (wpoteat@redhat.com)
+- 1516209: Proper handling for empty server entry (wpoteat@redhat.com)
+- 1712300: add connection/request timeout (piotr.kliczewski@gmail.com)
+- 1751122: Clear ENV refereces from files (wpoteat@redhat.com)
+
 * Thu Sep 12 2019 William Poteat <wpoteat@redhat.com> 0.26.2-1
 - 1720048: Template for general configuration not properly formatted
   (wpoteat@redhat.com)

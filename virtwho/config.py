@@ -24,6 +24,7 @@ import collections
 import six
 import os
 import uuid
+import requests
 
 from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
 from virtwho import log, SAT5, SAT6
@@ -1068,11 +1069,14 @@ class VirtConfigSection(ConfigSection):
         else:
             if username != NotSetSentinel:
                 try:
-                    username.encode('latin1')
+                    # this is conditional based on the version of python-requests we are using.
+                    major, minor, patch = [int(part) for part in requests.__version__.split('.')]
+                    if (major,minor) < (2,20):
+                        username.encode('latin1')
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     result = (
-                        'warning',
-                        "Value: {0} of option '{1}': is not in latin1 encoding".format(
+                        'error',
+                        "Value: {0} of option '{1}': is not in latin1 encoding. That is not allowed on this system.".format(
                             username,
                             username_key
                         )

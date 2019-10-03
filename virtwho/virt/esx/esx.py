@@ -98,7 +98,7 @@ class RequestsTransport(suds.transport.Transport):
             timeout=self.options.timeout,
             verify=False
         )
-        ct = resp.headers.get('content-type')
+        ct = resp.headers.get('content-type', '')
         if 'application/soap+xml' not in ct and 'text/xml' not in ct:
             resp.raise_for_status()
         return suds.transport.Reply(

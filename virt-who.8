@@ -2,7 +2,7 @@
 .SH NAME
 virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager, Satellite 6, or Satellite 5.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-o] [--sam|--satellite5|--satellite6] [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--kubevirt]
+virt-who [-d] [-i INTERVAL] [-o]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -23,142 +23,7 @@ Print the host/guests association in JSON format to standard output
 \fB\-c\fR, \fB\-\-config\fR
 Use configuration file directly (will override configuration from other files. 'global' and 'default' sections are not read in files passed in via this option, and are only read from /etc/virt-who.conf). Can be used multiple times. See virt-who-config(5) for details about configuration file format.
 .IP
-.SS Virtualization backend
-.IP
-Choose virtualization backend that should be used to gather host/guest associations
-.TP
-\fB\-\-libvirt\fR
-[Deprecated] Use libvirt to list virtual guests [default]
-.TP
-\fB\-\-vdsm\fR
-[Deprecated] Use vdsm to list virtual guests
-.TP
-\fB\-\-esx\fR
-[Deprecated] Register ESX machines using vCenter
-.TP
-\fB\-\-rhevm\fR
-[Deprecated] Register guests using RHEV\-M
-.TP
-\fB\-\-hyperv\fR
-[Deprecated] Register guests using Hyper\-V
-.TP
-\fB\-\-xen\fr
-[Deprecated] Register XEN machines using XenServer
-.IP
-.SS Subscription manager
-.IP
-Choose where the host/guest associations should be reported
-.TP
-\fB\-\-sam\fR
-[Deprecated] Report host/guest associations to the Subscription Asset Manager, Satellite 6, or Red Hat Subscription Management (RHSM). This option specifies the default behaviour, and thus it is not used [default]
-.TP
-\fB\-\-satellite5\fR
-[Deprecated] Report host/guest associations to the Satellite 5 server
-.TP
-\fB\-\-satellite6\fR
-[Deprecated] Report host/guest associations to the Subscription Asset Manager, Satellite 6, or Red Hat Subscription Management (RHSM). This option specifies the default behaviour, and thus it is not used [default]
-.IP
-.SS Libvirt options
-.IP
-Use these options with \fB\-\-libvirt\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-libvirt\-owner\fR=\fIOWNER\fR
-[Deprecated] Organization who has purchased subscriptions of the products, same as current system registration by default
-.TP
-\fB\-\-libvirt\-env\fR=\fIENV\fR
-[Deprecated] Environment where the libvirt server belongs to, same as current system registration by default
-.TP
-\fB\-\-libvirt\-server\fR=\fISERVER\fR
-[Deprecated] URL of the remote libvirt server to connect to, local server by default
-.TP
-\fB\-\-libvirt\-username\fR=\fIUSERNAME\fR
-[Deprecated] Username for connecting to libvirt, username of current user by default
-.TP
-\fB\-\-libvirt\-password\fR=\fIPASSWORD\fR
-[Deprecated] Password for connecting to libvirt. This option doesn't work with ssh transport (default), copy your public ssh key to the remote machine.
-.IP
-.SS vCenter/ESX options
-.IP
-Use these options with \fB\-\-esx\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-esx\-owner\fR=\fIOWNER\fR
-[Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-esx\-server\fR=\fISERVER\fR
-[Deprecated] URL of the vCenter server to connect to
-.TP
-\fB\-\-esx\-username\fR=\fIUSERNAME\fR
-[Deprecated] Username for connecting to vCenter
-.TP
-\fB\-\-esx\-password\fR=\fIPASSWORD\fR
-[Deprecated] Password for connecting to vCenter
-.IP
-.SS RHEV\-M options
-.IP
-Use these options with \fB\-\-rhevm\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-rhevm\-owner\fR=\fIOWNER\fR
-[Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-rhevm\-server\fR=\fISERVER\fR
-[Deprecated] URL of the RHEV\-M server to connect to
-.TP
-\fB\-\-rhevm\-username\fR=\fIUSERNAME\fR
-[Deprecated] Username for connecting to RHEV\-M
-.TP
-\fB\-\-rhevm\-password\fR=\fIPASSWORD\fR
-[Deprecated] Password for connecting to RHEV\-M
-.IP
-.SS Hyper\-V options
-.IP
-Use these options with \fB\-\-hyperv\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-hyperv\-owner\fR=\fIOWNER\fR
-[Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-hyperv\-server\fR=\fISERVER\fR
-[Deprecated] URL of the Hyper\-V server to connect to
-.TP
-\fB\-\-hyperv\-username\fR=\fIUSERNAME\fR
-[Deprecated] Username for connecting to Hyper\-V
-.TP
-\fB\-\-hyperv\-password\fR=\fIPASSWORD\fR
-[Deprecated] Password for connecting to Hyper\-V
-.SS XenServer options
-.IP
-Use these options with \fB\-\-xen\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-xen\-owner\fR=\fIOWNER\fR
-[Deprecated] Organization who has purchased subscriptions of the products
-.TP
-\fB\-\-xen\-server\fR=\fISERVER\fR
-[Deprecated] URL of the XenServer server to connect to
-.TP
-\fB\-\-xen\-username\fR=\fIUSERNAME\fR
-[Deprecated] Username for connecting to XenServer
-.TP
-\fB\-\-xen\-password\fR=\fIPASSWORD\fR
-[Deprecated] Password for connecting to XenServer
-.IP
-.SS Satellite 5 options:
-.IP
-Use these options with \fB\-\-satellite5\fR
-These should be defined in the configuration file or in environment variables
-.TP
-\fB\-\-satellite-server\fR=\fISAT_SERVER
-[Deprecated] Satellite server URL
-.TP
-\fB\-\-satellite-username\fR=\fISAT_USERNAME
-[Deprecated] Username for connecting to Satellite server
-.TP
-\fB\-\-satellite-password\fR=\fISAT_PASSWORD
-[Deprecated] Password for connecting to Satellite server
-.PP
+
 .SH ENVIRONMENT
 virt-who also reads environmental variables. They have the same name as command line arguments but upper-cased, with underscore instead of dash and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are considered as disabled, non-empty as enabled
 .SH USAGE
@@ -171,7 +36,7 @@ virt-who has three modes how it can run:
 In this mode virt-who just sends the host to guest association to the server once and then exits.
 .TP
 2. interval mode
-# virt-who
+# virt-who -i INTERVAL
 
 This is default mode. virt-who will listen to change events (if available) or do a polling with given interval, and will send the host to guest association when it changes. The default polling interval is 60 seconds and can be changed using "-i INTERVAL" (in seconds).
 .TP
@@ -179,91 +44,6 @@ This is default mode. virt-who will listen to change events (if available) or do
 # virt-who -p
 
 This mode is similar to oneshot mode but the host to guest association is not send to server, but printed to standard output instead.
-
-.SS VIRTUALIZATION BACKEND
-
-virt-who can use couple of virtualization backends.
-.TP
-1. libvirt
-# virt-who
-
-# virt-who --libvirt
-
-Use libvirt as virtualization backend. This is default.
-.IP
-
-NOTE: virt-who can monitor for events only in this mode.
-.TP
-2. vdsm
-# virt-who --vdsm
-
-Use vdsm as virtualization backend.
-.TP
-3. ESX
-
-# virt-who --esx --esx-owner=ESX_OWNER --esx-server=ESX_SERVER --esx-username=ESX_USERNAME --esx-password=ESX_PASSWORD
-
-Use ESX (vCenter) as virtualization backend and specify option required to connect to ESX server.
-
-.TP
-4. RHEV-M
-
-# virt-who --rhevm --rhevm-owner=RHEVM_OWNER --rhevm-server=RHEVM_SERVER --rhevm-username=RHEVM_USERNAME --rhevm-password=RHEVM_PASSWORD
-
-Use RHEV-M as virtualization backend and specify option required to connect to RHEV-M server.
-
-.TP
-5. Hyper-V
-
-# virt-who --hyperv --hyperv-owner=HYPERV_OWNER --hyperv-server=HYPERV_SERVER --hyperv-username=HYPERV_USERNAME --hyperv-password=HYPERV_PASSWORD
-
-Use Hyper-V as virtualization backend and specify option required to connect to Hyper-V server.
-
-.TP
-6. XenServer
-
-# virt-who --xen --xen-owner=XEN_OWNER --xen-server=XEN_SERVER --xen-username=XEN_USERNAME --xen-password=XEN_PASSWORD
-
-Use Citrix XenServer as virtualization backend and specify option required to connect to XenServer server.
-
-.TP
-7. Fake
-
-Fake virtualization backend fetches the host/guests association from file. This can be useful in environments where the hypervisor is not accessible by virt-who.
-It's only available through configuration file, see virt-who-config(5) for details about configuration of this backend.
-
-.TP
-8. Kubevirt
-
-# virt-who --kubevirt --kubevirt-owner=KUBEVIRT_OWNER
-
-Use Kubevirt as virtualization backend.
-
-
-.SS SUBSCRIPTION MANAGER
-
-virt-who can report host/guest associations to Subscription Asset Manager (SAM), to Satellite 5, or to Satellite 6.
-.TP
-1. Subscription Asset Manager or Satellite 6
-# virt-who
-
-# virt-who --sam
-
-System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM, or Satellite6, or Red Hat Subscription Management (RHSM) is shared between subscription-manager and virt-who. This option specifies the default behaviour, and thus it is not used.
-
-.TP
-2. Satellite 6
-
-# virt-who --satellite6
-
-System must be registered using subscription-manager prior to using virt-who. Configuration for connecting to SAM, or Satellite6, or Red Hat Subscription Management (RHSM) is shared between subscription-manager and virt-who. This option specifies the default behaviour, and thus it is not used.
-
-.TP
-2. Satellite 5
-
-# virt-who --satellite5 --satellite-server=SAT_SERVER --satellite-username=SAT_USERNAME --satellite-password=SAT_PASSWORD
-
-This option can't be used for monitoring local guests, use rhn-virtualization-host instead.
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. It also writes the same output to standard error output when started from command line.

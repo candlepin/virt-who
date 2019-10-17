@@ -162,3 +162,10 @@ class TestKubevirt(TestBase):
             )
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_empty_kubeconfig(self):
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner')
+
+        kubevirt = Virt.from_config(self.logger, config, Datastore())
+        self.assertEqual("~/.kube/config", kubevirt._path)

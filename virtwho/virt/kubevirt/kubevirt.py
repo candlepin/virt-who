@@ -19,6 +19,7 @@
 #
 from __future__ import absolute_import
 
+import os
 import os.path
 
 from virtwho import virt
@@ -36,7 +37,10 @@ class KubevirtConfigSection(VirtConfigSection):
                                                     wrapper,
                                                     *args,
                                                     **kwargs)
-        self.add_key('kubeconfig', validation_method=self._validate_path, required=True)
+        self.add_key('kubeconfig',
+                     validation_method=self._validate_path,
+                     default=os.environ.get('KUBECONFIG', '~/.kube/config'),
+                     required=False)
 
     def _validate_path(self, key='kubeconfig'):
         """

@@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
 _effective_config = None
 
 VW_CONF_DIR = "/etc/virt-who.d/"
-VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
+VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "kubevirt")
 VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
@@ -1163,7 +1163,7 @@ class VirtConfigSection(ConfigSection):
         result = None
         sm_type = self._values['sm_type']
         virt_type = self._values.get('type')
-        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'ahv'):
+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv'):
             if key not in self:
                 result = (
                     'warning',

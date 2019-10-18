@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.27.0
+Version:        0.27.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Fri Oct 18 2019 William Poteat <wpoteat@redhat.com> 0.27.1-1
+- Update patch for AHV removal (khowell@redhat.com)
+
 * Fri Oct 18 2019 William Poteat <wpoteat@redhat.com> 0.27.0-1
 - Update for 8.2 (wpoteat@redhat.com)
 - 1727130: Correct man page for default interval (wpoteat@redhat.com)

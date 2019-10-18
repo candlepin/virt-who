@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.25.4
+Version:        0.27.0
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,31 @@ fi
 
 
 %changelog
+* Fri Oct 18 2019 William Poteat <wpoteat@redhat.com> 0.27.0-1
+- Update for 8.2 (wpoteat@redhat.com)
+- 1727130: Correct man page for default interval (wpoteat@redhat.com)
+- 1743589: Content type header null coverage (wpoteat@redhat.com)
+- 1751624: Allow unicode username only if python-requests allows it
+  (wpoteat@redhat.com)
+- 1745768: Make message unicode safe (wpoteat@redhat.com)
+- 1516209: Proper handling for empty server entry (wpoteat@redhat.com)
+- 1733286: add connection/request timeout (piotr.kliczewski@gmail.com)
+- Remove vdsm capability (wpoteat@redhat.com)
+- 1720048: Template for general configuration not properly formatted
+  (wpoteat@redhat.com)
+- Add AHV v3 lenght and offset for the API calls. (amir.eibagi@nutanix.com)
+- 1530254: Update checking on environment variables (wpoteat@redhat.com)
+- 1714456: Update description of 'print_' config option (wpoteat@redhat.com)
+- Build fix (wpoteat@redhat.com)
+- 1499679: Check for duplicates in conf file; ENT-249 (jhnidek@redhat.com)
+- 1720154: Provide SYSTEM_UUID_FACT (piotr.kliczewski@gmail.com)
+- 1516120: Handling for incorrect config section headers (wpoteat@redhat.com)
+- 1722560: Make heartbeat more robust (jhnidek@redhat.com)
+- Update spec for build system (wpoteat@redhat.com)
+- Prepare downstream release (wpoteat@redhat.com)
+- Patch to exclude AHV from RPM (wpoteat@redhat.com)
+- 1416298: Use unique guest attribute for state tracking (wpoteat@redhat.com)
+
 * Wed Jun 12 2019 William Poteat <wpoteat@redhat.com> 0.25.4-1
 - 1718304: Fix issue when instance["BIOSGUID"] returns None
   (phess@users.noreply.github.com)

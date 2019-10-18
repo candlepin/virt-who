@@ -1,19 +1,18 @@
-From 68667d8bfff8e8ec102310024e9ab8c089baae67 Mon Sep 17 00:00:00 2001
-From: William Poteat <wpoteat@redhat.com>
-Date: Wed, 5 Jun 2019 15:05:23 -0400
-Subject: [PATCH] Revert "Add Nutanix AHV support for RHSS + UTs."
+From 488c8e51480de699a9ce366dc79468b224f9907e Mon Sep 17 00:00:00 2001
+From: Kevin Howell <khowell@redhat.com>
+Date: Fri, 18 Oct 2019 09:54:54 -0400
+Subject: [PATCH] Remove AHV support
 
-This reverts commit 69386565c1f9a984af937ea3ed1feff42b86ed31.
 ---
- tests/test_ahv.py                 | 562 -----------------------
+ tests/test_ahv.py                 | 566 ---------------------
  virtwho/config.py                 |   4 +-
- virtwho/parser.py                 |  34 +-
+ virtwho/parser.py                 |  33 +-
  virtwho/virt/ahv/__init__.py      |   6 -
- virtwho/virt/ahv/ahv.py           | 258 -----------
+ virtwho/virt/ahv/ahv.py           | 258 ----------
  virtwho/virt/ahv/ahv_constants.py |  21 -
- virtwho/virt/ahv/ahv_interface.py | 729 ------------------------------
+ virtwho/virt/ahv/ahv_interface.py | 804 ------------------------------
  virtwho/virt/virt.py              |   1 -
- 8 files changed, 5 insertions(+), 1610 deletions(-)
+ 8 files changed, 4 insertions(+), 1689 deletions(-)
  delete mode 100644 tests/test_ahv.py
  delete mode 100644 virtwho/virt/ahv/__init__.py
  delete mode 100644 virtwho/virt/ahv/ahv.py
@@ -22,10 +21,10 @@ This reverts commit 69386565c1f9a984af937ea3ed1feff42b86ed31.
 
 diff --git a/tests/test_ahv.py b/tests/test_ahv.py
 deleted file mode 100644
-index c77f6d3..0000000
+index d8ccbc8..0000000
 --- a/tests/test_ahv.py
 +++ /dev/null
-@@ -1,562 +0,0 @@
+@@ -1,566 +0,0 @@
 -from __future__ import print_function
 -
 -import six
@@ -428,6 +427,7 @@ index c77f6d3..0000000
 -        self.ahv = Virt.from_config(self.logger, config, Datastore(),
 -                                    interval=DefaultInterval)
 -
+-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface._progressbar')
 -    def run_once(self, queue=None):
 -        """Run AHV in oneshot mode."""
 -        self.ahv._oneshot = True
@@ -503,52 +503,54 @@ index c77f6d3..0000000
 -        mock_post.return_value.status_code = 409
 -        self.assertRaises(VirtError, self.run_once)
 -
+-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
 -    @patch.object(Session, 'get')
--    def test_no_retry_http_erros_PE(self, mock_get):
+-    def test_no_retry_http_erros_PE(self, mock_get, mock_get_vm):
 -        mock_get.return_value.ok = False
 -        mock_get.return_value.status_code = 400
 -        mock_get.return_value.text = 'Bad Request'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_get.return_value.status_code = 404
 -        mock_get.return_value.text = 'Not Found Error'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_get.return_value.status_code = 500
 -        mock_get.return_value.text = 'Internal Server Error'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_get.return_value.status_code = 502
 -        mock_get.return_value.tex = 'Bad Gateway'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_get.return_value.status_code = 503
 -        mock_get.return_value.text = 'Service Unavailable '
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
+-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
 -    @patch.object(Session, 'post')
--    def test_no_retry_http_erros_PC(self, mock_post):
+-    def test_no_retry_http_erros_PC(self, mock_post, mock_get_vm):
 -        self.setUp(is_pc=True)
 -        mock_post.return_value.ok = False
 -        mock_post.return_value.status_code = 400
 -        mock_post.return_value.text = 'Bad Request'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_post.return_value.status_code = 404
 -        mock_post.return_value.text = 'Not Found Error'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_post.return_value.status_code = 500
 -        mock_post.return_value.text = 'Internal Server Error'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_post.return_value.status_code = 502
 -        mock_post.return_value.tex = 'Bad Gateway'
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -        mock_post.return_value.status_code = 503
 -        mock_post.return_value.text = 'Service Unavailable '
--        self.assertRaises(VirtError, self.run_once)
+-        self.assertEqual(mock_get_vm.return_value, None)
 -
 -    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.build_host_to_uvm_map')
 -    def test_getHostGuestMapping(self, host_to_uvm_map):
@@ -588,21 +590,21 @@ index c77f6d3..0000000
 -        for index in range(0, len(result)):
 -          self.assertEqual(expected_result[index].toDict(),
 -                           result[index].toDict())
-\ No newline at end of file
+-
 diff --git a/virtwho/config.py b/virtwho/config.py
-index ce307ae..9826b1b 100644
+index 6212f78..7c0360a 100644
 --- a/virtwho/config.py
 +++ b/virtwho/config.py
-@@ -45,7 +45,7 @@ logger = log.getLogger(name='config', queue=False)
+@@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
  _effective_config = None
  
  VW_CONF_DIR = "/etc/virt-who.d/"
--VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv")
-+VW_TYPES = ("libvirt", "vdsm", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt")
+-VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv")
++VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt")
  VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
  VW_GLOBAL = "global"
  VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
-@@ -1098,7 +1098,7 @@ class VirtConfigSection(ConfigSection):
+@@ -1127,7 +1127,7 @@ class VirtConfigSection(ConfigSection):
          result = None
          sm_type = self._values['sm_type']
          virt_type = self._values.get('type')
@@ -612,38 +614,35 @@ index ce307ae..9826b1b 100644
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index 12c09e3..44bd392 100644
+index 2fdacb2..322004b 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
-@@ -45,7 +45,6 @@ SAT5_VM_DISPATCHER = {
+@@ -44,7 +44,6 @@ SAT5_VM_DISPATCHER = {
+     'rhevm': {'owner': False, 'server': True, 'username': True},
      'hyperv': {'owner': False, 'server': True, 'username': True},
-     'vdsm': {'owner': False, 'server': False, 'username': False},
      'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  
  SAT6_VM_DISPATCHER = {
-@@ -56,9 +55,9 @@ SAT6_VM_DISPATCHER = {
+@@ -54,7 +53,6 @@ SAT6_VM_DISPATCHER = {
+     'rhevm': {'owner': True, 'server': True, 'username': True},
      'hyperv': {'owner': True, 'server': True, 'username': True},
-     'vdsm': {'owner': False, 'server': False, 'username': False},
      'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  
-+
  class OptionError(Exception):
-     pass
- 
-@@ -74,7 +73,7 @@ class StoreGroupArgument(Action):
+@@ -72,7 +70,7 @@ class StoreGroupArgument(Action):
      def __call__(self, parser, namespace, values, option_string=None):
          """
          When the argument from group is used, then this argument has to match
--        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
-+        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]
+-        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
++        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt]
          """
          options = vars(namespace)
          virt_type = options['virt_type']
-@@ -210,7 +209,6 @@ def read_config_env_variables():
+@@ -207,7 +205,6 @@ def read_config_env_variables():
          "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
          "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
          "VIRTWHO_KUBEVIRT": ("virt_type", store_const, "kubevirt"),
@@ -651,16 +650,16 @@ index 12c09e3..44bd392 100644
          "VIRTWHO_INTERVAL": ("interval", store_value),
          "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
      }
-@@ -317,7 +315,7 @@ def parse_cli_arguments():
+@@ -306,7 +303,7 @@ def parse_cli_arguments():
          parser = ArgumentParser(
              usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version] "
                    "[-m] [-l LOG_DIR] [-f LOG_FILE] [-r REPORTER_ID] [--sam|--satellite5|--satellite6] "
--                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
-+                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
+-                  "[--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
++                  "[--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
              description="Agent for reporting virtual guest IDs to subscription manager",
              epilog="virt-who also reads environment variables. They have the same name as "
                     "command line arguments but uppercased, with underscore instead of dash "
-@@ -378,8 +376,6 @@ def parse_cli_arguments():
+@@ -365,8 +362,6 @@ def parse_cli_arguments():
                                  help="[Deprecated] Register guests using Hyper-V")
          virt_group.add_argument("--kubevirt", action=StoreVirtType, dest="virt_type", const="kubevirt",
                                  help="[Deprecated] Register guests using Kubevirt")
@@ -669,7 +668,7 @@ index 12c09e3..44bd392 100644
  
          manager_group = parser.add_argument_group(
              title="Subscription manager",
-@@ -496,30 +492,6 @@ def parse_cli_arguments():
+@@ -483,30 +478,6 @@ def parse_cli_arguments():
          kubevirt_group.add_argument("--kubevirt-env", action=StoreGroupArgument, dest="env", default="",
                                   help="[Deprecated] Environment where Kubevirt belongs to")
  
@@ -1005,12 +1004,14 @@ index 95534a0..0000000
 -
 diff --git a/virtwho/virt/ahv/ahv_interface.py b/virtwho/virt/ahv/ahv_interface.py
 deleted file mode 100644
-index 72f2c37..0000000
+index 8b75cb6..0000000
 --- a/virtwho/virt/ahv/ahv_interface.py
 +++ /dev/null
-@@ -1,729 +0,0 @@
+@@ -1,804 +0,0 @@
 -import json
+-import math
 -import time
+-import sys
 -from . import ahv_constants
 -from requests import Session
 -from requests.exceptions import ConnectionError, ReadTimeout
@@ -1149,6 +1150,31 @@ index 72f2c37..0000000
 -
 -    return formatted_data
 -
+-  def _progressbar(self, it, prefix="", size=60, file=sys.stdout, total=0, is_pc=False):
+-    count = total
+-    cursor = 0
+-    def show(j):
+-        x = int(size*j/count)
+-        file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
+-        file.flush()
+-    show(0)
+-
+-    for i, item in enumerate(it):
+-      if is_pc:
+-        yield item
+-        for i in range(20):
+-          show(cursor+1)
+-          cursor += 1
+-          if cursor == count:
+-            break
+-          time.sleep(0.1)
+-      else:
+-       show(i+1)
+-
+-    yield item
+-    file.write("\n")
+-    file.flush()
+-
 -  def login(self, version):
 -    """
 -    Login to the rest server and ensure connection succeeds.
@@ -1173,7 +1199,7 @@ index 72f2c37..0000000
 -      hypervisor_type (str): Vm hypervisor type.
 -    """
 -    hypervisor_type = None
--    if version == 'v2.0': 
+-    if version == 'v2.0':
 -      if host_entity:
 -        hypervisor_type = host_entity['hypervisor_type']
 -      else:
@@ -1244,7 +1270,7 @@ index 72f2c37..0000000
 -    """
 -    url = self._make_url(uri)
 -    return self._send('post', url, **kwargs)
--    
+-
 -  def make_rest_call(self, method, uri, *args, **kwargs):
 -    """This method calls the appropriate rest method based on the arguments.
 -
@@ -1323,10 +1349,10 @@ index 72f2c37..0000000
 -      msg = 'HTTP %s %s failed: ' % (method, url)
 -      if hasattr(response, "text") and response.text:
 -        msg = "\n".join([msg, response.text]).encode('utf-8')
--        raise virt.VirtError(msg)
+-        self._logger.error(msg)
 -    else:
--      raise virt.VirtError("Failed to make the HTTP request (%s, %s)" %
--                           (method, url))
+-      self._logger.error("Failed to make the HTTP request (%s, %s)" %
+-                         (method, url))
 -
 -  def get_tasks(self, timestamp, version, is_pc=False):
 -    """
@@ -1488,21 +1514,58 @@ index 72f2c37..0000000
 -    Returns:
 -      vm_uuid_list (list): list of vm's uuid.
 -    """
+-    self._logger.info("Getting the list of available vms")
+-    is_pc=True if version == 'v3' else False
 -    vm_uuid_list = []
+-    length = 0
+-    offset = 0
+-    total_matches = 0
+-    count = 1
+-    current = 0
 -    (url, cmd_method) = self.get_diff_ver_url_and_method(
 -      cmd_key='list_vms', intf_version=version)
 -    res = self.make_rest_call(method=cmd_method, uri=url)
 -    data = res.json()
--    if 'entities' in data:
--      for vm_entity in data['entities']:
--        if 'metadata' in vm_entity:
--          vm_uuid_list.append(vm_entity['metadata']['uuid'])
--        elif 'uuid' in vm_entity:
--          vm_uuid_list.append(vm_entity['uuid'])
--        else:
--          self._logger.warning("Cannot access the uuid for the vm %s. "
--                               "vm object: %s" % (vm_entity['name'], 
--                                                  vm_entity))
+-    if 'metadata' in data:
+-      if 'total_matches' in data['metadata'] and 'length' in data['metadata']:
+-        length = data['metadata']['length']
+-        total_matches = data['metadata']['total_matches']
+-      elif 'count' in data['metadata'] and \
+-           'grand_total_entities' in data['metadata'] and \
+-           'total_entities' in data['metadata']:
+-
+-        total_matches = data['metadata']['grand_total_entities']
+-        count = data['metadata']['count']
+-        length = data['metadata']['total_entities']
+-
+-    if length < total_matches:
+-      self._logger.debug('Number of vms %s returned from REST is less than the total'\
+-                         'numberr:%s. Adjusting the offset and iterating over all'\
+-                         'vms until evry vm is returned from the server.' % (length,
+-                         total_matches))
+-      count = math.ceil(total_matches/float(length))
+-
+-    body = {'length': length, 'offset': offset}
+-    for i in self._progressbar(range(int(count)), "Finding vms uuid: ", total=int(total_matches), is_pc=is_pc):
+-      if 'entities' in data:
+-        for vm_entity in data['entities']:
+-          if 'metadata' in vm_entity:
+-            vm_uuid_list.append(vm_entity['metadata']['uuid'])
+-          elif 'uuid' in vm_entity:
+-            vm_uuid_list.append(vm_entity['uuid'])
+-          else:
+-            self._logger.warning("Cannot access the uuid for the vm %s. "
+-                                 "vm object: %s" % (vm_entity['name'],
+-                                                    vm_entity))
+-
+-      body['offset'] = body['offset'] + length
+-      body_data = json.dumps(body, indent=4)
+-      self._logger.debug('next vm list call has this body: %s' % body)
+-      res = self.make_rest_call(method=cmd_method, uri=url, data=body_data)
+-      data = res.json()
+-      current += 1
+-
+-    self._logger.info("Total number of vms uuids found and saved for processing %s" % len(vm_uuid_list))
 -    return vm_uuid_list
 -
 -  def get_hosts_uuid(self, version):
@@ -1594,7 +1657,7 @@ index 72f2c37..0000000
 -    else:
 -      self._logger.warning("Cannot get host version for %s"
 -                                % host_info['uuid'])
--    
+-
 -    return host_version
 -
 -  def get_vm(self, uuid):
@@ -1608,9 +1671,10 @@ index 72f2c37..0000000
 -    (url, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_vm')
 -    url = url % uuid
 -    res = self.make_rest_call(method=cmd_method, uri=url)
--    data = res.json()
--
--    return self._format_response(data)
+-    if res:
+-      data = res.json()
+-      return self._format_response(data)
+-    return None
 -
 -  def get_host(self, uuid):
 -    """
@@ -1623,9 +1687,11 @@ index 72f2c37..0000000
 -    (url, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_host')
 -    url = url % uuid
 -    res = self.make_rest_call(method=cmd_method, uri=url)
--    data = res.json()
--
--    return self._format_response(data)
+-    if res:
+-      data = res.json()
+-      return self._format_response(data)
+-    else:
+-      return None
 -
 -  def get_vm_host_uuid_from_vm(self, vm_entity):
 -    """
@@ -1651,7 +1717,7 @@ index 72f2c37..0000000
 -
 -  def is_ahv_host(self, version, host_uuid, vm_entity=None):
 -    """
--    Determine if a given host is a AHV host. 
+-    Determine if a given host is a AHV host.
 -    host uuid should match the host uuid in vm_entity.
 -    Args:
 -      version (str): API version.
@@ -1670,7 +1736,7 @@ index 72f2c37..0000000
 -          return vm_entity['resources']['hypervisor_type'] in \
 -                 ahv_constants.AHV_HYPERVIRSOR
 -    self._logger.debug('Hypervisor type not found. \nversion:%s, '
--                        '\nhost_uuid:%s, \nvm_entity:%s' 
+-                        '\nhost_uuid:%s, \nvm_entity:%s'
 -                        % (version, host_uuid, vm_entity))
 -    return False
 -
@@ -1683,27 +1749,35 @@ index 72f2c37..0000000
 -      host_uvm_map (dict): Dict of ahv host with its uvms.
 -    """
 -    host_uvm_map = {}
+-    vm_entity = None
+-    host_uuid = None
 -    vm_uuids =  self.get_vms_uuid(version)
 -
+-    self._logger.info("Processing hosts for each vm.")
 -    if len(vm_uuids) > 0:
 -      for vm_uuid in vm_uuids:
 -        vm_entity = self.get_vm(vm_uuid)
--        host_uuid = self.get_vm_host_uuid_from_vm(vm_entity)
--        if host_uuid:
--          if self.is_ahv_host(version, host_uuid, vm_entity):
--            host = self.get_host(host_uuid)
--            if host_uuid not in host_uvm_map:
--              host_uvm_map[host_uuid] = host
--            if 'guest_list' in host_uvm_map[host_uuid]:
--              host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
+-        if vm_entity:
+-          host_uuid = self.get_vm_host_uuid_from_vm(vm_entity)
+-          if host_uuid:
+-            if self.is_ahv_host(version, host_uuid, vm_entity):
+-              host = self.get_host(host_uuid)
+-              if host:
+-                if host_uuid not in host_uvm_map:
+-                  host_uvm_map[host_uuid] = host
+-                if 'guest_list' in host_uvm_map[host_uuid]:
+-                  host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
+-                else:
+-                  host_uvm_map[host_uuid]['guest_list'] = []
+-                  host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
+-              else:
+-                self._logger.warning("unable to read information for host %s" % host_uuid)
+-                continue
 -            else:
--              host_uvm_map[host_uuid]['guest_list'] = []
--              host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
--          else:
--            self._logger.debug("Host %s is not ahv, skipping it." % host_uuid)
--            continue
--          host_type = self.get_hypervisor_type(version, host, vm_entity)
--          host_uvm_map[host_uuid]['hypervisor_type'] = host_type
+-              self._logger.debug("Host %s is not ahv, skipping it." % host_uuid)
+-              continue
+-            host_type = self.get_hypervisor_type(version, host, vm_entity)
+-            host_uvm_map[host_uuid]['hypervisor_type'] = host_type
 -    else:
 -      self._logger.warning("No available vms found")
 -      try:
@@ -1739,10 +1813,10 @@ index 72f2c37..0000000
 -  def _details_map(self):
 -    return dict([(str(i), self.details[i]) for i in range(len(self.details))])
 diff --git a/virtwho/virt/virt.py b/virtwho/virt/virt.py
-index 6dc4248..4f70b41 100644
+index 5495657..466dc90 100644
 --- a/virtwho/virt/virt.py
 +++ b/virtwho/virt/virt.py
-@@ -912,7 +912,6 @@ class Virt(IntervalThread):
+@@ -923,7 +923,6 @@ class Virt(IntervalThread):
          import virtwho.virt.hyperv  # flake8: noqa
          import virtwho.virt.fakevirt  # flake8: noqa
          import virtwho.virt.kubevirt  # flake8: noqa
@@ -1751,5 +1825,5 @@ index 6dc4248..4f70b41 100644
          return [subcls for subcls in cls.__subclasses__()]
  
 -- 
-2.20.1
+2.21.0
 

@@ -27,7 +27,6 @@ import urllib3
 import yaml
 
 
-KUBE_CONFIG_DEFAULT_LOCATION = os.environ.get('KUBECONFIG', '~/.kube/config')
 _temp_files = {}
 
 

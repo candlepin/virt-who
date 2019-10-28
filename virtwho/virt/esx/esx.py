@@ -110,7 +110,7 @@ class RequestsTransport(suds.transport.Transport):
 
 class Esx(virt.Virt):
     CONFIG_TYPE = "esx"
-    MAX_WAIT_TIME = 300  # 5 minutes
+    MAX_WAIT_TIME = 60  # 1 minute
 
     def __init__(self, logger, config, dest, terminate_event=None,
                  interval=None, oneshot=False):
@@ -147,20 +147,10 @@ class Esx(virt.Virt):
         self.hosts = defaultdict(Host)
         self.vms = defaultdict(VM)
         self.clusters = defaultdict(Cluster)
-        initial = True
         next_update = time()
+        options = {'maxWaitSeconds': 0}
 
         while self._oneshot or not self.is_terminated():
-
-            delta = next_update - time()
-            if initial or delta < 0:
-                # We want to read the update asap
-                options = {}
-                timeout = 60
-            else:
-                max_wait_seconds = int(delta)
-                options = {'maxWaitSeconds': max_wait_seconds}
-                timeout = max_wait_seconds + 5
 
             if version == '':
                 # also, clean all data we have
@@ -170,19 +160,17 @@ class Esx(virt.Virt):
             try:
                 # Make sure that WaitForUpdatesEx finishes even
                 # if the ESX shuts down in the middle of waiting
-                self.client.set_options(timeout=timeout)
-
+                self.client.set_options(timeout=self.MAX_WAIT_TIME)
+                self.logger.debug("calling esx service")
                 updateSet = self.client.service.WaitForUpdatesEx(
                     _this=self.sc.propertyCollector,
                     version=version,
                     options=options)
-                initial = False
             except (socket.error, URLError, requests.exceptions.Timeout):
                 self.logger.debug("Wait for ESX event finished, timeout")
                 self._cancel_wait()
                 # Get the initial update again
                 version = ''
-                initial = True
                 continue
             except (suds.WebFault, HTTPException) as e:
                 suppress_exception = False
@@ -221,6 +209,8 @@ class Esx(virt.Virt):
 
             if self._oneshot:
                 break
+            else:
+                self.wait(self.interval)
 
         self.cleanup()
 

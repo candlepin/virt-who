@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.26.3
+Version:        0.26.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,14 @@ fi
 
 
 %changelog
+* Mon Oct 28 2019 William Poteat <wpoteat@redhat.com> 0.26.4-1
+- 1751441: remove strict need for kubeconfig (piotr.kliczewski@gmail.com)
+- 1751624: Allow unicode username only if python-requests allows it
+  (wpoteat@redhat.com)
+- 1743589: Content type header null coverage (wpoteat@redhat.com)
+- 1727130: Correct man page for default interval (wpoteat@redhat.com)
+- 1519136: remove references to deprecated configuration (wpoteat@redhat.com)
+
 * Fri Sep 20 2019 William Poteat <wpoteat@redhat.com> 0.26.3-1
 - 1745768: Make message unicode safe (wpoteat@redhat.com)
 - 1516209: Proper handling for empty server entry (wpoteat@redhat.com)

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.27.1
+Version:        0.27.2
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Fri Dec 06 2019 William Poteat <wpoteat@redhat.com> 0.27.2-1
+- 1776084 - Failed to run virt-who with Hyper-V (wpoteat@redhat.com)
+
 * Fri Oct 18 2019 William Poteat <wpoteat@redhat.com> 0.27.1-1
 - Update patch for AHV removal (khowell@redhat.com)
 

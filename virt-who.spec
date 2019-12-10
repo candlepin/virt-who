@@ -94,7 +94,7 @@ report them to the subscription manager.
 
 
 %build
-%{python_exec} setup.py build
+%{python_exec} setup.py build --rpm-version=%{version}-%{release_number}
 
 %install
 rm -rf $RPM_BUILD_ROOT

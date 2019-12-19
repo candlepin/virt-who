@@ -3,8 +3,11 @@
 from __future__ import print_function
 import sys
 import os
+import subprocess
 from setuptools import setup, find_packages
 from distutils.command.install import install
+from distutils.command.build import build as _build
+from distutils.command.build_py import build_py as _build_py
 from shutil import copy, copyfileobj
 import gzip
 
@@ -88,6 +91,75 @@ version = {}
 with open('virtwho/version.py') as ver_file:
     exec(ver_file.read(), version)
 
+# subclass build_py so we can generate
+# version.py based on either args passed
+# in (--rpm-version, --gtk-version) or
+# from a guess generated from 'git describe'
+class rpm_version_release_build_py(_build_py):
+    user_options = _build_py.user_options + [
+        ('rpm-version=', None, 'version and release of the RPM this is built for')]
+
+    def initialize_options(self):
+        _build_py.initialize_options(self)
+        self.rpm_version = None
+        self.versioned_packages = []
+        self.git_tag_prefix = "virt-who-"
+
+    def finalize_options(self):
+        _build_py.finalize_options(self)
+        self.set_undefined_options(
+            'build',
+            ('rpm_version', 'rpm_version')
+        )
+
+    def run(self):
+        _build_py.run(self)
+        # create a "version.py" that includes the rpm version
+        # info passed to our new build_py args
+
+        if not self.dry_run:
+            for package in self.versioned_packages:
+                version_dir = os.path.join(self.build_lib, package)
+                version_file = os.path.join(version_dir, 'version.py')
+                try:
+                    lines = []
+                    with open(version_file, 'r') as f:
+                        for l in f.readlines():
+                            l = l.replace("RPM_VERSION", str(self.rpm_version))
+                            lines.append(l)
+
+                    with open(version_file, 'w') as f:
+                        for l in lines:
+                            f.write(l)
+                except EnvironmentError:
+                    raise
+
+class build(_build):
+    user_options = _build.user_options + [
+        ('rpm-version=', None, 'version and release of the RPM this is built for')
+    ]
+    def initialize_options(self):
+        _build.initialize_options(self)
+        self.rpm_version = None
+        self.git_tag_prefix = "virt-who-"
+
+    def finalize_options(self):
+        _build.finalize_options(self)
+        if not self.rpm_version:
+            self.rpm_version = self.get_git_describe()
+
+    def get_git_describe(self):
+        try:
+            cmd = ["git", "describe"]
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output = process.communicate()[0].decode('utf-8').strip()
+            if output.startswith(self.git_tag_prefix):
+                return output[len(self.git_tag_prefix):]
+        except OSError:
+            # When building the RPM there won't be a git repo to introspect so
+            # builders *must* specify the version via the --rpm-version option
+            return "unknown"
+
 setup(
     name='virt-who',
     version='0.25.4',
@@ -113,5 +185,15 @@ setup(
         'install_upstart': InstallUpstart,
         'install_man_pages': InstallManPages,
         'install_config': InstallConfig,
+        'build_py': rpm_version_release_build_py,
+        'build': build
     },
+    command_options={
+        'egg_info': {
+            'egg_base': ('setup.py', os.curdir),
+        },
+        'build_py': {
+            'versioned_packages': ('setup.py', ['virtwho'])
+        }
+    }
 )

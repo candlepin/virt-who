@@ -45,6 +45,10 @@ class XenConfigSection(VirtConfigSection):
         self.add_key('server', validation_method=self._validate_server, required=True)
         self.add_key('username', validation_method=self._validate_username, required=True)
         self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
+        # strange issue with XEN API and the use of this environment variable
+        no_proxy = self.get('no_proxy', '').strip()
+        if len(no_proxy) > 0 and not no_proxy.startswith(',') and no_proxy != '*':
+            self.add_key('no_proxy', ',' + no_proxy)
 
     def _validate_server(self, key):
         """

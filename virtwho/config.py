@@ -803,9 +803,18 @@ class ConfigSection(collections.MutableMapping):
                 result = ('warning', 'Value for %s not set' % key)
         else:
             if not isinstance(value, str):
-                result = ('warning', '%s is not set to a valid string, using default' % key)
+                if self.has_default(key):
+                    self._values[key] = self.defaults[key]
+                    result = ('warning', '"%s" is not set to a valid string, using default: "%s"' %
+                              (key, self.defaults[key]))
+                else:
+                    result = ('warning', '"%s" is not set to a valid string and has no default value' % key)
             elif len(value) == 0:
-                result = ('warning', '%s cannot be empty, using default' % key)
+                if self.has_default(key):
+                    self._values[key] = self.defaults[key]
+                    result = ('warning', '"%s" cannot be empty, using default: "%s"' % (key, self.defaults[key]))
+                else:
+                    result = ('warning', '"%s" cannot be empty and has no default value' % key)
         return result
 
     def _validate_list(self, list_key):
@@ -1194,7 +1203,7 @@ class GlobalSection(ConfigSection):
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])
         self.add_key('reporter_id', validation_method=self._validate_non_empty_string,
-                     default=util.generateReporterId())
+                     default=util.generate_reporter_id())
         self.add_key('interval',  validation_method=self._validate_interval, default=DefaultInterval)
         self.add_key('log_file', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_FILE)
         self.add_key('log_dir', validation_method=self._validate_non_empty_string, default=log.DEFAULT_LOG_DIR)
@@ -1206,7 +1215,7 @@ class GlobalSection(ConfigSection):
         except (TypeError, ValueError) as e:
             self._values[key] = 0
         except KeyError:
-            return ('warning', '%s is missing' % key)
+            return 'warning', '%s is missing' % key
 
         if self._values[key] < MinimumSendInterval:
             message = "Interval value can't be lower than {min} seconds. Default value of " \
@@ -1224,6 +1233,7 @@ class GlobalSection(ConfigSection):
 
         if self.get('print_', None) or self.get('print', None):
             self._values['oneshot'] = True
+
 
 # String representations of all the default configuration for virt-who
 DEFAULTS = {

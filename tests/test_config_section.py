@@ -141,16 +141,54 @@ class TestConfigSection(TestBase):
         self.my_config = MyConfigSection(MY_SECTION_NAME, None)
         # Add required option and one with default value
         self.my_config['must_have'] = 'foo'
-        # Add one option with default value, but not other options
+        # Add one option with default value, but not the other options (my_list and my_str)
         self.my_config['my_bool'] = True
         result = self.my_config.validate()
         expected_result = [
             ('debug', 'Value for "my_list" not set, using default: []'),
-            ('debug', 'Value for "my_str" not set, using default: bar'),
+            ('debug', 'Value for "my_str" not set, using default: bar')
         ]
         # We do not particularly care about the ordering here, just that the lists contain the same
         # elements.
         six.assertCountEqual(self, result, expected_result)
+        self.assertEqual(self.my_config['my_str'], 'bar')
+        self.assertEqual(self.my_config.state, ValidationState.VALID)
+
+    def test_validate_empty_string_with_default_value(self):
+        """
+        Test validation, when there is empty string with defined default value
+        """
+        self.my_config = MyConfigSection(MY_SECTION_NAME, None)
+        # Add required option and one with default value
+        self.my_config['must_have'] = 'foo'
+        # Add one option with default value, but not the other options (my_list and my_str)
+        self.my_config['my_bool'] = True
+        self.my_config['my_list'] = ['foo', 'bar']
+        self.my_config['my_str'] = ''
+        result = self.my_config.validate()
+        expected_result = [
+            ('warning', '"my_str" cannot be empty, using default: "bar"')
+        ]
+        self.assertEqual(result, expected_result)
+        self.assertEqual(self.my_config['my_str'], 'bar')
+        self.assertEqual(self.my_config.state, ValidationState.VALID)
+
+    def test_validate_wrong_string_with_default_value(self):
+        """
+        Test validation, when there is empty string with defined default value
+        """
+        self.my_config = MyConfigSection(MY_SECTION_NAME, None)
+        # Add required option and one with default value
+        self.my_config['must_have'] = 'foo'
+        # Add one option with default value, but not the other options (my_list and my_str)
+        self.my_config['my_bool'] = True
+        self.my_config['my_list'] = ['foo', 'bar']
+        self.my_config['my_str'] = ['foo', 'Foo']
+        result = self.my_config.validate()
+        expected_result = [
+            ('warning', '"my_str" is not set to a valid string, using default: "bar"')
+        ]
+        self.assertEqual(result, expected_result)
         self.assertEqual(self.my_config['my_str'], 'bar')
         self.assertEqual(self.my_config.state, ValidationState.VALID)
 

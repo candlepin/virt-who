@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.27.3
+Version:        0.27.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Mon Jan 13 2020 William Poteat <wpoteat@redhat.com> 0.27.4-1
+- 1763645: Version file needs updating on rpm (wpoteat@redhat.com)
+
 * Thu Jan 02 2020 William Poteat <wpoteat@redhat.com> 0.27.3-1
 - 1748677: Improved timeout for esx (wpoteat@redhat.com)
 

@@ -480,9 +480,11 @@ def parse_cli_arguments():
             description="Use these options with --kubevirt"
         )
         kubevirt_group.add_argument("--kubevirt-owner", action=StoreGroupArgument, dest="owner", default="",
-                                 help="[Deprecated] Organization who has purchased subscriptions of the products")
+                                    help="[Deprecated] Organization who has purchased subscriptions of the products")
         kubevirt_group.add_argument("--kubevirt-env", action=StoreGroupArgument, dest="env", default="",
-                                 help="[Deprecated] Environment where Kubevirt belongs to")
+                                    help="[Deprecated] Environment where Kubevirt belongs to")
+        kubevirt_group.add_argument("--kubevirt-cfg", action=StoreGroupArgument, dest="kubeconfig", default="~/.kube/config",
+                                    help="[Deprecated] Path to Kubernetes config file")
 
     # Read option from CLI
     cli_options = vars(parser.parse_args())

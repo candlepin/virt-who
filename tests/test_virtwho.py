@@ -62,7 +62,7 @@ class TestOptions(TestBase):
         self.assertFalse(options[VW_GLOBAL]['debug'])
         self.assertFalse(options[VW_GLOBAL]['oneshot'])
         self.assertEqual(options[VW_GLOBAL]['interval'], 3600)
-        self.assertEqual(options[VW_GLOBAL]['reporter_id'], util.generateReporterId())
+        self.assertEqual(options[VW_GLOBAL]['reporter_id'], util.generate_reporter_id())
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')
@@ -173,7 +173,7 @@ class TestOptions(TestBase):
         parseFile.side_effect = lambda x: {}
 
         _, options = parse_options()
-        self.assertEqual(options[VW_GLOBAL]['reporter_id'], util.generateReporterId())
+        self.assertEqual(options[VW_GLOBAL]['reporter_id'], util.generate_reporter_id())
 
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')

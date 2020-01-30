@@ -24,7 +24,7 @@ else:
     from string import ascii_letters as letters
 
 
-__all__ = ('OrderedDict', 'decode', 'generateReporterId', 'clean_filename', 'RequestsXmlrpcTransport')
+__all__ = ('OrderedDict', 'decode', 'generate_reporter_id', 'clean_filename', 'RequestsXmlrpcTransport')
 
 
 class Singleton(ABCMeta):
@@ -359,7 +359,7 @@ def clean_filename(name):
     return ''.join([char for char in name if char in VALID_FILENAME_CHARS])
 
 
-def getMachineId():
+def get_machine_id():
     try:
         with open('/etc/machine-id') as machine_id_file:
             machine_id = machine_id_file.readline().strip()
@@ -368,9 +368,9 @@ def getMachineId():
     return machine_id
 
 
-def generateReporterId():
+def generate_reporter_id():
     hostname = socket.gethostname()
-    machine_id = getMachineId()
+    machine_id = get_machine_id()
     if not machine_id or len(machine_id) == 0:
         return hostname
     else:

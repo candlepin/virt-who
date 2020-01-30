@@ -157,6 +157,20 @@ def main():
             logger.error(err)
             exit(1, err)
 
+    if len(effective_config[VW_GLOBAL]['configs']) > 0:
+        # When config file is provided using -c or --config, then other config
+        # files in /etc/virt-who.d are ignored. When it is not possible to read
+        # any configuration file, then virt-who should be terminated
+        cli_config_file_readable = False
+        for file_name in effective_config[VW_GLOBAL]['configs']:
+            if os.path.isfile(file_name):
+                cli_config_file_readable = True
+
+        if cli_config_file_readable is False:
+            err = 'No valid configuration file provided using -c/--config'
+            logger.error(err)
+            exit(1, "virt-who can't be started: %s" % str(err))
+
     for name, config in executor.dest_to_source_mapper.configs:
         logger.info('Using configuration "%s" ("%s" mode)', name,
                     config['type'])

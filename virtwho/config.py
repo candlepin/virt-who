@@ -1504,7 +1504,7 @@ def init_config(env_options, cli_options, config_dir=None):
             https = os.environ['https_proxy']
         http = None
         if 'http_proxy' in os.environ:
-            http =  os.environ['http_proxy']
+            http = os.environ['http_proxy']
             del os.environ['http_proxy']
         if http and not https:
             os.environ['https_proxy'] = http

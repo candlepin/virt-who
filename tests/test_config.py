@@ -834,7 +834,7 @@ owner=" root "
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write("""
 [test1]
-type=esx
+type=hyperv
 server=http://žluťoučký servřík
 username=username
 password=password
@@ -844,7 +844,7 @@ owner=здравствуйте
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
-        self.assertEqual(config["type"], "esx")
+        self.assertEqual(config["type"], "hyperv")
         self.assertEqual(config["server"], "http://žluťoučký servřík")
         # Username and password can't be unicode, they has to be latin1 for HTTP Basic auth
         self.assertEqual(config["username"], "username")

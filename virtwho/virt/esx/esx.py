@@ -530,6 +530,16 @@ class EsxConfigSection(VirtConfigSection):
     def _validate_server(self, key):
         error = super(EsxConfigSection, self)._validate_server(key)
         if error is None:
+            # The suds package makes a specific check to ensure ascii only server names.
+            # We must follow that check.
+            try:
+                self._values[key].encode("ascii")
+            except (UnicodeDecodeError, UnicodeEncodeError) as e:
+                error = (
+                    'error',
+                    "Option %s needs to be ASCII characters only: '%s'" % (key, self.name)
+                )
+        if error is None:
             # Url must contain protocol (usually https://)
             if "://" not in self._values[key]:
                 self._values[key] = "https://%s" % self._values[key]

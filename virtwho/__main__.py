@@ -4,12 +4,14 @@ import sys
 import logging
 import threading
 import gc
+import urllib3
 
 import virtwho.main
 
 
 def main():
     try:
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         res = virtwho.main.main()
     except KeyboardInterrupt:
         virtwho.main.exit(1)

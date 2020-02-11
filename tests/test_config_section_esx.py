@@ -24,6 +24,7 @@ Test validating of EsxConfigSection
 from base import ConfigSectionValidationTests, TestBase
 from virtwho.parser import SAT6
 from virtwho.virt.esx.esx import EsxConfigSection
+import six
 
 
 class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
@@ -34,6 +35,16 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
     VALID_CONFIG = {
         "type": "esx",
         "server": "1.2.3.4",
+        "username": "username",
+        "password": "password",
+        "owner": "admin",
+        "filter_host_parents": "'PARENT_A', 'PARENT_B'",
+        "exclude_host_parents": "'PARENT_C_EXCLUDED'",
+    }
+
+    UNICODE_SERVER_CONFIG = {
+        "type": "esx",
+        "server": "红帽€467aa",
         "username": "username",
         "password": "password",
         "owner": "admin",
@@ -59,3 +70,11 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
         'sm_type': SAT6,
     }
 
+    def test_validate_server_unicode(self):
+        self.virt_config = EsxConfigSection('test_esx', None)
+        for key, value in self.UNICODE_SERVER_CONFIG.items():
+            self.virt_config[key] = value
+
+        result = self.virt_config._validate_server('server')
+        expected_result = ('error', "Option server needs to be ASCII characters only: 'test_esx'")
+        six.assertCountEqual(self, result, expected_result)

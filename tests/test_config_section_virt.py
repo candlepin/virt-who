@@ -112,14 +112,24 @@ class TestVirtConfigSection(TestBase):
         result = self.virt_config._validate_unencrypted_password('password')
         self.assertIsNone(result)
 
-    def test_validate_unicode_unencrypted_password(self):
+    @patch('virtwho.config.requests')
+    def test_validate_unicode_unencrypted_password(self, _mock_requests):
         """
         Test of validation of password that is not encrypted and it contains some
         UTF-8 string.
+        Passes or fails based on python-requests version
         """
         self.init_virt_config_section()
         self.virt_config['password'] = 'Příšerně žluťoučký kůň pěl úděsné ódy.'
+        # Version that can't handle unicode
+        _mock_requests.__version__ = '2.19.0'
         result = self.virt_config._validate_unencrypted_password('password')
+        self.assertEqual(result,
+            ('error', "Value: Příšerně žluťoučký kůň pěl úděsné ódy. of option 'password': is not in latin1 encoding."
+                  " That is not allowed on this system."))
+        # Version that can handle unicode
+        _mock_requests.__version__ = '2.21.0'
+        result = self.virt_config._validate_username('username')
         self.assertIsNone(result)
 
     def mock_pwd_file(self):
@@ -232,11 +242,11 @@ class TestVirtConfigSection(TestBase):
         self.init_virt_config_section()
         # First, change username to something exotic ;-)
         self.virt_config['username'] = 'Jiří'
-        # Verision that can't handle unicode
+        # Version that can't handle unicode
         _mock_requests.__version__ = '2.19.0'
         result = self.virt_config._validate_username('username')
         self.assertIsNotNone(result)
-        # Verision that can handle unicode
+        # Version that can handle unicode
         _mock_requests.__version__ = '2.21.0'
         result = self.virt_config._validate_username('username')
         self.assertIsNone(result)

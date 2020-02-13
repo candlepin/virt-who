@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.26.5
+Version:        0.28.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,12 @@ fi
 
 
 %changelog
+* Thu Feb 13 2020 William Poteat <wpoteat@redhat.com> 0.28.1-1
+- 1780467: Validate rhevm password when unicode is not allowed
+  (wpoteat@redhat.com)
+- 1751441: Add command line path parameter (piotr.kliczewski@gmail.com)
+- 1762780: fix bug, when reporter_id is empty; ENT-1706 (jhnidek@redhat.com)
+
 * Thu Dec 19 2019 William Poteat <wpoteat@redhat.com> 0.26.5-1
 - 1759869: Version file needs updating on rpm (wpoteat@redhat.com)
 

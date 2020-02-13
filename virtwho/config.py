@@ -1044,13 +1044,27 @@ class VirtConfigSection(ConfigSection):
         else:
             if password != NotSetSentinel:
                 try:
-                    if (not six.PY3 and isinstance(password, str)) or isinstance(password, bytes):
-                        password.decode('utf-8')
-                except UnicodeDecodeError:
+                    # this is conditional based on the version of python-requests we are using.
+                    major, minor, patch = [int(part) for part in requests.__version__.split('.')]
+                    if (major,minor) < (2,20):
+                        password.encode('latin1')
+                except (UnicodeEncodeError, UnicodeDecodeError):
                     result = (
-                        'warning',
-                        "Value: {0} of option '{1}': is not in UTF-8 encoding".format(password, pass_key)
+                        'error',
+                        "Value: {0} of option '{1}': is not in latin1 encoding. That is not allowed on this system.".format(
+                            password,
+                            pass_key
+                        )
                     )
+                if result is None:
+                    try:
+                        if (not six.PY3 and isinstance(password, str)) or isinstance(password, bytes):
+                            password.decode('utf-8')
+                    except UnicodeDecodeError:
+                        result = (
+                            'warning',
+                            "Value: {0} of option '{1}': is not in UTF-8 encoding".format(password, pass_key)
+                        )
         return result
 
     def _validate_encrypted_password(self, pass_key):

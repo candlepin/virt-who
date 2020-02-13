@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.27.5
+Version:        0.27.6
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Thu Feb 13 2020 William Poteat <wpoteat@redhat.com> 0.27.6-1
+- 1727203: Validate server name for ASCII only in ESX (wpoteat@redhat.com)
+
 * Thu Jan 30 2020 William Poteat <wpoteat@redhat.com> 0.27.5-1
 - 1757985: better behavior of --config option (jhnidek@redhat.com)
 - 1750206: fix bug, when reporter_id is empty (jhnidek@redhat.com)

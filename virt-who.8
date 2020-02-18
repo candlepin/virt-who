@@ -22,6 +22,18 @@ Print the host/guests association in JSON format to standard output
 .TP
 \fB\-c\fR, \fB\-\-config\fR
 Use configuration file directly (will override configuration from other files. 'global' and 'default' sections are not read in files passed in via this option, and are only read from /etc/virt-who.conf). Can be used multiple times. See virt-who-config(5) for details about configuration file format.
+.TP
+\fB\-m\fR, \fB\-\-log-per-config\fR
+[Deprecated] Write one log file per configured virtualization backend. Implies a log_dir of /var/log/rhsm/virtwho. (Default: all messages are written to a single log file)
+.TP
+\fB\-l\fR LOG_DIR, \fB\-\-log-dir\fR=\fILOG_DIR\fR
+[Deprecated] The absolute path of the directory to log to. (Default '/var/log/rhsm')
+.TP
+\fB\-f\fR LOG_FILE, \fB\-\-log-file\fR=\fILOG_FILE\fR
+[Deprecated] The file name to write logs to. (Default 'rhsm.log')
+.TP
+\fB\-r\fR REPORTER_ID, \fB\-\-reporter-id\fR=\fIREPORTER_ID\fR
+[Deprecated] Label host/guest associations obtained by this instance of virt-who with the provided id.
 .IP
 
 .SH ENVIRONMENT

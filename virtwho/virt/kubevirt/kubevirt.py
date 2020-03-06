@@ -41,6 +41,10 @@ class KubevirtConfigSection(VirtConfigSection):
                      validation_method=self._validate_path,
                      default=os.environ.get('KUBECONFIG', '~/.kube/config'),
                      required=False)
+        self.add_key('kubeversion',
+                     validation_method=self._validate_version,
+                     default="",
+                     required=False)
 
     def _validate_path(self, key='kubeconfig'):
         """
@@ -55,6 +59,20 @@ class KubevirtConfigSection(VirtConfigSection):
                 )]
         return None
 
+    def _validate_version(self, key):
+        result = None
+        try:
+            value = self._values[key]
+        except KeyError:
+            if not self.has_default(key):
+                result = ('warning', 'Value for %s not set' % key)
+        else:
+            if not isinstance(value, str):
+                result = ('warning', '%s is not set to a valid string, using default' % key)
+            elif len(value) == 0:
+                result = ('warning', '%s cannot be empty, using default' % key)
+        return result
+
 
 class Kubevirt(virt.Virt):
 
@@ -67,9 +85,10 @@ class Kubevirt(virt.Virt):
                                        interval=interval,
                                        oneshot=oneshot)
         self._path = self.config['kubeconfig']
+        self._version = self.config['kubeversion']
 
     def prepare(self):
-        self._client = KubeClient(self._path)
+        self._client = KubeClient(self._path, self._version)
 
     def getHostGuestMapping(self):
         """

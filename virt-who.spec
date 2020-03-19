@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.28.2
+Version:        0.28.3
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,10 @@ fi
 
 
 %changelog
+* Thu Mar 19 2020 William Poteat <wpoteat@redhat.com> 0.28.3-1
+- 1775535: config option to override api version (piotr.kliczewski@gmail.com)
+- Update releasers for new version (wpoteat@redhat.com)
+
 * Tue Feb 25 2020 William Poteat <wpoteat@redhat.com> 0.28.2-1
 - 1760161: Command line arguments need to be in man page (wpoteat@redhat.com)
 

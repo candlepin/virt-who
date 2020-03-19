@@ -169,3 +169,26 @@ class TestKubevirt(TestBase):
 
         kubevirt = Virt.from_config(self.logger, config, Datastore())
         self.assertEqual("~/.kube/config", kubevirt._path)
+
+    @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
+           return_value=Mock())
+    @patch("virtwho.virt.kubevirt.config.Configuration")
+    def test_version_override(self, cfg, _):
+        version='v1alpha3'
+        cfg.return_value = Config()
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    kubeversion=version, hypervisor_id='hostname')
+
+        kubevirt = Virt.from_config(self.logger, config, Datastore())
+        kubevirt.prepare()
+        self.assertEqual(version, kubevirt._version)
+
+
+class Config(object):
+
+    ssl_ca_cert = "file"
+    cert_file = "file"
+    key_file = "file"
+    host = "localhost"
+    token = "token"

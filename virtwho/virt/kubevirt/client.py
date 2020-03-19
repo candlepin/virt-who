@@ -33,7 +33,7 @@ _TIMEOUT = 60
 
 class KubeClient:
 
-    def __init__(self, path):
+    def __init__(self, path, version):
         cfg = config.Configuration()
         cl = config._get_kube_config_loader_for_yaml_file(path)
         cl.load_and_set(cfg)
@@ -54,7 +54,10 @@ class KubeClient:
 
         self.host = cfg.host
         self.token = cfg.token
-        self._version = self._kubevirt_version()
+        if not version:
+            self._version = self._kubevirt_version()
+        else:
+            self._version = version
 
     def get_nodes(self):
         return self._request('/api/v1/nodes')

@@ -128,11 +128,11 @@ class TestRhevM(TestBase):
 
         self.assertEqual(get.call_count, 3)
         get.assert_has_calls([
-            call('https://localhost:8443/api/clusters', auth=ANY, verify=ANY),
+            call('https://localhost:8443/ovirt-engine/api/clusters', auth=ANY, verify=ANY, headers=ANY),
             call().raise_for_status(),
-            call('https://localhost:8443/api/hosts', auth=ANY, verify=ANY),
+            call('https://localhost:8443/ovirt-engine/api/hosts', auth=ANY, verify=ANY, headers=ANY),
             call().raise_for_status(),
-            call('https://localhost:8443/api/vms', auth=ANY, verify=ANY),
+            call('https://localhost:8443/ovirt-engine/api/vms', auth=ANY, verify=ANY, headers=ANY),
             call().raise_for_status(),
         ])
         self.assertEqual(get.call_args[1]['auth'].username, u'username'.encode('utf-8'))

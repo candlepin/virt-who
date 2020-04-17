@@ -85,7 +85,7 @@ class RhevmConfigSection(VirtConfigSection):
                 netloc = parsed[1] + ":8443"
             else:
                 netloc = parsed[1]
-            url = urllib.parse.urlunsplit((parsed[0], netloc, parsed[2], "", ""))
+            url = urllib.parse.urlunsplit((parsed[0], netloc, "", "", ""))
 
             if url[-1] != '/':
                 url += '/'
@@ -111,7 +111,7 @@ class RhevM(virt.Virt):
                                     interval=interval,
                                     oneshot=oneshot)
         self.url = self.config['server']
-        self.api_base = 'api'
+        self.api_base = 'ovirt-engine/api'
         self.username = self.config['username']
         self.password = self.config['password']
         self.auth = HTTPBasicAuth(self.username.encode('utf-8'), self.password.encode('utf-8'))
@@ -144,6 +144,10 @@ class RhevM(virt.Virt):
         Gets the major version from the Rhevm server
         """
         try:
+            # If we are talking to a Rhev4 system, we need to specifically request
+            # the Rhev 3 version of the api.  To minimize code impact, we do this
+            # by setting a 'Version' header, as outlined in Rhev 4's "Version 3
+            # REST API Guide"
             headers = dict()
             headers['Version'] = '3'
             # We will store the api_base that seems to work and use that for future requests
@@ -152,7 +156,8 @@ class RhevM(virt.Virt):
                                     headers=headers,
                                     verify=False)
             if response.status_code == 404:
-                self.api_base = 'ovirt-engine/api'
+                # this would happen if the api_base is not correct. early version 3 API.
+                self.api_base = 'api'
                 response = requests.get(urllib.parse.urljoin(self.url, self.api_base),
                                         auth=self.auth,
                                         headers=headers,
@@ -177,17 +182,11 @@ class RhevM(virt.Virt):
         """
         Call RHEV-M server and retrieve what's on given url.
         """
+        headers = dict()
         try:
             if self.major_version == '4':
-                # If we are talking to a Rhev4 system, we need to specifically request
-                # the Rhev 3 version of the api.  To minimize code impact, we do this
-                # by setting a 'Version' header, as outlined in Rhev 4's "Version 3
-                # REST API Guide"
-                headers = dict()
                 headers['Version'] = '3'
-                response = requests.get(url, auth=self.auth, verify=False, headers=headers)
-            else:
-                response = requests.get(url, auth=self.auth, verify=False)
+            response = requests.get(url, auth=self.auth, verify=False, headers=headers)
             response.raise_for_status()
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))

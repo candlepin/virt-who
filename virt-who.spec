@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.28.3
+Version:        0.28.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,10 @@ fi
 
 
 %changelog
+* Fri Apr 17 2020 William Poteat <wpoteat@redhat.com> 0.28.4-1
+- 1806572: virt-who using V3 APIs for communication with RHEVM which is
+  deprecated (wpoteat@redhat.com)
+
 * Thu Mar 19 2020 William Poteat <wpoteat@redhat.com> 0.28.3-1
 - 1775535: config option to override api version (piotr.kliczewski@gmail.com)
 - Update releasers for new version (wpoteat@redhat.com)

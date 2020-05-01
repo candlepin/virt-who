@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.28.4
+Version:        0.28.5
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,9 @@ fi
 
 
 %changelog
+* Fri May 01 2020 William Poteat <wpoteat@redhat.com> 0.28.5-1
+- 1748677: Improved timeout for esx (wpoteat@redhat.com)
+
 * Fri Apr 17 2020 William Poteat <wpoteat@redhat.com> 0.28.4-1
 - 1806572: virt-who using V3 APIs for communication with RHEVM which is
   deprecated (wpoteat@redhat.com)

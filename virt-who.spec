@@ -176,6 +176,20 @@ fi
 - 1461272: Filter virt-who hosts based on host_parents using wildcard
   (wpoteat@redhat.com)
 
+* Fri May 08 2020 William Poteat <wpoteat@redhat.com> 0.29.1-2
+- Use release tagger until branched (wpoteat@redhat.com)
+- Update patch for AHV removal (khowell@redhat.com)
+- Build fix (wpoteat@redhat.com)
+- Prepare downstream release (wpoteat@redhat.com)
+- Patch to exclude AHV from RPM (wpoteat@redhat.com)
+
+* Fri May 08 2020 William Poteat <wpoteat@redhat.com>
+- Use release tagger until branched (wpoteat@redhat.com)
+- Update patch for AHV removal (khowell@redhat.com)
+- Build fix (wpoteat@redhat.com)
+- Prepare downstream release (wpoteat@redhat.com)
+- Patch to exclude AHV from RPM (wpoteat@redhat.com)
+
 * Fri May 08 2020 William Poteat <wpoteat@redhat.com> 0.29.1-1
 - 1806572: virt-who using V3 APIs for communication with RHEVM which is
   deprecated (wpoteat@redhat.com)

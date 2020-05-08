@@ -176,6 +176,9 @@ fi
 - 1461272: Filter virt-who hosts based on host_parents using wildcard
   (wpoteat@redhat.com)
 
+* Fri May 08 2020 William Poteat <wpoteat@redhat.com> 0.29.1-3
+- Update for AHV patch (wpoteat@redhat.com)
+
 * Fri May 08 2020 William Poteat <wpoteat@redhat.com> 0.29.1-2
 - Use release tagger until branched (wpoteat@redhat.com)
 - Update patch for AHV removal (khowell@redhat.com)

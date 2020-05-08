@@ -1,4 +1,4 @@
-From 488c8e51480de699a9ce366dc79468b224f9907e Mon Sep 17 00:00:00 2001
+From 0f2217ceffcf4f8d87cf5a8634542901be8b65fe Mon Sep 17 00:00:00 2001
 From: Kevin Howell <khowell@redhat.com>
 Date: Fri, 18 Oct 2019 09:54:54 -0400
 Subject: [PATCH] Remove AHV support
@@ -592,7 +592,7 @@ index d8ccbc8..0000000
 -                           result[index].toDict())
 -
 diff --git a/virtwho/config.py b/virtwho/config.py
-index 6212f78..7c0360a 100644
+index b9f3f2e..9064ede 100644
 --- a/virtwho/config.py
 +++ b/virtwho/config.py
 @@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
@@ -604,7 +604,7 @@ index 6212f78..7c0360a 100644
  VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
  VW_GLOBAL = "global"
  VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
-@@ -1127,7 +1127,7 @@ class VirtConfigSection(ConfigSection):
+@@ -1150,7 +1150,7 @@ class VirtConfigSection(ConfigSection):
          result = None
          sm_type = self._values['sm_type']
          virt_type = self._values.get('type')
@@ -614,13 +614,13 @@ index 6212f78..7c0360a 100644
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index 2fdacb2..322004b 100644
+index eeb7aad..b7dcbd5 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
 @@ -44,7 +44,6 @@ SAT5_VM_DISPATCHER = {
      'rhevm': {'owner': False, 'server': True, 'username': True},
      'hyperv': {'owner': False, 'server': True, 'username': True},
-     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True},
+     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  
@@ -628,7 +628,7 @@ index 2fdacb2..322004b 100644
 @@ -54,7 +53,6 @@ SAT6_VM_DISPATCHER = {
      'rhevm': {'owner': True, 'server': True, 'username': True},
      'hyperv': {'owner': True, 'server': True, 'username': True},
-     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True},
+     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  
@@ -668,9 +668,9 @@ index 2fdacb2..322004b 100644
  
          manager_group = parser.add_argument_group(
              title="Subscription manager",
-@@ -483,30 +478,6 @@ def parse_cli_arguments():
-         kubevirt_group.add_argument("--kubevirt-env", action=StoreGroupArgument, dest="env", default="",
-                                  help="[Deprecated] Environment where Kubevirt belongs to")
+@@ -485,30 +480,6 @@ def parse_cli_arguments():
+         kubevirt_group.add_argument("--kubevirt-cfg", action=StoreGroupArgument, dest="kubeconfig", default="~/.kube/config",
+                                     help="[Deprecated] Path to Kubernetes config file")
  
 -        ahv_group = parser.add_argument_group(
 -            title="AHV PC/PE options",
@@ -1825,5 +1825,5 @@ index 5495657..466dc90 100644
          return [subcls for subcls in cls.__subclasses__()]
  
 -- 
-2.21.0
+2.25.3
 

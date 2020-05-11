@@ -122,8 +122,6 @@ class RhevM(virt.Virt):
 
     def prepare(self):
         if not self.prepared:
-            if not hasattr(self, 'major_version'):
-                self.get_version()
             self.build_urls()
             self.prepared = True
 
@@ -139,54 +137,12 @@ class RhevM(virt.Virt):
         self.hosts_url = urllib.parse.urljoin(self.url, self.api_base + hosts_endpoint)
         self.vms_url = urllib.parse.urljoin(self.url, self.api_base + vms_endpoint)
 
-    def get_version(self):
-        """
-        Gets the major version from the Rhevm server
-        """
-        try:
-            # If we are talking to a Rhev4 system, we need to specifically request
-            # the Rhev 3 version of the api.  To minimize code impact, we do this
-            # by setting a 'Version' header, as outlined in Rhev 4's "Version 3
-            # REST API Guide"
-            headers = dict()
-            headers['Version'] = '3'
-            # We will store the api_base that seems to work and use that for future requests
-            response = requests.get(urllib.parse.urljoin(self.url, self.api_base),
-                                    auth=self.auth,
-                                    headers=headers,
-                                    verify=False)
-            if response.status_code == 404:
-                # this would happen if the api_base is not correct. early version 3 API.
-                self.api_base = 'api'
-                response = requests.get(urllib.parse.urljoin(self.url, self.api_base),
-                                        auth=self.auth,
-                                        headers=headers,
-                                        verify=False)
-            response.raise_for_status()
-        except requests.RequestException as e:
-            raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
-
-        try:
-            api = ElementTree.fromstring(response.content)
-        except Exception as e:
-            self.logger.debug("Invalid xml file: %s" % response)
-            raise virt.VirtError("Invalid XML file returned from RHEV-M: %s" % str(e))
-        version = api.find('.//version')
-        if version is not None:
-            major = version.attrib['major']
-            self.major_version = major
-        else:
-            self.logger.info("Could not determine version")
-
     def get(self, url):
         """
         Call RHEV-M server and retrieve what's on given url.
         """
-        headers = dict()
         try:
-            if self.major_version == '4':
-                headers['Version'] = '3'
-            response = requests.get(url, auth=self.auth, verify=False, headers=headers)
+            response = requests.get(url, auth=self.auth, verify=False)
             response.raise_for_status()
         except requests.RequestException as e:
             raise virt.VirtError("Unable to connect to RHEV-M server: %s" % str(e))
@@ -247,7 +203,6 @@ class RhevM(virt.Virt):
                 # The error is not important yet
                 self.logger.info("Unable to get hardware uuid for host %s ", id)
 
-
             if self.config['hypervisor_id'] == 'uuid':
                 host_id = id
             elif self.config['hypervisor_id'] == 'hwuuid':
@@ -259,12 +214,13 @@ class RhevM(virt.Virt):
             elif self.config['hypervisor_id'] == 'hostname':
                 host_id = host.find('address').text
 
-            sockets = host.find('cpu').find('topology').get('sockets')
+            sockets = None
+            try:
+                sockets = host.find('cpu').find('topology').find('sockets').text
+            except AttributeError:
+                self.logger.warning("Unable to find socket count.")
             if not sockets:
-                try:
-                    sockets = host.find('cpu').find('topology').find('sockets').text
-                except AttributeError:
-                    sockets = "unknown"
+                sockets = "unknown"
 
             facts = {
                 virt.Hypervisor.CPU_SOCKET_FACT: sockets,
@@ -279,12 +235,13 @@ class RhevM(virt.Virt):
             else:
                 facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = cluster_name
 
+            version = None
             try:
-                version = host.find('version').get('full_version')
-                if version:
-                    facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
+                version = host.find('version').find('full_version').text
             except AttributeError:
-                pass
+                self.logger.warning("Unable to find hypervisor version.")
+            if version:
+                facts[virt.Hypervisor.HYPERVISOR_VERSION_FACT] = version
 
             hosts[id] = virt.Hypervisor(hypervisorId=host_id, name=host.find('address').text, facts=facts)
             mapping[id] = []

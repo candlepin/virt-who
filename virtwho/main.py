@@ -250,6 +250,7 @@ def exit(code, status=None):
         sd_notify("STATUS=%s" % status)
 
     if executor:
+        executor.logger.debug(str(status))
         try:
             executor.terminate()
         except KeyboardInterrupt:

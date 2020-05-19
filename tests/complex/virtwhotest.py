@@ -1,5 +1,23 @@
 from __future__ import print_function
 
+#
+# Module for abstraction of all virtualization backends, part of virt-who
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
 import os
 import signal
 import sys
@@ -18,16 +36,33 @@ import virtwho
 import virtwho.parser
 import virtwho.main
 import virtwho.log
+import virtwho.config
 
-# hack to use unittest2 on python <= 2.6, unittest otherwise
-# based on python version
-if sys.version_info[0] > 2 or sys.version_info[1] > 6:
-    from unittest import TestCase
-else:
-    from unittest2 import TestCase
+from unittest import TestCase
 
 
 class TestBase(TestCase):
+    """
+    This is a class that provides tests for virt backend. The fake backend
+    must provide exactly the expected data.
+    """
+
+    # Process representing fake candlepin server
+    sam = None
+    # Process representing fake virt backend server
+    server = None
+    # Queue used for multiprocess communication
+    queue = None
+    # Arguments shared for all tests
+    arguments = None
+    # Virt type
+    virt = None
+    # Temporary directory used for storing virt-who configuration file
+    config_dir = None
+
+    def __init__(self, *args, **kwargs):
+        super(TestBase, self).__init__(*args, **kwargs)
+
     @classmethod
     def setUpClass(cls):
         TestCase.setUpClass()
@@ -55,7 +90,7 @@ class TestBase(TestCase):
         # Logger patching
         self.tmp_dir = mkdtemp()
         logger_patcher = patch.multiple('virtwho.log.Logger', _log_dir=self.tmp_dir,
-                                         _stream_handler=None, _queue_logger=None)
+                                        _stream_handler=None, _queue_logger=None)
         logger_patcher.start()
         self.addCleanup(logger_patcher.stop)
         self.addCleanup(rmtree, self.tmp_dir)
@@ -84,7 +119,7 @@ class TestBase(TestCase):
         self.process.join()
 
     def run_virtwho(self, args, grab_stdout=False, background=False):
-        '''
+        """
         Execute virt-who process with given arguments.
 
         `grab_stdout` argument will take stdout of the virt-who process
@@ -96,7 +131,7 @@ class TestBase(TestCase):
         Returns tuple (status, stdout), where status is return code of the
         virt-who process (or None if `background` is True) and stdout is
         stdout from the process (or None if `grab_stdout` is False).
-        '''
+        """
 
         old_stdout = None
         if grab_stdout:
@@ -106,7 +141,8 @@ class TestBase(TestCase):
         code = None
         data = None
         socket.setdefaulttimeout(1)
-        self.process = Process(target=virtwho.main.main)
+        from virtwho.__main__ import main as main_main
+        self.process = Process(target=main_main)
         self.process.start()
 
         if not background:
@@ -124,18 +160,6 @@ class TestBase(TestCase):
     def stop_virtwho(self):
         self.process.terminate()
         self.process.join()
-
-
-class VirtBackendTestMixin(object):
-    """
-    This is a mixin that provides tests for virt backend. The fake backend
-    must provide exactly the expected data.
-
-    Mix this class into the specific virt backend TestCase.
-    """
-
-    def __init__(self):
-        raise NotImplementedError()
 
     def check_assoc(self, reported, expected):
         diff = set(reported.keys()) - set(expected.keys())
@@ -230,11 +254,16 @@ class VirtBackendTestMixin(object):
         self.check_assoc_initial(assoc)
 
     def test_print(self):
-        code, out = self.run_virtwho(self.arguments + ['-p', '--debug'], grab_stdout=True)
+        args = self.arguments + ['-p', '--debug']
+        code, out = self.run_virtwho(args, grab_stdout=True)
         self.assertEqual(code, 0, "virt-who exited with wrong error code: %s" % code)
         returned = json.loads(out)
         # Test facts
         for hypervisor in returned['hypervisors']:
+            # Check that required facts were obtained from virt backend
+            self.assertIn('facts', hypervisor)
+            self.assertIn('hypervisor.type', hypervisor['facts'])
+            self.assertIn('hypervisor.cluster', hypervisor['facts'])
             if hypervisor['facts']['hypervisor.type'] == 'vmware':
                 self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-cluster-1'))
             else:
@@ -300,7 +329,6 @@ class VirtBackendTestMixin(object):
         receives the reload signal
         """
         rhsm_conf_path = os.path.join(self.sam.tempdir, 'rhsm.conf')
-        good_rhsm_conf = ''
         with open(rhsm_conf_path, 'r') as f:
             good_rhsm_conf = ''.join(line for line in f.readlines())
         bad_conf = """
@@ -321,7 +349,7 @@ proxy_hostname =
 
         # We expect the queue to be empty until we the appropriate
         # configuration file is added
-        self.assertRaises(AssertionError, self.wait_for_assoc)
+        self.assertRaises(AssertionError, self.wait_for_assoc, 1)
 
         # Update the configuration file with the good one that came from
         # fake_sam

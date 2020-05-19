@@ -59,7 +59,8 @@ class TestSubscriptionManager(TestManager):
     default_config_args = {
         'type': 'libvirt',
         'hypervisor_id': 'uuid',
-
+        'rhsm_username': 'user',
+        'rhsm_password': 'password'
     }
 
     def prepare(self, create_from_file, connection):
@@ -88,8 +89,9 @@ class TestSubscriptionManager(TestManager):
     @patch("rhsm.certificate.create_from_file")
     def test_sendVirtGuests(self, create_from_file, connection):
         self.prepare(create_from_file, connection)
-        config = VirtConfigSection.from_dict({'type': 'libvirt', 'sm_type': 'sam'}, 'test', None)
+        config, d = self.create_fake_config('test', **self.default_config_args)
         manager = Manager.from_config(self.logger, config)
+        self.domain_report._config = config
         manager.sendVirtGuests(self.domain_report, self.options)
         manager.connection.updateConsumer.assert_called_with(
             ANY,

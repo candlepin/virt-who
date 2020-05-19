@@ -1,5 +1,23 @@
 from __future__ import print_function
 
+#
+# Module for abstraction of all virtualization backends, part of virt-who
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
 import os
 import six
 import sys
@@ -9,13 +27,21 @@ import json
 import shutil
 import requests
 
-from fake_virt import FakeVirt, FakeHandler
+from fake_server import FakeServer, FakeHandler
 
-from virtwho.manager.subscriptionmanager.subscriptionmanager import rhsm_config
+from rhsm import config as rhsm_config
 
 
 class SamHandler(FakeHandler):
+    """
+    Handler of GET, POST and PUT method for FakeSam (candlepin server)
+    """
+
     def do_GET(self):
+        """
+        Handler for GET method
+        :return:
+        """
         print("[FakeSam] GET", self.path)
         if self.path.startswith('/status'):
             content = {
@@ -24,15 +50,17 @@ class SamHandler(FakeHandler):
             }
             self.write_json(content)
         else:
-            content = {"result": "ok",
-            }
+            content = {"result": "ok"}
             self.write_json(content)
 
     def do_POST(self):
-        print("[FakeSam] POST", self.path)
+        """
+        Handler for POST method
+        """
+        print("[FakeSam] POST", self.path, self.server.code)
         if self.server.code:
             self.write_json({}, status_code=self.server.code, headers={"Retry-After": "60"})
-        elif self.path.startswith('/hypervisors'):
+        elif self.path.startswith('/hypervisors') or self.path.startswith('//hypervisors'):
             size = int(self.headers["Content-Length"])
             incoming = self.rfile.read(size)
             if isinstance(incoming, six.binary_type):
@@ -48,13 +76,26 @@ class SamHandler(FakeHandler):
             self.write_json(content, status_code=requests.codes.ok)
 
     def do_PUT(self):
-        print("PUT", self.path)
+        """
+        Handler for PUT method. This method is just ignored
+        :return:
+        """
+        print("[FakeSam] PUT", self.path)
 
 
-class FakeSam(FakeVirt):
+class FakeSam(FakeServer):
+    """
+    Fake candlepin server used for testing of virt-who
+    """
     def __init__(self, queue, port=None, code=None, host='localhost'):
+        """
+        Initialization of fake candlepin server
+        :param queue: inter-process queue used for testing
+        :param port: port, where server is listening on
+        :param code: (optional) the code that server returns to client
+        :param host: the name that is used for host
+        """
         super(FakeSam, self).__init__(SamHandler, port=port, host=host)
-        self.daemon = True
         self.server.code = code
         base = os.path.dirname(os.path.abspath(__file__))
         certfile = os.path.join(base, 'cert.pem')
@@ -70,7 +111,7 @@ class FakeSam(FakeVirt):
         with open(config_name, 'w') as f:
             f.write("""
 [server]
-hostname = localhost
+hostname = {host}
 prefix = /
 port = {port}
 insecure = 1
@@ -78,7 +119,7 @@ proxy_hostname =
 
 [rhsm]
 consumerCertDir = {certdir}
-""".format(port=self.port, certdir=base))
+""".format(host=self.host, port=self.port, certdir=base))
 
         rhsm_config.DEFAULT_CONFIG_PATH = config_name
 
@@ -88,6 +129,7 @@ consumerCertDir = {certdir}
     def terminate(self):
         shutil.rmtree(self.tempdir)
         super(FakeSam, self).terminate()
+
 
 if __name__ == '__main__':
     if len(sys.argv) >= 2:

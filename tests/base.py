@@ -49,6 +49,7 @@ class TestBase(unittest.TestCase):
         mock_config.name = name
         mock_config.__getitem__.side_effect = kwargs.__getitem__
         mock_config.__setitem__.side_effect = kwargs.__setitem__
+        mock_config.__len__.return_value = kwargs.__len__()
         # Returns the mock_config and the dictionary that underlies it (useful for modifying the
         # contents of the config, without messing up the expected call stack of the mock_config
         return mock_config, kwargs

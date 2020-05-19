@@ -33,21 +33,14 @@ class Rhevm4Handler(FakeHandler):
         if self.path == '/ovirt-engine/api':
             self.write_file('rhevm', 'rhev4_api.xml')
         elif self.path == '/ovirt-engine/api/clusters':
-            self.check_version_header()
             self.write_file('rhevm', 'rhevm_clusters.xml')
         elif self.path == '/ovirt-engine/api/hosts':
-            self.check_version_header()
             self.write_file('rhevm', 'rhevm_hosts.xml')
         elif self.path == '/ovirt-engine/api/vms':
-            self.check_version_header()
             self.write_file('rhevm', 'rhevm_vms_%d.xml' % self.server._data_version.value)
         else:
             self.send_response(404)
             self.end_headers()
-
-    def check_version_header(self):
-        if not self.headers['Version'] == '3':
-            self.send_response(400, 'Version header mismatch')
 
 
 class FakeRhevm4(FakeVirt):

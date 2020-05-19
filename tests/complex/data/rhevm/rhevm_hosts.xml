@@ -35,7 +35,13 @@
         <spm>
             <priority>5</priority>
         </spm>
-        <version major="4" minor="16" build="8" revision="1" full_version="vdsm-4.16.8.1-5.el6ev"/>
+        <version>
+            <major>4</major>
+            <minor>16</minor>
+            <build>8</build>
+            <revision>1</revision>
+            <full_version>vdsm-4.16.8.1-5.el6ev</full_version>
+        </version>
         <hardware_information>
             <manufacturer>IBM</manufacturer>
             <version>00</version>
@@ -85,7 +91,11 @@
             <fingerprint>ae:57:8c:12:fa:3b:ba:52:ea:f1:d5:b3:fa:fd:8b:0a</fingerprint>
         </ssh>
         <cpu>
-            <topology sockets="1" cores="6" threads="2"/>
+            <topology>
+                <sockets>1</sockets>
+                <cores>6</cores>
+                <threads>2</threads>
+            </topology>
             <name>Intel(R) Xeon(R) CPU           E5649  @ 2.53GHz</name>
             <speed>2527</speed>
         </cpu>
@@ -145,7 +155,13 @@
         <spm>
             <priority>5</priority>
         </spm>
-        <version major="4" minor="14" build="13" revision="0" full_version="vdsm-4.14.13-3.bz1152587v2.el6ev"/>
+        <version>
+            <major>4</major>
+            <minor>14</minor>
+            <build>13</build>
+            <revision>0</revision>
+            <full_version>vdsm-4.14.13-3.bz1152587v2.el6ev</full_version>
+        </version>
         <hardware_information>
             <manufacturer>IBM</manufacturer>
             <serial_number>99FC371</serial_number>
@@ -175,7 +191,11 @@
             <fingerprint>41:51:c4:92:fe:78:6f:e2:ce:d6:5f:1c:98:2f:09:81</fingerprint>
         </ssh>
         <cpu>
-            <topology sockets="1" cores="4" threads="1"/>
+            <topology>
+                <sockets>1</sockets>
+                <cores>4</cores>
+                <threads>1</threads>
+            </topology>
             <name>Intel(R) Xeon(R) CPU           E5420  @ 2.50GHz</name>
             <speed>2490</speed>
         </cpu>
@@ -232,7 +252,13 @@
         <spm>
             <priority>5</priority>
         </spm>
-        <version major="4" minor="16" build="8" revision="1" full_version="vdsm-4.16.8.1-6.el6ev"/>
+        <version>
+            <major>4</major>
+            <minor>16</minor>
+            <build>8</build>
+            <revision>1</revision>
+            <full_version>vdsm-4.16.8.1-6.el6ev</full_version>
+        </version>
         <hardware_information>
             <manufacturer>IBM</manufacturer>
             <version>00</version>
@@ -282,7 +308,11 @@
             <fingerprint>6f:36:76:a7:08:66:3b:5f:66:3b:20:b5:21:04:bc:cf</fingerprint>
         </ssh>
         <cpu>
-            <topology sockets="1" cores="6" threads="2"/>
+            <topology>
+                <sockets>1</sockets>
+                <cores>6</cores>
+                <threads>2</threads>
+            </topology>
             <name>Intel(R) Xeon(R) CPU           E5649  @ 2.53GHz</name>
             <speed>2533</speed>
         </cpu>
@@ -341,7 +371,13 @@
         <spm>
             <priority>5</priority>
         </spm>
-        <version major="4" minor="16" build="8" revision="1" full_version="vdsm-4.16.8.1-6.el6ev"/>
+        <version>
+            <major>4</major>
+            <minor>16</minor>
+            <build>8</build>
+            <revision>1</revision>
+            <full_version>vdsm-4.16.8.1-6.el6ev</full_version>
+        </version>
         <hardware_information>
             <manufacturer>IBM</manufacturer>
             <version>00</version>
@@ -391,7 +427,11 @@
             <fingerprint>6f:36:76:a7:08:66:3b:5f:66:3b:20:b5:21:04:bc:cf</fingerprint>
         </ssh>
         <cpu>
-            <topology sockets="1" cores="6" threads="2"/>
+            <topology>
+                <sockets>1</sockets>
+                <cores>6</cores>
+                <threads>2</threads>
+            </topology>
             <name>Intel(R) Xeon(R) CPU           E5649  @ 2.53GHz</name>
             <speed>2533</speed>
         </cpu>

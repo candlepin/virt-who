@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        0.29.2
-Release:        %{release_number}%{?dist}
+Release:        2%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -169,6 +169,18 @@ fi
 
 
 %changelog
+* Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.29.2-2
+- Automatic commit of package [virt-who] minor release [0.29.1-3].
+  (wpoteat@redhat.com)
+- Update for AHV patch (wpoteat@redhat.com)
+- Automatic commit of package [virt-who] minor release [0.29.1-2].
+  (wpoteat@redhat.com)
+- Use release tagger until branched (wpoteat@redhat.com)
+- Update patch for AHV removal (khowell@redhat.com)
+- Build fix (wpoteat@redhat.com)
+- Prepare downstream release (wpoteat@redhat.com)
+- Patch to exclude AHV from RPM (wpoteat@redhat.com)
+
 * Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.29.2-1
 - NTLM: Fix compatibility issue with Python3.8 (jhnidek@redhat.com)
 - 1806572: RHEVM should only use version 4 (wpoteat@redhat.com)

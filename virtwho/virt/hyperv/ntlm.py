@@ -28,59 +28,76 @@ else:
 
 
 def rc4k(key, message):
-    '''
+    """
     Compute rc4 of `message` with initial `key`.
-    '''
+    """
     return RC4(key).update(message)
 
 
 def mac(handle, signing_key, seq_num, message):
-    '''
+    """
     MAC signing method that create signature for given `message` with sequence
     number `seq_num` and using key `signing_key`. The `handle` corresponds to
     current state of sealing key.
-    '''
+    """
     if not isinstance(message, six.binary_type):
         message = message.encode('utf-8')
-    hmac_md5 = hmac.new(signing_key, struct.pack('<I', seq_num) + message).digest()[:8]
+    hmac_md5 = hmac.new(
+        key=signing_key,
+        msg=struct.pack('<I', seq_num) + message,
+        digestmod=hashlib.md5
+    ).digest()[:8]
     checksum = handle.update(hmac_md5)
     return struct.pack('<I8sI', 1, checksum[:8], seq_num)
 
 
 def nonce(bytes):
-    '''
+    """
     Random data with length of `bytes`.
-    '''
+    """
     return os.urandom(bytes)
 
 
 def ntlm_compute_response(flags, response_key_nt, response_key_lm,
                           server_challenge, client_challenge, time, target_info):
-    '''
+    """
     Compute NTLMv2 response.
 
     Return tuple (nt_challenge_response, lm_challenge_response, session_base_key).
-    '''
+    """
     responser_version = b'\x01'
     hi_responser_version = b'\x01'
     temp = (
         responser_version + hi_responser_version + b'\0' * 6 + time +
         client_challenge + b'\0' * 4 + target_info + b'\0' * 4
     )
-    nt_proof_str = hmac.new(response_key_nt, server_challenge + temp).digest()
+    nt_proof_str = hmac.new(
+        key=response_key_nt,
+        msg=server_challenge + temp,
+        digestmod=hashlib.md5
+    ).digest()
     nt_challenge_response = nt_proof_str + temp
-    lm_challenge_response = hmac.new(response_key_lm, server_challenge + client_challenge).digest() + client_challenge
-    session_base_key = hmac.new(response_key_nt, nt_proof_str).digest()
+    lm_challenge_response = hmac.new(
+        key=response_key_lm,
+        msg=server_challenge + client_challenge,
+        digestmod=hashlib.md5
+    ).digest() + client_challenge
+    session_base_key = hmac.new(
+        key=response_key_nt,
+        msg=nt_proof_str,
+        digestmod=hashlib.md5
+    ).digest()
     return nt_challenge_response, lm_challenge_response, session_base_key
 
 
 def ntowfv2(passwd, user, domain):
-    '''
+    """
     Hash password `passwd` using `user` and `domain`.
-    '''
+    """
     return hmac.new(
-        hashlib.new('md4', passwd.encode('utf-16le')).digest(),
-        (user.upper() + domain).encode('utf-16le')
+        key=hashlib.new('md4', passwd.encode('utf-16le')).digest(),
+        msg=(user.upper() + domain).encode('utf-16le'),
+        digestmod=hashlib.md5
     ).digest()
 
 
@@ -130,9 +147,9 @@ NTLM_Negotiate56 = 0x80000000
 
 
 class Message(object):
-    '''
+    """
     Abstract message for NTLM authentication.
-    '''
+    """
     VERSION = [
         ('product_major_version', '<B'),
         ('product_minor_version', '<B'),
@@ -154,9 +171,9 @@ class Message(object):
 
 
 class IncomingMessage(Message):
-    '''
+    """
     Abstract incoming NTLM message.
-    '''
+    """
     def __init__(self, message):
         self._items = {}
         self.payload = None
@@ -177,9 +194,9 @@ class IncomingMessage(Message):
 
 
 class OutgoingMessage(Message):
-    '''
+    """
     Abstract outgoing NTLM message.
-    '''
+    """
     def __init__(self, params):
         self.params = params
 
@@ -203,9 +220,9 @@ class OutgoingMessage(Message):
 
 
 class NegotiateMessage(OutgoingMessage):
-    '''
+    """
     NegotiateMessage is first message (sent by client) to initiate NTLM auth.
-    '''
+    """
     HEADER_LENGTH = 40
     FORMAT = [
         ('signature', '8s'),
@@ -267,10 +284,10 @@ class NegotiateMessage(OutgoingMessage):
 
 
 class ChallengeMessage(IncomingMessage):
-    '''
+    """
     ChallengeMessage is send by server to provide data for NTLM authentication
     and sealing.
-    '''
+    """
     FORMAT = (
         ('signature', '8s'),
         ('message_type', '<I'),
@@ -304,10 +321,10 @@ class ChallengeMessage(IncomingMessage):
 
 
 class AuthenticationMessage(OutgoingMessage):
-    '''
+    """
     AuthenticateMessage is final message that the client sends. It contains
     encrypted session key and other data used by authentication and sealing.
-    '''
+    """
     HEADER_LENGTH = 72
     FORMAT = [
         ('signature', '8s'),
@@ -374,9 +391,9 @@ class AuthenticationMessage(OutgoingMessage):
         self._compute_encryption_data()
 
     def _compute_encryption_data(self):
-        '''
+        """
         Compute data that are needed for authentication and encryption.
-        '''
+        """
         time = self.time or b'\0' * 8
 
         response_key_nt = response_key_lm = ntowfv2(self.password, self.username, self.domain)
@@ -405,9 +422,9 @@ class AuthenticationMessage(OutgoingMessage):
             self.session_key = exported_session_key[:4]
 
     def _time_from_target_info(self, target_info):
-        '''
+        """
         Extract timestamp from target_info.
-        '''
+        """
         l = len(target_info)
         offset = 0
         timestamp = None
@@ -466,7 +483,7 @@ class AuthenticationMessage(OutgoingMessage):
 
 
 class Ntlm(object):
-    '''
+    """
     Wrapper for NTLM authentication and sealing.
 
     Usage:
@@ -478,15 +495,15 @@ class Ntlm(object):
 
     After these steps, you can encrypt and decrypt message using `encrypt`
     and `decrypt` methods.
-    '''
+    """
     def __init__(self):
         self.incoming_seq_number = 0
         self.outgoing_seq_number = 0
 
     def negotiate_message(self, username):
-        '''
+        """
         Create type 1 message to be send to server.
-        '''
+        """
         user_parts = username.split('\\', 1)
         if len(user_parts) > 1:
             self.domain = user_parts[0].upper()
@@ -499,10 +516,10 @@ class Ntlm(object):
         return data
 
     def authentication_message(self, challenge, password):
-        '''
+        """
         Create type 3 message from type 2 (`challenge` argument) and user
         `password`.
-        '''
+        """
         challenge = ChallengeMessage(challenge)
         msg = AuthenticationMessage(
             self.username, password, self.domain, self.workstation,
@@ -513,11 +530,11 @@ class Ntlm(object):
         return msg.data
 
     def set_session_key(self, session_key):
-        '''
+        """
         Set session key that will be used for encryption and decryption.
 
         If you call `authentication_message` you don't need to call this method.
-        '''
+        """
         self.session_key = session_key
 
         self.outgoing_sealing_key = hashlib.md5(session_key + SESSION_C2S_SEAL).digest()
@@ -529,28 +546,30 @@ class Ntlm(object):
         self.incoming_seal_handle = RC4(self.incoming_sealing_key)
 
     def encrypt(self, message):
-        '''
+        """
         Encrypt and sign given `message` and return pair
         (encrypted_message, signature).
-        '''
+        """
         sealed_message = self.outgoing_seal_handle.update(message)
         signature = mac(self.outgoing_seal_handle, self.outgoing_signing_key, self.outgoing_seq_number, message)
         self.outgoing_seq_number += 1
         return sealed_message, signature
 
     def decrypt(self, sealed_message, signature):
-        '''
+        """
         Decrypt `sealed_message` and check it signature. Return decrypted
         message or Exception if sequence number or signature doesn't match.
-        '''
+        """
         message = self.incoming_seal_handle.update(sealed_message)
         version, checksum, sequence = struct.unpack('<I8sI', signature)
         if sequence != self.incoming_seq_number:
             raise Exception("Incorrect sequence number")
         checksum = self.incoming_seal_handle.update(checksum)
         expected_checksum = hmac.new(
-            self.incoming_signing_key,
-            struct.pack('<I', self.incoming_seq_number) + message).digest()[:8]
+            key=self.incoming_signing_key,
+            msg=struct.pack('<I', self.incoming_seq_number) + message,
+            digestmod=hashlib.md5
+        ).digest()[:8]
         self.incoming_seq_number += 1
         if checksum != expected_checksum:
             raise Exception("Message has been altered")

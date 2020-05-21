@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.29.1
+Version:        0.29.2
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,13 @@ fi
 
 
 %changelog
+* Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.29.2-1
+- NTLM: Fix compatibility issue with Python3.8 (jhnidek@redhat.com)
+- 1806572: RHEVM should only use version 4 (wpoteat@redhat.com)
+- Update to tests to match changes in Subscription Manager (jhnidek@redhat.com)
+- 1461272: Filter virt-who hosts based on host_parents using wildcard
+  (wpoteat@redhat.com)
+
 * Fri May 08 2020 William Poteat <wpoteat@redhat.com> 0.29.1-1
 - 1806572: virt-who using V3 APIs for communication with RHEVM which is
   deprecated (wpoteat@redhat.com)

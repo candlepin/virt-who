@@ -27,6 +27,7 @@ import suds.client
 import requests
 import errno
 import stat
+import re
 from six import BytesIO
 import io
 import logging
@@ -237,12 +238,7 @@ class Esx(virt.Virt):
     def getHostGuestMapping(self):
         mapping = {'hypervisors': []}
         for host_id, host in list(self.hosts.items()):
-            parent = host['parent'].value
-            if self.config['exclude_host_parents'] is not None and parent in self.config['exclude_host_parents']:
-                self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
-                continue
-            if self.config['filter_host_parents'] is not None and parent not in self.config['filter_host_parents']:
-                self.logger.debug("Skipping host '%s' because its parent '%s' is not included", host_id, parent)
+            if self.skip_for_parent(host_id, host) :
                 continue
             guests = []
 
@@ -310,6 +306,27 @@ class Esx(virt.Virt):
 
             mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=uuid, guestIds=guests, name=name, facts=facts))
         return mapping
+
+    def skip_for_parent(self, host_id, host):
+        """
+        Determines if the host's parent meets the criteria for inclusion/exclusion for the report
+        Returns True/False based on the parent meeting the criteria
+        """
+        parent = host['parent'].value
+        if self.config['exclude_host_parents'] is not None:
+            for seg in self.config['exclude_host_parents'].split(","):
+                if re.search(seg.replace("*",".*"), parent):
+                    self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
+                    return True
+        if self.config['filter_host_parents'] is not None:
+            found = False
+            for seg in self.config['filter_host_parents'].split(","):
+                if re.search(seg.replace("*",".*"), parent):
+                    found = True
+            if not found:
+                self.logger.debug("Skipping host '%s' because its parent '%s' is not included", host_id, parent)
+                return True
+        return False
 
     def login(self):
         """

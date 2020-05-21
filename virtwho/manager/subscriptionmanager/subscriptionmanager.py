@@ -81,6 +81,7 @@ class SubscriptionManager(Manager):
             certificate and key paths. """
         self.rhsm_config = rhsm_config.initConfig(
             rhsm_config.DEFAULT_CONFIG_PATH)
+
         consumer_cert_dir = self.rhsm_config.get("rhsm", "consumerCertDir")
         cert = 'cert.pem'
         key = 'key.pem'
@@ -176,7 +177,7 @@ class SubscriptionManager(Manager):
         `guests` is a list of `Guest` instances (or it children).
         """
         guests = report.guests
-        self._connect()
+        self._connect(report.config)
 
         # Sort the list
         guests.sort(key=lambda item: item.uuid)

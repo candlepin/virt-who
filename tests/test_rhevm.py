@@ -59,9 +59,15 @@ HOSTS_XML = '''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
         <address>hostname.domainname</address>
         <cluster href="/api/clusters/{cluster}" id="{cluster}"/>
         <cpu>
-            <topology sockets="1" cores="6" threads="2"/>
+            <topology>
+                <sockets>1</sockets>
+                <cores>6</cores>
+                <threads>2</threads>
+            </topology>
         </cpu>
-        <version full_version="1.2.3" />
+        <version>
+            <full_version>1.2.3</full_version>
+        </version>
         <hardware_information>
             <uuid>db5a7a9f-6e33-3bfd-8129-c8010e4e1497</uuid>
         </hardware_information>
@@ -108,7 +114,6 @@ class TestRhevM(TestBase):
         config = self.create_config(name='test', wrapper=None, type='rhevm', server='localhost', username='username',
                         password=u'1€345678', owner='owner')
         self.rhevm = Virt.from_config(self.logger, config, Datastore())
-        self.rhevm.major_version = '3'
         self.rhevm.build_urls()
 
     def run_once(self, queue=None):
@@ -128,11 +133,11 @@ class TestRhevM(TestBase):
 
         self.assertEqual(get.call_count, 3)
         get.assert_has_calls([
-            call('https://localhost:8443/ovirt-engine/api/clusters', auth=ANY, verify=ANY, headers=ANY),
+            call('https://localhost:8443/ovirt-engine/api/clusters', auth=ANY, verify=ANY),
             call().raise_for_status(),
-            call('https://localhost:8443/ovirt-engine/api/hosts', auth=ANY, verify=ANY, headers=ANY),
+            call('https://localhost:8443/ovirt-engine/api/hosts', auth=ANY, verify=ANY),
             call().raise_for_status(),
-            call('https://localhost:8443/ovirt-engine/api/vms', auth=ANY, verify=ANY, headers=ANY),
+            call('https://localhost:8443/ovirt-engine/api/vms', auth=ANY, verify=ANY),
             call().raise_for_status(),
         ])
         self.assertEqual(get.call_args[1]['auth'].username, u'username'.encode('utf-8'))

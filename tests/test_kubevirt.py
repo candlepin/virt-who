@@ -60,6 +60,29 @@ class TestKubevirt(TestBase):
 
         return {'items': [node]}
 
+    def new_nodes(self):
+        node = {
+            'metadata': {
+                'name': 'master'
+            },
+            'status': {
+                'nodeInfo': {
+                    'machineID': '52c01ad890e84b15a1be4be18bd64ecd',
+                    'kubeletVersion': 'v1.18.0-rc.1'
+                },
+                'addresses': [
+                    {'address': '192.168.122.140',
+                     'type': 'InternalIP'},
+                    {'address': 'minikube',
+                     'type': 'Hostname'}
+                ],
+                'allocatable' : {
+                    'cpu': '7500m'
+                }
+            }
+        }
+        return {'items': [node]}
+
     def vms(self):
         vm = {
             'metadata': {
@@ -162,6 +185,39 @@ class TestKubevirt(TestBase):
             )
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_milicpu(self):
+        client = Mock()
+        client.get_nodes.return_value = self.new_nodes()
+        client.get_vms.return_value = self.vms()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='master',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.CPU_SOCKET_FACT: '7',
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.18.0-rc.1',
+                }
+            )
+            result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+
 
     def test_empty_kubeconfig(self):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',

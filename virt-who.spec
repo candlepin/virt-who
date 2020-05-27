@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.28.6
+Version:        0.28.7
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,9 @@ fi
 
 
 %changelog
+* Wed May 27 2020 William Poteat <wpoteat@redhat.com> 0.28.7-1
+- 1835132: support milicpus (piotr.kliczewski@gmail.com)
+
 * Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.28.6-1
 - 1806572: RHEVM should only use version 4 (wpoteat@redhat.com)
 - Update to tests to match changes in Subscription Manager (jhnidek@redhat.com)

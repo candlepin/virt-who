@@ -19,6 +19,7 @@
 #
 from __future__ import absolute_import
 
+import math
 import os
 import os.path
 
@@ -90,6 +91,11 @@ class Kubevirt(virt.Virt):
     def prepare(self):
         self._client = KubeClient(self._path, self._version)
 
+    def parse_cpu(self, cpu):
+        if cpu.endswith('m'):
+            cpu = int(math.floor(int(cpu[:-1]) / 1000))
+        return str(cpu)
+
     def getHostGuestMapping(self):
         """
         Returns dictionary containing a list of virt.Hypervisors
@@ -120,7 +126,7 @@ class Kubevirt(virt.Virt):
                         host_id = addr['address']
 
             facts = {
-                virt.Hypervisor.CPU_SOCKET_FACT: status['allocatable']["cpu"],
+                virt.Hypervisor.CPU_SOCKET_FACT: self.parse_cpu(status['allocatable']["cpu"]),
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 # this should be hardware uniqe identifier but k8s api gives us only machineID
                 virt.Hypervisor.SYSTEM_UUID_FACT: status['nodeInfo']['machineID'],

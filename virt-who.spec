@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.28.8
+Version:        0.28.9
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -168,6 +168,10 @@ fi
 
 
 %changelog
+* Fri Jun 19 2020 William Poteat <wpoteat@redhat.com> 0.28.9-1
+- 1809098: Convert UUID to big-endian for certain esx hardware versions
+  (wpoteat@redhat.com)
+
 * Thu Jun 11 2020 William Poteat <wpoteat@redhat.com> 0.28.8-1
 - 1844364: better behavior of --config option (jhnidek@redhat.com)
 

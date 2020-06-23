@@ -495,36 +495,36 @@ class TestEsx(TestBase):
         test_parent._type = "ClusterComputeResource"
         host['parent'] = test_parent
         # exact match
-        self.esx.config['filter_host_parents'] = "theParent"
-        self.assertFalse(self.esx.skip_for_parent("test", host));
+        self.esx.config['filter_host_parents'] = ["theParent"]
+        self.assertFalse(self.esx.skip_for_parent("test", host))
         # wildcard match
-        self.esx.config['filter_host_parents'] = "*Parent"
-        self.assertFalse(self.esx.skip_for_parent("test", host));
+        self.esx.config['filter_host_parents'] = ["*Parent"]
+        self.assertFalse(self.esx.skip_for_parent("test", host))
         # no match
-        self.esx.config['filter_host_parents'] = "notThisOne"
-        self.assertTrue(self.esx.skip_for_parent("test", host));
+        self.esx.config['filter_host_parents'] = ["notThisOne"]
+        self.assertTrue(self.esx.skip_for_parent("test", host))
         # multi-list match
-        self.esx.config['filter_host_parents'] = "*Parent,notThisOne"
-        self.assertFalse(self.esx.skip_for_parent("test", host));
+        self.esx.config['filter_host_parents'] = ["*Parent","notThisOne"]
+        self.assertFalse(self.esx.skip_for_parent("test", host))
         # multi-list no match
-        self.esx.config['filter_host_parents'] = "wrongParent,notThisOne"
-        self.assertTrue(self.esx.skip_for_parent("test", host));
+        self.esx.config['filter_host_parents'] = ["wrongParent","notThisOne"]
+        self.assertTrue(self.esx.skip_for_parent("test", host))
 
         self.esx.config['filter_host_parents'] = None
 
         # exact match
-        self.esx.config['exclude_host_parents'] = "theParent"
-        self.assertTrue(self.esx.skip_for_parent("test", host));
+        self.esx.config['exclude_host_parents'] = ["theParent"]
+        self.assertTrue(self.esx.skip_for_parent("test", host))
         # wildcard match
-        self.esx.config['exclude_host_parents'] = "the*"
-        self.assertTrue(self.esx.skip_for_parent("test", host));
+        self.esx.config['exclude_host_parents'] = ["the*"]
+        self.assertTrue(self.esx.skip_for_parent("test", host))
         # no match
-        self.esx.config['exclude_host_parents'] = "notThisOne"
-        self.assertFalse(self.esx.skip_for_parent("test", host));
+        self.esx.config['exclude_host_parents'] = ["notThisOne"]
+        self.assertFalse(self.esx.skip_for_parent("test", host))
         #multi-list match
-        self.esx.config['exclude_host_parents'] = "the*,notThisOne"
-        self.assertTrue(self.esx.skip_for_parent("test", host));
+        self.esx.config['exclude_host_parents'] = ["the*","notThisOne"]
+        self.assertTrue(self.esx.skip_for_parent("test", host))
         #multi-list no match
-        self.esx.config['exclude_host_parents'] = "wrongParent,notThisOne"
-        self.assertFalse(self.esx.skip_for_parent("test", host));
+        self.esx.config['exclude_host_parents'] = ["wrongParent","notThisOne"]
+        self.assertFalse(self.esx.skip_for_parent("test", host))
 

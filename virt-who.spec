@@ -20,8 +20,8 @@
 
 
 Name:           virt-who
-Version:        0.29.2
-Release:        2%{?dist}
+Version:        1.29.3
+Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -169,6 +169,13 @@ fi
 
 
 %changelog
+* Wed Jun 24 2020 William Poteat <wpoteat@redhat.com> 1.29.3-1
+- 1847792: [ESX] Virt-who is failed when run with
+  "filter/exclude_host_parents=" option (wpoteat@redhat.com)
+- 1809098: Convert UUID to big-endian for certain esx hardware versions
+  (wpoteat@redhat.com)
+- 1835132: support milicpus (piotr.kliczewski@gmail.com)
+
 * Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.29.2-2
 - Automatic commit of package [virt-who] minor release [0.29.1-3].
   (wpoteat@redhat.com)

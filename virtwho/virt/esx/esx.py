@@ -330,13 +330,13 @@ class Esx(virt.Virt):
         """
         parent = host['parent'].value
         if self.config['exclude_host_parents'] is not None:
-            for seg in self.config['exclude_host_parents'].split(","):
+            for seg in self.config['exclude_host_parents']:
                 if re.search(seg.replace("*",".*"), parent):
                     self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
                     return True
         if self.config['filter_host_parents'] is not None:
             found = False
-            for seg in self.config['filter_host_parents'].split(","):
+            for seg in self.config['filter_host_parents']:
                 if re.search(seg.replace("*",".*"), parent):
                     found = True
             if not found:

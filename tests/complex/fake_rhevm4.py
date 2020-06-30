@@ -30,13 +30,13 @@ class Rhevm4Handler(FakeHandler):
         time.sleep(0.1)
         print(("[RHEVM] DO GET", self.path))
 
-        if self.path == '/ovirt-engine/api':
+        if self.path == '/ovirt-engine/api/v4':
             self.write_file('rhevm', 'rhev4_api.xml')
-        elif self.path == '/ovirt-engine/api/clusters':
+        elif self.path == '/ovirt-engine/api/v4/clusters':
             self.write_file('rhevm', 'rhevm_clusters.xml')
-        elif self.path == '/ovirt-engine/api/hosts':
+        elif self.path == '/ovirt-engine/api/v4/hosts':
             self.write_file('rhevm', 'rhevm_hosts.xml')
-        elif self.path == '/ovirt-engine/api/vms':
+        elif self.path == '/ovirt-engine/api/v4/vms':
             self.write_file('rhevm', 'rhevm_vms_%d.xml' % self.server._data_version.value)
         else:
             self.send_response(404)

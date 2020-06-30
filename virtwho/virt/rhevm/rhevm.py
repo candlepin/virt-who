@@ -111,7 +111,7 @@ class RhevM(virt.Virt):
                                     interval=interval,
                                     oneshot=oneshot)
         self.url = self.config['server']
-        self.api_base = 'ovirt-engine/api'
+        self.api_base = 'ovirt-engine/api/v4'
         self.username = self.config['username']
         self.password = self.config['password']
         self.auth = HTTPBasicAuth(self.username.encode('utf-8'), self.password.encode('utf-8'))

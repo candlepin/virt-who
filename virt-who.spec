@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.29.3
+Version:        0.29.3
 Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Mon Jul 20 2020 William Poteat <wpoteat@redhat.com> 0.29.3-1
+- Correction for erroneous previous tag
+
 * Wed Jun 24 2020 William Poteat <wpoteat@redhat.com> 1.29.3-1
 - 1847792: [ESX] Virt-who is failed when run with
   "filter/exclude_host_parents=" option (wpoteat@redhat.com)

@@ -34,6 +34,11 @@ from threading import Thread
 from virtwho import util
 
 try:
+    from urllib import unquote as urldecode
+except:
+    from urllib.parse import unquote as urldecode
+
+try:
     from systemd import journal
 except ImportError:
     journal = None
@@ -84,7 +89,7 @@ class QueueHandler(logging.Handler):
 
         # Apply string formatting to the message using args
         if hasattr(record, 'args'):
-            record.msg = record.msg % record.args
+            record.msg = urldecode(record.msg) % record.args
             record.args = []
 
         serialized_record = json.dumps(record.__dict__)

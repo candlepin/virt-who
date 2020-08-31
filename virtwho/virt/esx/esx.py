@@ -40,6 +40,11 @@ from six.moves.http_client import HTTPException
 from virtwho import virt
 from virtwho.config import VirtConfigSection
 
+try:
+    from urllib.parse import unquote as urldecode
+except ImportError:
+    from urllib import unquote as urldecode
+
 
 class FileAdapter(requests.adapters.BaseAdapter):
     '''Add handler from downloading local files.
@@ -298,7 +303,7 @@ class Esx(virt.Virt):
                 cluster_id = host['parent'].value
                 # print('', self.clusters, cluster_id)
                 cluster = self.clusters[cluster_id]
-                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = cluster['name']
+                facts[virt.Hypervisor.HYPERVISOR_CLUSTER] = urldecode(cluster['name'])
 
             version = host.get('config.product.version', None)
             if version:

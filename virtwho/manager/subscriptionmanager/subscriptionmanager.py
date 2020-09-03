@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
+
+from virtwho import parser
+
 """
 Module for communication with subscription-manager, part of virt-who
 
@@ -158,6 +161,8 @@ class SubscriptionManager(Manager):
             kwargs['correlation_id'] = self.correlation_id
 
         self.connection = rhsm_connection.UEPConnection(**kwargs)
+        # add version to user_agent header on connection BZ 1844506
+        self.connection.conn.user_agent += " " + parser.get_version().replace(" ","/")
         try:
             if not self.connection.ping()['result']:
                 raise SubscriptionManagerError(

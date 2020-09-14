@@ -411,7 +411,7 @@ class Libvirtd(Virt):
     def _remote_host_name(self):
         if self._host_name is None:
             try:
-                self._host_name = self.host_capabilities_xml.find('host/name').text
+                self._host_name = self.virt.getHostname()
             except AttributeError:
                 self._host_name = None
         return self._host_name

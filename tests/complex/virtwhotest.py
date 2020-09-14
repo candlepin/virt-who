@@ -268,8 +268,7 @@ class TestBase(TestCase):
                 self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-cluster-1'))
             else:
                 self.assertTrue(hypervisor['facts']['hypervisor.cluster'].startswith('ha-compute-res'))
-        # Transform it to the same format as assoc from SAM server
-        assoc = dict((host['uuid'], host['guests']) for host in returned['hypervisors'])
+        assoc = dict((host['hypervisorId']['hypervisorId'], host['guestIds']) for host in returned['hypervisors'])
         self.check_assoc(assoc, {
             'a2c85a15-9b53-493d-9731-8b5cccdd8951': [],
             '4172853d-e72a-493a-883b-8761f5daa5eb': [],

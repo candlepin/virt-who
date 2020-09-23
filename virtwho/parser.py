@@ -32,7 +32,10 @@ from virtwho import log, MinimumSendInterval, DefaultInterval, SAT5, SAT6
 from virtwho.config import NotSetSentinel, init_config, DEFAULTS, VW_GLOBAL,\
     VW_ENV_CLI_SECTION_NAME
 from virtwho.virt.virt import Virt
+from virtwho import log
 
+# Module-level logger
+logger = log.getLogger(name='parser', queue=False)
 
 # List of supported virtualization backends
 VIRT_BACKENDS = Virt.hypervisor_types()
@@ -213,11 +216,13 @@ def read_config_env_variables():
     }
 
     # Store values of environment variables to env_vars using dispatcher
+    has_env_value = False
     for key, values in dispatcher.items():
         attribute = values[0]
         method = values[1]
 
         if key in os.environ:
+            has_env_value = True
             env = os.getenv(key).strip()
             # Try to get const
             try:
@@ -225,6 +230,11 @@ def read_config_env_variables():
                 method(env_vars, attribute, env, value)
             except IndexError:
                 method(env_vars, attribute, env)
+
+    if has_env_value or os.path.exists("/etc/sysconfig/virt-who"):
+        logger.warning("The use of environment variables and the use of the sysconfig file " +
+                       "to configure virt-who are deprecated. " +
+                       "Their use will be ignored in the next major release.")
 
     # Todo: move this logic to the EffectiveConfig
     # env = os.getenv("VIRTWHO_LOG_DIR", log.DEFAULT_LOG_DIR).strip()

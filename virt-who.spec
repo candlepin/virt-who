@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.29.2
+Version:        0.30.0
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,18 @@ fi
 
 
 %changelog
+* Thu Oct 01 2020 William Poteat <wpoteat@redhat.com> 0.30.0-1
+- Add patch to remove AHV bits for RHEL builds (wpoteat@redhat.com)
+- 1878136: Deprecation warning for environment variables (wpoteat@redhat.com)
+- 184506: virt-who should send its version in the User-Agent header
+  (wpoteat@redhat.com)
+- 1806572: RHEVM API url needs version specified (wpoteat@redhat.com)
+- 1847792: [ESX] Virt-who is failed when run with
+  "filter/exclude_host_parents=" option (wpoteat@redhat.com)
+- 1809098: Convert UUID to big-endian for certain esx hardware versions
+  (wpoteat@redhat.com)
+- 1835132: support milicpus (piotr.kliczewski@gmail.com)
+
 * Thu May 21 2020 William Poteat <wpoteat@redhat.com> 0.29.2-1
 - NTLM: Fix compatibility issue with Python3.8 (jhnidek@redhat.com)
 - 1806572: RHEVM should only use version 4 (wpoteat@redhat.com)

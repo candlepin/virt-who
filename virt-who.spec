@@ -29,6 +29,7 @@ Group:          System Environment/Base
 License:        GPLv2+
 URL:            https://github.com/candlepin/virt-who
 Source0:        %{name}-%{version}.tar.gz
+Patch1:          build-rpm-no-ahv.patch
 
 BuildArch:      noarch
 BuildRequires:  %{python_ver}-devel
@@ -91,7 +92,9 @@ report them to the subscription manager.
 
 %prep
 %setup -q
-
+%if 0%{?rhel}
+%patch1 -p1
+%endif
 
 %build
 %{python_exec} setup.py build --rpm-version=%{version}-%{release_number}

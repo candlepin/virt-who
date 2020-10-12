@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.30.0
+Version:        0.30.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,11 @@ fi
 
 
 %changelog
+* Mon Oct 12 2020 William Poteat <wpoteat@redhat.com> 0.30.1-1
+- 1878136: Deprecation comment in config file (wpoteat@redhat.com)
+- 1854829: rhsm_port and rhsm_password are missing in template.conf
+  (wpoteat@redhat.com)
+
 * Thu Oct 01 2020 William Poteat <wpoteat@redhat.com> 0.30.0-1
 - Add patch to remove AHV bits for RHEL builds (wpoteat@redhat.com)
 - 1878136: Deprecation warning for environment variables (wpoteat@redhat.com)

@@ -15,6 +15,6 @@ class PatchBuilder(DistributionBuilder):
         retval = DistributionBuilder.tgz(self)
         self.sources.append(os.path.join(self.rpmbuild_basedir, 'build-rpm-no-ahv.patch'))
         self.artifacts.append(os.path.join(self.rpmbuild_basedir, 'build-rpm-no-ahv.patch'))
-        subprocess.check_call("cp %s %s/" % ('build-rpm-no-ahv.patch', self.rpmbuild_sourcedir), shell=True)
+        subprocess.check_call("cp %s %s/" % ('build-rpm-no-ahv.patch', self.rpmbuild_basedir), shell=True)
 
         return retval

@@ -54,7 +54,7 @@ VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv
 VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
-VW_ENV_CLI_SECTION_NAME = "env/cmdline"
+VW_ENV_CLI_SECTION_NAME = "cmdline"
 VW_SYS_ENV = "system_environment"
 
 FILTER_TYPES = ("regex", "wildcards")
@@ -1468,10 +1468,9 @@ def parse_system_environment(config):
                      "the general configuration file: %s" % ', '.join(keys))
 
 
-def init_config(env_options, cli_options, config_dir=None):
+def init_config(cli_options, config_dir=None):
     """
     Initialize and return the effective virt-who configuration
-    :param env_options: The dict of options parsed from the environment
     :param cli_options: The dict of options parsed from the CLI
     :param config_dir: The path to directory containing configuration files
     :return: EffectiveConfig
@@ -1491,9 +1490,6 @@ def init_config(env_options, cli_options, config_dir=None):
 
     global_required_params = list(effective_config[VW_GLOBAL].defaults.keys())
 
-    # Split environment variables values into global or non
-    env_globals, env_non_globals = effective_config.filter_parameters(global_required_params,
-                                                                      env_options)
     # Split cli variables values into global or non
     cli_globals, cli_non_globals = effective_config.filter_parameters(global_required_params,
                                                                       cli_options)
@@ -1506,7 +1502,7 @@ def init_config(env_options, cli_options, config_dir=None):
     # NOTE: Might be nice in the future to include the defaults in this object
     # So that section would still exist in the output
     virt_defaults_section = vw_conf.pop(VW_VIRT_DEFAULTS_SECTION_NAME, {})
-    global_section_sources = [global_section, env_globals, cli_globals]
+    global_section_sources = [global_section, cli_globals]
 
     for global_source in global_section_sources:
         for key, value in global_source.items():
@@ -1523,23 +1519,22 @@ def init_config(env_options, cli_options, config_dir=None):
     logger = log.getLogger(config=effective_config, queue=False)
 
     # Create the effective env / cli config from those values we've sorted out as non_global
-    env_cli_sources = [env_non_globals, cli_non_globals]
+    env_cli_sources = [cli_non_globals]
     for env_cli_source in env_cli_sources:
         for key, value in env_cli_source.items():
             if key:
                 effective_config[VW_ENV_CLI_SECTION_NAME][key.lower()] = value
 
     # 1638250: issue in the urllib or requests package in python 3
-    if six.PY3:
-        https = None
-        if 'https_proxy' in os.environ:
-            https = os.environ['https_proxy']
-        http = None
-        if 'http_proxy' in os.environ:
-            http = os.environ['http_proxy']
-            del os.environ['http_proxy']
-        if http and not https:
-            os.environ['https_proxy'] = http
+    https = None
+    if 'https_proxy' in os.environ:
+        https = os.environ['https_proxy']
+    http = None
+    if 'http_proxy' in os.environ:
+        http = os.environ['http_proxy']
+        del os.environ['http_proxy']
+    if http and not https:
+        os.environ['https_proxy'] = http
 
     # Now with the aggregate config data, run it through the appropriate class to get it validated/defaulted.
     effective_config[VW_ENV_CLI_SECTION_NAME] = VirtConfigSection.from_dict(effective_config[VW_ENV_CLI_SECTION_NAME], VW_ENV_CLI_SECTION_NAME, effective_config)

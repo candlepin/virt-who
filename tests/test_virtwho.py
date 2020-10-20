@@ -183,11 +183,6 @@ class TestOptions(TestBase):
         _, options = parse_options()
         self.assertTrue(options[VW_GLOBAL]['debug'])
 
-        sys.argv = ["virtwho.py"]
-        os.environ["VIRTWHO_DEBUG"] = "1"
-        _, options = parse_options()
-        self.assertTrue(options[VW_GLOBAL]['debug'])
-
     @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
     @patch('virtwho.log.getLogger')
     @patch('virtwho.config.parse_file')

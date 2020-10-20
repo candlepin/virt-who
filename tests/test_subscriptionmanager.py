@@ -235,7 +235,7 @@ rhsm_password=passwd
 rhsm_no_proxy=filter
 """)
 
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=config_dir))
         self.assertEqual(len(config_manager.configs), 1)
         config = dict(config_manager.configs)["test"]
         manager = Manager.from_config(self.logger, config)

@@ -1040,3 +1040,19 @@ class TestParseList(TestBase):
             parse_list("'abc\ ', '\\\\ def' ,'g h i' , ' jkl '"),
             ['abc ', '\\ def', 'g h i', ' jkl ']
         )
+
+# Values used for testing system_environment
+SYSTEM_ENVIRONMENT_SECTION_VALUES = {
+    'http_proxy': 'this.proxy.com',
+    'https_proxy': 'that.proxy.com',
+    'no_proxy': 'not.this.proxy.com'
+}
+
+class TestSystemEnvironmentConfig(TestBase):
+    """
+    Test base for testing system_environment
+    """
+    def express_system_environment_config_section(self):
+        virtwho.config.parse_system_environment(SYSTEM_ENVIRONMENT_SECTION_VALUES)
+        for key, value in SYSTEM_ENVIRONMENT_SECTION_VALUES.items():
+            assert os.environ[key] == value

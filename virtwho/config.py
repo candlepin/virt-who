@@ -55,6 +55,7 @@ VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
 VW_ENV_CLI_SECTION_NAME = "env/cmdline"
+VW_SYS_ENV = "system_environment"
 
 FILTER_TYPES = ("regex", "wildcards")
 
@@ -1410,7 +1411,7 @@ class EffectiveConfig(collections.MutableMapping):
         :return: list of sections that represent virt_backends
         """
         return [(name, section) for (name, section) in self.items()
-                if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME]]
+            if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME, VW_SYS_ENV]]
 
 
 def _check_effective_config_validity(effective_config, config_files_not_complete):
@@ -1451,6 +1452,19 @@ def _check_effective_config_validity(effective_config, config_files_not_complete
     effective_config.validate()
     return effective_config, validation_errors
 
+def parse_system_environment(config):
+    """
+    :param config: The dict of parameters to be added to the system environment
+    """
+    has = False
+    keys = []
+    for key,value in config.items():
+        has = True
+        os.environ[key]=value
+        keys.append(key)
+    if has:
+        logger.debug("Environment variables added from system_environment section of " +
+                     "general configuration file: %s" % keys)
 
 def init_config(env_options, cli_options, config_dir=None):
     """
@@ -1485,6 +1499,8 @@ def init_config(env_options, cli_options, config_dir=None):
     vw_conf = parse_file(VW_GENERAL_CONF_PATH)
 
     global_section = vw_conf.pop(VW_GLOBAL, {})
+    # This section is for parameters that get added to the system environment
+    parse_system_environment(vw_conf.pop(VW_SYS_ENV, {}))
     # NOTE: Might be nice in the future to include the defaults in this object
     # So that section would still exist in the output
     virt_defaults_section = vw_conf.pop(VW_VIRT_DEFAULTS_SECTION_NAME, {})

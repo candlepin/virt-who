@@ -90,7 +90,7 @@ is_hypervisor=true
 owner=taylor
 file=%s
 """ % self.hypervisor_file)
-        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        effective_config = init_config({}, config_dir=self.config_dir)
         manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(manager.configs), 1)
         virt = Virt.from_config(self.logger, manager.configs[0][1], None)
@@ -119,7 +119,7 @@ is_hypervisor=true
 owner=covfefe
 file=%s
 """ % self.hypervisor_file)
-        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        effective_config = init_config({}, config_dir=self.config_dir)
         DestinationToSourceMapper(effective_config)
         # The 'test' section is not valid here (as the json provided will not work with
         # the is_hypervisor value set to true)
@@ -137,7 +137,7 @@ is_hypervisor=false
 file=%s
 """ % self.hypervisor_file)
 
-        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        effective_config = init_config({}, config_dir=self.config_dir)
         manager = DestinationToSourceMapper(effective_config)
         self.assertEqual(len(manager.configs), 1)
         virt = Virt.from_config(self.logger, manager.configs[0][1], None)
@@ -160,6 +160,6 @@ is_hypervisor=false
 file=%s
 """ % self.hypervisor_file)
 
-        effective_config = init_config({}, {}, config_dir=self.config_dir)
+        effective_config = init_config({}, config_dir=self.config_dir)
         # This is an invalid case, the config section that is invalid should have been dropped
         self.assertNotIn('test', effective_config)

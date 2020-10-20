@@ -140,7 +140,7 @@ class TestReadingConfigs(TestBase):
         return header + body + "\n"
 
     def test_empty_config(self):
-        config = init_config({}, {}, self.config_dir)
+        config = init_config({}, self.config_dir)
         six.assertCountEqual(self, list(config.keys()), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
 
     def assert_config_equals_default(self, config):
@@ -173,7 +173,7 @@ class TestReadingConfigs(TestBase):
     def test_basic_config(self):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(default_config_values))
-        config = init_config({}, {}, config_dir=self.config_dir)
+        config = init_config({}, config_dir=self.config_dir)
         six.assertCountEqual(self, list(config.keys()), ['test', 'global'])
         self.assert_config_equals_default(config['test'])
 
@@ -182,7 +182,7 @@ class TestReadingConfigs(TestBase):
             f.write("""
 Malformed configuration file
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # If there is a config file but it is bad, then no config is returned
         self.assertEqual(len(manager.configs), 0)
 
@@ -198,7 +198,7 @@ username=test
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -216,7 +216,7 @@ password=password
 owner=root
 """)
         os.chmod(filename, 0)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # If there is a config file but it is bad, then no config is returned
         self.assertEqual(len(manager.configs), 0)
 
@@ -232,7 +232,7 @@ password=password
 owner=root
 owner=tester
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]['owner'], 'tester')
 
@@ -252,7 +252,7 @@ username=admin
 encrypted_password=%s
 owner=root
 """ % crypted)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]['password'], passwd)
 
@@ -274,7 +274,7 @@ rhsm_username=admin
 rhsm_encrypted_password=%s
 owner=root
 """ % crypted)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]["rhsm_password"], passwd)
 
@@ -295,7 +295,7 @@ password=bacon
 rhsm_encrypted_proxy_password=%s
 owner=root
 """ % crypted)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]["rhsm_proxy_password"], passwd)
 
@@ -314,7 +314,7 @@ type=esx
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -329,7 +329,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 2)
         for name, config in manager.configs:
             self.assertIn(config.name, [config_1["name"], config_2["name"]])
@@ -359,7 +359,7 @@ type=esx
             expected_dest_2: [config_2['name']]
         }
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 2)
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
         self.assertEqual(manager.dests, set([expected_dest_1, expected_dest_2]))
@@ -393,7 +393,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(manager.dests, set([expected_dest]))
         self.assertEqual(manager.sources,
                          set([config_1['name'], config_2['name']]))
@@ -430,7 +430,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_one_source_to_one_dest(self):
@@ -445,7 +445,7 @@ type=esx
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(config_1))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_two_sources_to_two_dests(self):
@@ -466,7 +466,7 @@ type=esx
             f.write(TestReadingConfigs.dict_to_ini(config_1) +
                     TestReadingConfigs.dict_to_ini(config_2))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def test_many_sources_to_many_dests(self):
@@ -509,7 +509,7 @@ type=esx
                     TestReadingConfigs.dict_to_ini(config_3) +
                     TestReadingConfigs.dict_to_ini(config_4))
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(manager.dest_to_sources_map, expected_mapping)
 
     def testLibvirtConfig(self):
@@ -522,7 +522,7 @@ username=admin
 password=password
 owner=root
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
@@ -546,7 +546,7 @@ password=password
 owner=root
 simplified_vim=false
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         _, config = manager.configs[0]
         self.assertFalse(config['simplified_vim'])
@@ -564,7 +564,7 @@ rhsm_hostname=abc
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -582,7 +582,7 @@ rhsm_hostname=abc
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -600,7 +600,7 @@ rhsm_hostname=abc
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -617,7 +617,7 @@ rhsm_hostname=abc
         # Instantiating the DestinationToSourceMapper with an invalid config should not fail
         # instead we expect that the list of configs managed by the DestinationToSourceMapper does not
         # include the invalid one
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be no configs parsed successfully, therefore the list of configs should
         # be empty
         self.assertEqual(len(config_manager.configs), 0)
@@ -641,7 +641,7 @@ username=admin
 password=password
 rhsm_hostname=abc
 """ % {'valid_config_name': valid_config_name})
-        config_manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         # There should be only one config, and that should be the one that is valid
         self.assertEqual(len(config_manager.configs), 1)
         self.assertEqual(config_manager.configs[0][1].name, valid_config_name)
@@ -668,7 +668,7 @@ password=password
 owner=owner
 rhsm_hostname=abc
 """)
-        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config(cli_dict, config_dir=self.config_dir))
         # There should be only one config, and that should be the one passed from the cli
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0][1]
@@ -704,7 +704,7 @@ password=password
 owner=owner
 rhsm_hostname=abc
 """)
-        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config(cli_dict, config_dir=self.config_dir))
         # There should be only one config, and that should be the one passed from the cli
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0][1]
@@ -747,7 +747,7 @@ password=password
 owner=owner
 rhsm_hostname=abc
 """)
-        config_manager = DestinationToSourceMapper(init_config({}, cli_dict, config_dir=self.config_dir))
+        config_manager = DestinationToSourceMapper(init_config(cli_dict, config_dir=self.config_dir))
         # There should be only one config, and that should be the one passed from the cli
         self.assertEqual(len(config_manager.configs), 1)
         config = config_manager.configs[0][1]
@@ -776,7 +776,7 @@ username=admin
 password=password
 owner=root
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertTrue("test1" not in [name for (name, config) in manager.configs],
                         "Hidden config file shouldn't be read")
 
@@ -791,7 +791,7 @@ password=password
 owner=root
 filter_host_uuids=12345
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]["filter_hosts"], ['12345'])
 
@@ -806,7 +806,7 @@ password=password
 owner=root
 filter_hosts=12345
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         self.assertEqual(manager.configs[0][1]["filter_hosts"], ['12345'])
 
@@ -820,7 +820,7 @@ username='admin'
 password=p"asswor'd
 owner=" root "
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
@@ -840,7 +840,7 @@ username=username
 password=password
 owner=здравствуйте
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
@@ -891,7 +891,7 @@ rhsm_proxy_password=proxypass2
 rhsm_insecure=2
 """)
 
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         name, config = manager.configs[0]
 
@@ -931,7 +931,7 @@ password=password
 owner=root
     filter_hosts=abc.efg.com
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
@@ -957,7 +957,7 @@ password=password
 owner=root
     #filter_hosts=abc.efg.com
 """)
-        manager = DestinationToSourceMapper(init_config({}, {}, config_dir=self.config_dir))
+        manager = DestinationToSourceMapper(init_config({}, config_dir=self.config_dir))
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
@@ -1048,7 +1048,6 @@ SYSTEM_ENVIRONMENT_SECTION_VALUES = {
     'https_proxy': 'that.proxy.com',
     'no_proxy': 'not.this.proxy.com'
 }
-
 
 class TestSystemEnvironmentConfig(TestBase):
     """

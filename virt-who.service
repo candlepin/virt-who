@@ -6,7 +6,6 @@ After=libvirtd.service network.target
 Type=notify
 PIDFile=/var/run/virt-who.pid
 ExecStart=/usr/bin/virt-who
-EnvironmentFile=-/etc/sysconfig/virt-who
 TimeoutStopSec=5
 
 [Install]

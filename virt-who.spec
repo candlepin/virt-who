@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.30.0
+Version:        0.31.0
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,16 @@ fi
 
 
 %changelog
+* Thu Oct 22 2020 William Poteat <wpoteat@redhat.com> 0.31.0-1
+- 1876927: virt-who fails to parse output from hypervisor (wpoteat@redhat.com)
+- Additional copy of patch file needed for build Update of Fedora versions in
+  releaser file (wpoteat@redhat.com)
+- Correction in patch builder for directory location (wpoteat@redhat.com)
+- Update releasers (wpoteat@redhat.com)
+- 1878136: Deprecation comment in config file (wpoteat@redhat.com)
+- 1854829: rhsm_port and rhsm_password are missing in template.conf
+  (wpoteat@redhat.com)
+
 * Thu Oct 01 2020 William Poteat <wpoteat@redhat.com> 0.30.0-1
 - Add patch to remove AHV bits for RHEL builds (wpoteat@redhat.com)
 - 1878136: Deprecation warning for environment variables (wpoteat@redhat.com)

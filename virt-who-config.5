@@ -13,7 +13,7 @@ All non-hidden files in this directory (ending in '.conf') are considered config
 The configuration located at /etc/virt-who.conf is the main configuration for virt-who.
 Below are descriptions of both the required and optional options for both kinds of configs and how they are used.
 .SH GENERAL CONFIGURATION
-The general configuration file (located at /etc/virt-who.conf), has two special sections \fBglobal\fR and \fBdefaults\fR.
+The general configuration file (located at /etc/virt-who.conf), has three special sections \fBglobal\fR, \fBdefaults\fR, and \fBsystem_environment\fR.
 The settings that can be specified in \fBdefaults\fR are any setting listed in the \fBVIRTUALIZATION BACKEND CONFIGURATION\fR section of this manual. These settings are applied as defaults to the configurations found in /etc/virt-who.d/*.conf.
 
 The settings in the \fBglobal\fR affect the overall operation of the application.
@@ -44,6 +44,19 @@ The file name to write logs to (used only if log_per_config=False)
 \fBconfigs\fR
 A list of files containing configurations for virt-who
 Used to specify locations other than default
+
+The settings in the \fBsystem_environment\fR are written to the system's environment and are available for the duration of the process execution.
+Example options that can be specified in the \fBsystem_environment\fR section:
+.TP
+\fBHTTPS_PROXY\fR
+Proxy hostname for all https requests
+.TP
+\fBHTTP_PROXY\fR
+Proxy hostname for all http requests
+.TP
+\fBNO_PROXY\fR
+A comma-separated list of hostnames or domains or ip addresses to ignore proxy settings for.
+Optionally this may be set to '*' to bypass proxy settings for all hostnames domains or ip addresses.
 
 .SH VARIABLES UNIQUE TO SYSCONFIG
 .TP

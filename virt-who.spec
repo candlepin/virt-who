@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.30.1
+Version:        0.30.2
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,13 @@ fi
 
 
 %changelog
+* Wed Nov 04 2020 William Poteat <wpoteat@redhat.com> 0.30.2-1
+- 1890421: New section of virt-who.conf file for environment variables
+  (wpoteat@redhat.com)
+- 1876927: virt-who fails to parse output from hypervisor (wpoteat@redhat.com)
+- Correction in patch builder for directory location (wpoteat@redhat.com)
+- Update releasers (wpoteat@redhat.com)
+
 * Mon Oct 12 2020 William Poteat <wpoteat@redhat.com> 0.30.1-1
 - 1878136: Deprecation comment in config file (wpoteat@redhat.com)
 - 1854829: rhsm_port and rhsm_password are missing in template.conf

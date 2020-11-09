@@ -269,7 +269,7 @@ class Libvirtd(Virt):
 
     def _createEventLoop(self):
         libvirt.virEventRegisterDefaultImpl()
-        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
+        if self.eventLoopThread is not None and self.eventLoopThread.is_alive():
             self.eventLoopThread.terminate()
         self.eventLoopThread = VirEventLoopThread(self.logger, name="libvirtEventLoop")
         self.eventLoopThread.setDaemon(True)
@@ -331,7 +331,7 @@ class Libvirtd(Virt):
                 self._send_data(report)
                 self.next_update = time.time() + self.interval
 
-        if self.eventLoopThread is not None and self.eventLoopThread.isAlive():
+        if self.eventLoopThread is not None and self.eventLoopThread.is_alive():
             self.eventLoopThread.terminate()
             self.eventLoopThread.join(1)
         self._disconnect()

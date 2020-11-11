@@ -44,6 +44,7 @@ The file name to write logs to (used only if log_per_config=False)
 \fBconfigs\fR
 A list of files containing configurations for virt-who
 Used to specify locations other than default
+.TP
 
 The settings in the \fBsystem_environment\fR are written to the system's environment and are available for the duration of the process execution.
 Example options that can be specified in the \fBsystem_environment\fR section:
@@ -53,12 +54,6 @@ Proxy hostname for all https requests
 .TP
 \fBHTTP_PROXY\fR
 Proxy hostname for all http requests
-.TP
-\fBNO_PROXY\fR
-A comma-separated list of hostnames or domains or ip addresses to ignore proxy settings for.
-Optionally this may be set to '*' to bypass proxy settings for all hostnames domains or ip addresses.
-
-.SH VARIABLES UNIQUE TO SYSCONFIG
 .TP
 \fBNO_PROXY\fR
 A comma-separated list of hostnames or domains or ip addresses to ignore proxy settings for.

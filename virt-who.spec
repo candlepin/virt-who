@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.30.2
+Version:        0.30.3
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,10 @@ fi
 
 
 %changelog
+* Wed Nov 11 2020 William Poteat <wpoteat@redhat.com> 0.30.3-1
+- 1890421: Update to docs for config change (wpoteat@redhat.com)
+- Tweak of patch builder (wpoteat@redhat.com)
+
 * Wed Nov 04 2020 William Poteat <wpoteat@redhat.com> 0.30.2-1
 - 1890421: New section of virt-who.conf file for environment variables
   (wpoteat@redhat.com)

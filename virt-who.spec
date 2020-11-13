@@ -126,7 +126,10 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 # This adds the proper /etc/rc*.d links for the script
 /sbin/chkconfig --add virt-who
 %endif
-
+# This moves parameters from old config to remaining general config file
+%if (0%{?fedora} > 33 || 0%{?rhel} > 8)
+%{python_exec} %{python_sitelib}/virtwho/migrate/migrateconfiguration.py
+%endif
 
 %preun
 %if %{use_systemd}
@@ -158,7 +161,6 @@ fi
 %else
 %{_sysconfdir}/rc.d/init.d/virt-who
 %endif
-%attr(600, root, root) %config(noreplace) %{_sysconfdir}/sysconfig/virt-who
 %attr(700, root, root) %dir %{_sysconfdir}/virt-who.d
 %{_mandir}/man8/virt-who.8.gz
 %{_mandir}/man8/virt-who-password.8.gz

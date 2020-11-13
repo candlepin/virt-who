@@ -76,7 +76,6 @@ class InstallConfig(install):
     description = 'install configuration files'
 
     FILES = (
-        ('virt-who.conf', '{root}/etc/sysconfig/virt-who'),
         ('template.conf', '{root}/etc/virt-who.d/template.conf'),
         ('template-general.conf', '{root}/etc/virt-who.conf'),
     )

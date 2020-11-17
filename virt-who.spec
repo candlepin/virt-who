@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.31.0
+Version:        0.31.1
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -173,6 +173,13 @@ fi
 
 
 %changelog
+* Tue Nov 17 2020 William Poteat <wpoteat@redhat.com> 0.31.1-1
+- 1658440: Remove the use of environment variables for configuration
+  (wpoteat@redhat.com)
+- Do not use deprecated isAlive() but use is_alive() (jhnidek@redhat.com)
+- 1890421: New section of virt-who.conf file for environment variables
+  (wpoteat@redhat.com)
+
 * Thu Oct 22 2020 William Poteat <wpoteat@redhat.com> 0.31.0-1
 - 1876927: virt-who fails to parse output from hypervisor (wpoteat@redhat.com)
 - Additional copy of patch file needed for build Update of Fedora versions in

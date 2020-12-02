@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.31.1
+Version:        0.31.2
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Wed Dec 02 2020 William Poteat <wpoteat@redhat.com> 0.31.2-1
+- 1896652: platform-python-setuptools is not in RHEL9 (wpoteat@redhat.com)
+
 * Tue Nov 17 2020 William Poteat <wpoteat@redhat.com> 0.31.1-1
 - 1658440: Remove the use of environment variables for configuration
   (wpoteat@redhat.com)

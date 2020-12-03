@@ -1,4 +1,4 @@
-From 0f2217ceffcf4f8d87cf5a8634542901be8b65fe Mon Sep 17 00:00:00 2001
+From 23268be5a8200269c472f03dbb8458caf215bbe8 Mon Sep 17 00:00:00 2001
 From: Kevin Howell <khowell@redhat.com>
 Date: Fri, 18 Oct 2019 09:54:54 -0400
 Subject: [PATCH] Remove AHV support
@@ -6,13 +6,13 @@ Subject: [PATCH] Remove AHV support
 ---
  tests/test_ahv.py                 | 566 ---------------------
  virtwho/config.py                 |   4 +-
- virtwho/parser.py                 |  33 +-
+ virtwho/parser.py                 |   4 +-
  virtwho/virt/ahv/__init__.py      |   6 -
  virtwho/virt/ahv/ahv.py           | 258 ----------
  virtwho/virt/ahv/ahv_constants.py |  21 -
  virtwho/virt/ahv/ahv_interface.py | 804 ------------------------------
  virtwho/virt/virt.py              |   1 -
- 8 files changed, 4 insertions(+), 1689 deletions(-)
+ 8 files changed, 3 insertions(+), 1661 deletions(-)
  delete mode 100644 tests/test_ahv.py
  delete mode 100644 virtwho/virt/ahv/__init__.py
  delete mode 100644 virtwho/virt/ahv/ahv.py
@@ -592,7 +592,7 @@ index d8ccbc8..0000000
 -                           result[index].toDict())
 -
 diff --git a/virtwho/config.py b/virtwho/config.py
-index b9f3f2e..9064ede 100644
+index 3740e28..fdff5dd 100644
 --- a/virtwho/config.py
 +++ b/virtwho/config.py
 @@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
@@ -604,7 +604,7 @@ index b9f3f2e..9064ede 100644
  VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
  VW_GLOBAL = "global"
  VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
-@@ -1150,7 +1150,7 @@ class VirtConfigSection(ConfigSection):
+@@ -1151,7 +1151,7 @@ class VirtConfigSection(ConfigSection):
          result = None
          sm_type = self._values['sm_type']
          virt_type = self._values.get('type')
@@ -614,10 +614,10 @@ index b9f3f2e..9064ede 100644
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index eeb7aad..b7dcbd5 100644
+index 6ee26d8..4a8c38f 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
-@@ -44,7 +44,6 @@ SAT5_VM_DISPATCHER = {
+@@ -47,7 +47,6 @@ SAT5_VM_DISPATCHER = {
      'rhevm': {'owner': False, 'server': True, 'username': True},
      'hyperv': {'owner': False, 'server': True, 'username': True},
      'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
@@ -625,7 +625,7 @@ index eeb7aad..b7dcbd5 100644
  }
  
  SAT6_VM_DISPATCHER = {
-@@ -54,7 +53,6 @@ SAT6_VM_DISPATCHER = {
+@@ -57,7 +56,6 @@ SAT6_VM_DISPATCHER = {
      'rhevm': {'owner': True, 'server': True, 'username': True},
      'hyperv': {'owner': True, 'server': True, 'username': True},
      'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
@@ -633,7 +633,7 @@ index eeb7aad..b7dcbd5 100644
  }
  
  class OptionError(Exception):
-@@ -72,7 +70,7 @@ class StoreGroupArgument(Action):
+@@ -75,7 +73,7 @@ class StoreGroupArgument(Action):
      def __call__(self, parser, namespace, values, option_string=None):
          """
          When the argument from group is used, then this argument has to match
@@ -642,63 +642,6 @@ index eeb7aad..b7dcbd5 100644
          """
          options = vars(namespace)
          virt_type = options['virt_type']
-@@ -207,7 +205,6 @@ def read_config_env_variables():
-         "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
-         "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
-         "VIRTWHO_KUBEVIRT": ("virt_type", store_const, "kubevirt"),
--        "VIRTWHO_AHV": ("virt_type", store_const, "ahv"),
-         "VIRTWHO_INTERVAL": ("interval", store_value),
-         "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
-     }
-@@ -306,7 +303,7 @@ def parse_cli_arguments():
-         parser = ArgumentParser(
-             usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version] "
-                   "[-m] [-l LOG_DIR] [-f LOG_FILE] [-r REPORTER_ID] [--sam|--satellite5|--satellite6] "
--                  "[--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
-+                  "[--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
-             description="Agent for reporting virtual guest IDs to subscription manager",
-             epilog="virt-who also reads environment variables. They have the same name as "
-                    "command line arguments but uppercased, with underscore instead of dash "
-@@ -365,8 +362,6 @@ def parse_cli_arguments():
-                                 help="[Deprecated] Register guests using Hyper-V")
-         virt_group.add_argument("--kubevirt", action=StoreVirtType, dest="virt_type", const="kubevirt",
-                                 help="[Deprecated] Register guests using Kubevirt")
--        virt_group.add_argument("--ahv", action=StoreVirtType, dest="virt_type", const="ahv",
--                                default=None, help="[Deprecated] Register Acropolis vms using AHV.")
- 
-         manager_group = parser.add_argument_group(
-             title="Subscription manager",
-@@ -485,30 +480,6 @@ def parse_cli_arguments():
-         kubevirt_group.add_argument("--kubevirt-cfg", action=StoreGroupArgument, dest="kubeconfig", default="~/.kube/config",
-                                     help="[Deprecated] Path to Kubernetes config file")
- 
--        ahv_group = parser.add_argument_group(
--            title="AHV PC/PE options",
--            description="Use these options with --ahv"
--        )
--        ahv_group.add_argument("--ahv-owner", action=StoreGroupArgument, dest="owner", default="",
--                               help="[Deprecated] Organization who has purchased subscriptions of the products")
--        ahv_group.add_argument("--ahv-env", action=StoreGroupArgument, dest="env", default="",
--                               help="[Deprecated] Environment where the vCenter server belongs to")
--        ahv_group.add_argument("--ahv-server", action=StoreGroupArgument,
--                               dest="server", default="",
--                               help="[Deprecated] URL of the ahv server to connect to")
--        ahv_group.add_argument("--ahv-username", action=StoreGroupArgument,
--                               dest="username", default="",
--                               help="[Deprecated] Username for connecting to ahv server")
--        ahv_group.add_argument("--ahv-password", action=StoreGroupArgument,
--                               dest="password", default="",
--                               help="[Deprecated] Password for connecting to ahv server")
--        ahv_group.add_argument("--pc-server", action=StoreGroupArgument, dest="server", default="",
--                               help="[Deprecated] URL of the PC server to connect to")
--        ahv_group.add_argument("--pc-username", action=StoreGroupArgument, dest="username", default="",
--                               help="[Deprecated] Username for connecting to PC")
--        ahv_group.add_argument("--pc-password", action=StoreGroupArgument, dest="password", default="",
--                               help="[Deprecated] Password for connecting to PC")
--
-     # Read option from CLI
-     cli_options = vars(parser.parse_args())
- 
 diff --git a/virtwho/virt/ahv/__init__.py b/virtwho/virt/ahv/__init__.py
 deleted file mode 100644
 index 01a19f8..0000000
@@ -1825,5 +1768,5 @@ index 5495657..466dc90 100644
          return [subcls for subcls in cls.__subclasses__()]
  
 -- 
-2.25.3
+2.26.2
 

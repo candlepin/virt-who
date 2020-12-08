@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.3
+Version:        1.31.4
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Tue Dec 08 2020 William Poteat <wpoteat@redhat.com> 1.31.4-1
+- 1899652: Install script error when file does not exist (wpoteat@redhat.com)
+
 * Fri Dec 04 2020 William Poteat <wpoteat@redhat.com> 1.31.3-1
 - 1899652: Update to ahv patch file (wpoteat@redhat.com)
 

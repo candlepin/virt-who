@@ -189,3 +189,30 @@ no_proxy=*
         with open(self.virt_who_conf_filename, "r") as conf:
             result = conf.readlines()
         self.assertEqual("".join(result), expected)
+
+
+    def test_migrate_to_no_sysconfig(self):
+        existing =\
+"""[global]
+interval=360
+reporter_id=this_one
+
+[system_environment]
+no_proxy=*
+"""
+        expected =\
+"""[global]
+interval=360
+reporter_id=this_one
+
+[system_environment]
+no_proxy=*
+"""
+
+        with open(self.virt_who_conf_filename, "w") as f:
+            f.writelines(existing)
+        migrate_env_to_config(self.virt_who_filename,
+                              self.virt_who_conf_filename)
+        with open(self.virt_who_conf_filename, "r") as conf:
+            result = conf.readlines()
+        self.assertEqual("".join(result), expected)

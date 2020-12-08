@@ -46,11 +46,12 @@ def migrate_env_to_config(sysconfig_filename=None, general_config_filename=None)
     # read the values in the existing /etc/sysconfig/virt-who file
     # these would override the env variables
     env_vars = {}
-    with open(sysconfig_filename) as myfile:
-        for line in myfile:
-            if not line.startswith('#'):
-                name, var = line.partition("=")[::2]
-                env_vars[name.strip()] = var
+    if os.path.exists(sysconfig_filename):
+        with open(sysconfig_filename) as myfile:
+            for line in myfile:
+                if not line.startswith('#'):
+                    name, var = line.partition("=")[::2]
+                    env_vars[name.strip()] = var
 
     # pop is used because these values in the global
     # section. The remaining values will go into

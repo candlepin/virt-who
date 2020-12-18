@@ -137,10 +137,11 @@ class TestLibvirtd(TestBase):
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         virt.return_value.getType.return_value = "LIBVIRT_TYPE"
         virt.return_value.getVersion.return_value = "VERSION 1337"
+        virt.return_value.getHostname.return_value = "test_host"
         self.run_virt(config, datastore)
         result = datastore.get(config.name)
         for host in result.association['hypervisors']:
-            self.assertTrue(host.name is not None)
+            self.assertTrue(host.name == "test_host")
 
     @patch('libvirt.openReadOnly')
     def test_mapping_hypervisor_has_system_uuid(self, virt):
@@ -161,6 +162,7 @@ class TestLibvirtd(TestBase):
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_NO_HOSTNAME_XML
         virt.return_value.getType.return_value = "LIBVIRT_TYPE"
         virt.return_value.getVersion.return_value = "VERSION 1337"
+        virt.return_value.getHostname.return_value = None
         self.run_virt(config, datastore)
         result = datastore.get(config.name)
         for host in result.association['hypervisors']:

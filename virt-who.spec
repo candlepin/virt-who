@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.4
+Version:        1.31.5
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,13 @@ fi
 
 
 %changelog
+* Mon Jan 04 2021 William Poteat <wpoteat@redhat.com> 1.31.5-1
+- 1909145: [RFE] Use single json format for input/output data
+  (wpoteat@redhat.com)
+- 1855550: [Remote Libvirt] The Name in Stage Candlepin cannot update based on
+  hypervisor_id configuration (wpoteat@redhat.com)
+- 1879329: List possible values for type in man page (wpoteat@redhat.com)
+
 * Tue Dec 08 2020 William Poteat <wpoteat@redhat.com> 1.31.4-1
 - 1899652: Install script error when file does not exist (wpoteat@redhat.com)
 

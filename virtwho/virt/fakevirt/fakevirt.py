@@ -103,9 +103,9 @@ class FakeVirt(Virt):
     @classmethod
     def process_hypervisor(cls, hypervisor):
         guests = []
-        for guest in hypervisor['guests']:
+        for guest in hypervisor['guestIds']:
             guests.append(cls.process_guest(guest))
-        return Hypervisor(hypervisor['uuid'],
+        return Hypervisor(hypervisor['hypervisorId']['hypervisorId'],
                           guests,
                           hypervisor.get('name'),
                           hypervisor.get('facts'))
@@ -128,12 +128,12 @@ class FakeVirt(Virt):
     @classmethod
     def list_domains_from_file(cls, file_path):
         hypervisor = cls._read_data(file_path)['hypervisors'][0]
-        if 'uuid' in hypervisor:
+        if 'hypervisorId' in hypervisor:
             raise VirtError("Fake virt file '%s' is not properly formed: "
                             "uuid key shouldn't be present, try to check is_hypervisor value" %
                             file_path)
         guests = []
-        for guest in hypervisor['guests']:
+        for guest in hypervisor['guestIds']:
             guests.append(cls.process_guest(guest))
         return guests
 

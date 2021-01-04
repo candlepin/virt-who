@@ -35,8 +35,10 @@ HYPERVISOR_JSON = """
 {
     "hypervisors": [
         {
-            "uuid": "60527517-6284-7593-6AAB-75BF2A6375EF",
-            "guests": [
+            "hypervisorId": {
+                "hypervisorId": "60527517-6284-7593-6AAB-75BF2A6375EF"
+            },
+            "guestIds": [
                 {
                     "guestId": "07ED8178-95D5-4244-BC7D-582A54A48FF8",
                     "state": 1,
@@ -54,7 +56,7 @@ NON_HYPERVISOR_JSON = """
 {
     "hypervisors": [
         {
-            "guests": [
+            "guestIds": [
                 {
                     "guestId": "9f06a84d-5f56-4e7e-be0c-937b3c1924d7",
                     "state": 1,

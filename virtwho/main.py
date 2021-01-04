@@ -207,27 +207,21 @@ def _main(executor):
             for config, report in result.items():
                 if isinstance(report, DomainListReport):
                     hypervisors.append({
-                        'guests': [guest.toDict() for guest in report.guests]
+                        'guestIds': [guest.toDict() for guest in report.guests]
                     })
                 elif isinstance(report, HostGuestAssociationReport):
                     for hypervisor in report.association['hypervisors']:
-                        h = OrderedDict((
-                            ('uuid', hypervisor.hypervisorId),
-                            ('guests',
-                             [guest.toDict() for guest in hypervisor.guestIds])
-                        ))
-                        if hypervisor.facts:
-                            h['facts'] = hypervisor.facts
+                        h = {}
+                        h['hypervisorId'] = {'hypervisorId': hypervisor.hypervisorId}
                         if hypervisor.name:
                             h['name'] = hypervisor.name
+                        h['guestIds']= [guest.toDict() for guest in hypervisor.guestIds];
+                        if hypervisor.facts:
+                            h['facts'] = hypervisor.facts
                         hypervisors.append(h)
-            data = json.dumps({
+            print( json.dumps({
                 'hypervisors': hypervisors
-            })
-            executor.logger.debug("Associations found: %s", json.dumps({
-                'hypervisors': hypervisors
-            }, indent=4, sort_keys=True))
-            print(data)
+            }, indent=4, sort_keys=False))
         return 0
 
     # We'll get here only if we're not in oneshot or print_ mode (which

@@ -24,7 +24,7 @@ import os
 import os.path
 
 from virtwho import virt
-from virtwho.config import VirtConfigSection
+from virtwho.config import VirtConfigSection, str_to_bool
 from virtwho.virt.kubevirt.client import KubeClient
 
 
@@ -45,6 +45,10 @@ class KubevirtConfigSection(VirtConfigSection):
         self.add_key('kubeversion',
                      validation_method=self._validate_version,
                      default="",
+                     required=False)
+        self.add_key('insecure',
+                     validation_method=self._validate_str_to_bool,
+                     default=False,
                      required=False)
 
     def _validate_path(self, key='kubeconfig'):
@@ -87,9 +91,10 @@ class Kubevirt(virt.Virt):
                                        oneshot=oneshot)
         self._path = self.config['kubeconfig']
         self._version = self.config['kubeversion']
+        self._insecure = str_to_bool(self.config['insecure'])
 
     def prepare(self):
-        self._client = KubeClient(self._path, self._version)
+        self._client = KubeClient(self._path, self._version, self._insecure)
 
     def parse_cpu(self, cpu):
         if cpu.endswith('m'):
@@ -136,7 +141,7 @@ class Kubevirt(virt.Virt):
 
         for vm in vms['items']:
             spec = vm['spec']
-            host_name = vm['status']['nodeName']
+            host_name = vm['status'].get('nodeName')
 
             # a vm is not scheduled on any hosts
             if host_name is None:

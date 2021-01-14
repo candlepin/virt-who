@@ -33,24 +33,32 @@ _TIMEOUT = 60
 
 class KubeClient:
 
-    def __init__(self, path, version):
+    def __init__(self, path, version, insecure):
         cfg = config.Configuration()
         cl = config._get_kube_config_loader_for_yaml_file(path)
         cl.load_and_set(cfg)
 
-        cert_reqs = ssl.CERT_REQUIRED
-        ca_certs = cfg.ssl_ca_cert
-        cert_file = cfg.cert_file
-        key_file = cfg.key_file
+        if insecure:
+            self._pool_manager = urllib3.PoolManager(
+                num_pools=4,
+                maxsize=4,
+                cert_reqs=ssl.CERT_NONE,
+                assert_hostname=False
+            )
+        else:
+            cert_reqs = ssl.CERT_REQUIRED
+            ca_certs = cfg.ssl_ca_cert
+            cert_file = cfg.cert_file
+            key_file = cfg.key_file
 
-        self._pool_manager = urllib3.PoolManager(
-            num_pools=4,
-            maxsize=4,
-            cert_reqs=cert_reqs,
-            ca_certs=ca_certs,
-            cert_file=cert_file,
-            key_file=key_file
-        )
+            self._pool_manager = urllib3.PoolManager(
+                num_pools=4,
+                maxsize=4,
+                cert_reqs=cert_reqs,
+                ca_certs=ca_certs,
+                cert_file=cert_file,
+                key_file=key_file
+            )
 
         self.host = cfg.host
         self.token = cfg.token

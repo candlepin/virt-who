@@ -46,7 +46,7 @@ SAT5_VM_DISPATCHER = {
     'xen': {'owner': False, 'server': True, 'username': True},
     'rhevm': {'owner': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'server': True, 'username': True},
-    'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+    'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
     'ahv' : {'owner': False, 'server': False, 'username': False},
 }
 
@@ -56,7 +56,7 @@ SAT6_VM_DISPATCHER = {
     'xen': {'owner': True, 'server': True, 'username': True},
     'rhevm': {'owner': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'server': True, 'username': True},
-    'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+    'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
     'ahv' : {'owner': False, 'server': False, 'username': False},
 }
 

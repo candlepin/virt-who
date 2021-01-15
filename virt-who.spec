@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.5
+Version:        1.31.6
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Fri Jan 15 2021 William Poteat <wpoteat@redhat.com> 1.31.6-1
+- 1910020: replace deprecated call (wpoteat@redhat.com)
+
 * Mon Jan 04 2021 William Poteat <wpoteat@redhat.com> 1.31.5-1
 - 1909145: [RFE] Use single json format for input/output data
   (wpoteat@redhat.com)

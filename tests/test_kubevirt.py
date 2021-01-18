@@ -114,10 +114,74 @@ class TestKubevirt(TestBase):
             },
             'status': {
                 'nodeName': 'master',
+                'phase': 'Running',
             }
         }
 
         return {'items': [vm]}
+    
+    def pending_vms(self):
+        vm = {
+            'metadata': {
+                'name': 'win-2016',
+                'namespace': 'default',
+            },
+            'spec': {
+                'domain': {
+                    'devices': {
+                        'disks': [
+                            {'disk': {'bus': 'virtio'}, 'name': 'containerdisk'}
+                        ],
+                        'interfaces': [
+                            {'bridge': {}, 'name': 'default'}
+                        ],
+                    },
+                    'features': {
+                        'acpi': {
+                            'enabled': 'true'
+                        }
+                    },
+                    'firmware': {
+                        'uuid': 'f83c5f73-5244-4bd1-90cf-02bac2dda608'
+                    },
+                    'machine': {
+                        'type': 'q35'
+                    }
+                }
+            },
+            'status': {
+                'phase': 'Pending',
+            }
+        }
+
+        return {'items': [vm]}
+
+    def test_pending_vm(self):
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.pending_vms()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='master',
+                guestIds=[],
+                facts={
+                    Hypervisor.CPU_SOCKET_FACT: '2',
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
 
     def test_getHostGuestMapping(self):
         client = Mock()
@@ -240,6 +304,19 @@ class TestKubevirt(TestBase):
         kubevirt.prepare()
         self.assertEqual(version, kubevirt._version)
 
+    @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
+           return_value=Mock())
+    @patch("virtwho.virt.kubevirt.config.Configuration")
+    def test_insecure(self, cfg, _):
+        cfg.return_value = Config()
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    kubeversion='v1alpha3', hypervisor_id='hostname',
+                                    insecure='')      
+
+        kubevirt = Virt.from_config(self.logger, config, Datastore())
+        kubevirt.prepare()
+        self.assertFalse(kubevirt._insecure)
 
 class Config(object):
 

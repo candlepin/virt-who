@@ -1,4 +1,4 @@
-From 23268be5a8200269c472f03dbb8458caf215bbe8 Mon Sep 17 00:00:00 2001
+From d782073fe7c7e06fba327ffad6f3902e03c99e6b Mon Sep 17 00:00:00 2001
 From: Kevin Howell <khowell@redhat.com>
 Date: Fri, 18 Oct 2019 09:54:54 -0400
 Subject: [PATCH] Remove AHV support
@@ -614,13 +614,13 @@ index 3740e28..fdff5dd 100644
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index 6ee26d8..4a8c38f 100644
+index 5b12d41..dd70af2 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
 @@ -47,7 +47,6 @@ SAT5_VM_DISPATCHER = {
      'rhevm': {'owner': False, 'server': True, 'username': True},
      'hyperv': {'owner': False, 'server': True, 'username': True},
-     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  
@@ -628,7 +628,7 @@ index 6ee26d8..4a8c38f 100644
 @@ -57,7 +56,6 @@ SAT6_VM_DISPATCHER = {
      'rhevm': {'owner': True, 'server': True, 'username': True},
      'hyperv': {'owner': True, 'server': True, 'username': True},
-     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
 -    'ahv' : {'owner': False, 'server': False, 'username': False},
  }
  

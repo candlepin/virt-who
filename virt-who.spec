@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.7
+Version:        1.31.8
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,9 @@ fi
 
 
 %changelog
+* Thu Jan 28 2021 William Poteat <wpoteat@redhat.com> 1.31.8-1
+- Update AHV patch for Kubevirt change (wpoteat@redhat.com)
+
 * Mon Jan 25 2021 William Poteat <wpoteat@redhat.com> 1.31.7-1
 - 1917645: handle not running vms (piotr.kliczewski@gmail.com)
 - Fedora 31 is no longer a build target (wpoteat@redhat.com)

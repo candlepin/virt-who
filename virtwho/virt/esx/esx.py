@@ -440,7 +440,7 @@ class Esx(virt.Virt):
                     self.applyClusterComputeResource(objectSet)
 
     def applyClusterComputeResource(self, objectSet):
-        if objectSet.kind in ['enter', 'kind']:
+        if objectSet.kind in ['enter', 'modify']:
             cluster = self.clusters[objectSet.obj.value]
             for change in objectSet.changeSet:
                 if change.op == 'assign' and hasattr(change, 'val'):

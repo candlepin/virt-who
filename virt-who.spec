@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.8
+Version:        1.31.9
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,11 @@ fi
 
 
 %changelog
+* Thu Feb 18 2021 William Poteat <wpoteat@redhat.com> 1.31.9-1
+- Man page update to describe the migration script (wpoteat@redhat.com)
+- 1924572: Add insecure option to config template (wpoteat@redhat.com)
+- Add Fedora 34 to releaser list (wpoteat@redhat.com)
+
 * Thu Jan 28 2021 William Poteat <wpoteat@redhat.com> 1.31.8-1
 - Update AHV patch for Kubevirt change (wpoteat@redhat.com)
 

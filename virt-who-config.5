@@ -249,8 +249,32 @@ Absolute path to the JSON file that has the same structure as file returned from
 .br
 }
 
+.SH CONFIGURATION MIGRATION
+
+Previous versions of virt-who employed additional means of configuration:
+
+Setting of environment variables [set in the user's profile script or in the default global profile]
+.br
+A service environment file [/etc/sysconfig/virt-who]
+
+The new version of virt-who no longer supports setting most options via the environment. In order to not lose previously valid configurations that made use of environment variables,
+a migration script has been added. That script will incorporate the known system environment variables [VIRTWHO_INTERVAL, VIRTWHO_DEBUG, VIRTWHO_ONESHOT] and the entries in the
+service environment file into the general configuration file. The known variables will land in the \fBglobal\fR section while any others in the service environment file [i.e. HTTPS_PROXY]
+will land in the \fBsystem_environment\fR section. This migration may result in multiple entries for a specific field.
+
+Each new entry in the general configuration file will come after a comment indicating that it was migrated. The service environment file will be deleted after its entries are
+migrated, but the known system environment variables will need to be manually removed or they will be migrated again if the script is rerun. Those variables will not be recognized
+by virt-who even if they remain.
+
+The migration script will be run when a new RPM is installed, but you can run it manually with python after the RPM is installed:
+
+[python_sitelib]/virtwho/migrate/migrateconfiguration.py
+
+
 .SH AUTHOR
 Radek Novacek <rnovacek at redhat dot com>
+.br
+William Poteat <wpoteat at redhat dot com>
 
 .SH SEE ALSO
 virt-who(8), virt-who-password(8)

@@ -216,3 +216,57 @@ no_proxy=*
         with open(self.virt_who_conf_filename, "r") as conf:
             result = conf.readlines()
         self.assertEqual("".join(result), expected)
+
+
+    def test_migrate_to_existing_commented_header(self):
+        sysconfig = \
+"""VIRTWHO_INTERVAL=60
+VIRTWHO_DEBUG=1
+VIRTWHO_ONE_SHOT=0
+HTTPS_PROXY=one
+HTTP_PROXY=two
+"""
+        existing =\
+"""#[system_environment]   ; Values in this section will be copied to the system environment and will be in place
+#                       ; for the extent of the execution.
+#                       ; There are a few suggested options, but any name/value intended for the system environment
+#                       ; can be put here. Other than the copy process, virt-who will not read or specifically react
+#                       ; to them.
+
+# [global]
+# reporter_id=this_one
+
+#[system_environment]
+"""
+        expected =\
+"""#[system_environment]   ; Values in this section will be copied to the system environment and will be in place
+#                       ; for the extent of the execution.
+#                       ; There are a few suggested options, but any name/value intended for the system environment
+#                       ; can be put here. Other than the copy process, virt-who will not read or specifically react
+#                       ; to them.
+
+[global]
+#migrated
+interval=60
+#migrated
+debug=True
+#migrated
+oneshot=False
+# reporter_id=this_one
+
+[system_environment]
+#migrated
+HTTPS_PROXY=one
+#migrated
+HTTP_PROXY=two
+"""
+        self.maxDiff = None
+        with open(self.virt_who_filename, "w") as f:
+            f.writelines(sysconfig)
+        with open(self.virt_who_conf_filename, "w") as f:
+            f.writelines(existing)
+        migrate_env_to_config(self.virt_who_filename,
+                              self.virt_who_conf_filename)
+        with open(self.virt_who_conf_filename, "r") as conf:
+            result = conf.readlines()
+        self.assertEqual("".join(result), expected)

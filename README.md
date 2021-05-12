@@ -1,6 +1,6 @@
 # virt-who
 
-[![Build Status](https://travis-ci.org/candlepin/virt-who.svg?branch=master)](https://travis-ci.org/candlepin/virt-who)
+[![Build Status](https://travis-ci.org/candlepin/virt-who.svg?branch=main)](https://travis-ci.org/candlepin/virt-who)
 
 virt-who is agent for reporting virtual guest IDs to subscription manager.
 

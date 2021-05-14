@@ -265,7 +265,7 @@ class TestVirtConfigSection(TestBase):
         """
         self.init_virt_config_section()
         # These backends require server option in configuration
-        virt_backends_requiring_server = ('esx', 'rhevm', 'hyperv', 'xen')
+        virt_backends_requiring_server = ('esx', 'rhevm', 'hyperv')
         # Delete server option
         del self.virt_config['server']
         # Test all of them

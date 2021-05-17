@@ -74,13 +74,16 @@ def migrate_env_to_config(sysconfig_filename=None, general_config_filename=None)
     has_global = False
 
     for line in lines:
-        if line.startswith('[global]'):
+        stripped = line.strip()
+        if stripped == '[global]' or \
+            (stripped.startswith('#') and stripped[1:].strip() == '[global]'):
             has_global = True
-            output.append(line)
+            output.append('[global]\n')
             add_global(output, interval, debug, one_shot)
-        elif line.startswith('[system_environment]'):
+        elif stripped == '[system_environment]' or \
+            (stripped.startswith('#') and stripped[1:].strip() == '[system_environment]'):
             has_sys_env = True
-            output.append(line)
+            output.append('[system_environment]\n')
             add_system_environment(output, env_vars)
         else:
             output.append(line)

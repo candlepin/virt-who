@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.10
+Version:        1.31.11
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,10 @@ fi
 
 
 %changelog
+* Thu May 20 2021 William Poteat <wpoteat@redhat.com> 1.31.11-1
+- 1951347: Remove Xen from hypervisor types (wpoteat@redhat.com)
+- Releaser for Centos (wpoteat@redhat.com)
+
 * Mon May 17 2021 William Poteat <wpoteat@redhat.com> 1.31.10-1
 - 1920322: Uncomment section header on migrate (wpoteat@redhat.com)
 - Update CI link to use branch name main (wpoteat@redhat.com)

@@ -375,7 +375,7 @@ class Libvirtd(Virt):
                     continue
 
                 if domain.UUIDString() == "00000000-0000-0000-0000-000000000000":
-                    # Don't send Domain-0 on xen (zeroed uuid)
+                    # Don't send Domain-0 (zeroed uuid)
                     continue
                 domains.append(LibvirtdGuest(domain))
 

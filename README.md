@@ -38,7 +38,6 @@ Backends for reporting hosts to guests association:
 * Hyper-V
 * Remote libvirt
 * Kubevirt
-* XenServer
 
 
 ## Supported subscription managers

@@ -283,11 +283,11 @@ class TestOptions(TestBase):
     def test_missing_option(self, parseFile, getLogger):
         self.setUpParseFile(parseFile)
         for smType in ['satellite', 'sam']:
-            for virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm', 'kubevirt']:
+            for virt in ['libvirt', 'esx', 'hyperv', 'rhevm', 'kubevirt']:
                 for missing in ['server', 'username', 'password', 'owner']:
                     self.clearEnv()
                     sys.argv = ["virtwho.py", "--%s" % smType, "--%s" % virt]
-                    if virt in ['libvirt', 'xen', 'esx', 'hyperv', 'rhevm']:
+                    if virt in ['libvirt', 'esx', 'hyperv', 'rhevm']:
                         if missing != 'server':
                             sys.argv.append("--%s-server=localhost" % virt)
                         if missing != 'username':

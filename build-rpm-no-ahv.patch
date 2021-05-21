@@ -1,4 +1,4 @@
-From d782073fe7c7e06fba327ffad6f3902e03c99e6b Mon Sep 17 00:00:00 2001
+From dc50b70f55cf2acdab5fb1abc89c53487bf6fa6d Mon Sep 17 00:00:00 2001
 From: Kevin Howell <khowell@redhat.com>
 Date: Fri, 18 Oct 2019 09:54:54 -0400
 Subject: [PATCH] Remove AHV support
@@ -592,32 +592,32 @@ index d8ccbc8..0000000
 -                           result[index].toDict())
 -
 diff --git a/virtwho/config.py b/virtwho/config.py
-index 3740e28..fdff5dd 100644
+index 74d9834..857ca40 100644
 --- a/virtwho/config.py
 +++ b/virtwho/config.py
 @@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
  _effective_config = None
  
  VW_CONF_DIR = "/etc/virt-who.d/"
--VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt", "ahv")
-+VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "xen", "kubevirt")
+-VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
++VW_TYPES = ("libvirt", "esx", "rhevm", "hyperv", "fake", "kubevirt")
  VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
  VW_GLOBAL = "global"
  VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
-@@ -1151,7 +1151,7 @@ class VirtConfigSection(ConfigSection):
+@@ -1163,7 +1163,7 @@ class VirtConfigSection(ConfigSection):
          result = None
          sm_type = self._values['sm_type']
          virt_type = self._values.get('type')
--        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen', 'ahv'):
-+        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'xen'):
+-        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv', 'ahv'):
++        if sm_type == 'sam' and virt_type in ('esx', 'rhevm', 'hyperv'):
              if key not in self:
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index 5b12d41..dd70af2 100644
+index 40a0ad6..42cbbfd 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
-@@ -47,7 +47,6 @@ SAT5_VM_DISPATCHER = {
+@@ -46,7 +46,6 @@ SAT5_VM_DISPATCHER = {
      'rhevm': {'owner': False, 'server': True, 'username': True},
      'hyperv': {'owner': False, 'server': True, 'username': True},
      'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
@@ -625,7 +625,7 @@ index 5b12d41..dd70af2 100644
  }
  
  SAT6_VM_DISPATCHER = {
-@@ -57,7 +56,6 @@ SAT6_VM_DISPATCHER = {
+@@ -55,7 +54,6 @@ SAT6_VM_DISPATCHER = {
      'rhevm': {'owner': True, 'server': True, 'username': True},
      'hyperv': {'owner': True, 'server': True, 'username': True},
      'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
@@ -633,12 +633,12 @@ index 5b12d41..dd70af2 100644
  }
  
  class OptionError(Exception):
-@@ -75,7 +73,7 @@ class StoreGroupArgument(Action):
+@@ -73,7 +71,7 @@ class StoreGroupArgument(Action):
      def __call__(self, parser, namespace, values, option_string=None):
          """
          When the argument from group is used, then this argument has to match
--        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
-+        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--xen|--kubevirt]
+-        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--kubevirt|--ahv]
++        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--kubevirt]
          """
          options = vars(namespace)
          virt_type = options['virt_type']
@@ -1756,10 +1756,10 @@ index 8b75cb6..0000000
 -  def _details_map(self):
 -    return dict([(str(i), self.details[i]) for i in range(len(self.details))])
 diff --git a/virtwho/virt/virt.py b/virtwho/virt/virt.py
-index 5495657..466dc90 100644
+index ee7ee37..3fa1985 100644
 --- a/virtwho/virt/virt.py
 +++ b/virtwho/virt/virt.py
-@@ -923,7 +923,6 @@ class Virt(IntervalThread):
+@@ -922,7 +922,6 @@ class Virt(IntervalThread):
          import virtwho.virt.hyperv  # flake8: noqa
          import virtwho.virt.fakevirt  # flake8: noqa
          import virtwho.virt.kubevirt  # flake8: noqa
@@ -1768,5 +1768,5 @@ index 5495657..466dc90 100644
          return [subcls for subcls in cls.__subclasses__()]
  
 -- 
-2.26.2
+2.31.1
 

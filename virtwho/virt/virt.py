@@ -710,6 +710,13 @@ class DestinationThread(IntervalThread):
                 for source_key in reports_batched:
                     self.submitted_report_and_hash_for_source[source_key] =\
                         (batch_host_guest_report, data_to_send[source_key].hash)
+        else:
+            for source_key in reports_batched:
+                # BZ 19443486 - If the list of hypervisors goes to zero, then the
+                # cached report never gets cleared.
+                if source_key in self.last_report_for_source:
+                    self.logger.debug("Clearing the last report hash for {source_key}".format(source_key=source_key))
+                    self.last_report_for_source.pop(source_key)
 
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:

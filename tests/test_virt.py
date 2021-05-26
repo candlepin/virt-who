@@ -193,6 +193,42 @@ class TestDestinationThread(TestBase):
         result_data = destination_thread._get_data()
         self.assertEqual(result_data, expected_data)
 
+    def test_send_data_clear_no_hypervisors(self):
+        # BZ 1943486
+        # Show that a run of _send_data with zero hypervisors
+        # for a config will clear the previous report hash
+        source_keys = ['source1', 'source2']
+        report1 = Mock()
+        report2 = Mock()
+        report1.hash = "report1_hash"
+        report2.hash = "report2_hash"
+        datastore = {'source1': report1, 'source2': report2}
+        last_report_for_source = {
+            'source1': report1.hash,
+            'source2': report2.hash
+        }
+        manager = Mock()
+        logger = Mock()
+        config, d = self.create_fake_config('source1', **self.default_config_args)
+        terminate_event = Mock()
+        interval = 10  # Arbitrary for this test
+        options = Mock()
+        options.print_ = False
+        destination_thread = DestinationThread(logger, config,
+                                               source_keys=source_keys,
+                                               source=datastore,
+                                               dest=manager,
+                                               interval=interval,
+                                               terminate_event=terminate_event,
+                                               oneshot=True,
+                                               options=self.options)
+        destination_thread.is_initial_run = False
+        destination_thread.last_report_for_source = last_report_for_source
+
+        report = HostGuestAssociationReport(config, {'hypervisors': []})
+        destination_thread._send_data({'source1': report})
+        self.assertEqual(destination_thread.last_report_for_source, {'source2': report2.hash})
+
     @patch('virtwho.virt.virt.Event')
     def test_send_data_quit_on_error_report(self, mock_event_class):
         mock_event = Mock(spec=Event())

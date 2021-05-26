@@ -3,8 +3,8 @@
 *.rpm
 *.conf
 *.tar.gz
+.idea
 noarch/
-.*
 htmlcov/
 MANIFEST
 build/

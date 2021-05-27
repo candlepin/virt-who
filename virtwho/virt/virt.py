@@ -651,6 +651,11 @@ class DestinationThread(IntervalThread):
                                  report.config.name, hypervisor_count, guest_count)
                 total_hypervisors += hypervisor_count
                 total_guests += guest_count
+                if hypervisor_count == 0 and source_key in self.last_report_for_source:
+                    # BZ 19443486 - If the list of hypervisors goes to zero, then the
+                    # cached report never gets cleared.
+                    self.logger.debug(f"Clearing the last report hash for {source_key}")
+                    self.last_report_for_source.pop(source_key)
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source

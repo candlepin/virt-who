@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.5
+Version:        1.30.6
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -171,6 +171,11 @@ fi
 
 
 %changelog
+* Thu Jun 03 2021 William Poteat <wpoteat@redhat.com> 1.30.6-1
+- 1943486: Clear previous report hash when hypervisor count is zero
+  (wpoteat@redhat.com)
+- Convert CI from Travis to Jenkins (wpoteat@redhat.com)
+
 * Fri Dec 18 2020 William Poteat <wpoteat@redhat.com> 1.30.5-1
 - 1855550: [Remote Libvirt] The Name in Stage Candlepin cannot update based on
   hypervisor_id configuration (wpoteat@redhat.com)

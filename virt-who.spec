@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.12
+Version:        1.31.13
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,12 @@ fi
 
 
 %changelog
+* Thu Jun 03 2021 William Poteat <wpoteat@redhat.com> 1.31.13-1
+- 1965320: Clear previous report hash when hypervisor count is zero
+  (wpoteat@redhat.com)
+- Added support for Packit service (jhnidek@redhat.com)
+- Convert CI from Travis to Jenkins (wpoteat@redhat.com)
+
 * Fri May 21 2021 William Poteat <wpoteat@redhat.com> 1.31.12-1
 - 1951347: Update patch for xen removal (wpoteat@redhat.com)
 

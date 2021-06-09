@@ -34,9 +34,9 @@ from fake_sam import FakeSam
 
 import virtwho
 import virtwho.parser
-import virtwho.main
 import virtwho.log
 import virtwho.config
+import virtwho.lock
 
 from unittest import TestCase
 
@@ -109,10 +109,33 @@ class TestBase(TestCase):
         self.addCleanup(minimum_patcher.stop)
 
         # Mock PIDFILE (so we can run tests as an unprivledged user)
-        pid_file_name = self.tmp_dir + 'virt-who.pid'
+        pid_file_name = self.tmp_dir + os.path.sep + 'virt-who.pid'
         pid_file_patcher = patch('virtwho.main.PIDFILE', pid_file_name)
         pid_file_patcher.start()
         self.addCleanup(pid_file_patcher.stop)
+
+        # Mock status files (so we can run tests as an unprivledged user)
+        status_pid_file_name = self.tmp_dir + os.path.sep +'virt-who-status.pid'
+        status_pid_file_patcher = patch('virtwho.executor.STATUS_LOCK', status_pid_file_name)
+        status_pid_file_patcher.start()
+        self.addCleanup(status_pid_file_patcher.stop)
+
+        status_pid_file_patcher = patch('virtwho.virt.virt.STATUS_LOCK', status_pid_file_name)
+        status_pid_file_patcher.start()
+        self.addCleanup(status_pid_file_patcher.stop)
+
+        status_data_dir_patcher = patch('virtwho.executor.STATUS_DATA_DIR', self.tmp_dir)
+        status_data_dir_patcher.start()
+        self.addCleanup(status_data_dir_patcher.stop)
+
+        status_file_name = self.tmp_dir + os.path.sep +'run_data.json'
+        status_data_file_patcher = patch('virtwho.executor.STATUS_DATA', status_file_name)
+        status_data_file_patcher.start()
+        self.addCleanup(status_data_file_patcher.stop)
+
+        status_data_file_patcher = patch('virtwho.virt.virt.STATUS_DATA', status_file_name)
+        status_data_file_patcher.start()
+        self.addCleanup(status_data_file_patcher.stop)
 
     def tearDown(self):
         self.process.terminate()

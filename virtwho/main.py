@@ -37,6 +37,7 @@ from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
 from virtwho.executor import Executor, ReloadRequest, ExitRequest
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
+from virtwho.pid_lock import PIDLock, PIDFILE
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
 
 try:
@@ -51,46 +52,6 @@ try:
         requests.packages.urllib3.exceptions.InsecureRequestWarning)
 except AttributeError:
     pass
-
-PIDFILE = "/var/run/virt-who.pid"
-
-
-class PIDLock(object):
-    def __init__(self, filename):
-        self.filename = filename
-
-    def is_locked(self):
-        try:
-            with open(self.filename, "r") as f:
-                pid = int(f.read().strip())
-            try:
-                os.kill(pid, 0)
-                return True
-            except OSError:
-                # Process no longer exists
-                print("PID file exists but associated process " \
-                                     "does not, deleting PID file", file=sys.stderr)
-                os.remove(self.filename)
-                return False
-        except Exception:
-            return False
-
-    def __enter__(self):
-        # Write pid to pidfile
-        try:
-            with os.fdopen(
-                    os.open(self.filename, os.O_WRONLY | os.O_CREAT, 0o600),
-                    'w') as f:
-                f.write("%d" % os.getpid())
-        except Exception as e:
-            print("Unable to create pid file: %s" % str(e), file=sys.stderr)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        try:
-            os.remove(self.filename)
-        except Exception:
-            pass
-
 
 executor = None
 

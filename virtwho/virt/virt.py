@@ -35,6 +35,7 @@ import six
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
+from virtwho.pid_lock import PIDLock, STATUS_LOCK, STATUS_DATA
 from virtwho import MinimumSendInterval, MinimumJobPollInterval
 
 try:
@@ -248,6 +249,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
         except KeyError:
             # FIXME: default value should be there
             self.filter_type = None
+        self.time_created = datetime.utcnow()
 
     def __repr__(self):
         return 'HostGuestAssociationReport({0.config!r}, {0._assoc!r}, {0.state!r})'.format(self)
@@ -656,6 +658,12 @@ class DestinationThread(IntervalThread):
                     # cached report never gets cleared.
                     self.logger.debug(f"Clearing the last report hash for {source_key}")
                     self.last_report_for_source.pop(source_key)
+                # record the successful collection of data from these sources
+                self.record_status(source_key,
+                                   'sources',
+                                   {"last_successful_retrieve": report.time_created.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                                    "hypervisors": hypervisor_count,
+                                    "guests": guest_count})
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -715,6 +723,14 @@ class DestinationThread(IntervalThread):
                 for source_key in reports_batched:
                     self.submitted_report_and_hash_for_source[source_key] =\
                         (batch_host_guest_report, data_to_send[source_key].hash)
+                    if hasattr(batch_host_guest_report, 'job_id'):
+                        job_id = batch_host_guest_report.job_id
+                    else:
+                        job_id = 'none'
+                    self.record_status(source_key,
+                                       'destinations',
+                                       {"last_successful_send": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                                        "last_job_id": job_id})
 
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
@@ -729,6 +745,9 @@ class DestinationThread(IntervalThread):
                         self.last_report_for_source[source_key] = data_to_send[
                             source_key].hash
                         retry = False
+                        self.record_status(source_key,
+                                           'destinations',
+                                           {"last_successful_send": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")})
                     except ManagerThrottleError as e:
                         if self._oneshot:
                             self.logger.info(
@@ -806,6 +825,17 @@ class DestinationThread(IntervalThread):
                 break
             # If we get here and have to try again, it's not our first rodeo...
             first_attempt = False
+
+    def record_status(self, config_name, type, json_info):
+        lock = PIDLock(STATUS_LOCK)
+        while lock.is_locked():
+            time.sleep(1)
+        with lock:
+            with open(STATUS_DATA, 'r') as json_status:
+                status_dict = json.load(json_status)
+            status_dict[type][config_name] = json_info
+            with open(STATUS_DATA, 'w') as json_status:
+                json.dump(status_dict, json_status)
 
 
 class Satellite5DestinationThread(DestinationThread):

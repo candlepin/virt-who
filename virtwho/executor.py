@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
 import time
+import json
+import os
+from json.decoder import JSONDecodeError
 from threading import Event
 
 from virtwho import log
@@ -8,6 +11,7 @@ from virtwho import log
 from virtwho.config import DestinationToSourceMapper, VW_GLOBAL
 from virtwho.datastore import Datastore
 from virtwho.manager import Manager
+from virtwho.pid_lock import PIDLock, STATUS_LOCK, STATUS_DATA, STATUS_DATA_DIR
 from virtwho.virt import Virt, info_to_destination_class
 
 try:
@@ -58,7 +62,9 @@ class Executor(object):
         Create virts list with virt backend threads
         """
         virts = []
+        config_names = []
         for name, config in self.dest_to_source_mapper.configs:
+            config_names.append(name)
             try:
                 virt = Virt.from_config(self.logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
@@ -68,7 +74,35 @@ class Executor(object):
                 self.logger.error('Unable to use configuration "%s": %s', name, str(e))
                 continue
             virts.append(virt)
+        self._init_run_status(config_names)
         return virts
+
+    def _init_run_status(self, config_names=[]):
+        # ensure that there is an entry in the status file for each config. We don't care if they work, we
+        # need to record their existence
+        lock = PIDLock(STATUS_LOCK)
+        while lock.is_locked():
+            time.sleep(1)
+        with lock:
+            os.makedirs(STATUS_DATA_DIR, exist_ok=True)
+            # need to create the file if it does not exist
+            with open(STATUS_DATA, "w+") as json_status:
+                try:
+                    status_dict = json.load(json_status)
+                except JSONDecodeError:
+                    status_dict = {}
+            if 'sources' not in status_dict:
+                status_dict['sources'] = {}
+            if 'destinations' not in status_dict:
+                status_dict['destinations'] = {}
+            for name in config_names:
+                if name not in status_dict['sources']:
+                    status_dict['sources'][name] = {"last_successful_retrieve": "none"}
+                if name not in status_dict['destinations']:
+                    status_dict['destinations'][name] = {"last_successful_send": "none","last_job_id": "none"}
+            with open(STATUS_DATA, "w") as json_status:
+                json.dump(status_dict, json_status)
+
 
     def _create_destinations(self):
         """Populate self.destinations with a list of  list with them

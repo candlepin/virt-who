@@ -105,11 +105,12 @@ class RhevM(virt.Virt):
     CONFIG_TYPE = "rhevm"
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(RhevM, self).__init__(logger, config, dest,
                                     terminate_event=terminate_event,
                                     interval=interval,
-                                    oneshot=oneshot)
+                                    oneshot=oneshot,
+                                    status=status)
         self.url = self.config['server']
         self.api_base = 'ovirt-engine/api/v4'
         self.username = self.config['username']

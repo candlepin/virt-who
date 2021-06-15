@@ -63,7 +63,8 @@ class Executor(object):
                 virt = Virt.from_config(self.logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
                                         interval=self.options[VW_GLOBAL]['interval'],
-                                        oneshot=self.options[VW_GLOBAL]['oneshot'])
+                                        oneshot=self.options[VW_GLOBAL]['oneshot'],
+                                        status=self.options[VW_GLOBAL]['status'])
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s', name, str(e))
                 continue
@@ -93,7 +94,8 @@ class Executor(object):
                               source=self.datastore, dest=manager,
                               terminate_event=self.terminate_event,
                               interval=self.options[VW_GLOBAL]['interval'],
-                              oneshot=self.options[VW_GLOBAL]['oneshot'])
+                              oneshot=self.options[VW_GLOBAL]['oneshot'],
+                              status=self.options[VW_GLOBAL]['status'])
             dests.append(dest)
         return dests
 
@@ -173,14 +175,23 @@ class Executor(object):
                     config = report.config
                     to_print[config.name] = report
                 except KeyError:
-                    self.logger.info('Unable to retrieve report for source '
-                                     '\"%s\" for printing' % source)
+                    self.logger.info(f"Unable to retrieve report for source '{source}' for printing")
             return to_print
 
         for thread in self.destinations:
             thread.start()
 
         Executor.wait_on_threads(self.destinations)
+        if self.options[VW_GLOBAL]['status']:
+            output = {}
+            for source in self.dest_to_source_mapper.sources:
+                try:
+                    report = self.datastore.get(source)
+                except KeyError:
+                    self.logger.info(f"Unable to retrieve report for source '{source}' for printing")
+                else:
+                    output[report.config.name] = report
+            return output
 
     def run(self):
         self.logger.debug("Starting infinite loop with %d seconds interval",

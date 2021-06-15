@@ -26,7 +26,7 @@ from mock import patch, ANY, Mock
 from virtwho import DefaultInterval
 from virtwho.virt.libvirtd.libvirtd import LibvirtdConfigSection
 from virtwho.datastore import Datastore
-from virtwho.virt import Virt, VirtError
+from virtwho.virt import Virt, VirtError, StatusReport
 
 
 def raiseLibvirtError(*args, **kwargs):
@@ -65,6 +65,27 @@ class TestLibvirtd(TestBase):
         virt.return_value.getVersion.return_value = "VERSION 1337"
         self.run_virt(config)
         virt.assert_called_with("")
+
+
+    @patch('libvirt.openReadOnly')
+    def test_read_status(self, virt):
+        config = self.create_config('test', None, type='libvirt')
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        virt.return_value.getType.return_value = "LIBVIRT_TYPE"
+        virt.return_value.getVersion.return_value = "VERSION 1337"
+        v = Virt.from_config(self.logger, config, Datastore(),
+                             interval=DefaultInterval)
+        v._terminate_event = Event()
+        v._interval = 3600
+        v._oneshot = True
+        v._createEventLoop = Mock()
+        v.status = True
+        v._send_data = Mock()
+        v._run()
+
+        v._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(v._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
 
     @patch('libvirt.openReadOnly')
     def test_read_fail(self, virt):

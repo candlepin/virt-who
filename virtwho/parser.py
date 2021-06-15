@@ -234,7 +234,7 @@ def parse_cli_arguments():
     default options.
     """
     parser = ArgumentParser(
-        usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version]",
+        usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [-s] [-j] [--version]",
         description="Agent for reporting virtual guest IDs to subscription manager",
         epilog = "virt-who also reads environment variables. They have the same name as "
               "command line arguments but uppercased, with underscore instead of dash "
@@ -245,6 +245,10 @@ def parse_cli_arguments():
                         help="Enable debugging output")
     parser.add_argument("-o", "--one-shot", action="store_true", dest="oneshot", default=False,
                         help="Send the list of guest IDs and exit immediately")
+    parser.add_argument("-s", "--status", action="store_true", dest="status", default=False,
+                        help="Produce a report to show connection health")
+    parser.add_argument("-j", "--json", action="store_true", dest="json", default=False,
+                        help="Used with status option to make output in json")
     parser.add_argument("-i", "--interval", dest="interval", default=NotSetSentinel(),
                         help="Acquire list of virtual guest each N seconds. Send if changes are detected.")
     parser.add_argument("-p", "--print", action="store_true", dest="print_", default=False,
@@ -292,6 +296,14 @@ def parse_options():
     if 'version' in cli_options and cli_options['version']:
         print(get_version())
         exit(os.EX_OK)
+
+    if 'status' in cli_options and ('print' in cli_options or 'oneshot' in cli_options):
+        print("You may not use the --print or --one-shot options with the --status option.")
+        exit(os.EX_USAGE)
+
+    if 'json' in cli_options and 'status' not in cli_options:
+        print("The --json option must only be used with the --status option.")
+        exit(os.EX_USAGE)
 
     # Create the effective config that virt-who will use to run
     effective_config = init_config(cli_options)

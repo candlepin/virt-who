@@ -14,7 +14,7 @@ class Ahv(virt.Virt):
   "AHV Rest client"
   CONFIG_TYPE = "ahv"
   def __init__(self, logger, config, dest, interval=None,
-                terminate_event=None, oneshot=False):
+                terminate_event=None, oneshot=False, status=False):
     """
     Args:
       logger (Logger): Framework logger.
@@ -29,7 +29,8 @@ class Ahv(virt.Virt):
     super(Ahv, self).__init__(logger, config, dest,
                                   terminate_event=terminate_event,
                                   interval=interval,
-                                  oneshot=oneshot)
+                                  oneshot=oneshot,
+                                  status=status)
     self.config = config
     self.version = ahv_constants.VERSION_2
     self.is_pc = False
@@ -160,8 +161,12 @@ class Ahv(virt.Virt):
       delta = next_update - time()
 
       if initial:
-        assoc = self.getHostGuestMapping()
-        self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+        if self.status:
+          report = virt.StatusReport(self.config)
+          self._send_data(data_to_send=report)
+        else:
+          assoc = self.getHostGuestMapping()
+          self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
         initial = False
         continue
 
@@ -176,8 +181,11 @@ class Ahv(virt.Virt):
         events = []
 
       if len(events) > 0 or delta > 0:
-        assoc = self.getHostGuestMapping()
-        self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+        if self.status:
+          self._send_data(data_to_send=virt.StatusReport(self.config))
+        else:
+          assoc = self.getHostGuestMapping()
+          self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
 
       if self._oneshot:
         break

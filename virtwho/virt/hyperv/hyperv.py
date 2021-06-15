@@ -500,11 +500,12 @@ class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(HyperV, self).__init__(logger, config, dest,
                                      terminate_event=terminate_event,
                                      interval=interval,
-                                     oneshot=oneshot)
+                                     oneshot=oneshot,
+                                     status=status)
         self.url = self.config['url']
         self.username = self.config['username']
         self.password = self.config['password']

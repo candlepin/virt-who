@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-
 """
 Module for abstraction of all virtualization backends, part of virt-who
 
@@ -316,9 +315,50 @@ class HostGuestAssociationReport(AbstractVirtReport):
         return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True).encode('utf-8')).hexdigest()
 
 
+class StatusReport(AbstractVirtReport):
+    """
+    Status Report from virt backend about ability to connect.
+    """
+
+    def __init__(self, config, state=AbstractVirtReport.STATE_CREATED):
+        super(StatusReport, self).__init__(config, state)
+        self._source_message = ''
+        self._destination_message = ''
+        self._destination = ''
+
+    @property
+    def data(self):
+        # make the components into dictionary
+        data = {
+            "source": {
+                "server": self.config['server'] if 'server' in self.config else None,
+                "status_string": 'success' if len(self._source_message) == 0 else 'failure',
+                "message": self._source_message
+            },
+            "destination": {
+                "server": self._destination,
+                "status_string": 'success' if len(self._destination_message) == 0 else 'failure',
+                "message": self._destination_message
+            }
+        }
+        return data
+
+    def __repr__(self):
+        return 'StatusReport({0.config!r}, {0.data!r})'.format(self)
+
+    def append_source_status_message(self, message):
+        self._source_message += f"{message}."
+
+    def append_destination_status_message(self, message):
+        self._destination_message = f"{message}."
+
+    def set_destination(self, value):
+        self._destination = value
+
+
 class IntervalThread(Thread):
     def __init__(self, logger, config, source=None, dest=None,
-                 terminate_event=None, interval=None, oneshot=False):
+                 terminate_event=None, interval=None, oneshot=False, status=False):
         self.logger = logger
         self.config = config
         self.source = source
@@ -327,6 +367,7 @@ class IntervalThread(Thread):
         self.terminate_event = terminate_event or self._internal_terminate_event
         self.interval = interval
         self._oneshot = oneshot
+        self.status = status
         self.delta_time = 1.0
         super(IntervalThread, self).__init__()
 
@@ -365,7 +406,7 @@ class IntervalThread(Thread):
         while not self.is_terminated():
             start_time = datetime.now()
             data_to_send = self._get_data()
-            self._send_data(data_to_send)
+            self._send_data(data_to_send=data_to_send)
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -415,11 +456,13 @@ class IntervalThread(Thread):
                         self.logger.error("Thread '%s' fails with error: %s",
                                           self.config.name, str(e))
                         has_error = True
-                except Exception:
+                        status_error_message = str(e)
+                except Exception as e:
                     if not self.is_terminated():
                         self.logger.exception("Thread '%s' fails with "
                                               "exception:", self.config.name)
                         has_error = True
+                        status_error_message = str(e)
 
                 if self.is_terminated():
                     self.logger.debug("Thread '%s' terminated",
@@ -428,7 +471,12 @@ class IntervalThread(Thread):
                     return
 
                 if has_error:
-                    self._send_data(ErrorReport(self.config))
+                    if self.status:
+                        report = StatusReport(self.config)
+                        report.append_source_status_message(status_error_message)
+                        self._send_data(data_to_send=report)
+                    else:
+                        self._send_data(data_to_send=ErrorReport(self.config))
 
                 if self._oneshot:
                     self.logger.debug("Thread '%s' stopped after running once",
@@ -489,7 +537,7 @@ class DestinationThread(IntervalThread):
 
     def __init__(self, logger, config, source_keys=None, options=None,
                  source=None, dest=None, terminate_event=None, interval=None,
-                 oneshot=False):
+                 oneshot=False, status=False):
         """
         @param source_keys: A list of keys to be used to retrieve info from
         the source
@@ -515,7 +563,8 @@ class DestinationThread(IntervalThread):
                                                 dest=dest,
                                                 terminate_event=terminate_event,
                                                 interval=interval,
-                                                oneshot=oneshot)
+                                                oneshot=oneshot,
+                                                status=status)
         # This is used when there is some reason to modify how long we wait
         # EX when we get a 429 back from the server, this value will be the
         # value of the retry_after header.
@@ -597,7 +646,7 @@ class DestinationThread(IntervalThread):
         @type: dict
         """
 
-        if not isinstance(data_to_send, ErrorReport):
+        if not self.status and not isinstance(data_to_send, ErrorReport):
             if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
                 # Ping all hypervisors for this reporter to update check in time regardless of change
                 try:
@@ -605,8 +654,33 @@ class DestinationThread(IntervalThread):
                 except ManagerThrottleError as err:
                     self.logger.debug("429 encountered while heartbeat: %s" % str(err))
                     # TODO: when we are sending heartbeats too fast, then we should wait err.retry_after seconds
-                except ManagerError as err:
+                except (ManagerError, ManagerFatalError, OSError) as err:
                     self.logger.exception("Error during heartbeat: %s" % str(err))
+
+        if self.status:
+            if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
+                # Confirm connection to destination and existence of owner
+                message = ''
+                try:
+                    # this will stop any changes to data
+                    self.options[VW_GLOBAL]['reporter_id'] = 'status_test'
+                    valid = self.dest.hypervisorHeartbeat(self.config, options=self.options)
+                    if not valid:
+                        message = f"Specified owner '{self.config['owner']}' is not accessible"
+                except ManagerThrottleError as err:
+                    self.logger.debug("429 encountered during status connection: %s" % str(err))
+                    message = str(err)
+                except (ManagerError, ManagerFatalError, OSError) as err:
+                    self.logger.exception("Error during status connection: %s" % str(err))
+                    message = str(err)
+                for source_key, report in data_to_send.items():
+                    if len(message) > 0:
+                        report.append_destination_status_message(message)
+                    host = self.dest.rhsm_config.get('server', 'hostname')
+                    if 'rhsm_hostname' in report.config:
+                        host = report.config['rhsm_hostname']
+                    report.set_destination(host)
+            return
 
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')
@@ -913,10 +987,11 @@ class Virt(IntervalThread):
     """
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(Virt, self).__init__(logger, config, dest=dest,
                                    terminate_event=terminate_event,
-                                   interval=interval, oneshot=oneshot)
+                                   interval=interval, oneshot=oneshot,
+                                   status=status)
 
     @classmethod
     def __subclasses_list(cls):
@@ -932,8 +1007,8 @@ class Virt(IntervalThread):
         return [subcls for subcls in cls.__subclasses__()]
 
     @classmethod
-    def from_config(cls, logger, config, dest,
-                    terminate_event=None, interval=None, oneshot=False):
+    def from_config(cls, logger, config, dest, terminate_event=None,
+                    interval=None, oneshot=False, status=False):
         """
         Create instance of inherited class based on the config.
         """
@@ -942,7 +1017,8 @@ class Virt(IntervalThread):
             if config['type'] == subcls.CONFIG_TYPE:
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
-                              interval=interval, oneshot=oneshot)
+                              interval=interval, oneshot=oneshot,
+                              status=status)
         raise KeyError("Invalid config type: %s" % config['type'])
 
     @classmethod
@@ -963,6 +1039,8 @@ class Virt(IntervalThread):
         self._run()
 
     def _get_report(self):
+        if self.status:
+            return StatusReport(self.config)
         if self.isHypervisor():
             return HostGuestAssociationReport(self.config, self.getHostGuestMapping())
         else:

@@ -18,11 +18,12 @@ from __future__ import print_function
 #
 # Refer to the README and COPYING files for full details of the license
 #
-from mock import patch, Mock
+from mock import patch, Mock, ANY
 
 from base import TestBase
+from threading import Event
 
-from virtwho.virt import Virt, Guest, Hypervisor
+from virtwho.virt import Virt, Guest, Hypervisor, StatusReport
 from virtwho.virt.kubevirt.kubevirt import KubevirtConfigSection
 from virtwho.datastore import Datastore
 
@@ -317,6 +318,48 @@ class TestKubevirt(TestBase):
         kubevirt = Virt.from_config(self.logger, config, Datastore())
         kubevirt.prepare()
         self.assertFalse(kubevirt._insecure)
+
+    @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
+           return_value=Mock())
+    @patch("virtwho.virt.kubevirt.config.Configuration")
+    def test_status(self, cfg, _):
+        cfg.return_value = Config()
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
+
+        self.config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    kubeversion='version', hypervisor_id='hostname')
+        self.config['server'] = 'kubeserver'
+
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, self.config, Datastore())
+            kubevirt.prepare()
+
+            kubevirt._client = client
+            kubevirt.status = True
+            kubevirt._send_data = Mock()
+            self.run_once(kubevirt)
+
+            kubevirt._send_data.assert_called_once_with(data_to_send=ANY)
+            self.assertTrue(isinstance(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+                              self.config['server'])
+
+
+    def run_once(self, kubevirt, datastore=None):
+        ''' Run kubevirt in oneshot mode '''
+        kubevirt._oneshot = True
+        if datastore is None:
+            datastore = Mock(spec=Datastore())
+
+        kubevirt.dest = datastore
+        kubevirt._terminate_event = Event()
+        kubevirt._oneshot = True
+        kubevirt._interval = 0
+        kubevirt._run()
+
 
 class Config(object):
 

@@ -224,6 +224,7 @@ class TestDestinationThread(TestBase):
                                                options=self.options)
         destination_thread.is_initial_run = False
         destination_thread.last_report_for_source = last_report_for_source
+        destination_thread.record_status = Mock()
 
         report = HostGuestAssociationReport(config, {'hypervisors': []})
         destination_thread._send_data({'source1': report})
@@ -313,6 +314,7 @@ class TestDestinationThread(TestBase):
                                                interval=interval,
                                                terminate_event=terminate_event,
                                                oneshot=True, options=self.options)
+        destination_thread.record_status = Mock()
         destination_thread._send_data(data_to_send)
 
     def test_send_data_poll_hypervisor_async_result(self):
@@ -488,6 +490,7 @@ class TestDestinationThread(TestBase):
                                                oneshot=False, options=self.options)
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
+        destination_thread.record_status = Mock()
         destination_thread._send_data(data_to_send)
         destination_thread.wait.assert_has_calls(expected_wait_calls)
 
@@ -524,6 +527,7 @@ class TestDestinationThread(TestBase):
                                                oneshot=True, options=self.options)
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
+        destination_thread.record_status = Mock()
         destination_thread._send_data(data_to_send)
         manager.sendVirtGuests.assert_has_calls([call(report1,
                                                       options=destination_thread.options)])
@@ -562,6 +566,7 @@ class TestDestinationThread(TestBase):
                                                terminate_event=terminate_event,
                                                oneshot=False, options=self.options)
         destination_thread.wait = Mock()
+        destination_thread.record_status = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
         manager.sendVirtGuests.assert_has_calls([call(report1,
@@ -607,6 +612,7 @@ class TestDestinationThread(TestBase):
                                                oneshot=False, options=self.options)
         destination_thread.is_initial_run = False
         destination_thread.is_terminated = Mock(return_value=False)
+        destination_thread.record_status = Mock()
         destination_thread._send_data(data_to_send=data_to_send)
 
         expected_hashes = {}
@@ -623,6 +629,65 @@ class TestDestinationThread(TestBase):
             'source2': report3
         }
         self.assertEqual(next_data_to_send, expected_next_data_to_send)
+
+    def test_record_status(self):
+        # This tests that reports of the right type are batched into one
+        # and that the hypervisorCheckIn method of the destination is called
+        # with the right parameters
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+
+        virt1 = Mock()
+        virt1.CONFIG_TYPE = 'esx'
+        virt2 = Mock()
+        virt2.CONFIG_TYPE = 'esx'
+
+        guest1 = Guest('GUUID1', virt1.CONFIG_TYPE, Guest.STATE_RUNNING)
+        guest2 = Guest('GUUID2', virt2.CONFIG_TYPE, Guest.STATE_RUNNING)
+        assoc1 = {'hypervisors': [Hypervisor('hypervisor_id_1', [guest1])]}
+        assoc2 = {'hypervisors': [Hypervisor('hypervisor_id_2', [guest2])]}
+        report1 = HostGuestAssociationReport(config1, assoc1)
+        report2 = HostGuestAssociationReport(config2, assoc2)
+
+        data_to_send = {'source1': report1,
+                        'source2': report2}
+
+        source_keys = ['source1', 'source2']
+        report1 = Mock()
+        report2 = Mock()
+        report1.hash = "report1_hash"
+        report2.hash = "report2_hash"
+        datastore = {'source1': report1, 'source2': report2}
+        manager = Mock()
+        options = Mock()
+        options.print_ = False
+
+        def check_hypervisorCheckIn(report, options=None):
+            report.job_id = '123456789'
+            return Mock()
+
+        manager.hypervisorCheckIn = Mock(side_effect=check_hypervisorCheckIn)
+        logger = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        terminate_event = Mock()
+        interval = 10  # Arbitrary for this test
+        destination_thread = DestinationThread(logger, config,
+                                               source_keys=source_keys,
+                                               source=datastore,
+                                               dest=manager,
+                                               interval=interval,
+                                               terminate_event=terminate_event,
+                                               oneshot=True, options=self.options)
+
+        def check_record_status(source_key, type, json_info):
+            if type == 'sources':
+                self.assertEqual(json_info['hypervisors'], 1)
+            elif type == 'destinations':
+                self.assertEqual(json_info['last_job_id'], '123456789')
+
+        destination_thread.record_status = Mock(side_effect=check_record_status)
+        destination_thread.is_terminated = Mock(return_value=False)
+        destination_thread._send_data(data_to_send)
 
 
 class TestDestinationThreadTiming(TestBase):

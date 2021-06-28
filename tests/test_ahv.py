@@ -3,7 +3,7 @@ from __future__ import print_function
 import six
 
 from base import TestBase
-from mock import patch, call, ANY, MagicMock
+from mock import patch, call, ANY, MagicMock, Mock
 from requests import Session
 from six.moves.queue import Queue
 from threading import Event
@@ -11,7 +11,7 @@ from threading import Event
 from virtwho import DefaultInterval
 from virtwho.datastore import Datastore
 from virtwho.virt.ahv.ahv import AhvConfigSection
-from virtwho.virt import Virt, VirtError, Guest, Hypervisor
+from virtwho.virt import Virt, VirtError, Guest, Hypervisor, StatusReport
 
 
 
@@ -426,6 +426,16 @@ class TestAhv(TestBase):
         ]
         mock_get.assert_has_calls(call_list, any_order=True)
 
+    @patch.object(Session, 'get')
+    def test_status(self, mock_get):
+        mock_get.return_value.status_code = 200
+        self.ahv.status = True
+        self.ahv._send_data = Mock()
+        self.run_once()
+
+        self.ahv._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.ahv.config['server'])
     @patch.object(Session, 'post')
     def test_connect_PC(self, mock_post):
         self.setUp(is_pc=True)

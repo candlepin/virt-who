@@ -84,11 +84,12 @@ class Kubevirt(virt.Virt):
     CONFIG_TYPE = "kubevirt"
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(Kubevirt, self).__init__(logger, config, dest,
                                        terminate_event=terminate_event,
                                        interval=interval,
-                                       oneshot=oneshot)
+                                       oneshot=oneshot,
+                                       status=status)
         self._path = self.config['kubeconfig']
         self._version = self.config['kubeversion']
         self._insecure = str_to_bool(self.config['insecure'])

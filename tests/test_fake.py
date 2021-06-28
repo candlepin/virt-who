@@ -25,10 +25,13 @@ from tempfile import mkdtemp
 import shutil
 
 from base import TestBase
-
+from mock import Mock, ANY
 from virtwho.config import DestinationToSourceMapper, init_config
-from virtwho.virt import Virt, Hypervisor, VirtError
+from virtwho.virt import Virt, Hypervisor, StatusReport
 from virtwho.virt.fakevirt import FakeVirt
+from threading import Event
+from six.moves.queue import Queue
+
 
 
 HYPERVISOR_JSON = """
@@ -165,3 +168,38 @@ file=%s
         effective_config = init_config({}, config_dir=self.config_dir)
         # This is an invalid case, the config section that is invalid should have been dropped
         self.assertNotIn('test', effective_config)
+
+
+    def test_staus(self):
+
+        with open(self.hypervisor_file, "w") as f:
+            f.write(NON_HYPERVISOR_JSON)
+
+        with open(self.config_file, "w") as f:
+            f.write(f"""
+[test]
+type=fake
+is_hypervisor=false
+file={self.hypervisor_file}""")
+
+        effective_config = init_config({}, config_dir=self.config_dir)
+        manager = DestinationToSourceMapper(effective_config)
+        self.assertEqual(len(manager.configs), 1)
+        self.fake = Virt.from_config(self.logger, manager.configs[0][1], None)
+
+        self.fake.status = True
+        self.fake._send_data = Mock()
+        self.run_once()
+
+        self.fake._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.fake._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.fake._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
+
+    def run_once(self, queue=None):
+        """Run fake in oneshot mode"""
+        self.fake._oneshot = True
+        self.fake.dest = queue or Queue()
+        self.fake._terminate_event = Event()
+        self.fake._oneshot = True
+        self.fake._interval = 0
+        self.fake._run()

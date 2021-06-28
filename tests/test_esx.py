@@ -30,7 +30,8 @@ from base import TestBase
 from virtwho import DefaultInterval
 from virtwho.datastore import Datastore
 from virtwho.virt.esx import Esx
-from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport
+from virtwho.virt import VirtError, Guest, Hypervisor, HostGuestAssociationReport, StatusReport
+
 from proxy import Proxy
 
 from virtwho.virt.esx.esx import EsxConfigSection
@@ -164,6 +165,17 @@ class TestEsx(TestBase):
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
+
+    @patch('suds.client.Client')
+    def test_status(self, mock_client):
+        mock_client.return_value.service.WaitForUpdatesEx.return_value = None
+        self.esx.status = True
+        self.esx._send_data = Mock()
+        self.run_once()
+
+        self.esx._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.esx._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.esx._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.esx.config['server'])
 
     @patch('suds.client.Client')
     def test_getHostGuestMappingVersionUUID(self, mock_client):

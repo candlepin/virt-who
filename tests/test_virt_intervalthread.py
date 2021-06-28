@@ -86,7 +86,7 @@ class TestIntervalThreadTiming(TestBase):
             interval_thread.wait = Mock()
             interval_thread._run()
             interval_thread._get_data.assert_called()
-            interval_thread._send_data.assert_has_calls([call(self._get_data_return)])
+            interval_thread._send_data.assert_has_calls([call(data_to_send=self._get_data_return)])
             interval_thread.wait.assert_has_calls([call(expected_wait_time)])
 
     def test__run_send_takes_longer_than_interval(self):
@@ -109,7 +109,7 @@ class TestIntervalThreadTiming(TestBase):
             interval_thread.wait = Mock()
             interval_thread._run()
             interval_thread._get_data.assert_called()
-            interval_thread._send_data.assert_has_calls([call(self._get_data_return)])
+            interval_thread._send_data.assert_has_calls([call(data_to_send=self._get_data_return)])
             interval_thread.wait.assert_not_called()
 
 

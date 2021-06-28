@@ -66,7 +66,8 @@ class TestLog(TestBase):
                 'background': True,
                 'log_file': log.DEFAULT_LOG_FILE,
                 'log_dir': log.DEFAULT_LOG_DIR,
-                'log_per_config': False
+                'log_per_config': False,
+                'status': False
             }
         }
         config = StubEffectiveConfig(conf_values)
@@ -94,6 +95,7 @@ class TestLog(TestBase):
                 'log_per_config': True,
                 'log_dir': '/test/',
                 'log_file': 'test.log',
+                'status': False
             },
         }
         log.init(options)

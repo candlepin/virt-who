@@ -7,16 +7,16 @@ import shutil
 from base import TestBase
 from stubs import StubEffectiveConfig
 
-from mock import Mock, patch, call
+from mock import Mock, patch, call, ANY
 from threading import Event
 
 from virtwho import MinimumJobPollInterval
 from virtwho.config import DestinationToSourceMapper, VW_GLOBAL, EffectiveConfig, parse_file, \
     VirtConfigSection
-from virtwho.manager import ManagerThrottleError
+from virtwho.datastore import Datastore
+from virtwho.manager import ManagerThrottleError, ManagerError
 from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
-    DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport
-
+    DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport, Virt, VirtError, StatusReport
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 
@@ -112,6 +112,40 @@ owner=owner
             ]
         }
 
+class TestVirtStatus(TestBase):
+
+    def test_status_error(self):
+        config_values = {
+            'type': 'virt',
+            'server': 'localhost',
+            'username': 'username',
+            'password': 'password',
+            'owner': 'owner',
+        }
+        config = VirtConfigSection('test', None)
+        config.update(**config_values)
+        self.virt = Virt(self.logger, config, None, interval=60)  #  No dest given here
+        self.virt.status = True
+        self.virt._send_data = Mock()
+        self.virt._run=Mock(side_effect=VirtError('unable to connect to source'))
+        self.run_once()
+
+        self.virt._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.virt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.virt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                             'unable to connect to source.')
+
+    def run_once(self, datastore=None):
+        ''' Run generic virt in oneshot mode '''
+        self.virt._oneshot = True
+        if datastore is None:
+            datastore = Mock(spec=Datastore())
+
+        self.virt.dest = datastore
+        self.virt._terminate_event = Event()
+        self.virt._oneshot = True
+        self.virt._interval = 0
+        self.virt.run()
 
 class TestDestinationThread(TestBase):
 
@@ -316,6 +350,99 @@ class TestDestinationThread(TestBase):
                                                oneshot=True, options=self.options)
         destination_thread.record_status = Mock()
         destination_thread._send_data(data_to_send)
+
+    def test_send_check_status_heartbeat_call(self):
+        # This tests that reports of the right type are batched into one
+        # and that the hypervisorCheckIn method of the destination is called
+        # with the right parameters
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+        virt1 = Mock()
+        virt1.CONFIG_TYPE = 'esx'
+        virt2 = Mock()
+        virt2.CONFIG_TYPE = 'esx'
+        report1 = StatusReport(config1)
+        report2 = StatusReport(config2)
+
+        data_to_send = {'source1': report1,
+                        'source2': report2}
+
+        source_keys = ['source1', 'source2']
+        report1 = Mock()
+        report2 = Mock()
+        report1.hash = "report1_hash"
+        report2.hash = "report2_hash"
+        datastore = {'source1': report1, 'source2': report2}
+
+        manager = Mock()
+        options = Mock()
+        options.print_ = False
+
+        def check_status(report, options=None):
+            self.assertTrue(isinstance(report, StatusReport))
+            self.assertEqual(options['reporter_id'], 'status_test')
+
+        manager.hypervisorHeartbeat = Mock(side_effect=check_status)
+        manager.hypervisorCheckIn = Mock()
+        logger = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        terminate_event = Mock()
+        interval = 10  # Arbitrary for this test
+        destination_thread = DestinationThread(logger, config,
+                                               source_keys=source_keys,
+                                               source=datastore,
+                                               dest=manager,
+                                               interval=interval,
+                                               terminate_event=terminate_event,
+                                               oneshot=True, status=True,
+                                               options=self.options)
+        destination_thread._send_data(data_to_send)
+
+    def test_send_check_status_heartbeat_call_failure(self):
+        # This tests that reports of the right type are batched into one
+        # and that the hypervisorCheckIn method of the destination is called
+        # with the right parameters
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+        virt1 = Mock()
+        virt1.CONFIG_TYPE = 'esx'
+        virt2 = Mock()
+        virt2.CONFIG_TYPE = 'esx'
+        report1 = StatusReport(config1)
+        report2 = StatusReport(config2)
+
+        data_to_send = {'source1': report1,
+                        'source2': report2}
+
+        source_keys = ['source1', 'source2']
+        report1 = Mock()
+        report2 = Mock()
+        report1.hash = "report1_hash"
+        report2.hash = "report2_hash"
+        datastore = {'source1': report1, 'source2': report2}
+
+        manager = Mock()
+        options = Mock()
+        options.print_ = False
+
+        manager.hypervisorHeartbeat = Mock(side_effect=ManagerError("cannot connect to destination"))
+        manager.hypervisorCheckIn = Mock()
+        logger = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        config.owner = 'test_owner'
+        terminate_event = Mock()
+        interval = 10  # Arbitrary for this test
+        destination_thread = DestinationThread(logger, config,
+                                               source_keys=source_keys,
+                                               source=datastore,
+                                               dest=manager,
+                                               interval=interval,
+                                               terminate_event=terminate_event,
+                                               oneshot=True, status=True,
+                                               options=self.options)
+        destination_thread._send_data(data_to_send)
+        for source_key, report in data_to_send.items():
+            self.assertEqual(report.data['destination']['message'], "cannot connect to destination.")
 
     def test_send_data_poll_hypervisor_async_result(self):
         # This test's that when we have an async result from the server,

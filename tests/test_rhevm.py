@@ -23,14 +23,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import requests
-from mock import patch, call, ANY, MagicMock
+from mock import patch, call, ANY, MagicMock, Mock
 from threading import Event
 from six.moves.queue import Queue
 
 from base import TestBase
 from proxy import Proxy
 
-from virtwho.virt import Virt, VirtError, Guest, Hypervisor
+from virtwho.virt import Virt, VirtError, Guest, Hypervisor, StatusReport
 from virtwho.virt.rhevm.rhevm import RhevmConfigSection
 from virtwho.datastore import Datastore
 
@@ -142,6 +142,18 @@ class TestRhevM(TestBase):
         ])
         self.assertEqual(get.call_args[1]['auth'].username, u'username'.encode('utf-8'))
         self.assertEqual(get.call_args[1]['auth'].password, u'1€345678'.encode('utf-8'))
+
+    @patch('requests.get')
+    def test_staus(self, get):
+        get.return_value.content = '<xml></xml>'
+        get.return_value.status_code = 200
+        self.rhevm.status = True
+        self.rhevm._send_data = Mock()
+        self.run_once()
+
+        self.rhevm._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.rhevm.config['server'])
 
     @patch('requests.get')
     def test_connection_refused(self, get):

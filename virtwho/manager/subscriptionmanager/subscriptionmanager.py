@@ -136,9 +136,9 @@ class SubscriptionManager(Manager):
             for key, value in kwargs.items():
                 try:
                     from_config = config[kwargs_to_config[key]]
-                    if from_config is not NotSetSentinel and from_config is \
+                    if from_config != NotSetSentinel and from_config is \
                             not None:
-                        if key is 'ssl_port':
+                        if key == 'ssl_port':
                             from_config = int(from_config)
                         kwargs[key] = from_config
                 except KeyError:
@@ -333,11 +333,13 @@ class SubscriptionManager(Manager):
 
         return serialized_mapping
 
-    def check_report_state(self, report):
+    def check_report_state(self, report, status_call=False):
         # BZ 1554228
         job_id = str(report.job_id)
         self._connect(report.config)
         self.logger.debug('Checking status of job %s', job_id)
+        if status_call:
+            report.last_job_status = "UNKNOWN"
         try:
             result = self.connection.getJob(job_id)
         except BadStatusLine:
@@ -349,6 +351,8 @@ class SubscriptionManager(Manager):
                 raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
         state = STATE_MAPPING.get(result['state'], AbstractVirtReport.STATE_FAILED)
+        if status_call:
+            report.last_job_status = result['state']
         report.state = state
         if state not in (AbstractVirtReport.STATE_FINISHED,
                          AbstractVirtReport.STATE_CANCELED,

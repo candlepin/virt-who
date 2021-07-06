@@ -230,12 +230,19 @@ def produce_status_output(result):
                 report_dict['name'] = config
                 report_dict['source'] = {"connection": report.data['source']['server'],
                                          "status": report.data['source']['status_string']}
-                if 'message' in report.data['source']:
+                if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
                     report_dict['source']['message'] = report.data['source']['message']
+                report_dict['source']["last_successful_retrieve"] = report.data['source']['last_successful_retrieve']
+                report_dict['source']["hypervisors"] =  report.data['source']['hypervisors']
+                report_dict['source']["guests"] = report.data['source']['guests']
+
                 report_dict['destination'] = {"connection": report.data['destination']['server'],
                                               "status": report.data['destination']['status_string']}
-                if 'message' in report.data['destination']:
+                if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
                     report_dict['destination']['message'] = report.data['destination']['message']
+                report_dict['destination']["last_successful_send"] = report.data['destination']['last_successful_send']
+                report_dict['destination']["last_successful_send_job_status"] = report.data['destination']['last_successful_send_job_status']
+
                 json_body.append(report_dict)
             return json.dumps({
                 'configurations': json_body

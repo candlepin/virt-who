@@ -333,7 +333,7 @@ class SubscriptionManager(Manager):
 
         return serialized_mapping
 
-    def check_report_state(self, report):
+    def check_report_state(self, report, status_call=False):
         # BZ 1554228
         job_id = str(report.job_id)
         self._connect(report.config)
@@ -341,14 +341,22 @@ class SubscriptionManager(Manager):
         try:
             result = self.connection.getJob(job_id)
         except BadStatusLine:
+            if status_call:
+                report.set_last_job_status("UNKNOWN")
             raise ManagerError("Communication with subscription manager interrupted")
         except rhsm_connection.RateLimitExceededException as e:
+            if status_call:
+                report.set_last_job_status("UNKNOWN")
             raise ManagerThrottleError(e.retry_after)
         except rhsm_connection.ConnectionException as e:
+            if status_call:
+                report.set_last_job_status("UNKNOWN")
             if hasattr(e, 'code'):
                 raise ManagerError("Communication with subscription manager failed with code %d: %s" % (e.code, str(e)))
             raise ManagerError("Communication with subscription manager failed: %s" % str(e))
         state = STATE_MAPPING.get(result['state'], AbstractVirtReport.STATE_FAILED)
+        if status_call:
+            report.set_last_job_status(result['state'])
         report.state = state
         if state not in (AbstractVirtReport.STATE_FINISHED,
                          AbstractVirtReport.STATE_CANCELED,

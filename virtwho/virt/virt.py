@@ -327,6 +327,12 @@ class StatusReport(AbstractVirtReport):
         self._source_message = ''
         self._destination_message = ''
         self._destination = ''
+        self._job_id = None
+        self._last_source_success = None
+        self._hypervisors = None
+        self._guests = None
+        self._last_destination_success = None
+        self._last_job_status = None
 
     @property
     def data(self):
@@ -335,12 +341,17 @@ class StatusReport(AbstractVirtReport):
             "source": {
                 "server": self.config['server'] if 'server' in self.config else None,
                 "status_string": 'success' if len(self._source_message) == 0 else 'failure',
-                "message": self._source_message
+                "message": self._source_message,
+                "last_successful_retrieve": self._last_source_success,
+                "hypervisors": self._hypervisors,
+                "guests": self._guests
             },
             "destination": {
                 "server": self._destination,
                 "status_string": 'success' if len(self._destination_message) == 0 else 'failure',
-                "message": self._destination_message
+                "message": self._destination_message,
+                "last_successful_send": self._last_destination_success,
+                "last_successful_send_job_status": self._last_job_status
             }
         }
         return data
@@ -352,10 +363,32 @@ class StatusReport(AbstractVirtReport):
         self._source_message += f"{message}."
 
     def append_destination_status_message(self, message):
-        self._destination_message = f"{message}."
+        self._destination_message += f"{message}."
 
     def set_destination(self, value):
         self._destination = value
+
+    def set_job_id(self, id):
+        self._job_id = id
+
+    @property
+    def job_id(self):
+        return self._job_id
+
+    def set_last_source_success(self, last):
+        self._last_source_success = last
+
+    def set_hypervisors(self, count):
+        self._hypervisors = count
+
+    def set_guests(self, count):
+        self._guests = count
+
+    def set_last_destination_success(self, last):
+        self._last_destination_success = last
+
+    def set_last_job_status(self, status):
+        self._last_job_status = status
 
 
 class IntervalThread(Thread):
@@ -654,34 +687,44 @@ class DestinationThread(IntervalThread):
                 try:
                     self.dest.hypervisorHeartbeat(config=self.config, options=self.options)
                 except ManagerThrottleError as err:
-                    self.logger.debug("429 encountered while heartbeat: %s" % str(err))
+                    self.logger.debug("429 encountered while heartbeat: %s", str(err))
                     # TODO: when we are sending heartbeats too fast, then we should wait err.retry_after seconds
                 except (ManagerError, ManagerFatalError, OSError) as err:
-                    self.logger.exception("Error during heartbeat: %s" % str(err))
+                    self.logger.exception("Error during heartbeat: %s", str(err))
 
         if self.status:
             if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
                 # Confirm connection to destination and existence of owner
                 message = ''
+                status_success = False
                 try:
                     # this will stop any changes to data
                     self.options[VW_GLOBAL]['reporter_id'] = 'status_test'
                     valid = self.dest.hypervisorHeartbeat(self.config, options=self.options)
                     if not valid:
                         message = f"Specified owner '{self.config['owner']}' is not accessible"
+                    else:
+                        status_success = True
                 except ManagerThrottleError as err:
-                    self.logger.debug("429 encountered during status connection: %s" % str(err))
-                    message = str(err)
+                    self.logger.debug("429 encountered during status connection: %s", str(err))
+                    message = f"429 encountered during status connection: {str(err)}"
                 except (ManagerError, ManagerFatalError, OSError) as err:
-                    self.logger.exception("Error during status connection: %s" % str(err))
-                    message = str(err)
-                for source_key, report in data_to_send.items():
-                    if len(message) > 0:
-                        report.append_destination_status_message(message)
-                    host = self.dest.rhsm_config.get('server', 'hostname')
-                    if 'rhsm_hostname' in report.config:
-                        host = report.config['rhsm_hostname']
-                    report.set_destination(host)
+                    self.logger.exception("Error during status connection: %s", str(err))
+                    message = f"Error during status connection: {str(err)}"
+                if hasattr(data_to_send, 'items'):
+                    for source_key, report in data_to_send.items():
+                        if len(message) > 0:
+                            report.append_destination_status_message(message)
+                        host = self.dest.rhsm_config.get('server', 'hostname')
+                        if 'rhsm_hostname' in report.config:
+                            host = report.config['rhsm_hostname']
+                        report.set_destination(host)
+                        # incorporate the run data into the report for the next step
+                        self.merge_run_data(report)
+                        # find the status of the job here to put into report
+                        if status_success and report.job_id:
+                            self.check_report_status(report, status_call=True)
+
             return
 
         if not data_to_send:
@@ -863,7 +906,7 @@ class DestinationThread(IntervalThread):
                                 if source_key not in sources_sent]
         return
 
-    def check_report_status(self, report):
+    def check_report_status(self, report, status_call=False):
         """
         Checks at the server for the state of the previously submitted job. The state is recorded
         in the passed-in report
@@ -884,7 +927,7 @@ class DestinationThread(IntervalThread):
             self.wait(wait_time=wait_time)
 
             try:
-                self.dest.check_report_state(report)
+                self.dest.check_report_state(report, status_call)
             except ManagerThrottleError as e:
                 if self._oneshot:
                     self.logger.debug('429 encountered when checking job state in '
@@ -913,6 +956,22 @@ class DestinationThread(IntervalThread):
                     json.dump(status_dict, json_status)
         except IOError:
             self.logger.error("Unable to record run data. Cannot get lock on file.")
+
+    def merge_run_data(self, report):
+        try:
+            with FileLock(STATUS_LOCK):
+                with open(STATUS_DATA, 'r') as json_status:
+                    status_dict = json.load(json_status)
+                source = status_dict['sources'][report.config.name]
+                destination = status_dict['destinations'][report.config.name]
+            report.set_last_source_success(source['last_successful_retrieve'])
+            report.set_hypervisors(source['hypervisors'])
+            report.set_guests(source['guests'])
+            report.set_last_destination_success(destination['last_successful_send'])
+            report.set_job_id(destination['last_job_id'])
+
+        except IOError:
+            self.logger.error("Unable to read run data. Cannot get lock on file.")
 
 
 class Satellite5DestinationThread(DestinationThread):

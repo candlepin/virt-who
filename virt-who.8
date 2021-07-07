@@ -1,8 +1,8 @@
 .TH VIRT-WHO "8" "April 2016" "virt-who"
 .SH NAME
-virt-who - Agent for reporting virtual guest IDs to Subscription Asset Manager, Satellite 6, or Satellite 5.
+virt-who - Agent for reporting virtual guest IDs to an entitlement server.
 .SH SYNOPSIS
-virt-who [-d] [-i INTERVAL] [-o] 
+virt-who [-d] [-i INTERVAL] [-o] [-s]
 .SH OPTIONS
 .TP
 \fB\-h\fR, \fB\-\-help\fR
@@ -22,11 +22,17 @@ Print the host/guests association in JSON format to standard output
 .TP
 \fB\-c\fR, \fB\-\-config\fR
 Use configuration file directly (will override configuration from other files. 'global', 'default', and 'system_environment' sections are not read in files passed in via this option, and are only read from /etc/virt-who.conf). Can be used multiple times. See virt-who-config(5) for details about configuration file format.
+.TP
+\fB\-s\fR, \fB\-\-status\fR
+Confirm the correctness of the configurations. Test the connections and build a report on the result. The default display is a short summary of the configurations.
+.TP
+\fB\-j\fR, \fB\-\-json\fR
+Used with status to return a more detailed report in json format.
 .IP
 
 .SH USAGE
 .SS MODE
-virt-who has three modes how it can run:
+virt-who has four modes how it can run:
 .TP
 1. one-shot mode
 # virt-who -o
@@ -36,12 +42,71 @@ In this mode virt-who just sends the host to guest association to the server onc
 2. interval mode
 # virt-who -i INTERVAL
 
-This is default mode. virt-who will listen to change events (if available) or do a polling with given interval, and will send the host to guest association when it changes. The default polling interval is 3600 seconds and can be changed using "-i INTERVAL" (in seconds).
+This is the default mode. virt-who will listen to change events (if available) or do a polling with given interval, and will send the host to guest association when it changes. The default polling interval is 3600 seconds and can be changed using "-i INTERVAL" (in seconds).
 .TP
 3. print mode
 # virt-who -p
 
 This mode is similar to oneshot mode but the host to guest association is not send to server, but printed to standard output instead.
+.TP
+3. status mode
+# virt-who -s
+
+This mode is for configuration diagnosis. The host to guest association is not compiled and is not sent to the server. When executed, it will confirm the ability to log into and retrieve data from the source for each configuration. It will also confirm the credentials and organization for each destination in the configurations.
+It will produce results in two ways that can be used to diagnose problems. The first is a summary:
+
+.br
+Configuration Name: esx_config1
+.br
+Source Status: success
+.br
+Destination Status: success
+
+.br
+Configuration Name: hyperv-55
+.br
+Source Status: failure
+.br
+Destination Status: failure
+
+The second is a machine-readable json output (which is generated when the -j/--json option is used):
+
+{
+    "configurations": [
+        {
+            "name":"esx-conf1",
+            "source":{
+                "connection":"esx_system.example.com",
+                "status":"success",
+                "last_successful_retrieve":"2020-02-28 07:25:25 UTC",
+                "hypervisors":20,
+                "guests":37
+            },
+            "destination":{
+                "connection":"candlepin.example.com",
+                "status":"success",
+                "last_successful_send":"2020-02-28 07:25:27 UTC",
+                "last_successful_send_job_status":"FINISHED"
+            }
+        },
+        {
+            "name":"hyperv-55",
+            "source":{
+                "connection":"windows10-3.company.com",
+                "status":"failure",
+                "message":"Unable to connect to server: invalid credentials",
+                "last_successful_retrieve":"none"
+            },
+            "destination":{
+                "connection":"candlepin.company.com",
+                "status":"failure",
+                "message":"ConnectionRefusedError: [Errno 111] Connection refused",
+                "last_successful_send":"none",
+                "last_successful_send_job_status":"none"
+            }
+        }
+    ]
+}
 
 .SH LOGGING
 virt-who always writes error output to file /var/log/rhsm/rhsm.log. It also writes the same output to standard error output when started from command line.
@@ -61,9 +126,11 @@ Here is a list of ports that need to be open for different hypervisors:
     local libvirt uses a local connection and doesn't need an open port
     kubevirt: 8443/tcp
 
-virt-who also needs to have access to Subscription Asset Manager, Satellite 5, or Satellite 6. Default port is 443/tcp. All the ports might be changed by system administrators.
+virt-who also needs to have access to an entitlement server. Default port is 443/tcp. All the ports might be changed by system administrators.
 
 Using the same network for machine running virt-who as for hypervisor management software instead of production VM networks is suggested.
 
-.SH AUTHOR
+.SH AUTHORS
 Radek Novacek <rnovacek at redhat dot com>
+.br
+William Poteat <wpoteat at redhat dot com>

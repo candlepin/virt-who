@@ -1,18 +1,18 @@
-From dc50b70f55cf2acdab5fb1abc89c53487bf6fa6d Mon Sep 17 00:00:00 2001
+From 1cac97451b02907afb27e816a856438e6ac2c75e Mon Sep 17 00:00:00 2001
 From: Kevin Howell <khowell@redhat.com>
 Date: Fri, 18 Oct 2019 09:54:54 -0400
 Subject: [PATCH] Remove AHV support
 
 ---
- tests/test_ahv.py                 | 566 ---------------------
+ tests/test_ahv.py                 | 576 ---------------------
  virtwho/config.py                 |   4 +-
  virtwho/parser.py                 |   4 +-
  virtwho/virt/ahv/__init__.py      |   6 -
- virtwho/virt/ahv/ahv.py           | 258 ----------
+ virtwho/virt/ahv/ahv.py           | 266 ----------
  virtwho/virt/ahv/ahv_constants.py |  21 -
  virtwho/virt/ahv/ahv_interface.py | 804 ------------------------------
  virtwho/virt/virt.py              |   1 -
- 8 files changed, 3 insertions(+), 1661 deletions(-)
+ 8 files changed, 3 insertions(+), 1679 deletions(-)
  delete mode 100644 tests/test_ahv.py
  delete mode 100644 virtwho/virt/ahv/__init__.py
  delete mode 100644 virtwho/virt/ahv/ahv.py
@@ -21,16 +21,16 @@ Subject: [PATCH] Remove AHV support
 
 diff --git a/tests/test_ahv.py b/tests/test_ahv.py
 deleted file mode 100644
-index d8ccbc8..0000000
+index bd92a26..0000000
 --- a/tests/test_ahv.py
 +++ /dev/null
-@@ -1,566 +0,0 @@
+@@ -1,576 +0,0 @@
 -from __future__ import print_function
 -
 -import six
 -
 -from base import TestBase
--from mock import patch, call, ANY, MagicMock
+-from mock import patch, call, ANY, MagicMock, Mock
 -from requests import Session
 -from six.moves.queue import Queue
 -from threading import Event
@@ -38,7 +38,7 @@ index d8ccbc8..0000000
 -from virtwho import DefaultInterval
 -from virtwho.datastore import Datastore
 -from virtwho.virt.ahv.ahv import AhvConfigSection
--from virtwho.virt import Virt, VirtError, Guest, Hypervisor
+-from virtwho.virt import Virt, VirtError, Guest, Hypervisor, StatusReport
 -
 -
 -
@@ -453,6 +453,16 @@ index d8ccbc8..0000000
 -        ]
 -        mock_get.assert_has_calls(call_list, any_order=True)
 -
+-    @patch.object(Session, 'get')
+-    def test_status(self, mock_get):
+-        mock_get.return_value.status_code = 200
+-        self.ahv.status = True
+-        self.ahv._send_data = Mock()
+-        self.run_once()
+-
+-        self.ahv._send_data.assert_called_once_with(data_to_send=ANY)
+-        self.assertTrue(isinstance(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+-        self.assertEqual(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.ahv.config['server'])
 -    @patch.object(Session, 'post')
 -    def test_connect_PC(self, mock_post):
 -        self.setUp(is_pc=True)
@@ -592,7 +602,7 @@ index d8ccbc8..0000000
 -                           result[index].toDict())
 -
 diff --git a/virtwho/config.py b/virtwho/config.py
-index 74d9834..857ca40 100644
+index 417e57d..b08cb77 100644
 --- a/virtwho/config.py
 +++ b/virtwho/config.py
 @@ -50,7 +50,7 @@ logger = log.getLogger(name='config', queue=False)
@@ -614,7 +624,7 @@ index 74d9834..857ca40 100644
                  result = (
                      'warning',
 diff --git a/virtwho/parser.py b/virtwho/parser.py
-index 40a0ad6..42cbbfd 100644
+index 3ed3bf9..09031c0 100644
 --- a/virtwho/parser.py
 +++ b/virtwho/parser.py
 @@ -46,7 +46,6 @@ SAT5_VM_DISPATCHER = {
@@ -656,10 +666,10 @@ index 01a19f8..0000000
 -__all__ = ['Ahv']
 diff --git a/virtwho/virt/ahv/ahv.py b/virtwho/virt/ahv/ahv.py
 deleted file mode 100644
-index 47a786d..0000000
+index 71fefef..0000000
 --- a/virtwho/virt/ahv/ahv.py
 +++ /dev/null
-@@ -1,258 +0,0 @@
+@@ -1,266 +0,0 @@
 -import socket
 -
 -from . import ahv_constants
@@ -676,7 +686,7 @@ index 47a786d..0000000
 -  "AHV Rest client"
 -  CONFIG_TYPE = "ahv"
 -  def __init__(self, logger, config, dest, interval=None,
--                terminate_event=None, oneshot=False):
+-                terminate_event=None, oneshot=False, status=False):
 -    """
 -    Args:
 -      logger (Logger): Framework logger.
@@ -691,7 +701,8 @@ index 47a786d..0000000
 -    super(Ahv, self).__init__(logger, config, dest,
 -                                  terminate_event=terminate_event,
 -                                  interval=interval,
--                                  oneshot=oneshot)
+-                                  oneshot=oneshot,
+-                                  status=status)
 -    self.config = config
 -    self.version = ahv_constants.VERSION_2
 -    self.is_pc = False
@@ -822,8 +833,12 @@ index 47a786d..0000000
 -      delta = next_update - time()
 -
 -      if initial:
--        assoc = self.getHostGuestMapping()
--        self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+-        if self.status:
+-          report = virt.StatusReport(self.config)
+-          self._send_data(data_to_send=report)
+-        else:
+-          assoc = self.getHostGuestMapping()
+-          self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
 -        initial = False
 -        continue
 -
@@ -838,8 +853,11 @@ index 47a786d..0000000
 -        events = []
 -
 -      if len(events) > 0 or delta > 0:
--        assoc = self.getHostGuestMapping()
--        self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+-        if self.status:
+-          self._send_data(data_to_send=virt.StatusReport(self.config))
+-        else:
+-          assoc = self.getHostGuestMapping()
+-          self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
 -
 -      if self._oneshot:
 -        break
@@ -1756,10 +1774,10 @@ index 8b75cb6..0000000
 -  def _details_map(self):
 -    return dict([(str(i), self.details[i]) for i in range(len(self.details))])
 diff --git a/virtwho/virt/virt.py b/virtwho/virt/virt.py
-index ee7ee37..3fa1985 100644
+index ba2da18..7005ec8 100644
 --- a/virtwho/virt/virt.py
 +++ b/virtwho/virt/virt.py
-@@ -922,7 +922,6 @@ class Virt(IntervalThread):
+@@ -1126,7 +1126,6 @@ class Virt(IntervalThread):
          import virtwho.virt.hyperv  # flake8: noqa
          import virtwho.virt.fakevirt  # flake8: noqa
          import virtwho.virt.kubevirt  # flake8: noqa

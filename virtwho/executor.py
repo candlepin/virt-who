@@ -81,27 +81,35 @@ class Executor(object):
     def _init_run_status(self, config_names=[]):
         # ensure that there is an entry in the status file for each config. We don't care if they work, we
         # need to record their existence
+        need_write = False
         try:
             with FileLock(STATUS_LOCK):
                 os.makedirs(STATUS_DATA_DIR, exist_ok=True)
-                # need to create the file if it does not exist,
-                # thus the use of w+ for reading
-                with open(STATUS_DATA, "w+") as json_status:
-                    try:
-                        status_dict = json.load(json_status)
-                    except JSONDecodeError:
-                        status_dict = {}
+                if os.path.exists(STATUS_DATA):
+                    with open(STATUS_DATA, "r") as json_status:
+                        try:
+                            status_dict = json.load(json_status)
+                        except JSONDecodeError as e:
+                            status_dict = {}
+                else:
+                    status_dict = {}
                 if 'sources' not in status_dict:
                     status_dict['sources'] = {}
+                    need_write = True
                 if 'destinations' not in status_dict:
                     status_dict['destinations'] = {}
+                    need_write = True
                 for name in config_names:
                     if name not in status_dict['sources']:
                         status_dict['sources'][name] = {"last_successful_retrieve": None}
+                        need_write = True
                     if name not in status_dict['destinations']:
                         status_dict['destinations'][name] = {"last_successful_send": None,"last_job_id": None}
-                with open(STATUS_DATA, "w") as json_status:
-                    json.dump(status_dict, json_status)
+                        need_write = True
+                if need_write:
+                    # need to create the file if it does not exist
+                    with open(STATUS_DATA, "w+") as json_status:
+                        json.dump(status_dict, json_status)
         except IOError:
             self.logger.error("Unable to record run data. Cannot get lock on file.")
 

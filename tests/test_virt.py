@@ -153,7 +153,7 @@ class TestDestinationThread(TestBase):
         'type': 'esx',
         'hypervisor_id': 'uuid',
         'simplified_vim': True,
-        'owner': 'owner',
+        'owner': 'owner'
     }
 
     def setUp(self):
@@ -442,7 +442,7 @@ class TestDestinationThread(TestBase):
                                                options=self.options)
         destination_thread._send_data(data_to_send)
         for source_key, report in data_to_send.items():
-            self.assertEqual(report.data['destination']['message'], "cannot connect to destination.")
+            self.assertEqual(report.data['destination']['message'], "Error during status connection: cannot connect to destination.")
 
     def test_send_data_poll_hypervisor_async_result(self):
         # This test's that when we have an async result from the server,
@@ -566,7 +566,7 @@ class TestDestinationThread(TestBase):
     def check_report_state_closure(self, items):
         item_iterator = iter(items)
 
-        def mock_check_report_state(report):
+        def mock_check_report_state(report, status=False):
             item = next(item_iterator)
             if isinstance(item, Exception):
                 raise item
@@ -815,6 +815,96 @@ class TestDestinationThread(TestBase):
         destination_thread.record_status = Mock(side_effect=check_record_status)
         destination_thread.is_terminated = Mock(return_value=False)
         destination_thread._send_data(data_to_send)
+
+    def test_merge_status(self):
+        self.tmp_dir = tempfile.mkdtemp()
+        status_pid_file_name = self.tmp_dir + os.path.sep +'virt-who-status.pid'
+        status_pid_file_patcher = patch('virtwho.virt.virt.STATUS_LOCK', status_pid_file_name)
+        status_pid_file_patcher.start()
+        self.addCleanup(status_pid_file_patcher.stop)
+
+        status_file_name = self.tmp_dir + os.path.sep +'run_data.json'
+        status_data_file_patcher = patch('virtwho.virt.virt.STATUS_DATA', status_file_name)
+        status_data_file_patcher.start()
+        self.addCleanup(status_data_file_patcher.stop)
+        self.addCleanup(shutil.rmtree, self.tmp_dir)
+
+        with open(status_file_name, "w+") as f:
+            f.write("""
+{
+    "sources": {
+        "source1": {
+            "last_successful_retrieve": "2020-02-28 07:25:25 UTC",
+            "hypervisors": 20,
+            "guests": 37
+        },
+        "source2": {
+            "last_successful_retrieve": null
+        }
+    },
+    "destinations": {
+        "source1": {
+            "last_successful_send": "2020-02-28 07:25:27 UTC",
+            "last_job_id": "hypervisor12345"
+        },
+        "source2": {
+            "last_successful_send": null,
+            "last_job_id": null
+        }
+    }
+}
+
+        """)
+        os.chmod(status_file_name, 444)
+
+        config1, d1 = self.create_fake_config('source1', **self.default_config_args)
+        config2, d2 = self.create_fake_config('source2', **self.default_config_args)
+
+        report1 = StatusReport(config1)
+        report2 = StatusReport(config2)
+
+        data_to_send = {'source1': report1,
+                        'source2': report2}
+
+        source_keys = ['source1', 'source2']
+        datastore = {'source1':Mock(), 'source2': Mock()}
+        manager = Mock()
+        options = Mock()
+        options.print_ = False
+
+        manager.hypervisorCheckIn = Mock()
+        logger = Mock()
+        config, d = self.create_fake_config('test', **self.default_config_args)
+        config.owner = 'test_owner'
+        terminate_event = Mock()
+        interval = 10  # Arbitrary for this test
+        destination_thread = DestinationThread(logger, config,
+                                               source_keys=source_keys,
+                                               source=datastore,
+                                               dest=manager,
+                                               interval=interval,
+                                               terminate_event=terminate_event,
+                                               oneshot=True, options=self.options,
+                                               status=True)
+
+        def check_report_status(report, status_call):
+            self.assertTrue(status_call)
+            report.last_job_status = "FINISHED"
+
+        destination_thread.record_status = Mock()
+        destination_thread.is_terminated = Mock(return_value=False)
+        destination_thread.check_report_status = Mock(side_effect=check_report_status)
+        destination_thread._send_data(data_to_send)
+        self.assertEqual(report1.data['source']['last_successful_retrieve'], "2020-02-28 07:25:25 UTC")
+        self.assertEqual(report1.data['source']['hypervisors'], 20)
+        self.assertEqual(report1.data['source']['guests'], 37)
+        self.assertEqual(report1.data['destination']["last_successful_send"], "2020-02-28 07:25:27 UTC")
+        self.assertEqual(report1.data['destination']["last_successful_send_job_status"], "FINISHED")
+        self.assertEqual(report2.data['source']['last_successful_retrieve'], None)
+        self.assertEqual(report2.data['source']['hypervisors'], None)
+        self.assertEqual(report2.data['source']['guests'], None)
+        self.assertEqual(report2.data['destination']["last_successful_send"], None)
+        self.assertEqual(report2.data['destination']["last_successful_send_job_status"], None)
 
 
 class TestDestinationThreadTiming(TestBase):

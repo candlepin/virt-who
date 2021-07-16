@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.13
+Version:        1.31.14
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -169,6 +169,14 @@ fi
 
 
 %changelog
+* Fri Jul 16 2021 William Poteat <wpoteat@redhat.com> 1.31.14-1
+- Merge run data into report (wpoteat@redhat.com)
+- Update the man page for the status mode (wpoteat@redhat.com)
+- Status execution (wpoteat@redhat.com)
+- Record last dates of succcess for sources and destinations
+  (wpoteat@redhat.com)
+- Update certs for complex tests (wpoteat@redhat.com)
+
 * Thu Jun 03 2021 William Poteat <wpoteat@redhat.com> 1.31.13-1
 - 1965320: Clear previous report hash when hypervisor count is zero
   (wpoteat@redhat.com)

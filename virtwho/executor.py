@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function
 import time
+import json
+import os
+from json.decoder import JSONDecodeError
 from threading import Event
 
 from virtwho import log
@@ -8,6 +11,7 @@ from virtwho import log
 from virtwho.config import DestinationToSourceMapper, VW_GLOBAL
 from virtwho.datastore import Datastore
 from virtwho.manager import Manager
+from virtwho.lock import FileLock, STATUS_LOCK, STATUS_DATA, STATUS_DATA_DIR
 from virtwho.virt import Virt, info_to_destination_class
 
 try:
@@ -58,17 +62,56 @@ class Executor(object):
         Create virts list with virt backend threads
         """
         virts = []
+        config_names = []
         for name, config in self.dest_to_source_mapper.configs:
+            config_names.append(name)
             try:
                 virt = Virt.from_config(self.logger, config, self.datastore,
                                         terminate_event=self.terminate_event,
                                         interval=self.options[VW_GLOBAL]['interval'],
-                                        oneshot=self.options[VW_GLOBAL]['oneshot'])
+                                        oneshot=self.options[VW_GLOBAL]['oneshot'],
+                                        status=self.options[VW_GLOBAL]['status'])
             except Exception as e:
                 self.logger.error('Unable to use configuration "%s": %s', name, str(e))
                 continue
             virts.append(virt)
+        self._init_run_status(config_names)
         return virts
+
+    def _init_run_status(self, config_names=[]):
+        # ensure that there is an entry in the status file for each config. We don't care if they work, we
+        # need to record their existence
+        need_write = False
+        try:
+            with FileLock(STATUS_LOCK):
+                os.makedirs(STATUS_DATA_DIR, exist_ok=True)
+                if os.path.exists(STATUS_DATA):
+                    with open(STATUS_DATA, "r") as json_status:
+                        try:
+                            status_dict = json.load(json_status)
+                        except JSONDecodeError as e:
+                            status_dict = {}
+                else:
+                    status_dict = {}
+                if 'sources' not in status_dict:
+                    status_dict['sources'] = {}
+                    need_write = True
+                if 'destinations' not in status_dict:
+                    status_dict['destinations'] = {}
+                    need_write = True
+                for name in config_names:
+                    if name not in status_dict['sources']:
+                        status_dict['sources'][name] = {"last_successful_retrieve": None}
+                        need_write = True
+                    if name not in status_dict['destinations']:
+                        status_dict['destinations'][name] = {"last_successful_send": None,"last_job_id": None}
+                        need_write = True
+                if need_write:
+                    # need to create the file if it does not exist
+                    with open(STATUS_DATA, "w+") as json_status:
+                        json.dump(status_dict, json_status)
+        except IOError:
+            self.logger.error("Unable to record run data. Cannot get lock on file.")
 
     def _create_destinations(self):
         """Populate self.destinations with a list of  list with them
@@ -93,7 +136,8 @@ class Executor(object):
                               source=self.datastore, dest=manager,
                               terminate_event=self.terminate_event,
                               interval=self.options[VW_GLOBAL]['interval'],
-                              oneshot=self.options[VW_GLOBAL]['oneshot'])
+                              oneshot=self.options[VW_GLOBAL]['oneshot'],
+                              status=self.options[VW_GLOBAL]['status'])
             dests.append(dest)
         return dests
 
@@ -173,14 +217,23 @@ class Executor(object):
                     config = report.config
                     to_print[config.name] = report
                 except KeyError:
-                    self.logger.info('Unable to retrieve report for source '
-                                     '\"%s\" for printing' % source)
+                    self.logger.info(f"Unable to retrieve report for source '{source}' for printing")
             return to_print
 
         for thread in self.destinations:
             thread.start()
 
         Executor.wait_on_threads(self.destinations)
+        if self.options[VW_GLOBAL]['status']:
+            output = {}
+            for source in self.dest_to_source_mapper.sources:
+                try:
+                    report = self.datastore.get(source)
+                except KeyError:
+                    self.logger.info(f"Unable to retrieve report for source '{source}' for printing")
+                else:
+                    output[report.config.name] = report
+            return output
 
     def run(self):
         self.logger.debug("Starting infinite loop with %d seconds interval",

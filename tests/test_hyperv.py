@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-from mock import patch, MagicMock, ANY
+from mock import patch, MagicMock, ANY, Mock
 from threading import Event
 from six.moves.queue import Queue
 import requests
@@ -32,7 +32,7 @@ from proxy import Proxy
 
 from virtwho import DefaultInterval
 from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection, HyperVSoap
-from virtwho.virt import VirtError, Guest, Hypervisor
+from virtwho.virt import VirtError, Guest, Hypervisor, StatusReport
 
 
 class HyperVMock(object):
@@ -166,6 +166,17 @@ class TestHyperV(TestBase):
 
         session.assert_called_with()
         session.return_value.post.assert_called_with('http://localhost:5985/wsman', ANY, headers=ANY)
+
+    @patch('requests.Session')
+    def test_status(self, session):
+        session.return_value.post.side_effect = HyperVMock.post
+        self.hyperv.status = True
+        self.hyperv._send_data = Mock()
+        self.run_once()
+
+        self.hyperv._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.hyperv.config['server'])
 
     @patch('requests.Session')
     def test_connection_refused(self, session):

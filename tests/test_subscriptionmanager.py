@@ -14,7 +14,7 @@ from virtwho.config import VirtConfigSection, DestinationToSourceMapper, VW_ENV_
     init_config
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
-from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport
+from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport, StatusReport
 from virtwho.parser import parse_options
 
 
@@ -137,20 +137,13 @@ class TestSubscriptionManager(TestBase):
                 'uuid': _host
             }
 
-        # self.sm.connection.return_value.getJob.return_value = {
         rhsmconnection.return_value.getJob.return_value = {
             'state': 'FINISHED',
             'resultData': {
                 'failedUpdate': ["failed"],
-                'updated': [
-                    host('123')
-                ],
-                'created': [
-                    host('456')
-                ],
-                'unchanged': [
-                    host('789')
-                ]
+                'updated': [ {'uuid', '123'} ],
+                'created': [ {'uuid' '456' } ],
+                'unchanged': [ {'uuid', '789'} ]
             }
         }
         self.sm.logger = MagicMock()
@@ -159,6 +152,33 @@ class TestSubscriptionManager(TestBase):
         self.assertEqual(self.sm.logger.debug.call_count, 3)
         self.assertEqual(report.state, AbstractVirtReport.STATE_FINISHED)
 
+    @patch('rhsm.connection.UEPConnection')
+    def test_job_status_with_status_command(self, rhsmconnection):
+        rhsmconnection.return_value.has_capability.return_value = True
+        config = VirtConfigSection.from_dict({'type': 'libvirt', 'owner': 'owner'}, 'test', None)
+        report = StatusReport(config)
+        rhsmconnection.return_value.getJob.return_value = {
+            'state': 'RUNNING',
+        }
+        self.sm.check_report_state(report, status_call=True)
+        self.assertEqual(report.state, AbstractVirtReport.STATE_PROCESSING)
+        self.assertEqual(report.last_job_status, 'RUNNING')
+
+        rhsmconnection.return_value.getJob.return_value = {
+            'state': 'FINISHED',
+            'resultData': {
+                'failedUpdate': ["failed"],
+                'updated': [ {'uuid', '123'} ],
+                'created': [ {'uuid' '456' } ],
+                'unchanged': [ {'uuid', '789'} ]
+            }
+        }
+        self.sm.logger = MagicMock()
+        self.sm.check_report_state(report, status_call=True)
+        # calls: authenticating + checking job status + 1 line about the number of unchanged
+        self.assertEqual(self.sm.logger.debug.call_count, 3)
+        self.assertEqual(report.state, AbstractVirtReport.STATE_FINISHED)
+        self.assertEqual(report.last_job_status, 'FINISHED')
 
 class TestSubscriptionManagerConfig(TestBase):
     @classmethod

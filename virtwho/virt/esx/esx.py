@@ -39,6 +39,7 @@ from six.moves.http_client import HTTPException
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection
+from virtwho.virt import StatusReport
 
 try:
     from urllib.parse import unquote as urldecode
@@ -119,11 +120,12 @@ class Esx(virt.Virt):
     MAX_WAIT_TIME = 60  # 1 minute
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(Esx, self).__init__(logger, config, dest,
                                   terminate_event=terminate_event,
                                   interval=interval,
-                                  oneshot=oneshot)
+                                  oneshot=oneshot,
+                                  status=status)
         self.url = self.config['server']
         self.username = self.config['username']
         self.password = self.config['password']
@@ -200,6 +202,10 @@ class Esx(virt.Virt):
                 self._prepare()
                 continue
 
+            if self.status:
+                self._send_data(data_to_send=StatusReport(self.config))
+                break
+
             if updateSet is not None:
                 version = updateSet.version
                 self.applyUpdates(updateSet)
@@ -209,7 +215,7 @@ class Esx(virt.Virt):
 
             if last_version != version or time() > next_update:
                 assoc = self.getHostGuestMapping()
-                self._send_data(virt.HostGuestAssociationReport(self.config, assoc))
+                self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
                 next_update = time() + self.interval
                 last_version = version
 

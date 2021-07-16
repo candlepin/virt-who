@@ -173,9 +173,10 @@ class Logger(object):
     _level = logging.DEBUG
     _rhsm_level = logging.WARN
     _queue_logger = None
+    _status = None
 
     @classmethod
-    def initialize(cls, log_dir=None, log_file=None, log_per_config=None, debug=None):
+    def initialize(cls, log_dir=None, log_file=None, log_per_config=None, debug=None, status=None):
         # Set defaults if necessary
         if log_dir:
             cls._log_dir = log_dir
@@ -186,6 +187,7 @@ class Logger(object):
         cls._level = logging.DEBUG if debug else logging.INFO
         # We don't want INFO message from RHSM in non-debug mode
         cls._rhsm_level = logging.DEBUG if debug else logging.WARN
+        cls._status = status
 
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):
@@ -222,7 +224,7 @@ class Logger(object):
 
         journal_handler = None
         stream_handler = None
-        if ppid == 1:
+        if ppid == 1 or (cls._status and cls._level != logging.DEBUG):
             # we're running under systemd, log to journal
             journal_handler = cls.get_journal_handler()
         else:
@@ -315,8 +317,9 @@ def init(config):
     log_file = config['global']['log_file']
     log_per_config = config['global']['log_per_config']
     debug = config['global']['debug']
+    status = config['global']['status']
     return Logger.initialize(log_dir=log_dir, log_file=log_file, log_per_config=log_per_config,
-                             debug=debug)
+                             debug=debug, status=status)
 
 
 def getLogger(name=None, config=None, queue=True):

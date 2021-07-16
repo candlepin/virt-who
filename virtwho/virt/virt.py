@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 
-
 """
 Module for abstraction of all virtualization backends, part of virt-who
 
@@ -35,6 +34,7 @@ import six
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
+from virtwho.lock import FileLock, STATUS_LOCK, STATUS_DATA
 from virtwho import MinimumSendInterval, MinimumJobPollInterval
 
 try:
@@ -248,6 +248,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
         except KeyError:
             # FIXME: default value should be there
             self.filter_type = None
+        self.time_created = datetime.utcnow()
 
     def __repr__(self):
         return 'HostGuestAssociationReport({0.config!r}, {0._assoc!r}, {0.state!r})'.format(self)
@@ -316,9 +317,114 @@ class HostGuestAssociationReport(AbstractVirtReport):
         return hashlib.sha256(json.dumps(self.serializedAssociation, sort_keys=True).encode('utf-8')).hexdigest()
 
 
+class StatusReport(AbstractVirtReport):
+    """
+    Status Report from virt backend about ability to connect.
+    """
+
+    def __init__(self, config, state=AbstractVirtReport.STATE_CREATED):
+        super(StatusReport, self).__init__(config, state)
+        self._source_message = ''
+        self._destination_message = ''
+        self._destination = ''
+        self._job_id = None
+        self._last_source_success = None
+        self._hypervisors = None
+        self._guests = None
+        self._last_destination_success = None
+        self._last_job_status = None
+
+    @property
+    def data(self):
+        # make the components into dictionary
+        data = {
+            "source": {
+                "server": self.config['server'] if 'server' in self.config else None,
+                "status_string": 'success' if len(self._source_message) == 0 else 'failure',
+                "message": self._source_message,
+                "last_successful_retrieve": self._last_source_success,
+                "hypervisors": self._hypervisors,
+                "guests": self._guests
+            },
+            "destination": {
+                "server": self._destination,
+                "status_string": 'success' if len(self._destination_message) == 0 else 'failure',
+                "message": self._destination_message,
+                "last_successful_send": self._last_destination_success,
+                "last_successful_send_job_status": self._last_job_status
+            }
+        }
+        return data
+
+    def __repr__(self):
+        return 'StatusReport({0.config!r}, {0.data!r})'.format(self)
+
+    def append_source_status_message(self, message):
+        self._source_message += f"{message}."
+
+    def append_destination_status_message(self, message):
+        self._destination_message += f"{message}."
+
+    @property
+    def destination(self):
+        return self._destination
+
+    @destination.setter
+    def destination(self, value):
+        self._destination = value
+
+    @property
+    def job_id(self):
+        return self._job_id
+
+    @job_id.setter
+    def job_id(self, id):
+        self._job_id = id
+
+    @property
+    def last_source_success(self):
+        return self._last_source_success
+
+    @last_source_success.setter
+    def last_source_success(self, last):
+        self._last_source_success = last
+
+    @property
+    def hypervisors(self):
+        return self._hypervisors
+
+    @hypervisors.setter
+    def hypervisors(self, count):
+        self._hypervisors = count
+
+    @property
+    def guests(self):
+        return self._guests
+
+    @guests.setter
+    def guests(self, count):
+        self._guests = count
+
+    @property
+    def last_destination_success(self):
+        return self._last_destination_success
+
+    @last_destination_success.setter
+    def last_destination_success(self, last):
+        self._last_destination_success = last
+
+    @property
+    def last_job_status(self):
+        return self._last_job_status
+
+    @last_job_status.setter
+    def last_job_status(self, status):
+        self._last_job_status = status
+
+
 class IntervalThread(Thread):
     def __init__(self, logger, config, source=None, dest=None,
-                 terminate_event=None, interval=None, oneshot=False):
+                 terminate_event=None, interval=None, oneshot=False, status=False):
         self.logger = logger
         self.config = config
         self.source = source
@@ -327,6 +433,7 @@ class IntervalThread(Thread):
         self.terminate_event = terminate_event or self._internal_terminate_event
         self.interval = interval
         self._oneshot = oneshot
+        self.status = status
         self.delta_time = 1.0
         super(IntervalThread, self).__init__()
 
@@ -365,7 +472,7 @@ class IntervalThread(Thread):
         while not self.is_terminated():
             start_time = datetime.now()
             data_to_send = self._get_data()
-            self._send_data(data_to_send)
+            self._send_data(data_to_send=data_to_send)
             if self._oneshot:
                 self._internal_terminate_event.set()
                 break
@@ -415,11 +522,13 @@ class IntervalThread(Thread):
                         self.logger.error("Thread '%s' fails with error: %s",
                                           self.config.name, str(e))
                         has_error = True
-                except Exception:
+                        status_error_message = str(e)
+                except Exception as e:
                     if not self.is_terminated():
                         self.logger.exception("Thread '%s' fails with "
                                               "exception:", self.config.name)
                         has_error = True
+                        status_error_message = str(e)
 
                 if self.is_terminated():
                     self.logger.debug("Thread '%s' terminated",
@@ -428,7 +537,12 @@ class IntervalThread(Thread):
                     return
 
                 if has_error:
-                    self._send_data(ErrorReport(self.config))
+                    if self.status:
+                        report = StatusReport(self.config)
+                        report.append_source_status_message(status_error_message)
+                        self._send_data(data_to_send=report)
+                    else:
+                        self._send_data(data_to_send=ErrorReport(self.config))
 
                 if self._oneshot:
                     self.logger.debug("Thread '%s' stopped after running once",
@@ -489,7 +603,7 @@ class DestinationThread(IntervalThread):
 
     def __init__(self, logger, config, source_keys=None, options=None,
                  source=None, dest=None, terminate_event=None, interval=None,
-                 oneshot=False):
+                 oneshot=False, status=False):
         """
         @param source_keys: A list of keys to be used to retrieve info from
         the source
@@ -515,7 +629,8 @@ class DestinationThread(IntervalThread):
                                                 dest=dest,
                                                 terminate_event=terminate_event,
                                                 interval=interval,
-                                                oneshot=oneshot)
+                                                oneshot=oneshot,
+                                                status=status)
         # This is used when there is some reason to modify how long we wait
         # EX when we get a 429 back from the server, this value will be the
         # value of the retry_after header.
@@ -597,16 +712,51 @@ class DestinationThread(IntervalThread):
         @type: dict
         """
 
-        if not isinstance(data_to_send, ErrorReport):
+        if not self.status and not isinstance(data_to_send, ErrorReport):
             if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
                 # Ping all hypervisors for this reporter to update check in time regardless of change
                 try:
                     self.dest.hypervisorHeartbeat(config=self.config, options=self.options)
                 except ManagerThrottleError as err:
-                    self.logger.debug("429 encountered while heartbeat: %s" % str(err))
+                    self.logger.debug("429 encountered while heartbeat: %s", str(err))
                     # TODO: when we are sending heartbeats too fast, then we should wait err.retry_after seconds
-                except ManagerError as err:
-                    self.logger.exception("Error during heartbeat: %s" % str(err))
+                except (ManagerError, ManagerFatalError, OSError) as err:
+                    self.logger.exception("Error during heartbeat: %s", str(err))
+
+        if self.status:
+            if hasattr(self.config, 'owner') and self.config['owner'] != NotSetSentinel:
+                # Confirm connection to destination and existence of owner
+                message = ''
+                status_success = False
+                try:
+                    # this will stop any changes to data
+                    self.options[VW_GLOBAL]['reporter_id'] = 'status_test'
+                    valid = self.dest.hypervisorHeartbeat(self.config, options=self.options)
+                    if not valid:
+                        message = f"Specified owner '{self.config['owner']}' is not accessible"
+                    else:
+                        status_success = True
+                except ManagerThrottleError as err:
+                    self.logger.debug("429 encountered during status connection: %s", str(err))
+                    message = f"429 encountered during status connection: {str(err)}"
+                except (ManagerError, ManagerFatalError, OSError) as err:
+                    self.logger.exception("Error during status connection: %s", str(err))
+                    message = f"Error during status connection: {str(err)}"
+                if hasattr(data_to_send, 'items'):
+                    for source_key, report in data_to_send.items():
+                        if len(message) > 0:
+                            report.append_destination_status_message(message)
+                        host = self.dest.rhsm_config.get('server', 'hostname')
+                        if 'rhsm_hostname' in report.config:
+                            host = report.config['rhsm_hostname']
+                        report.destination = host
+                        # incorporate the run data into the report for the next step
+                        self.merge_run_data(report)
+                        # find the status of the job here to put into report
+                        if status_success and report.job_id:
+                            self.check_report_status(report, status_call=True)
+
+            return
 
         if not data_to_send:
             self.logger.debug('No data to send, waiting for next interval')
@@ -656,6 +806,12 @@ class DestinationThread(IntervalThread):
                     # cached report never gets cleared.
                     self.logger.debug(f"Clearing the last report hash for {source_key}")
                     self.last_report_for_source.pop(source_key)
+                # record the successful collection of data from these sources
+                self.record_status(source_key,
+                                   'sources',
+                                   {"last_successful_retrieve": report.time_created.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                                    "hypervisors": hypervisor_count,
+                                    "guests": guest_count})
                 continue
             if isinstance(report, ErrorReport):
                 # These indicate an error that came from this source
@@ -715,6 +871,14 @@ class DestinationThread(IntervalThread):
                 for source_key in reports_batched:
                     self.submitted_report_and_hash_for_source[source_key] =\
                         (batch_host_guest_report, data_to_send[source_key].hash)
+                    if hasattr(batch_host_guest_report, 'job_id'):
+                        job_id = batch_host_guest_report.job_id
+                    else:
+                        job_id = None
+                    self.record_status(source_key,
+                                       'destinations',
+                                       {"last_successful_send": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                                        "last_job_id": job_id})
 
         # Send each Domain Guest List Report if necessary
         for source_key in domain_list_reports:
@@ -729,6 +893,9 @@ class DestinationThread(IntervalThread):
                         self.last_report_for_source[source_key] = data_to_send[
                             source_key].hash
                         retry = False
+                        self.record_status(source_key,
+                                           'destinations',
+                                           {"last_successful_send": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")})
                     except ManagerThrottleError as e:
                         if self._oneshot:
                             self.logger.info(
@@ -770,7 +937,7 @@ class DestinationThread(IntervalThread):
                                 if source_key not in sources_sent]
         return
 
-    def check_report_status(self, report):
+    def check_report_status(self, report, status_call=False):
         """
         Checks at the server for the state of the previously submitted job. The state is recorded
         in the passed-in report
@@ -780,18 +947,19 @@ class DestinationThread(IntervalThread):
         first_attempt = True
         while not report.state or report.state == AbstractVirtReport.STATE_CREATED\
             or report.state == AbstractVirtReport.STATE_PROCESSING and first_attempt:
-            if self.interval_modifier != 0:
-                wait_time = self.interval_modifier
-                self.interval_modifier = 0
-            elif not first_attempt:
-                wait_time = MinimumJobPollInterval * 2
-            else:
-                wait_time = MinimumJobPollInterval
+            if not status_call:
+                if self.interval_modifier != 0:
+                    wait_time = self.interval_modifier
+                    self.interval_modifier = 0
+                elif not first_attempt:
+                    wait_time = MinimumJobPollInterval * 2
+                else:
+                    wait_time = MinimumJobPollInterval
 
-            self.wait(wait_time=wait_time)
+                self.wait(wait_time=wait_time)
 
             try:
-                self.dest.check_report_state(report)
+                self.dest.check_report_state(report, status_call)
             except ManagerThrottleError as e:
                 if self._oneshot:
                     self.logger.debug('429 encountered when checking job state in '
@@ -806,6 +974,36 @@ class DestinationThread(IntervalThread):
                 break
             # If we get here and have to try again, it's not our first rodeo...
             first_attempt = False
+
+    def record_status(self, config_name, type, json_info):
+        """
+        Gains exclusive access to the run data file and then writes the current data
+        """
+        try:
+            with FileLock(STATUS_LOCK):
+                with open(STATUS_DATA, 'r') as json_status:
+                    status_dict = json.load(json_status)
+                status_dict[type][config_name] = json_info
+                with open(STATUS_DATA, 'w') as json_status:
+                    json.dump(status_dict, json_status)
+        except IOError:
+            self.logger.error("Unable to record run data. Cannot get lock on file.")
+
+    def merge_run_data(self, report):
+        try:
+            with FileLock(STATUS_LOCK):
+                with open(STATUS_DATA, 'r') as json_status:
+                    status_dict = json.load(json_status)
+                source = status_dict['sources'][report.config.name]
+                destination = status_dict['destinations'][report.config.name]
+            report.last_source_success = source['last_successful_retrieve']
+            report.hypervisors = source['hypervisors'] if 'hypervisors' in source else None
+            report.guests = source['guests'] if 'guests' in source else None
+            report.last_destination_success = destination['last_successful_send']
+            report.job_id = destination['last_job_id']
+
+        except IOError as e:
+            self.logger.error("Unable to read run data. Cannot get lock on file.")
 
 
 class Satellite5DestinationThread(DestinationThread):
@@ -913,10 +1111,11 @@ class Virt(IntervalThread):
     """
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False):
+                 interval=None, oneshot=False, status=False):
         super(Virt, self).__init__(logger, config, dest=dest,
                                    terminate_event=terminate_event,
-                                   interval=interval, oneshot=oneshot)
+                                   interval=interval, oneshot=oneshot,
+                                   status=status)
 
     @classmethod
     def __subclasses_list(cls):
@@ -932,8 +1131,8 @@ class Virt(IntervalThread):
         return [subcls for subcls in cls.__subclasses__()]
 
     @classmethod
-    def from_config(cls, logger, config, dest,
-                    terminate_event=None, interval=None, oneshot=False):
+    def from_config(cls, logger, config, dest, terminate_event=None,
+                    interval=None, oneshot=False, status=False):
         """
         Create instance of inherited class based on the config.
         """
@@ -942,7 +1141,8 @@ class Virt(IntervalThread):
             if config['type'] == subcls.CONFIG_TYPE:
                 return subcls(logger, config, dest,
                               terminate_event=terminate_event,
-                              interval=interval, oneshot=oneshot)
+                              interval=interval, oneshot=oneshot,
+                              status=status)
         raise KeyError("Invalid config type: %s" % config['type'])
 
     @classmethod
@@ -963,6 +1163,8 @@ class Virt(IntervalThread):
         self._run()
 
     def _get_report(self):
+        if self.status:
+            return StatusReport(self.config)
         if self.isHypervisor():
             return HostGuestAssociationReport(self.config, self.getHostGuestMapping())
         else:

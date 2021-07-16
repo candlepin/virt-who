@@ -37,6 +37,7 @@ from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
 from virtwho.executor import Executor, ReloadRequest, ExitRequest
 from virtwho.parser import parse_options, OptionError
 from virtwho.password import InvalidKeyFile
+from virtwho.lock import PIDLock, PIDFILE
 from virtwho.virt import DomainListReport, HostGuestAssociationReport
 
 try:
@@ -51,46 +52,6 @@ try:
         requests.packages.urllib3.exceptions.InsecureRequestWarning)
 except AttributeError:
     pass
-
-PIDFILE = "/var/run/virt-who.pid"
-
-
-class PIDLock(object):
-    def __init__(self, filename):
-        self.filename = filename
-
-    def is_locked(self):
-        try:
-            with open(self.filename, "r") as f:
-                pid = int(f.read().strip())
-            try:
-                os.kill(pid, 0)
-                return True
-            except OSError:
-                # Process no longer exists
-                print("PID file exists but associated process " \
-                                     "does not, deleting PID file", file=sys.stderr)
-                os.remove(self.filename)
-                return False
-        except Exception:
-            return False
-
-    def __enter__(self):
-        # Write pid to pidfile
-        try:
-            with os.fdopen(
-                    os.open(self.filename, os.O_WRONLY | os.O_CREAT, 0o600),
-                    'w') as f:
-                f.write("%d" % os.getpid())
-        except Exception as e:
-            print("Unable to create pid file: %s" % str(e), file=sys.stderr)
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        try:
-            os.remove(self.filename)
-        except Exception:
-            pass
-
 
 executor = None
 
@@ -122,13 +83,6 @@ def main():
         print(str(e), file=sys.stderr)
         exit(1, status="virt-who can't be started: %s" % str(e))
 
-    lock = PIDLock(PIDFILE)
-    if lock.is_locked():
-        msg = "virt-who seems to be already running. If not, remove %s" % \
-              PIDFILE
-        print(msg, file=sys.stderr)
-        exit(1, status=msg)
-
     if not effective_config[VW_GLOBAL].is_valid():
         message = "Required section 'global' is invalid:\n"
         message += "\n".join([msg for (level, msg) in effective_config[VW_GLOBAL].validation_messages])
@@ -150,6 +104,16 @@ def main():
     except (InvalidKeyFile, InvalidPasswordFormat) as e:
         logger.error(str(e))
         exit(1, "virt-who can't be started: %s" % str(e))
+
+    lock = PIDLock(PIDFILE)
+    if not executor.options[VW_GLOBAL]['oneshot'] \
+        and not executor.options[VW_GLOBAL]['status'] \
+        and not executor.options[VW_GLOBAL]['print'] \
+        and lock.is_locked():
+        msg = "virt-who seems to be already running. If not, remove %s" % \
+              PIDFILE
+        print(msg, file=sys.stderr)
+        exit(1, status=msg)
 
     if len(executor.dest_to_source_mapper.dests) == 0:
         if has_error:
@@ -196,7 +160,8 @@ def main():
 
 
 def _main(executor):
-    if executor.options[VW_GLOBAL]['oneshot']:
+    if executor.options[VW_GLOBAL]['oneshot'] or executor.options[VW_GLOBAL]['status']:
+        executor.options[VW_GLOBAL]['oneshot'] = True
         result = executor.run_oneshot()
 
         if executor.options[VW_GLOBAL]['print']:
@@ -222,6 +187,9 @@ def _main(executor):
             print( json.dumps({
                 'hypervisors': hypervisors
             }, indent=4, sort_keys=False))
+        if executor.options[VW_GLOBAL]['status']:
+            print(produce_status_output(result))
+
         return 0
 
     # We'll get here only if we're not in oneshot or print_ mode (which
@@ -232,6 +200,53 @@ def _main(executor):
     executor.run()
 
     return 0
+
+RED = '\033[1;31m'
+GREEN = '\033[1;32m'
+RESET = '\033[0;0m'
+
+def produce_status_output(result):
+        output = ''
+        if not executor.options[VW_GLOBAL]['json']:
+            output += ("+-------------------------------------------+\n")
+            output += ("           Configuration Status\n")
+            output += ("+-------------------------------------------+\n")
+            for config, report in result.items():
+                output += f"Configuration Name: {config}\n"
+                if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
+                    output += f"Source Status: {RED}{report.data['source']['status_string']}{RESET}\n"
+                else:
+                    output += f"Source Status: {GREEN}{report.data['source']['status_string']}{RESET}\n"
+                if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
+                    output += f"Destination Status: {RED}{report.data['destination']['status_string']}{RESET}\n\n"
+                else:
+                    output += f"Destination Status: {GREEN}{report.data['destination']['status_string']}{RESET}\n\n"
+
+            return output
+        else:
+            json_body = []
+            for config, report in result.items():
+                report_dict = {}
+                report_dict['name'] = config
+                report_dict['source'] = {"connection": report.data['source']['server'],
+                                         "status": report.data['source']['status_string']}
+                if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
+                    report_dict['source']['message'] = report.data['source']['message']
+                report_dict['source']["last_successful_retrieve"] = report.data['source']['last_successful_retrieve']
+                report_dict['source']["hypervisors"] =  report.data['source']['hypervisors']
+                report_dict['source']["guests"] = report.data['source']['guests']
+
+                report_dict['destination'] = {"connection": report.data['destination']['server'],
+                                              "status": report.data['destination']['status_string']}
+                if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
+                    report_dict['destination']['message'] = report.data['destination']['message']
+                report_dict['destination']["last_successful_send"] = report.data['destination']['last_successful_send']
+                report_dict['destination']["last_successful_send_job_status"] = report.data['destination']['last_successful_send_job_status']
+
+                json_body.append(report_dict)
+            return json.dumps({
+                'configurations': json_body
+            }, indent=4, sort_keys=False)
 
 
 def exit(code, status=None):

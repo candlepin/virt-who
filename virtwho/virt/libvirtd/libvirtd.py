@@ -28,7 +28,7 @@ from xml.etree import ElementTree
 
 from virtwho.virt import (
     Hypervisor, Guest, VirtError, HostGuestAssociationReport,
-    DomainListReport, Virt)
+    DomainListReport, Virt, StatusReport)
 from virtwho.config import VirtConfigSection
 
 
@@ -228,11 +228,12 @@ class Libvirtd(Virt):
     CONFIG_TYPE = "libvirt"
 
     def __init__(self, logger, config, dest, terminate_event=None,
-                 interval=None, oneshot=False, registerEvents=True):
+                 interval=None, oneshot=False, status=False, registerEvents=True):
         super(Libvirtd, self).__init__(logger, config, dest,
                                        terminate_event=terminate_event,
                                        interval=interval,
-                                       oneshot=oneshot)
+                                       oneshot=oneshot,
+                                       status=status)
         self.changedCallback = None
         self.registerEvents = registerEvents
         self._host_capabilities_xml = None
@@ -318,7 +319,7 @@ class Libvirtd(Virt):
 
             if initial:
                 report = self._get_report()
-                self._send_data(report)
+                self._send_data(data_to_send=report)
                 initial = False
                 self.next_update = time.time() + self.interval
 
@@ -328,7 +329,7 @@ class Libvirtd(Virt):
             time.sleep(1)
             if time.time() > self.next_update:
                 report = self._get_report()
-                self._send_data(report)
+                self._send_data(data_to_send=report)
                 self.next_update = time.time() + self.interval
 
         if self.eventLoopThread is not None and self.eventLoopThread.is_alive():
@@ -338,10 +339,12 @@ class Libvirtd(Virt):
 
     def _callback(self, *args, **kwargs):
         report = self._get_report()
-        self._send_data(report)
+        self._send_data(data_to_send=report)
         self.next_update = time.time() + self.interval
 
     def _get_report(self):
+        if self.status:
+            return StatusReport(self.config)
         if self.isHypervisor():
             return HostGuestAssociationReport(self.config, self._getHostGuestMapping())
         else:

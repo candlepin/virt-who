@@ -1246,6 +1246,8 @@ class GlobalSection(ConfigSection):
         super(GlobalSection, self).__init__(*args, **kwargs)
         self.add_key('debug', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('oneshot', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('status', validation_method=self._validate_str_to_bool, default=False)
+        self.add_key('json', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('print_', validation_method=self._validate_str_to_bool, default=False, destination='print')
         self.add_key('log_per_config', validation_method=self._validate_str_to_bool, default=False)
         self.add_key('configs', validation_method=self._validate_list, default=[])

@@ -530,12 +530,6 @@ class IntervalThread(Thread):
                         has_error = True
                         status_error_message = str(e)
 
-                if self.is_terminated():
-                    self.logger.debug("Thread '%s' terminated",
-                                      self.config.name)
-                    self._internal_terminate_event.set()
-                    return
-
                 if has_error:
                     if self.status:
                         report = StatusReport(self.config)
@@ -543,6 +537,12 @@ class IntervalThread(Thread):
                         self._send_data(data_to_send=report)
                     else:
                         self._send_data(data_to_send=ErrorReport(self.config))
+
+                if self.is_terminated():
+                    self.logger.debug("Thread '%s' terminated",
+                                      self.config.name)
+                    self._internal_terminate_event.set()
+                    return
 
                 if self._oneshot:
                     self.logger.debug("Thread '%s' stopped after running once",
@@ -1164,6 +1164,9 @@ class Virt(IntervalThread):
 
     def _get_report(self):
         if self.status:
+            # this will make the authentication happen
+            # a failure will get picked up in the _run method
+            self.statusConfirmConnection()
             return StatusReport(self.config)
         if self.isHypervisor():
             return HostGuestAssociationReport(self.config, self.getHostGuestMapping())
@@ -1207,6 +1210,14 @@ class Virt(IntervalThread):
         If subclass doesn't reimplement the `_run` method, it should
         reimplement either this method or `getHostGuestMapping` method, based on
         return value of isHypervisor method.
+        '''
+        raise NotImplementedError('This should be reimplemented in subclass')
+
+    def statusConfirmConnection(self):
+        '''
+        This should be implemented in subclass in status run scenarios where
+        the initialization does not exercise the given credentials in a way
+        that will confirm their validity. See _get_report method in this class.
         '''
         raise NotImplementedError('This should be reimplemented in subclass')
 

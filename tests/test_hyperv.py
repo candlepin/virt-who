@@ -179,6 +179,25 @@ class TestHyperV(TestBase):
         self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.hyperv.config['server'])
 
     @patch('requests.Session')
+    def test_status_bad_source_credentials(self, session):
+        session.return_value.post.side_effect = HyperVMock.post
+        self.hyperv.status = True
+        self.hyperv._send_data = Mock()
+        self.hyperv.statusConfirmConnection = Mock()
+        self.hyperv.statusConfirmConnection.side_effect = VirtError("Incorrect domain/username/password")
+        self.hyperv._oneshot = True
+        self.hyperv.dest = Queue()
+        self.hyperv._terminate_event = Event()
+        self.hyperv._interval = 0
+        self.hyperv.run()
+
+        self.hyperv._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.hyperv.config['server'])
+        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                         "Incorrect domain/username/password.")
+
+    @patch('requests.Session')
     def test_connection_refused(self, session):
         session.return_value.post.side_effect = requests.ConnectionError
         self.assertRaises(VirtError, self.run_once)

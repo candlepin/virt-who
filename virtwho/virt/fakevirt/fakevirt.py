@@ -140,3 +140,6 @@ class FakeVirt(Virt):
 
     def listDomains(self):
         return self.list_domains_from_file(self.config['file'])
+
+    def statusConfirmConnection(self):
+        pass

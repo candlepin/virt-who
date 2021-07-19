@@ -23,7 +23,7 @@ from mock import patch, Mock, ANY
 from base import TestBase
 from threading import Event
 
-from virtwho.virt import Virt, Guest, Hypervisor, StatusReport
+from virtwho.virt import Virt, Guest, Hypervisor, StatusReport, VirtError
 from virtwho.virt.kubevirt.kubevirt import KubevirtConfigSection
 from virtwho.datastore import Datastore
 
@@ -319,14 +319,14 @@ class TestKubevirt(TestBase):
         kubevirt.prepare()
         self.assertFalse(kubevirt._insecure)
 
+    @patch("virtwho.virt.kubevirt.kubevirt.KubeClient")
     @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
            return_value=Mock())
     @patch("virtwho.virt.kubevirt.config.Configuration")
-    def test_status(self, cfg, _):
+    def test_status(self, cfg, _, kube_client):
         cfg.return_value = Config()
-        client = Mock()
-        client.get_nodes.return_value = self.nodes()
-        client.get_vms.return_value = self.vms()
+        kube_client.get_nodes = Mock(return_value=self.nodes())
+        kube_client.get_vms.return_value = Mock(return_value=self.vms())
 
         self.config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts',
@@ -335,9 +335,6 @@ class TestKubevirt(TestBase):
 
         with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
             kubevirt = Virt.from_config(self.logger, self.config, Datastore())
-            kubevirt.prepare()
-
-            kubevirt._client = client
             kubevirt.status = True
             kubevirt._send_data = Mock()
             self.run_once(kubevirt)
@@ -347,10 +344,41 @@ class TestKubevirt(TestBase):
             self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
                               self.config['server'])
 
+    @patch("virtwho.virt.kubevirt.kubevirt.KubeClient")
+    @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
+           return_value=Mock())
+    @patch("virtwho.virt.kubevirt.config.Configuration")
+    def test_status_bad_source_credentials(self, cfg, _, kube_client):
+        cfg.return_value = Config()
+        kube_client.get_nodes = Mock(return_value=self.nodes())
+        kube_client.get_vms.return_value = Mock(return_value=self.vms())
+
+        self.config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    kubeversion='version', hypervisor_id='hostname')
+        self.config['server'] = 'kubeserver'
+
+        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, self.config, Datastore())
+            kubevirt.status = True
+            kubevirt._send_data = Mock()
+            kubevirt.statusConfirmConnection = Mock()
+            kubevirt.statusConfirmConnection.side_effect = VirtError("Incorrect domain/username/password")
+            kubevirt.dest = Mock(spec=Datastore())
+            kubevirt._terminate_event = Event()
+            kubevirt._oneshot = True
+            kubevirt._interval = 0
+            kubevirt.run()
+
+            kubevirt._send_data.assert_called_once_with(data_to_send=ANY)
+            self.assertTrue(isinstance(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+                              self.config['server'])
+            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                              "Incorrect domain/username/password.")
 
     def run_once(self, kubevirt, datastore=None):
         ''' Run kubevirt in oneshot mode '''
-        kubevirt._oneshot = True
         if datastore is None:
             datastore = Mock(spec=Datastore())
 

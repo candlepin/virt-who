@@ -625,5 +625,15 @@ class HyperV(virt.Virt):
         hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests, facts=facts)
         return {'hypervisors': [hypervisor]}
 
+    def statusConfirmConnection(self):
+        '''
+        This call will confirm the credentials. The result outside
+        of that is not important in the status scenario.
+        '''
+        connection = self.connect()
+        hypervsoap = HyperVSoap(self.url, connection, self.logger)
+        hypervsoap.Invoke_GetSummaryInformation(
+            "root/virtualization/v2" if self.useNewApi else "root/virtualization")
+
     def ping(self):
         return True

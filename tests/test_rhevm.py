@@ -118,7 +118,6 @@ class TestRhevM(TestBase):
 
     def run_once(self, queue=None):
         """Run RHEV-M in oneshot mode"""
-        self.rhevm._oneshot = True
         self.rhevm.dest = queue or Queue()
         self.rhevm._terminate_event = Event()
         self.rhevm._oneshot = True
@@ -154,6 +153,26 @@ class TestRhevM(TestBase):
         self.rhevm._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.rhevm.config['server'])
+
+    @patch('requests.get')
+    def test_staus_bad_source_credentials(self, get):
+        get.return_value.content = '<xml></xml>'
+        get.return_value.status_code = 200
+        self.rhevm.status = True
+        self.rhevm._send_data = Mock()
+        self.rhevm.statusConfirmConnection = Mock()
+        self.rhevm.statusConfirmConnection.side_effect = VirtError("Incorrect domain/username/password")
+        self.rhevm.dest = Queue()
+        self.rhevm._terminate_event = Event()
+        self.rhevm._oneshot = True
+        self.rhevm._interval = 0
+        self.rhevm.run()
+
+        self.rhevm._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.rhevm.config['server'])
+        self.assertEqual(self.rhevm._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                         "Incorrect domain/username/password.")
 
     @patch('requests.get')
     def test_connection_refused(self, get):

@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        1.30.5
-Release:        %{release_number}%{?dist}
+Release:        2%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -167,6 +167,9 @@ fi
 
 
 %changelog
+* Thu Jul 22 2021 William Poteat <wpoteat@redhat.com> 1.30.5-2
+- 1984920: Take out AHV removal patch mechanism (wpoteat@redhat.com)
+
 * Fri Dec 18 2020 William Poteat <wpoteat@redhat.com> 1.30.5-1
 - 1855550: [Remote Libvirt] The Name in Stage Candlepin cannot update based on
   hypervisor_id configuration (wpoteat@redhat.com)

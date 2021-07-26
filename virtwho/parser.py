@@ -45,6 +45,7 @@ SAT5_VM_DISPATCHER = {
     'hyperv': {'owner': False, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'server': False, 'username': False},
     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+    'ahv' : {'owner': False, 'server': False, 'username': False},
 }
 
 SAT6_VM_DISPATCHER = {
@@ -55,6 +56,7 @@ SAT6_VM_DISPATCHER = {
     'hyperv': {'owner': True, 'server': True, 'username': True},
     'vdsm': {'owner': False, 'server': False, 'username': False},
     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False},
+    'ahv' : {'owner': False, 'server': False, 'username': False},
 }
 
 
@@ -73,7 +75,7 @@ class StoreGroupArgument(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         """
         When the argument from group is used, then this argument has to match
-        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]
+        virtualization backend [--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]
         """
         options = vars(namespace)
         virt_type = options['virt_type']
@@ -209,6 +211,7 @@ def read_config_env_variables():
         "VIRTWHO_RHEVM": ("virt_type", store_const, "rhevm"),
         "VIRTWHO_HYPERV": ("virt_type", store_const, "hyperv"),
         "VIRTWHO_KUBEVIRT": ("virt_type", store_const, "kubevirt"),
+        "VIRTWHO_AHV": ("virt_type", store_const, "ahv"),
         "VIRTWHO_INTERVAL": ("interval", store_value),
         "VIRTWHO_REPORTER_ID": ("reporter_id", store_value),
     }
@@ -307,7 +310,7 @@ def parse_cli_arguments():
         parser = ArgumentParser(
             usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [--version] "
                   "[-m] [-l LOG_DIR] [-f LOG_FILE] [-r REPORTER_ID] [--sam|--satellite5|--satellite6] "
-                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt]",
+                  "[--libvirt|--vdsm|--esx|--rhevm|--hyperv|--xen|--kubevirt|--ahv]",
             description="Agent for reporting virtual guest IDs to subscription manager",
             epilog="virt-who also reads environment variables. They have the same name as "
                    "command line arguments but uppercased, with underscore instead of dash "
@@ -368,6 +371,8 @@ def parse_cli_arguments():
                                 help="[Deprecated] Register guests using Hyper-V")
         virt_group.add_argument("--kubevirt", action=StoreVirtType, dest="virt_type", const="kubevirt",
                                 help="[Deprecated] Register guests using Kubevirt")
+        virt_group.add_argument("--ahv", action=StoreVirtType, dest="virt_type", const="ahv",
+                                default=None, help="[Deprecated] Register Acropolis vms using AHV.")
 
         manager_group = parser.add_argument_group(
             title="Subscription manager",
@@ -485,6 +490,30 @@ def parse_cli_arguments():
                                     help="[Deprecated] Environment where Kubevirt belongs to")
         kubevirt_group.add_argument("--kubevirt-cfg", action=StoreGroupArgument, dest="kubeconfig", default="~/.kube/config",
                                     help="[Deprecated] Path to Kubernetes config file")
+
+        ahv_group = parser.add_argument_group(
+            title="AHV PC/PE options",
+            description="Use these options with --ahv"
+        )
+        ahv_group.add_argument("--ahv-owner", action=StoreGroupArgument, dest="owner", default="",
+                               help="[Deprecated] Organization who has purchased subscriptions of the products")
+        ahv_group.add_argument("--ahv-env", action=StoreGroupArgument, dest="env", default="",
+                               help="[Deprecated] Environment where the vCenter server belongs to")
+        ahv_group.add_argument("--ahv-server", action=StoreGroupArgument,
+                               dest="server", default="",
+                               help="[Deprecated] URL of the ahv server to connect to")
+        ahv_group.add_argument("--ahv-username", action=StoreGroupArgument,
+                               dest="username", default="",
+                               help="[Deprecated] Username for connecting to ahv server")
+        ahv_group.add_argument("--ahv-password", action=StoreGroupArgument,
+                               dest="password", default="",
+                               help="[Deprecated] Password for connecting to ahv server")
+        ahv_group.add_argument("--pc-server", action=StoreGroupArgument, dest="server", default="",
+                               help="[Deprecated] URL of the PC server to connect to")
+        ahv_group.add_argument("--pc-username", action=StoreGroupArgument, dest="username", default="",
+                               help="[Deprecated] Username for connecting to PC")
+        ahv_group.add_argument("--pc-password", action=StoreGroupArgument, dest="password", default="",
+                               help="[Deprecated] Password for connecting to PC")
 
     # Read option from CLI
     cli_options = vars(parser.parse_args())

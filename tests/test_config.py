@@ -766,6 +766,44 @@ rhsm_hostname=abc
         self.assertEqual(config_manager.effective_config["global"]["log_file"], "rhsm45.log")
         self.assertEqual(config_manager.effective_config["global"]["interval"], 100)
 
+    def testUpdateHttpsProxyUrl(self):
+            cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
+            with open(cli_config_file_path, "w") as f:
+                f.write("""
+    [valid_cli_section]
+    server=5.5.5.5
+    username=admin1
+    password=password1
+    owner=owner1
+    rhsm_hostname=abc1
+    """)
+            cli_dict = {'configs': [cli_config_file_path]}
+
+            # alter the main conf file constant temporarily:
+            virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
+
+            with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
+                f.write("""
+    [global]
+    interval=100
+    log_file=rhsm45.log
+
+    [system_environment]
+    https_proxy=https://this.server.com
+
+    [defaults]
+    hypervisor_id=hostname
+
+    [valid_default_main_conf_file_section]
+    server=1.2.3.4
+    username=admin
+    password=password
+    owner=owner
+    rhsm_hostname=abc
+    """)
+            init_config(cli_dict, config_dir=self.config_dir)
+            self.assertEqual(os.environ['https_proxy'], 'http://this.server.com')
+
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:
             f.write("""
@@ -1042,18 +1080,18 @@ class TestParseList(TestBase):
         )
 
 
-# Values used for testing system_environment
-SYSTEM_ENVIRONMENT_SECTION_VALUES = {
-    'http_proxy': 'this.proxy.com',
-    'https_proxy': 'that.proxy.com',
-    'no_proxy': 'not.this.proxy.com'
-}
-
 class TestSystemEnvironmentConfig(TestBase):
     """
     Test base for testing system_environment
     """
-    def express_system_environment_config_section(self):
-        virtwho.config.parse_system_environment(SYSTEM_ENVIRONMENT_SECTION_VALUES)
-        for key, value in SYSTEM_ENVIRONMENT_SECTION_VALUES.items():
+    # Values used for testing system_environment
+    SYSTEM_ENVIRONMENT_SECTION_VALUES = {
+        'http_proxy': 'http://this.proxy.com',
+        'https_proxy': 'https://that.proxy.com',
+        'no_proxy': 'not.this.proxy.com'
+    }
+
+    def test_express_system_environment_config_section(self):
+        virtwho.config.parse_system_environment(self.SYSTEM_ENVIRONMENT_SECTION_VALUES)
+        for key, value in self.SYSTEM_ENVIRONMENT_SECTION_VALUES.items():
             assert os.environ[key] == value

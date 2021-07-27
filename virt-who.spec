@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        0.27.6
+Version:        0.27.7
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,9 @@ fi
 
 
 %changelog
+* Tue Jul 27 2021 William Poteat <wpoteat@redhat.com> 0.27.7-1
+- 1986376: Take out AHV removal patch mechanism (wpoteat@redhat.com)
+
 * Thu Feb 13 2020 William Poteat <wpoteat@redhat.com> 0.27.6-1
 - 1727203: Validate server name for ASCII only in ESX (wpoteat@redhat.com)
 

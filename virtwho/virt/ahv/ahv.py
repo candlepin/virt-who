@@ -135,7 +135,8 @@ class Ahv(virt.Virt):
         Hypervisor.CPU_SOCKET_FACT: str(host['num_cpu_sockets']),
         Hypervisor.HYPERVISOR_TYPE_FACT: host.get('hypervisor_type', 'AHV'),
         Hypervisor.HYPERVISOR_VERSION_FACT: str(host_version),
-        Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid)}
+        Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid),
+        Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)}
 
       mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=hypervisor_id,
                                                     guestIds=guests,

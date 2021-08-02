@@ -174,6 +174,7 @@ class Logger(object):
     _rhsm_level = logging.WARN
     _queue_logger = None
     _status = None
+    _debug = None
 
     @classmethod
     def initialize(cls, log_dir=None, log_file=None, log_per_config=None, debug=None, status=None):
@@ -188,6 +189,7 @@ class Logger(object):
         # We don't want INFO message from RHSM in non-debug mode
         cls._rhsm_level = logging.DEBUG if debug else logging.WARN
         cls._status = status
+        cls._debug = debug
 
     @classmethod
     def get_logger(cls, name=None, config=None, queue=True):
@@ -282,6 +284,8 @@ class Logger(object):
     @classmethod
     def get_stream_handler(cls, name):
         if cls._stream_handler is not None:
+            if cls._debug and cls._status:
+                cls._stream_handler.setStream(sys.stderr)
             return cls._stream_handler
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(cls._level)

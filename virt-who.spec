@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.14
+Version:        1.31.15
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,10 @@ fi
 
 
 %changelog
+* Tue Aug 03 2021 William Poteat <wpoteat@redhat.com> 1.31.15-1
+- 1986973: Take out AHV removal patch mechanism (wpoteat@redhat.com)
+- Update AHV patch (wpoteat@redhat.com)
+
 * Fri Jul 16 2021 William Poteat <wpoteat@redhat.com> 1.31.14-1
 - Merge run data into report (wpoteat@redhat.com)
 - Update the man page for the status mode (wpoteat@redhat.com)

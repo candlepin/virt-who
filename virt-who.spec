@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.6
+Version:        1.30.7
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,10 @@ fi
 
 
 %changelog
+* Tue Aug 03 2021 William Poteat <wpoteat@redhat.com> 1.30.7-1
+- 1984018: Take out AHV removal patch mechanism (wpoteat@redhat.com)
+- Update tito releaser for next release (wpoteat@redhat.com)
+
 * Thu Jun 03 2021 William Poteat <wpoteat@redhat.com> 1.30.6-1
 - 1943486: Clear previous report hash when hypervisor count is zero
   (wpoteat@redhat.com)

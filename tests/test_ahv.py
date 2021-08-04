@@ -556,7 +556,8 @@ class TestAhv(TestBase):
             Hypervisor.CPU_SOCKET_FACT: '2',
             Hypervisor.HYPERVISOR_TYPE_FACT: u'kKvm',
             Hypervisor.HYPERVISOR_VERSION_FACT: 'Nutanix 20180802.100874',
-            Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid)
+            Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid),
+            Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)
            }
 
            expected_result.append(Hypervisor(

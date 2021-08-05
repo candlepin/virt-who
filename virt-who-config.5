@@ -62,7 +62,7 @@ Optionally this may be set to '*' to bypass proxy settings for all hostnames dom
 .SH VIRTUALIZATION BACKEND CONFIGURATION
 Each section (or group), denoted by an arbitrary name for the configuration (in square brackets), is read in
 
-Only required key is \fBtype\fR that has to have one of the allowed virtualization backend names: libvirt, esx, rhevm, hyperv, fake, xen, or kubevirt.
+Only required key is \fBtype\fR that has to have one of the allowed virtualization backend names: ahv, libvirt, esx, rhevm, hyperv, fake, xen, or kubevirt.
 
 Please note that special characters must not be escaped (opposed to /etc/sysconfig/virt-who).
 
@@ -179,6 +179,12 @@ Exclude hosts which cluster ID is specified in comma-separated list in this opti
 .TP
 \fBsimplified_vim\fR
 virt-who by default uses stripped-down version of vimService.wsdl file that contains vSphere SOAP API definition. Set this option to \fBfalse\fR to use server provided wsdl file that will be retrieved automatically.
+
+.SS NUTANIX BACKEND
+
+.TP
+\fBprism_central\fR
+Any value set for this parameter will cause the application to use Version 3 communication with the AHV API
 
 .SS RHEV-M BACKEND
 

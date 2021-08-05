@@ -9,6 +9,7 @@ from six.moves.queue import Queue
 from threading import Event
 
 from virtwho import DefaultInterval
+from virtwho import virt
 from virtwho.datastore import Datastore
 from virtwho.virt.ahv.ahv import AhvConfigSection
 from virtwho.virt import Virt, VirtError, Guest, Hypervisor, StatusReport
@@ -548,7 +549,7 @@ class TestAhv(TestBase):
            cluster_uuid = host['cluster_uuid']
            guests = []
            for guest_vm in host['guest_list']:
-               state = guest_vm['power_state']
+               state = virt.Guest.STATE_RUNNING
                guests.append(Guest(guest_vm['uuid'], self.ahv.CONFIG_TYPE,
                                    state))
 

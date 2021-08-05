@@ -864,7 +864,7 @@
             <link href="/api/vms/afdb464b-921a-4a38-8a3c-650f057298a0/stop" rel="stop"/>
             <link href="/api/vms/afdb464b-921a-4a38-8a3c-650f057298a0/suspend" rel="suspend"/>
         </actions>
-        <name>kuber_master</name>
+        <name>kuber_main</name>
         <link href="/api/vms/afdb464b-921a-4a38-8a3c-650f057298a0/applications" rel="applications"/>
         <link href="/api/vms/afdb464b-921a-4a38-8a3c-650f057298a0/disks" rel="disks"/>
         <link href="/api/vms/afdb464b-921a-4a38-8a3c-650f057298a0/nics" rel="nics"/>

@@ -40,7 +40,7 @@ class TestKubevirt(TestBase):
     def nodes(self):
         node = {
             'metadata': {
-                'name': 'master'
+                'name': 'main'
             },
             'status': {
                 'nodeInfo': {
@@ -64,7 +64,7 @@ class TestKubevirt(TestBase):
     def new_nodes(self):
         node = {
             'metadata': {
-                'name': 'master'
+                'name': 'main'
             },
             'status': {
                 'nodeInfo': {
@@ -114,7 +114,7 @@ class TestKubevirt(TestBase):
                 }
             },
             'status': {
-                'nodeName': 'master',
+                'nodeName': 'main',
                 'phase': 'Running',
             }
         }
@@ -172,7 +172,7 @@ class TestKubevirt(TestBase):
 
             expected_result = Hypervisor(
                 hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
-                name='master',
+                name='main',
                 guestIds=[],
                 facts={
                     Hypervisor.CPU_SOCKET_FACT: '2',
@@ -199,7 +199,7 @@ class TestKubevirt(TestBase):
 
             expected_result = Hypervisor(
                 hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
-                name='master',
+                name='main',
                 guestIds=[
                     Guest(
                         'f83c5f73-5244-4bd1-90cf-02bac2dda608',
@@ -233,7 +233,7 @@ class TestKubevirt(TestBase):
 
             expected_result = Hypervisor(
                 hypervisorId='minikube',
-                name='master',
+                name='main',
                 guestIds=[
                     Guest(
                         'f83c5f73-5244-4bd1-90cf-02bac2dda608',
@@ -265,7 +265,7 @@ class TestKubevirt(TestBase):
 
             expected_result = Hypervisor(
                 hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
-                name='master',
+                name='main',
                 guestIds=[
                     Guest(
                         'f83c5f73-5244-4bd1-90cf-02bac2dda608',

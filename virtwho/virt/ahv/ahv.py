@@ -193,7 +193,7 @@ class Ahv(virt.Virt):
 class AhvConfigSection(VirtConfigSection):
   """Class for intializing and processing AHV config"""
   VIRT_TYPE = 'ahv'
-  HYPERVISOR_ID = ('uuid', 'hwuuid', 'hostname')
+  HYPERVISOR_ID = ('uuid', 'hostname')
 
   def __init__(self, *args, **kwargs):
     """

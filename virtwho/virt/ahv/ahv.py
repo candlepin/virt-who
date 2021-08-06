@@ -120,6 +120,12 @@ class Ahv(virt.Virt):
         for guest_vm in host['guest_list']:
           try:
             state = guest_vm['power_state']
+            if guest_vm['power_state'] == 'on':
+              state = virt.Guest.STATE_RUNNING
+            elif guest_vm['power_state'] == 'off':
+              state = virt.Guest.STATE_SHUTOFF
+            else:
+              state = virt.Guest.STATE_UNKNOWN
           except KeyError:
             self.logger.warning("Guest %s is missing power state. Perhaps they"
                                 " are powered off", guest_vm['uuid'])

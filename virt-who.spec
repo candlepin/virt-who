@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.15
+Version:        1.31.16
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,17 @@ fi
 
 
 %changelog
+* Fri Aug 06 2021 William Poteat <wpoteat@redhat.com> 1.31.16-1
+- 1990550: Add the description for nutanix mode in man virt-who and man virt-
+  who-config (wpoteat@redhat.com)
+- 1990337: The guest state in mapping should be uniform with other hypervisors
+  1990338: The guest shows wrong active value "0" in mapping when it's running
+  (wpoteat@redhat.com)
+- 1989646:  Get UnboundLocalError when configured hypervisor_id=hwuuid
+  (wpoteat@redhat.com)
+- 1989645: Add dmi.system.uuid to ahv facts (wpoteat@redhat.com)
+- 1974624: proxy error with https (wpoteat@redhat.com)
+
 * Tue Aug 03 2021 William Poteat <wpoteat@redhat.com> 1.31.15-1
 - 1986973: Take out AHV removal patch mechanism (wpoteat@redhat.com)
 - Update AHV patch (wpoteat@redhat.com)

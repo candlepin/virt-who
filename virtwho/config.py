@@ -1550,6 +1550,13 @@ def init_config(cli_options, config_dir=None):
     if http and not https:
         os.environ['https_proxy'] = http
 
+    # 1974624: issue with urllib and the changing handling of http/https.
+    # Previously, http was universally used as many proxies do not do TLS.
+    # We must account for here to keep consistent behavior
+    if 'https_proxy' in os.environ:
+        os.environ['https_proxy'] = os.environ['https_proxy'].replace('https:', 'http:')
+
+
     # Now with the aggregate config data, run it through the appropriate class to get it validated/defaulted.
     effective_config[VW_ENV_CLI_SECTION_NAME] = VirtConfigSection.from_dict(effective_config[VW_ENV_CLI_SECTION_NAME], VW_ENV_CLI_SECTION_NAME, effective_config)
 

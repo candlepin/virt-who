@@ -87,6 +87,31 @@ class TestLibvirtd(TestBase):
         self.assertTrue(isinstance(v._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
 
+
+    @patch('libvirt.openReadOnly')
+    def test_read_status_bad_source_credentials(self, virt):
+        config = self.create_config('test', None, type='libvirt')
+        virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
+        virt.return_value.getType.return_value = "LIBVIRT_TYPE"
+        virt.return_value.getVersion.return_value = "VERSION 1337"
+        v = Virt.from_config(self.logger, config, Datastore(),
+                             interval=DefaultInterval)
+        v._terminate_event = Event()
+        v._interval = 3600
+        v._oneshot = True
+        v._createEventLoop = Mock()
+        v.status = True
+        v._send_data = Mock()
+        v.statusConfirmConnection = Mock()
+        v.statusConfirmConnection.side_effect = VirtError("Incorrect domain/username/password")
+        v.run()
+
+        v._send_data.assert_called_once_with(data_to_send=ANY)
+        self.assertTrue(isinstance(v._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+        self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
+        self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                         "Incorrect domain/username/password.")
+
     @patch('libvirt.openReadOnly')
     def test_read_fail(self, virt):
         config = self.create_config('test', None, type='libvirt')

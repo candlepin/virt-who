@@ -278,6 +278,13 @@ class RhevM(virt.Virt):
 
         return {'hypervisors': list(hosts.values())}
 
+    def statusConfirmConnection(self):
+        '''
+        This single call will confirm the credentials. The result outside
+        of that is not important in the status scenario.
+        '''
+        self.get_xml(self.clusters_url)
+
     def ping(self):
         return True
 

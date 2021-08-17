@@ -344,6 +344,9 @@ class Libvirtd(Virt):
 
     def _get_report(self):
         if self.status:
+            # this will make the authentication happen
+            # a failure will get picked up in the _run method
+            self.statusConfirmConnection()
             return StatusReport(self.config)
         if self.isHypervisor():
             return HostGuestAssociationReport(self.config, self._getHostGuestMapping())
@@ -441,3 +444,10 @@ class Libvirtd(Virt):
                           facts=facts)
         mapping['hypervisors'].append(host)
         return mapping
+
+    def statusConfirmConnection(self):
+        '''
+        This will confirm the credentials in the status scenario.
+        '''
+        self._connect()
+        self._disconnect()

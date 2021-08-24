@@ -101,7 +101,7 @@ class HyperVAuth(AuthBase):
         self.password = password
         self.logger = logger
         self.authenticated = False
-        self.ignore_ntlm = False
+        self.ignore_ntlm = True
         self.num_401s = 0
         self.ntlm = None
         self.basic = None
@@ -213,7 +213,7 @@ Content-Type: application/octet-stream\r
         request = self.prepare_resend(response)
 
         passphrase = '%s:%s' % (self.username, self.password)
-        self.basic = 'Basic %s' % base64.b64encode(passphrase).decode('utf-8')
+        self.basic = 'Basic %s' % base64.b64encode(bytes(passphrase, 'utf-8')).decode('utf-8')
         request.headers['Authorization'] = self.basic
         request.headers['Content-Length'] = len(self._body)
         request.body = self._body

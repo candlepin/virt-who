@@ -41,6 +41,9 @@ testmon:
 coverage:
 	PYTHONPATH=. py.test -k 'not complex' --cov=. --cov-report=html --cov-report=term --cov-config .coveragerc
 
+stylish:
+	PYTHONPATH=. flake8
+
 test-ci-build:
 	docker build -f docker/ci/Dockerfile -t virt-who/test-ci .
 

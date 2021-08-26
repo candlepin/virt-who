@@ -47,8 +47,11 @@ class PIDLock(object):
                 return True
             except OSError:
                 # Process no longer exists
-                print("PID file exists but associated process " \
-                                     "does not, deleting PID file", file=sys.stderr)
+                print(
+                    "PID file exists but associated process "
+                    "does not, deleting PID file",
+                    file=sys.stderr
+                )
                 os.remove(self.filename)
                 return False
         except Exception:
@@ -69,6 +72,7 @@ class PIDLock(object):
             os.remove(self.filename)
         except Exception:
             pass
+
 
 class FileLock(object):
     def __init__(self, filename, logger=None, timeout=None):

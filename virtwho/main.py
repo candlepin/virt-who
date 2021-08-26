@@ -26,11 +26,6 @@ import signal
 import requests
 import json
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from .util import OrderedDict
 
 from virtwho import log
 from virtwho.config import InvalidPasswordFormat, VW_GLOBAL
@@ -106,10 +101,12 @@ def main():
         exit(1, "virt-who can't be started: %s" % str(e))
 
     lock = PIDLock(PIDFILE)
-    if not executor.options[VW_GLOBAL]['oneshot'] \
-        and not executor.options[VW_GLOBAL]['status'] \
-        and not executor.options[VW_GLOBAL]['print'] \
-        and lock.is_locked():
+    if (
+        not executor.options[VW_GLOBAL]["oneshot"]
+        and not executor.options[VW_GLOBAL]["status"]
+        and not executor.options[VW_GLOBAL]["print"]
+        and lock.is_locked()
+    ):
         msg = "virt-who seems to be already running. If not, remove %s" % \
               PIDFILE
         print(msg, file=sys.stderr)
@@ -180,11 +177,11 @@ def _main(executor):
                         h['hypervisorId'] = {'hypervisorId': hypervisor.hypervisorId}
                         if hypervisor.name:
                             h['name'] = hypervisor.name
-                        h['guestIds']= [guest.toDict() for guest in hypervisor.guestIds];
+                        h['guestIds'] = [guest.toDict() for guest in hypervisor.guestIds]
                         if hypervisor.facts:
                             h['facts'] = hypervisor.facts
                         hypervisors.append(h)
-            print( json.dumps({
+            print(json.dumps({
                 'hypervisors': hypervisors
             }, indent=4, sort_keys=False))
         if executor.options[VW_GLOBAL]['status']:
@@ -201,52 +198,54 @@ def _main(executor):
 
     return 0
 
+
 RED = '\033[1;31m'
 GREEN = '\033[1;32m'
 RESET = '\033[0;0m'
 
+
 def produce_status_output(result):
-        output = ''
-        if not executor.options[VW_GLOBAL]['json']:
-            output += ("+-------------------------------------------+\n")
-            output += ("           Configuration Status\n")
-            output += ("+-------------------------------------------+\n")
-            for config, report in result.items():
-                output += f"Configuration Name: {config}\n"
-                if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
-                    output += f"Source Status: {RED}{report.data['source']['status_string']}{RESET}\n"
-                else:
-                    output += f"Source Status: {GREEN}{report.data['source']['status_string']}{RESET}\n"
-                if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
-                    output += f"Destination Status: {RED}{report.data['destination']['status_string']}{RESET}\n\n"
-                else:
-                    output += f"Destination Status: {GREEN}{report.data['destination']['status_string']}{RESET}\n\n"
+    output = ''
+    if not executor.options[VW_GLOBAL]['json']:
+        output += ("+-------------------------------------------+\n")
+        output += ("           Configuration Status\n")
+        output += ("+-------------------------------------------+\n")
+        for config, report in result.items():
+            output += f"Configuration Name: {config}\n"
+            if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
+                output += f"Source Status: {RED}{report.data['source']['status_string']}{RESET}\n"
+            else:
+                output += f"Source Status: {GREEN}{report.data['source']['status_string']}{RESET}\n"
+            if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
+                output += f"Destination Status: {RED}{report.data['destination']['status_string']}{RESET}\n\n"
+            else:
+                output += f"Destination Status: {GREEN}{report.data['destination']['status_string']}{RESET}\n\n"
 
-            return output
-        else:
-            json_body = []
-            for config, report in result.items():
-                report_dict = {}
-                report_dict['name'] = config
-                report_dict['source'] = {"connection": report.data['source']['server'],
-                                         "status": report.data['source']['status_string']}
-                if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
-                    report_dict['source']['message'] = report.data['source']['message']
-                report_dict['source']["last_successful_retrieve"] = report.data['source']['last_successful_retrieve']
-                report_dict['source']["hypervisors"] =  report.data['source']['hypervisors']
-                report_dict['source']["guests"] = report.data['source']['guests']
+        return output
+    else:
+        json_body = []
+        for config, report in result.items():
+            report_dict = {}
+            report_dict['name'] = config
+            report_dict['source'] = {"connection": report.data['source']['server'],
+                                     "status": report.data['source']['status_string']}
+            if 'message' in report.data['source'] and len(report.data['source']['message']) > 0:
+                report_dict['source']['message'] = report.data['source']['message']
+            report_dict['source']["last_successful_retrieve"] = report.data['source']['last_successful_retrieve']
+            report_dict['source']["hypervisors"] = report.data['source']['hypervisors']
+            report_dict['source']["guests"] = report.data['source']['guests']
 
-                report_dict['destination'] = {"connection": report.data['destination']['server'],
-                                              "status": report.data['destination']['status_string']}
-                if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
-                    report_dict['destination']['message'] = report.data['destination']['message']
-                report_dict['destination']["last_successful_send"] = report.data['destination']['last_successful_send']
-                report_dict['destination']["last_successful_send_job_status"] = report.data['destination']['last_successful_send_job_status']
+            report_dict['destination'] = {"connection": report.data['destination']['server'],
+                                          "status": report.data['destination']['status_string']}
+            if 'message' in report.data['destination'] and len(report.data['destination']['message']) > 0:
+                report_dict['destination']['message'] = report.data['destination']['message']
+            report_dict['destination']["last_successful_send"] = report.data['destination']['last_successful_send']
+            report_dict['destination']["last_successful_send_job_status"] = report.data['destination']['last_successful_send_job_status']
 
-                json_body.append(report_dict)
-            return json.dumps({
-                'configurations': json_body
-            }, indent=4, sort_keys=False)
+            json_body.append(report_dict)
+        return json.dumps({
+            'configurations': json_body
+        }, indent=4, sort_keys=False)
 
 
 def exit(code, status=None):

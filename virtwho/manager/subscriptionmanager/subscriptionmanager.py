@@ -162,7 +162,7 @@ class SubscriptionManager(Manager):
 
         self.connection = rhsm_connection.UEPConnection(**kwargs)
         # add version to user_agent header on connection BZ 1844506
-        self.connection.conn.user_agent += " " + parser.get_version().replace(" ","/")
+        self.connection.conn.user_agent += " " + parser.get_version().replace(" ", "/")
         try:
             if not self.connection.ping()['result']:
                 raise SubscriptionManagerError(
@@ -315,8 +315,10 @@ class SubscriptionManager(Manager):
             # Transform the mapping into the async version
             for hypervisor in mapping['hypervisors']:
                 if hypervisor.hypervisorId in ids_seen:
-                    self.logger.warning("The hypervisor id '%s' is assigned to 2 different systems. "
-                        "Only one will be recorded at the server." % hypervisor.hypervisorId)
+                    self.logger.warning(
+                        "The hypervisor id '%s' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server." % hypervisor.hypervisorId
+                    )
                 hosts.append(hypervisor.toDict())
                 ids_seen.append(hypervisor.hypervisorId)
             serialized_mapping = {'hypervisors': hosts}
@@ -325,8 +327,10 @@ class SubscriptionManager(Manager):
             # the old api.
             for hypervisor in mapping['hypervisors']:
                 if hypervisor.hypervisorId in ids_seen:
-                    self.logger.warning("The hypervisor id '%s' is assigned to 2 different systems. "
-                        "Only one will be recorded at the server." % hypervisor.hypervisorId)
+                    self.logger.warning(
+                        "The hypervisor id '%s' is assigned to 2 different systems. "
+                        "Only one will be recorded at the server." % hypervisor.hypervisorId
+                    )
                 guests = [g.toDict() for g in hypervisor.guestIds]
                 serialized_mapping[hypervisor.hypervisorId] = guests
                 ids_seen.append(hypervisor.hypervisorId)

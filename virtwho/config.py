@@ -52,7 +52,7 @@ _effective_config = None
 VW_CONF_DIR = "/etc/virt-who.d/"
 
 try:
-    import suds
+    import suds  # noqa: F401
     VW_TYPES = ("esx", "libvirt", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
 except ImportError:
     VW_TYPES = ("libvirt", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
@@ -298,8 +298,10 @@ class DestinationToSourceMapper(object):
         if orphan_sources:
             # Only use the default destination for sources that have a matching sm_type
             sources_to_default = [
-                    orphan for orphan in orphan_sources \
-                    if self.effective_config[orphan]['sm_type'] != SAT5
+                orphan
+                for orphan
+                in orphan_sources
+                if self.effective_config[orphan]['sm_type'] != SAT5
             ]
             if sources_to_default:
                 d_to_s[default_destination_info] = sources_to_default
@@ -307,7 +309,6 @@ class DestinationToSourceMapper(object):
         self.sources = sources
         self.dests = dests
         self.dest_to_sources_map = d_to_s
-
 
     @staticmethod
     def map_destinations_to_sources(configs, dest_classes=(Satellite5DestinationInfo, Satellite6DestinationInfo)):
@@ -415,7 +416,7 @@ def parse_file(filename):
             parser.read(filename)
         except DuplicateOptionError as err:
             logger.warning(str(err))
-        except Exception as err:
+        except Exception:
             pass
         parser = StripQuotesConfigParser(strict=False)
     else:
@@ -1069,7 +1070,7 @@ class VirtConfigSection(ConfigSection):
                 try:
                     # this is conditional based on the version of python-requests we are using.
                     major, minor, patch = [int(part) for part in requests.__version__.split('.')]
-                    if (major,minor) < (2,20):
+                    if (major, minor) < (2, 20):
                         password.encode('latin1')
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     result = (
@@ -1137,7 +1138,7 @@ class VirtConfigSection(ConfigSection):
                 try:
                     # this is conditional based on the version of python-requests we are using.
                     major, minor, patch = [int(part) for part in requests.__version__.split('.')]
-                    if (major,minor) < (2,20):
+                    if (major, minor) < (2, 20):
                         username.encode('latin1')
                 except (UnicodeEncodeError, UnicodeDecodeError):
                     result = (
@@ -1271,7 +1272,7 @@ class GlobalSection(ConfigSection):
         result = None
         try:
             self._values[key] = int(self._values[key])
-        except (TypeError, ValueError) as e:
+        except (TypeError, ValueError):
             self._values[key] = 0
         except KeyError:
             return 'warning', '%s is missing' % key
@@ -1434,8 +1435,12 @@ class EffectiveConfig(collections.MutableMapping):
         """
         :return: list of sections that represent virt_backends
         """
-        return [(name, section) for (name, section) in self.items()
-            if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME, VW_SYS_ENV]]
+        return [
+            (name, section)
+            for (name, section)
+            in self.items()
+            if name not in [VW_GLOBAL, VW_VIRT_DEFAULTS_SECTION_NAME, VW_SYS_ENV]
+        ]
 
 
 def _check_effective_config_validity(effective_config, config_files_not_complete):
@@ -1485,7 +1490,7 @@ def parse_system_environment(config):
     keys = []
     for key, value in config.items():
         has = True
-        os.environ[key]=value
+        os.environ[key] = value
         keys.append(key)
     if has:
         logger.debug("Environment variables added from the [system_environment] section of " +
@@ -1565,7 +1570,6 @@ def init_config(cli_options, config_dir=None):
     # We must account for here to keep consistent behavior
     if 'https_proxy' in os.environ:
         os.environ['https_proxy'] = os.environ['https_proxy'].replace('https:', 'http:')
-
 
     # Now with the aggregate config data, run it through the appropriate class to get it validated/defaulted.
     effective_config[VW_ENV_CLI_SECTION_NAME] = VirtConfigSection.from_dict(effective_config[VW_ENV_CLI_SECTION_NAME], VW_ENV_CLI_SECTION_NAME, effective_config)

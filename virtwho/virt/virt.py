@@ -35,7 +35,7 @@ from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
 from virtwho.lock import FileLock, STATUS_LOCK, STATUS_DATA
-from virtwho import MinimumSendInterval, MinimumJobPollInterval
+from virtwho import MinimumJobPollInterval
 
 try:
     from collections import OrderedDict
@@ -263,7 +263,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
                     if re.match("^" + i + "$", host, re.IGNORECASE):
                         # match is found
                         return True
-                except:
+                except Exception:
                     pass
             elif self.filter_type == "wildcards":
                 if fnmatch.fnmatch(host.lower(), i.lower()):
@@ -274,7 +274,7 @@ class HostGuestAssociationReport(AbstractVirtReport):
                     if re.match("^" + i + "$", host, re.IGNORECASE):
                         # match is found
                         return True
-                except:
+                except Exception:
                     pass
         # no match
         return False
@@ -671,10 +671,8 @@ class DestinationThread(IntervalThread):
                                         str(submitted_report.job_id))
                     self.submitted_report_and_hash_for_source[source_key] = (submitted_report, submitted_hash)
                     continue
-            elif ignore_duplicates and report.hash == self.last_report_for_source.get(source_key,
-                                                                                    None):
-                self.logger.debug('Duplicate report found for config "%s", ignoring',
-                                  report.config.name)
+            elif ignore_duplicates and report.hash == self.last_report_for_source.get(source_key, None):
+                self.logger.debug('Duplicate report found for config "%s", ignoring', report.config.name)
                 continue
             reports[source_key] = report
         return reports
@@ -924,11 +922,11 @@ class DestinationThread(IntervalThread):
 
         # Terminate this thread if we have sent one report for each source
         if all_sources_handled and self._oneshot:
-                if not self.options[VW_GLOBAL]['print']:
-                    self.logger.debug('At least one report for each connected source has been sent. Terminating.')
-                else:
-                    self.logger.debug('All info to print has been gathered. Terminating.')
-                self.stop()
+            if not self.options[VW_GLOBAL]['print']:
+                self.logger.debug('At least one report for each connected source has been sent. Terminating.')
+            else:
+                self.logger.debug('All info to print has been gathered. Terminating.')
+            self.stop()
 
         if self._oneshot:
             # Remove sources we have sent (or dealt with) so that we don't
@@ -945,8 +943,12 @@ class DestinationThread(IntervalThread):
         self.logger.debug("Existing report state: %s" % report.state)
         num_429_received = 0
         first_attempt = True
-        while not report.state or report.state == AbstractVirtReport.STATE_CREATED\
-            or report.state == AbstractVirtReport.STATE_PROCESSING and first_attempt:
+        while (
+            not report.state
+            or report.state == AbstractVirtReport.STATE_CREATED
+            or report.state == AbstractVirtReport.STATE_PROCESSING
+            and first_attempt
+        ):
             if not status_call:
                 if self.interval_modifier != 0:
                     wait_time = self.interval_modifier
@@ -1002,7 +1004,7 @@ class DestinationThread(IntervalThread):
             report.last_destination_success = destination['last_successful_send']
             report.job_id = destination['last_job_id']
 
-        except IOError as e:
+        except IOError:
             self.logger.error("Unable to read run data. Cannot get lock on file.")
 
 
@@ -1054,8 +1056,10 @@ class Satellite5DestinationThread(DestinationThread):
                         break
                     except ManagerThrottleError as e:
                         if self._oneshot:
-                            self.logger.debug('429 encountered during hypervisor checkin in '
-                                             'oneshot mode, not retrying')
+                            self.logger.debug(
+                                '429 encountered during hypervisor checkin in '
+                                'oneshot mode, not retrying'
+                            )
                             sources_erred.append(source_key)
                             break
                         num_429_received += 1
@@ -1120,16 +1124,16 @@ class Virt(IntervalThread):
     @classmethod
     def __subclasses_list(cls):
         # Imports can't be top-level, it would be circular dependency
-        import virtwho.virt.libvirtd  # flake8: noqa
+        import virtwho.virt.libvirtd
         try:
-            import virtwho.virt.esx  # flake8: noqa
+            import virtwho.virt.esx
         except ModuleNotFoundError:
             pass
-        import virtwho.virt.rhevm  # flake8: noqa
-        import virtwho.virt.hyperv  # flake8: noqa
-        import virtwho.virt.fakevirt  # flake8: noqa
-        import virtwho.virt.kubevirt  # flake8: noqa
-        import virtwho.virt.ahv       # flake8: noqa
+        import virtwho.virt.rhevm
+        import virtwho.virt.hyperv
+        import virtwho.virt.fakevirt
+        import virtwho.virt.kubevirt
+        import virtwho.virt.ahv  # noqa: F401
 
         return [subcls for subcls in cls.__subclasses__()]
 
@@ -1189,8 +1193,10 @@ class Virt(IntervalThread):
     def _send_data(self, data_to_send):
         if self.is_terminated():
             return
-        self.logger.info('Report for config "%s" gathered, placing in '
-                          'datastore', data_to_send.config.name)
+        self.logger.info(
+            'Report for config "%s" gathered, placing in '
+            'datastore', data_to_send.config.name
+        )
         self.dest.put(self.config.name, data_to_send)
 
     def isHypervisor(self):

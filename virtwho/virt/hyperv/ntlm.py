@@ -425,10 +425,10 @@ class AuthenticationMessage(OutgoingMessage):
         """
         Extract timestamp from target_info.
         """
-        l = len(target_info)
+        length = len(target_info)
         offset = 0
         timestamp = None
-        while offset < l:
+        while offset < length:
             av_id = struct.unpack_from('<H', target_info, offset)[0]
             offset += 2
             av_len = struct.unpack_from('<H', target_info, offset)[0]

@@ -31,9 +31,11 @@ from virtwho.password import Password, UnwritableKeyFile, InvalidKeyFile
 
 from optparse import OptionParser
 
+
 class RawDescriptionOptionParser(OptionParser):
     def format_description(self, description):
         return self.description or ""
+
 
 def parseOptions():
     parser = RawDescriptionOptionParser(usage="virt-who-password",
@@ -48,6 +50,7 @@ WARNING: root user can still decrypt encrypted passwords!
     """)
     parser.add_option("-p", "--password", dest="password", help="Password")
     return parser.parse_args()
+
 
 def main():
     options, _args = parseOptions()

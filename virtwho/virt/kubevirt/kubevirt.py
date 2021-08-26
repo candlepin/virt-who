@@ -59,9 +59,9 @@ class KubevirtConfigSection(VirtConfigSection):
         path = self._values[key]
         if not os.path.isfile(path):
             return [(
-                    'warning',
-                    "Kubeconfig file was not found at %s" % path
-                )]
+                'warning',
+                "Kubeconfig file was not found at %s" % path
+            )]
         return None
 
     def _validate_version(self, key):

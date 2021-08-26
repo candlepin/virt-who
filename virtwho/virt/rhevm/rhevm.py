@@ -287,4 +287,3 @@ class RhevM(virt.Virt):
 
     def ping(self):
         return True
-

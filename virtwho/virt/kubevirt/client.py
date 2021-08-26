@@ -88,11 +88,14 @@ class KubeClient:
 
         try:
             timeout = Timeout(connect=_TIMEOUT, read=_TIMEOUT)
-            r = self._pool_manager.request("GET", url,
-                                          fields=None,
-                                          preload_content=True,
-                                          headers=header_params,
-                                          timeout=timeout)
+            r = self._pool_manager.request(
+                "GET",
+                url,
+                fields=None,
+                preload_content=True,
+                headers=header_params,
+                timeout=timeout
+            )
         except urllib3.exceptions.SSLError as e:
             msg = "{0}\n{1}".format(type(e).__name__, str(e))
             raise ApiException(status=0, reason=msg)

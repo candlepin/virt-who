@@ -53,7 +53,7 @@ class TestKubevirt(TestBase):
                     {'address': 'minikube',
                      'type': 'Hostname'}
                 ],
-                'allocatable' : {
+                'allocatable': {
                     'cpu': '2'
                 }
             }
@@ -77,7 +77,7 @@ class TestKubevirt(TestBase):
                     {'address': 'minikube',
                      'type': 'Hostname'}
                 ],
-                'allocatable' : {
+                'allocatable': {
                     'cpu': '7500m'
                 }
             }
@@ -120,7 +120,7 @@ class TestKubevirt(TestBase):
         }
 
         return {'items': [vm]}
-    
+
     def pending_vms(self):
         vm = {
             'metadata': {
@@ -165,7 +165,7 @@ class TestKubevirt(TestBase):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, config, Datastore())
 
             kubevirt._client = client
@@ -192,7 +192,7 @@ class TestKubevirt(TestBase):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, config, Datastore())
 
             kubevirt._client = client
@@ -226,7 +226,7 @@ class TestKubevirt(TestBase):
                                     owner='owner', kubeconfig='/etc/hosts',
                                     hypervisor_id='hostname')
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, config, Datastore())
 
             kubevirt._client = client
@@ -259,7 +259,7 @@ class TestKubevirt(TestBase):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, config, Datastore())
             kubevirt._client = client
 
@@ -283,7 +283,6 @@ class TestKubevirt(TestBase):
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
 
-
     def test_empty_kubeconfig(self):
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner')
@@ -295,7 +294,7 @@ class TestKubevirt(TestBase):
            return_value=Mock())
     @patch("virtwho.virt.kubevirt.config.Configuration")
     def test_version_override(self, cfg, _):
-        version='v1alpha3'
+        version = 'v1alpha3'
         cfg.return_value = Config()
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts',
@@ -310,10 +309,12 @@ class TestKubevirt(TestBase):
     @patch("virtwho.virt.kubevirt.config.Configuration")
     def test_insecure(self, cfg, _):
         cfg.return_value = Config()
-        config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', kubeconfig='/etc/hosts',
-                                    kubeversion='v1alpha3', hypervisor_id='hostname',
-                                    insecure='')      
+        config = self.create_config(
+            name='test', wrapper=None, type='kubevirt',
+            owner='owner', kubeconfig='/etc/hosts',
+            kubeversion='v1alpha3', hypervisor_id='hostname',
+            insecure=''
+        )
 
         kubevirt = Virt.from_config(self.logger, config, Datastore())
         kubevirt.prepare()
@@ -328,12 +329,14 @@ class TestKubevirt(TestBase):
         kube_client.get_nodes = Mock(return_value=self.nodes())
         kube_client.get_vms.return_value = Mock(return_value=self.vms())
 
-        self.config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', kubeconfig='/etc/hosts',
-                                    kubeversion='version', hypervisor_id='hostname')
+        self.config = self.create_config(
+            name='test', wrapper=None, type='kubevirt',
+            owner='owner', kubeconfig='/etc/hosts',
+            kubeversion='version', hypervisor_id='hostname'
+        )
         self.config['server'] = 'kubeserver'
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, self.config, Datastore())
             kubevirt.status = True
             kubevirt._send_data = Mock()
@@ -341,8 +344,10 @@ class TestKubevirt(TestBase):
 
             kubevirt._send_data.assert_called_once_with(data_to_send=ANY)
             self.assertTrue(isinstance(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
-            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
-                              self.config['server'])
+            self.assertEqual(
+                kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+                self.config['server']
+            )
 
     @patch("virtwho.virt.kubevirt.kubevirt.KubeClient")
     @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
@@ -353,12 +358,14 @@ class TestKubevirt(TestBase):
         kube_client.get_nodes = Mock(return_value=self.nodes())
         kube_client.get_vms.return_value = Mock(return_value=self.vms())
 
-        self.config = self.create_config(name='test', wrapper=None, type='kubevirt',
-                                    owner='owner', kubeconfig='/etc/hosts',
-                                    kubeversion='version', hypervisor_id='hostname')
+        self.config = self.create_config(
+            name='test', wrapper=None, type='kubevirt',
+            owner='owner', kubeconfig='/etc/hosts',
+            kubeversion='version', hypervisor_id='hostname'
+        )
         self.config['server'] = 'kubeserver'
 
-        with patch.dict('os.environ', {'KUBECONFIG':'/dev/null'}):
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
             kubevirt = Virt.from_config(self.logger, self.config, Datastore())
             kubevirt.status = True
             kubevirt._send_data = Mock()
@@ -372,10 +379,14 @@ class TestKubevirt(TestBase):
 
             kubevirt._send_data.assert_called_once_with(data_to_send=ANY)
             self.assertTrue(isinstance(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
-            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
-                              self.config['server'])
-            self.assertEqual(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
-                              "Incorrect domain/username/password.")
+            self.assertEqual(
+                kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+                self.config['server']
+            )
+            self.assertEqual(
+                kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+                "Incorrect domain/username/password."
+            )
 
     def run_once(self, kubevirt, datastore=None):
         ''' Run kubevirt in oneshot mode '''

@@ -33,7 +33,6 @@ from threading import Event
 from six.moves.queue import Queue
 
 
-
 HYPERVISOR_JSON = """
 {
     "hypervisors": [
@@ -169,9 +168,7 @@ file=%s
         # This is an invalid case, the config section that is invalid should have been dropped
         self.assertNotIn('test', effective_config)
 
-
     def test_staus(self):
-
         with open(self.hypervisor_file, "w") as f:
             f.write(NON_HYPERVISOR_JSON)
 

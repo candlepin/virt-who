@@ -111,8 +111,10 @@ class TestRhevM(TestBase):
         return config
 
     def setUp(self):
-        config = self.create_config(name='test', wrapper=None, type='rhevm', server='localhost', username='username',
-                        password=u'1€345678', owner='owner')
+        config = self.create_config(
+            name='test', wrapper=None, type='rhevm', server='localhost', username='username',
+            password=u'1€345678', owner='owner'
+        )
         self.rhevm = Virt.from_config(self.logger, config, Datastore())
         self.rhevm.build_urls()
 

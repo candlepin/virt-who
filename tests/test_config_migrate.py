@@ -26,7 +26,7 @@ import tempfile
 
 from virtwho.migrate.migrateconfiguration import migrate_env_to_config
 
-from base import TestBase, unittest
+from base import TestBase
 
 
 class TestConfigMigrate(TestBase):
@@ -78,19 +78,18 @@ NO_PROXY=*
             result = conf.readlines()
         self.assertEqual("".join(result), expected_conf)
 
-
     def test_migrate_to_existing_no_env(self):
-            sysconfig = \
+        sysconfig = \
 """VIRTWHO_INTERVAL=60
 VIRTWHO_DEBUG=1
 VIRTWHO_ONE_SHOT=0
 """
-            existing = \
+        existing = \
 """[global]
 reporter_id=this_one
 
 """
-            expected = \
+        expected = \
 """[global]
 #migrated
 interval=60
@@ -102,16 +101,15 @@ reporter_id=this_one
 
 """
 
-            with open(self.virt_who_filename, "w") as f:
-                f.writelines(sysconfig)
-            with open(self.virt_who_conf_filename, "w") as f:
-                f.writelines(existing)
-            migrate_env_to_config(self.virt_who_filename,
-                                  self.virt_who_conf_filename)
-            with open(self.virt_who_conf_filename, "r") as conf:
-                result = conf.readlines()
-            self.assertEqual("".join(result), expected)
-
+        with open(self.virt_who_filename, "w") as f:
+            f.writelines(sysconfig)
+        with open(self.virt_who_conf_filename, "w") as f:
+            f.writelines(existing)
+        migrate_env_to_config(self.virt_who_filename,
+                              self.virt_who_conf_filename)
+        with open(self.virt_who_conf_filename, "r") as conf:
+            result = conf.readlines()
+        self.assertEqual("".join(result), expected)
 
     def test_migrate_to_existing(self):
         sysconfig = \
@@ -156,7 +154,6 @@ no_proxy=*
             result = conf.readlines()
         self.assertEqual("".join(result), expected)
 
-
     def test_migrate_to_existing_entries(self):
         sysconfig = \
 """VIRTWHO_INTERVAL=60
@@ -190,7 +187,6 @@ no_proxy=*
             result = conf.readlines()
         self.assertEqual("".join(result), expected)
 
-
     def test_migrate_to_no_sysconfig(self):
         existing =\
 """[global]
@@ -216,7 +212,6 @@ no_proxy=*
         with open(self.virt_who_conf_filename, "r") as conf:
             result = conf.readlines()
         self.assertEqual("".join(result), expected)
-
 
     def test_migrate_to_existing_commented_header(self):
         sysconfig = \

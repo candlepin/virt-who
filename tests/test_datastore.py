@@ -42,8 +42,9 @@ class TestDatastore(TestBase):
         # and that the lock (when used as a context manager) is acquired by
         # the calling thread on __enter__ and released by the calling thread
         # on __exit__
-        datastore, mock_internal_datastore = self._mock_test_data(Datastore(),
-                                                                 test_item=sentinel.test_value)
+        datastore, mock_internal_datastore = self._mock_test_data(
+            Datastore(), test_item=sentinel.test_value
+        )
 
         def assert_internal_store_unchanged(*args, **kwargs):
             # Assert there have been no accesses of the internal datastore
@@ -110,8 +111,9 @@ class TestDatastore(TestBase):
         # and that the lock (when used as a context manager) is acquired by
         # the calling thread on __enter__ and released by the calling thread
         # on __exit__
-        datastore, mock_internal_datastore = self._mock_test_data(Datastore(),
-                                                                 test_item=sentinel.test_value)
+        datastore, mock_internal_datastore = self._mock_test_data(
+            Datastore(), test_item=sentinel.test_value
+        )
 
         def assert_internal_store_unchanged(*args, **kwargs):
             # Assert there have been no accesses of the internal datastore
@@ -120,7 +122,8 @@ class TestDatastore(TestBase):
 
         def assert_internal_store_accessed(*args, **kwargs):
             mock_internal_datastore.__setitem__.assert_called_once_with(
-                    "test_item", sentinel.deep_copy_value_1)
+                "test_item", sentinel.deep_copy_value_1
+            )
 
         self.mock_lock.__enter__.side_effect = assert_internal_store_unchanged
         self.mock_lock.__exit__.side_effect = assert_internal_store_accessed
@@ -133,10 +136,10 @@ class TestDatastore(TestBase):
         # Ensure that put uses the return value of pickle.dumps
         test_item = "test_value"
         test_key = "test_item"
-        datastore, mock_internal_ds = self._mock_test_data(Datastore(),
-                                                          test_item=test_item)
+        datastore, mock_internal_ds = self._mock_test_data(
+            Datastore(), test_item=test_item
+        )
         datastore.put(test_key, test_item)
         self.mock_copy.deepcopy.assert_called_with(test_item)
         expected_value = sentinel.deep_copy_value_1
-        mock_internal_ds.__setitem__.assert_called_with(test_key,
-                                                        expected_value)
+        mock_internal_ds.__setitem__.assert_called_with(test_key, expected_value)

@@ -3,7 +3,7 @@ from __future__ import print_function
 import six
 
 from base import TestBase
-from mock import patch, call, ANY, MagicMock, Mock
+from mock import patch, call, ANY, Mock
 from requests import Session
 from six.moves.queue import Queue
 from threading import Event
@@ -13,7 +13,6 @@ from virtwho import virt
 from virtwho.datastore import Datastore
 from virtwho.virt.ahv.ahv import AhvConfigSection
 from virtwho.virt import Virt, VirtError, Guest, Hypervisor, StatusReport
-
 
 
 MY_SECTION_NAME = 'test-ahv'
@@ -31,283 +30,354 @@ PE_SECTION_VALUES = {
     'update_interval': 60
 }
 
-HOST_UVM_MAP = \
- {u'08469de5-be42-43e6-8c32-20167d3b58f7':
-           {u'oplog_disk_pct': 3.4,
-            u'memory_capacity_in_bytes': 135009402880,
-            u'has_csr': False,
-            u'default_vm_storage_container_uuid': None,
-            u'hypervisor_username': u'root',
-            u'key_management_device_to_certificate_status': {},
-            u'service_vmnat_ip': None,
-            u'hypervisor_key': u'10.53.97.188',
-            u'acropolis_connection_state': u'kConnected',
-            u'management_server_name': u'10.53.97.188',
-            u'failover_cluster_fqdn': None,
-            u'serial': u'OM155S016008',
-            u'bmc_version': u'01.92',
-            u'hba_firmwares_list':
-             [{u'hba_model': u'LSI Logic SAS3008',
-               u'hba_version': u'MPTFW-06.00.00.00-IT'}],
-            u'hypervisor_state': u'kAcropolisNormal',
-            u'num_cpu_threads': 32,
-            u'monitored': True,
-            u'uuid': u'08469de5-be42-43e6-8c32-20167d3b58f7',
-            u'reboot_pending': False,
-            u'cpu_capacity_in_hz': 38384000000,
-            u'num_cpu_sockets': 2,
-            u'host_maintenance_mode_reason': None,
-            u'hypervisor_address': u'10.53.97.188',
-            u'host_gpus': None,
-            u'failover_cluster_node_state': None,
-            u'state': u'NORMAL',
-            u'num_cpu_cores': 16,
-            'guest_list':
-             [{u'vm_features':
-                {u'AGENT_VM': False,
-                 u'VGA_CONSOLE': True},
-               u'name': u'am2', u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False, u'num_vcpus': 2,
-               u'memory_mb': 4096,
-               u'power_state': u'on',
-               u'ha_priority': 0,
-               u'allow_live_migrate': True,
-               u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 48,
-               u'host_uuid': u'08469de5-be42-43e6-8c32-20167d3b58f7',
-               u'uuid': u'01dcfc0b-3092-4f1b-94fb-81b44ed352be'},
-              {u'vm_features':
-                {u'AGENT_VM': False, u'VGA_CONSOLE': True},
-               u'name': u'am3',
-               u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False,
-               u'num_vcpus': 2, u'memory_mb': 4096,
-               u'power_state': u'on',
-               u'ha_priority': 0,
-               u'allow_live_migrate': True,
-               u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 3,
-               u'host_uuid': u'08469de5-be42-43e6-8c32-20167d3b58f7',
-               u'uuid': u'422f9171-db1f-48b0-a3de-b0bb92a8f559'},
-              {u'vm_features':
-                {u'AGENT_VM': False,
-                 u'VGA_CONSOLE': True},
-               u'name': u'win_vm',
-               u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False,
-               u'num_vcpus': 2,
-               u'memory_mb': 4096,
-               u'power_state': u'on',
-               u'ha_priority': 0,
-               u'allow_live_migrate': True,
-               u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 3,
-               u'host_uuid': u'08469de5-be42-43e6-8c32-20167d3b58f7',
-               u'uuid': u'98839f35-bd62-4255-a7cd-7668bc143554'}],
-            u'cpu_model': u'Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz',
-            u'ipmi_username': u'ADMIN',
-            u'service_vmid': u'0005809e-62e4-75c7-611b-0cc47ac3b354::7',
-            u'bmc_model': u'X10_ATEN',
-            u'host_nic_ids': [],
-            u'cluster_uuid': u'0005809e-62e4-75c7-611b-0cc47ac3b354',
-            u'ipmi_password': None,
-            u'cpu_frequency_in_hz': 2399000000,
-            u'stats':
-             {u'num_read_io': u'8',
-              u'controller_read_io_bandwidth_kBps': u'0',
-              u'content_cache_hit_ppm': u'1000000',
-              },
-            u'num_vms': 4, u'default_vm_storage_container_id': None,
-            u'metadata_store_status': u'kNormalMode',
-            u'name': u'foyt-4', u'hypervisor_password': None,
-            u'service_vmnat_port': None,
-            u'hypervisor_full_name': u'Nutanix 20180802.100874',
-            u'is_degraded': False, u'host_type': u'HYPER_CONVERGED',
-            u'default_vhd_storage_container_uuid': None,
-            u'block_serial': u'15SM60250038',
-            u'disk_hardware_configs':
-             {u'1':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC506101XL480MGN',
-                },
-              u'3':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8E6QE',
-                },
-              u'2':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC50610246480MGN',
-                },
-              u'5':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8E835',
-                },
-              u'4': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8E8B1',
-                     },
-              u'6': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8E7B3',
-                     }},
-            u'ipmi_address': u'10.49.27.28', u'bios_model': u'0824',
-            u'default_vm_location': None, u'hypervisor_type': u'kKvm',
-            u'service_vmexternal_ip': u'10.53.97.192',
-            u'controller_vm_backplane_ip': u'10.53.97.192'},
- u'54830446-b55e-4f16-aa74-7b6a9ac9a7a4':
-  {u'oplog_disk_pct': 3.4,
-            u'memory_capacity_in_bytes': 135009402880, u'has_csr': False,
-            u'default_vm_storage_container_uuid': None,
-            u'hypervisor_username': u'root',
-            u'service_vmnat_ip': None, u'hypervisor_key': u'10.53.97.187',
-            u'acropolis_connection_state': u'kConnected',
-            u'hypervisor_state': u'kAcropolisNormal',
-            u'num_cpu_threads': 32, u'monitored': True,
-            u'uuid': u'54830446-b55e-4f16-aa74-7b6a9ac9a7a4',
-            u'reboot_pending': False, u'cpu_capacity_in_hz': 38384000000,
-            u'num_cpu_sockets': 2, u'host_maintenance_mode_reason': None,
-            u'hypervisor_address': u'10.53.97.187', u'host_gpus': None,
-            u'failover_cluster_node_state': None, u'state': u'NORMAL',
-            u'num_cpu_cores': 16, u'block_model': u'UseLayout',
-            'guest_list':
-             [{u'vm_features':
-                {u'AGENT_VM': False, u'VGA_CONSOLE': True},
-               u'name': u'PC', u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False, u'num_vcpus': 4,
-               u'memory_mb': 16384, u'power_state': u'on',
-               u'ha_priority': 0, u'allow_live_migrate': True,
-               u'timezone': u'UTC', u'vm_logical_timestamp': 10,
-               u'host_uuid': u'54830446-b55e-4f16-aa74-7b6a9ac9a7a4',
-               u'uuid': u'd90b5443-97f0-47eb-986d-f14e062448d4'},
-              {u'vm_features':
-                {u'AGENT_VM': False, u'VGA_CONSOLE': True},
-               u'name': u'am1', u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False, u'num_vcpus': 2,
-               u'memory_mb': 4096, u'power_state': u'on',
-               u'ha_priority': 0, u'allow_live_migrate': True,
-               u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 14,
-               u'host_uuid': u'54830446-b55e-4f16-aa74-7b6a9ac9a7a4',
-               u'uuid': u'0af0a010-0ad0-4fba-aa33-7cc3d0b6cb7e'}],
-            u'cpu_model': u'Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz',
-            u'ipmi_username': u'ADMIN',
-            u'service_vmid': u'0005809e-62e4-75c7-611b-0cc47ac3b354::6',
-            u'bmc_model': u'X10_ATEN', u'host_nic_ids': [],
-            u'cluster_uuid': u'0005809e-62e4-75c7-611b-0cc47ac3b354',
-            u'stats':
-             {u'num_read_io': u'27',
-              u'controller_read_io_bandwidth_kBps': u'0',
-              u'content_cache_hit_ppm': u'1000000',
-             }, u'backplane_ip': None,
-            u'vzone_name': u'', u'default_vhd_location': None,
-            u'metadata_store_status_message': u'Metadata store enabled on the node',
-            u'num_vms': 3, u'default_vm_storage_container_id': None,
-            u'metadata_store_status': u'kNormalMode', u'name': u'foyt-3',
-            u'hypervisor_password': None, u'service_vmnat_port': None,
-            u'hypervisor_full_name': u'Nutanix 20180802.100874',
-            u'is_degraded': False, u'host_type': u'HYPER_CONVERGED',
-            u'default_vhd_storage_container_uuid': None,
-            u'block_serial': u'15SM60250038',
-            u'disk_hardware_configs':
-             {u'1':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC506101ST480MGN',
-                },
-              u'3':
-               {
-                u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8DXYY',
-                },
-              u'2': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC506101D4480MGN',
-                     },
-              u'5': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8DQRM',
-                     },
-              u'4': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8DJ7E',
-                     },
-              u'6': {
-                     u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG8DVGG',
-                     }},
-            u'ipmi_address': u'10.49.27.27', u'bios_model': u'0824',
-            u'hypervisor_type': u'kKvm',
-            u'service_vmexternal_ip': u'10.53.97.191',
-            u'controller_vm_backplane_ip': u'10.53.97.191'
- },
- u'acc819fe-e0ff-4963-93a4-5a0e1d3c77d3':
-           {u'oplog_disk_pct': 3.4,
-            u'memory_capacity_in_bytes': 270302969856, u'has_csr': False,
-            u'default_vm_storage_container_uuid': None,
-            u'hypervisor_username': u'root',
-            u'key_management_device_to_certificate_status': {},
-            u'service_vmnat_ip': None, u'hypervisor_key': u'10.53.96.75',
-            u'acropolis_connection_state': u'kConnected',
-            u'management_server_name': u'10.53.96.75',
-            u'failover_cluster_fqdn': None, u'serial': u'ZM162S002621',
-            u'bmc_version': u'01.97',
-            u'hba_firmwares_list':
-             [{u'hba_model': u'LSI Logic SAS3008',
-               u'hba_version': u'MPTFW-10.00.03.00-IT'}],
-            u'hypervisor_state': u'kAcropolisNormal',
-            u'num_cpu_threads': 32, u'monitored': True,
-            u'uuid': u'acc819fe-e0ff-4963-93a4-5a0e1d3c77d3',
-            u'num_cpu_sockets': 2, u'host_maintenance_mode_reason': None,
-            u'hypervisor_address': u'10.53.96.75',
-            'guest_list':
-             [{u'vm_features': {u'AGENT_VM': False, u'VGA_CONSOLE': True},
-               u'name': u'am_RH_satellite', u'num_cores_per_vcpu': 2,
-               u'gpus_assigned': False, u'num_vcpus': 4, u'memory_mb': 16384,
-               u'power_state': u'on', u'ha_priority': 0,
-               u'allow_live_migrate': True, u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 5,
-               u'host_uuid': u'acc819fe-e0ff-4963-93a4-5a0e1d3c77d3',
-               u'uuid': u'e30f381d-d4bc-4958-a88c-79448efe5112'},
-              {u'vm_features': {u'AGENT_VM': False, u'VGA_CONSOLE': True},
-               u'name': u'am4', u'num_cores_per_vcpu': 1,
-               u'gpus_assigned': False, u'num_vcpus': 2, u'memory_mb': 4096,
-               u'power_state': u'on', u'ha_priority': 0,
-               u'allow_live_migrate': True, u'timezone': u'America/Los_Angeles',
-               u'vm_logical_timestamp': 2,
-               u'host_uuid': u'acc819fe-e0ff-4963-93a4-5a0e1d3c77d3',
-               u'uuid': u'f1e3362b-0377-4d70-bccd-63d2a1c09225'}],
-            u'dynamic_ring_changing_node': None,
-            u'cpu_model': u'Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz',
-            u'ipmi_username': u'ADMIN',
-            u'cluster_uuid': u'0005809e-62e4-75c7-611b-0cc47ac3b354',
-            u'ipmi_password': None, u'cpu_frequency_in_hz': 2400000000,
-            u'stats': {u'num_read_io': u'47',
-                       u'controller_read_io_bandwidth_kBps': u'0',
-                       u'content_cache_hit_ppm': u'1000000',
-                       }, u'backplane_ip': None,
-            u'num_vms': 3,
-            u'name': u'watermelon02-4', u'hypervisor_password': None,
-            u'hypervisor_full_name': u'Nutanix 20180802.100874',
-            u'is_degraded': False, u'host_type': u'HYPER_CONVERGED',
-            u'default_vhd_storage_container_uuid': None,
-            u'block_serial': u'16AP60170033', u'usage_stats': {
+HOST_UVM_MAP = {
+    "08469de5-be42-43e6-8c32-20167d3b58f7": {
+        "oplog_disk_pct": 3.4,
+        "memory_capacity_in_bytes": 135009402880,
+        "has_csr": False,
+        "default_vm_storage_container_uuid": None,
+        "hypervisor_username": "root",
+        "key_management_device_to_certificate_status": {},
+        "service_vmnat_ip": None,
+        "hypervisor_key": "10.53.97.188",
+        "acropolis_connection_state": "kConnected",
+        "management_server_name": "10.53.97.188",
+        "failover_cluster_fqdn": None,
+        "serial": "OM155S016008",
+        "bmc_version": "01.92",
+        "hba_firmwares_list": [
+            {
+                "hba_model": "LSI Logic SAS3008",
+                "hba_version": "MPTFW-06.00.00.00-IT",
+            }
+        ],
+        "hypervisor_state": "kAcropolisNormal",
+        "num_cpu_threads": 32,
+        "monitored": True,
+        "uuid": "08469de5-be42-43e6-8c32-20167d3b58f7",
+        "reboot_pending": False,
+        "cpu_capacity_in_hz": 38384000000,
+        "num_cpu_sockets": 2,
+        "host_maintenance_mode_reason": None,
+        "hypervisor_address": "10.53.97.188",
+        "host_gpus": None,
+        "failover_cluster_node_state": None,
+        "state": "NORMAL",
+        "num_cpu_cores": 16,
+        "guest_list": [
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "am2",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 2,
+                "memory_mb": 4096,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 48,
+                "host_uuid": "08469de5-be42-43e6-8c32-20167d3b58f7",
+                "uuid": "01dcfc0b-3092-4f1b-94fb-81b44ed352be",
             },
-            u'disk_hardware_configs': {
-             u'1': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC549209M3480MGN',
-                    },
-             u'3': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG9TRZQ'},
-             u'2': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/BTHC550503XF480MGN',
-                    },
-             u'5': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG9TS0N',
-                    },
-             u'4': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG9TSF7',
-                    },
-             u'6': {
-                    u'mount_path': u'/home/nutanix/data/stargate-storage/disks/9XG9TREW',
-                    }}, u'ipmi_address': u'10.49.26.188',
-            u'bios_model': u'0824', u'default_vm_location': None,
-            u'hypervisor_type': u'kKvm',
-            u'position': {u'ordinal': 4, u'physical_position': None,
-                          u'name': u''},
-            u'service_vmexternal_ip': u'10.53.96.79',
-            u'controller_vm_backplane_ip': u'10.53.96.79'}}
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "am3",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 2,
+                "memory_mb": 4096,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 3,
+                "host_uuid": "08469de5-be42-43e6-8c32-20167d3b58f7",
+                "uuid": "422f9171-db1f-48b0-a3de-b0bb92a8f559",
+            },
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "win_vm",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 2,
+                "memory_mb": 4096,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 3,
+                "host_uuid": "08469de5-be42-43e6-8c32-20167d3b58f7",
+                "uuid": "98839f35-bd62-4255-a7cd-7668bc143554",
+            },
+        ],
+        "cpu_model": "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz",
+        "ipmi_username": "ADMIN",
+        "service_vmid": "0005809e-62e4-75c7-611b-0cc47ac3b354::7",
+        "bmc_model": "X10_ATEN",
+        "host_nic_ids": [],
+        "cluster_uuid": "0005809e-62e4-75c7-611b-0cc47ac3b354",
+        "ipmi_password": None,
+        "cpu_frequency_in_hz": 2399000000,
+        "stats": {
+            "num_read_io": "8",
+            "controller_read_io_bandwidth_kBps": "0",
+            "content_cache_hit_ppm": "1000000",
+        },
+        "num_vms": 4,
+        "default_vm_storage_container_id": None,
+        "metadata_store_status": "kNormalMode",
+        "name": "foyt-4",
+        "hypervisor_password": None,
+        "service_vmnat_port": None,
+        "hypervisor_full_name": "Nutanix 20180802.100874",
+        "is_degraded": False,
+        "host_type": "HYPER_CONVERGED",
+        "default_vhd_storage_container_uuid": None,
+        "block_serial": "15SM60250038",
+        "disk_hardware_configs": {
+            "1": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC506101XL480MGN",
+            },
+            "3": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8E6QE",
+            },
+            "2": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC50610246480MGN",
+            },
+            "5": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8E835",
+            },
+            "4": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8E8B1",
+            },
+            "6": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8E7B3",
+            },
+        },
+        "ipmi_address": "10.49.27.28",
+        "bios_model": "0824",
+        "default_vm_location": None,
+        "hypervisor_type": "kKvm",
+        "service_vmexternal_ip": "10.53.97.192",
+        "controller_vm_backplane_ip": "10.53.97.192",
+    },
+    "54830446-b55e-4f16-aa74-7b6a9ac9a7a4": {
+        "oplog_disk_pct": 3.4,
+        "memory_capacity_in_bytes": 135009402880,
+        "has_csr": False,
+        "default_vm_storage_container_uuid": None,
+        "hypervisor_username": "root",
+        "service_vmnat_ip": None,
+        "hypervisor_key": "10.53.97.187",
+        "acropolis_connection_state": "kConnected",
+        "hypervisor_state": "kAcropolisNormal",
+        "num_cpu_threads": 32,
+        "monitored": True,
+        "uuid": "54830446-b55e-4f16-aa74-7b6a9ac9a7a4",
+        "reboot_pending": False,
+        "cpu_capacity_in_hz": 38384000000,
+        "num_cpu_sockets": 2,
+        "host_maintenance_mode_reason": None,
+        "hypervisor_address": "10.53.97.187",
+        "host_gpus": None,
+        "failover_cluster_node_state": None,
+        "state": "NORMAL",
+        "num_cpu_cores": 16,
+        "block_model": "UseLayout",
+        "guest_list": [
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "PC",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 4,
+                "memory_mb": 16384,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "UTC",
+                "vm_logical_timestamp": 10,
+                "host_uuid": "54830446-b55e-4f16-aa74-7b6a9ac9a7a4",
+                "uuid": "d90b5443-97f0-47eb-986d-f14e062448d4",
+            },
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "am1",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 2,
+                "memory_mb": 4096,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 14,
+                "host_uuid": "54830446-b55e-4f16-aa74-7b6a9ac9a7a4",
+                "uuid": "0af0a010-0ad0-4fba-aa33-7cc3d0b6cb7e",
+            },
+        ],
+        "cpu_model": "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz",
+        "ipmi_username": "ADMIN",
+        "service_vmid": "0005809e-62e4-75c7-611b-0cc47ac3b354::6",
+        "bmc_model": "X10_ATEN",
+        "host_nic_ids": [],
+        "cluster_uuid": "0005809e-62e4-75c7-611b-0cc47ac3b354",
+        "stats": {
+            "num_read_io": "27",
+            "controller_read_io_bandwidth_kBps": "0",
+            "content_cache_hit_ppm": "1000000",
+        },
+        "backplane_ip": None,
+        "vzone_name": "",
+        "default_vhd_location": None,
+        "metadata_store_status_message": "Metadata store enabled on the node",
+        "num_vms": 3,
+        "default_vm_storage_container_id": None,
+        "metadata_store_status": "kNormalMode",
+        "name": "foyt-3",
+        "hypervisor_password": None,
+        "service_vmnat_port": None,
+        "hypervisor_full_name": "Nutanix 20180802.100874",
+        "is_degraded": False,
+        "host_type": "HYPER_CONVERGED",
+        "default_vhd_storage_container_uuid": None,
+        "block_serial": "15SM60250038",
+        "disk_hardware_configs": {
+            "1": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC506101ST480MGN",
+            },
+            "3": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8DXYY",
+            },
+            "2": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC506101D4480MGN",
+            },
+            "5": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8DQRM",
+            },
+            "4": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8DJ7E",
+            },
+            "6": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG8DVGG",
+            },
+        },
+        "ipmi_address": "10.49.27.27",
+        "bios_model": "0824",
+        "hypervisor_type": "kKvm",
+        "service_vmexternal_ip": "10.53.97.191",
+        "controller_vm_backplane_ip": "10.53.97.191",
+    },
+    "acc819fe-e0ff-4963-93a4-5a0e1d3c77d3": {
+        "oplog_disk_pct": 3.4,
+        "memory_capacity_in_bytes": 270302969856,
+        "has_csr": False,
+        "default_vm_storage_container_uuid": None,
+        "hypervisor_username": "root",
+        "key_management_device_to_certificate_status": {},
+        "service_vmnat_ip": None,
+        "hypervisor_key": "10.53.96.75",
+        "acropolis_connection_state": "kConnected",
+        "management_server_name": "10.53.96.75",
+        "failover_cluster_fqdn": None,
+        "serial": "ZM162S002621",
+        "bmc_version": "01.97",
+        "hba_firmwares_list": [
+            {
+                "hba_model": "LSI Logic SAS3008",
+                "hba_version": "MPTFW-10.00.03.00-IT",
+            }
+        ],
+        "hypervisor_state": "kAcropolisNormal",
+        "num_cpu_threads": 32,
+        "monitored": True,
+        "uuid": "acc819fe-e0ff-4963-93a4-5a0e1d3c77d3",
+        "num_cpu_sockets": 2,
+        "host_maintenance_mode_reason": None,
+        "hypervisor_address": "10.53.96.75",
+        "guest_list": [
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "am_RH_satellite",
+                "num_cores_per_vcp": 2,
+                "gpus_assigned": False,
+                "num_vcpus": 4,
+                "memory_mb": 16384,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 5,
+                "host_uuid": "acc819fe-e0ff-4963-93a4-5a0e1d3c77d3",
+                "uuid": "e30f381d-d4bc-4958-a88c-79448efe5112",
+            },
+            {
+                "vm_features": {"AGENT_VM": False, "VGA_CONSOLE": True},
+                "name": "am4",
+                "num_cores_per_vcp": 1,
+                "gpus_assigned": False,
+                "num_vcpus": 2,
+                "memory_mb": 4096,
+                "power_state": "on",
+                "ha_priority": 0,
+                "allow_live_migrate": True,
+                "timezone": "America/Los_Angeles",
+                "vm_logical_timestamp": 2,
+                "host_uuid": "acc819fe-e0ff-4963-93a4-5a0e1d3c77d3",
+                "uuid": "f1e3362b-0377-4d70-bccd-63d2a1c09225",
+            },
+        ],
+        "dynamic_ring_changing_node": None,
+        "cpu_model": "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz",
+        "ipmi_username": "ADMIN",
+        "cluster_uuid": "0005809e-62e4-75c7-611b-0cc47ac3b354",
+        "ipmi_password": None,
+        "cpu_frequency_in_hz": 2400000000,
+        "stats": {
+            "num_read_io": "47",
+            "controller_read_io_bandwidth_kBps": "0",
+            "content_cache_hit_ppm": "1000000",
+        },
+        "backplane_ip": None,
+        "num_vms": 3,
+        "name": "watermelon02-4",
+        "hypervisor_password": None,
+        "hypervisor_full_name": "Nutanix 20180802.100874",
+        "is_degraded": False,
+        "host_type": "HYPER_CONVERGED",
+        "default_vhd_storage_container_uuid": None,
+        "block_serial": "16AP60170033",
+        "usage_stats": {},
+        "disk_hardware_configs": {
+            "1": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC549209M3480MGN",
+            },
+            "3": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG9TRZQ"
+            },
+            "2": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/BTHC550503XF480MGN",
+            },
+            "5": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG9TS0N",
+            },
+            "4": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG9TSF7",
+            },
+            "6": {
+                "mount_path": "/home/nutanix/data/stargate-storage/disks/9XG9TREW",
+            },
+        },
+        "ipmi_address": "10.49.26.188",
+        "bios_model": "0824",
+        "default_vm_location": None,
+        "hypervisor_type": "kKvm",
+        "position": {"ordinal": 4, "physical_position": None, "name": ""},
+        "service_vmexternal_ip": "10.53.96.79",
+        "controller_vm_backplane_ip": "10.53.96.79",
+    },
+}
 
 
 class TestAhvConfigSection(TestBase):
@@ -437,6 +507,7 @@ class TestAhv(TestBase):
         self.ahv._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(self.ahv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.ahv.config['server'])
+
     @patch.object(Session, 'post')
     def test_connect_PC(self, mock_post):
         self.setUp(is_pc=True)
@@ -543,36 +614,37 @@ class TestAhv(TestBase):
         expected_result = []
 
         for host_uuid in HOST_UVM_MAP:
-           host = HOST_UVM_MAP[host_uuid]
-           hypervisor_id = host_uuid
-           host_name = host['name']
-           cluster_uuid = host['cluster_uuid']
-           guests = []
-           for guest_vm in host['guest_list']:
-               state = virt.Guest.STATE_RUNNING
-               guests.append(Guest(guest_vm['uuid'], self.ahv.CONFIG_TYPE,
-                                   state))
+            host = HOST_UVM_MAP[host_uuid]
+            hypervisor_id = host_uuid
+            host_name = host['name']
+            cluster_uuid = host['cluster_uuid']
+            guests = []
+            for guest_vm in host['guest_list']:
+                state = virt.Guest.STATE_RUNNING
+                guests.append(Guest(guest_vm['uuid'], self.ahv.CONFIG_TYPE, state))
 
-           facts = {
-            Hypervisor.CPU_SOCKET_FACT: '2',
-            Hypervisor.HYPERVISOR_TYPE_FACT: u'kKvm',
-            Hypervisor.HYPERVISOR_VERSION_FACT: 'Nutanix 20180802.100874',
-            Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid),
-            Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)
-           }
+            facts = {
+               Hypervisor.CPU_SOCKET_FACT: '2',
+               Hypervisor.HYPERVISOR_TYPE_FACT: u'kKvm',
+               Hypervisor.HYPERVISOR_VERSION_FACT: 'Nutanix 20180802.100874',
+               Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid),
+               Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)
+            }
 
-           expected_result.append(Hypervisor(
-            name=host_name,
-            hypervisorId=hypervisor_id,
-            guestIds=guests,
-            facts=facts
-           ))
+            expected_result.append(Hypervisor(
+                name=host_name,
+                hypervisorId=hypervisor_id,
+                guestIds=guests,
+                facts=facts
+            ))
 
         result = self.ahv.getHostGuestMapping()['hypervisors']
 
-        self.assertEqual(len(result), len(expected_result), 'lists length '
-                                                            'do not match')
-        for index in range(0, len(result)):
-          self.assertEqual(expected_result[index].toDict(),
-                           result[index].toDict())
+        self.assertEqual(
+            len(result),
+            len(expected_result),
+            'lists length do not match'
+        )
 
+        for index in range(0, len(result)):
+            self.assertEqual(expected_result[index].toDict(), result[index].toDict())

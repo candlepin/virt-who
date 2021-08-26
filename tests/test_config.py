@@ -135,8 +135,12 @@ class TestReadingConfigs(TestBase):
         @rtype: str
         """
         header = "[%s]\n" % in_dict.get("name", "test")
-        body = "\n".join(["%s=%s" % (key, val) for key, val in
-                          in_dict.items() if key is not "name"])
+        body = "\n".join([
+            "%s=%s" % (key, val)
+            for key, val
+            in in_dict.items()
+            if key != "name"
+        ])
         return header + body + "\n"
 
     def test_empty_config(self):
@@ -767,9 +771,9 @@ rhsm_hostname=abc
         self.assertEqual(config_manager.effective_config["global"]["interval"], 100)
 
     def testUpdateHttpsProxyUrl(self):
-            cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
-            with open(cli_config_file_path, "w") as f:
-                f.write("""
+        cli_config_file_path = os.path.join(self.custom_config_dir, "my_file.conf")
+        with open(cli_config_file_path, "w") as f:
+            f.write("""
     [valid_cli_section]
     server=5.5.5.5
     username=admin1
@@ -777,13 +781,13 @@ rhsm_hostname=abc
     owner=owner1
     rhsm_hostname=abc1
     """)
-            cli_dict = {'configs': [cli_config_file_path]}
+        cli_dict = {'configs': [cli_config_file_path]}
 
-            # alter the main conf file constant temporarily:
-            virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
+        # alter the main conf file constant temporarily:
+        virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
 
-            with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
-                f.write("""
+        with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
+            f.write("""
     [global]
     interval=100
     log_file=rhsm45.log
@@ -801,8 +805,8 @@ rhsm_hostname=abc
     owner=owner
     rhsm_hostname=abc
     """)
-            init_config(cli_dict, config_dir=self.config_dir)
-            self.assertEqual(os.environ['https_proxy'], 'http://this.server.com')
+        init_config(cli_dict, config_dir=self.config_dir)
+        self.assertEqual(os.environ['https_proxy'], 'http://this.server.com')
 
     def testInvisibleConfigFile(self):
         with open(os.path.join(self.config_dir, ".test1.conf"), "w") as f:
@@ -1075,7 +1079,7 @@ class TestParseList(TestBase):
             ['a\nc', '\tdef', '"ghi"', "'jkl'"]
         )
         self.assertEqual(
-            parse_list("'abc\ ', '\\\\ def' ,'g h i' , ' jkl '"),
+            parse_list("'abc\\ ', '\\\\ def' ,'g h i' , ' jkl '"),
             ['abc ', '\\ def', 'g h i', ' jkl ']
         )
 

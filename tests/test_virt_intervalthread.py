@@ -3,8 +3,8 @@ from base import TestBase
 
 from mock import patch, Mock, sentinel, call
 from virtwho.virt import IntervalThread
-from threading import Event
 from datetime import datetime
+
 
 class TestIntervalThreadTiming(TestBase):
     """
@@ -64,7 +64,6 @@ class TestIntervalThreadTiming(TestBase):
 
         return interval_thread
 
-
     def test__run(self):
         """
         Tests the timing of the _run method
@@ -111,7 +110,6 @@ class TestIntervalThreadTiming(TestBase):
             interval_thread._get_data.assert_called()
             interval_thread._send_data.assert_has_calls([call(data_to_send=self._get_data_return)])
             interval_thread.wait.assert_not_called()
-
 
     def test_wait(self):
         interval_thread = self.setup_interval_thread()

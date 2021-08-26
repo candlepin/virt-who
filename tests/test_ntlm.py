@@ -1,10 +1,11 @@
 from __future__ import print_function
 
 from binascii import unhexlify
-from base import TestBase
 
-from virtwho.virt.hyperv.ntlm import (ntowfv2, ntlm_compute_response, Ntlm,
-                                      ChallengeMessage, AuthenticationMessage)
+from virtwho.virt.hyperv.ntlm import (
+    ntowfv2, ntlm_compute_response, Ntlm,
+    ChallengeMessage, AuthenticationMessage
+)
 
 
 def from_hex(hexStr):

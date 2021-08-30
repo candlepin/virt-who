@@ -92,7 +92,7 @@ class LibvirtdConfigSection(VirtConfigSection):
                 ))
                 path = '/system'
 
-            self._values[key] = "%(scheme)s://%(username)s%(hostname)s%(path)s?no_tty=1" % {
+            self._values[key] = "%(scheme)s://%(username)s%(hostname)s%(path)s?no_verify=1" % {
                 'username': ("%s@" % username) if username else '',
                 'scheme': scheme,
                 'hostname': hostname,
@@ -288,8 +288,8 @@ class Libvirtd(Virt):
         except libvirt.libvirtError as e:
             self.logger.exception("Error in libvirt backend")
             raise VirtError(str(e))
-        v.domainEventRegister(self._callback, None)
-        v.setKeepAlive(5, 3)
+        # v.domainEventRegister(self._callback, None)
+        # v.setKeepAlive(5, 3)
         return v
 
     def _disconnect(self):

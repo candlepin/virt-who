@@ -1121,7 +1121,10 @@ class Virt(IntervalThread):
     def __subclasses_list(cls):
         # Imports can't be top-level, it would be circular dependency
         import virtwho.virt.libvirtd  # flake8: noqa
-        import virtwho.virt.esx  # flake8: noqa
+        try:
+            import virtwho.virt.esx  # flake8: noqa
+        except ModuleNotFoundError:
+            pass
         import virtwho.virt.rhevm  # flake8: noqa
         import virtwho.virt.hyperv  # flake8: noqa
         import virtwho.virt.fakevirt  # flake8: noqa

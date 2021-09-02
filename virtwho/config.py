@@ -50,13 +50,7 @@ logger = log.getLogger(name='config', queue=False)
 _effective_config = None
 
 VW_CONF_DIR = "/etc/virt-who.d/"
-
-try:
-    import suds  # noqa: F401
-    VW_TYPES = ("esx", "libvirt", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
-except ImportError:
-    VW_TYPES = ("libvirt", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
-
+VW_TYPES = ("esx", "libvirt", "rhevm", "hyperv", "fake", "kubevirt", "ahv")
 VW_GENERAL_CONF_PATH = "/etc/virt-who.conf"
 VW_GLOBAL = "global"
 VW_VIRT_DEFAULTS_SECTION_NAME = "defaults"
@@ -911,12 +905,7 @@ class ConfigSection(collections.MutableMapping):
         except KeyError:
             result = ('error', 'Virtual type is not set')
         else:
-            if virt_type not in VW_TYPES:
-                esx_message = ''
-                if virt_type == 'esx':
-                    esx_message = '. For additional information regarding virtual type "esx" please consult https://access.redhat.com/solutions/6295161'
-
-                result = ('error', 'Unsupported virtual type \'{virt_type}\' is set{esx_message}'.format(virt_type=virt_type, esx_message=esx_message))
+            result = ('error', 'Unsupported virtual type \'{virt_type}\' is set'.format(virt_type=virt_type))
         return result
 
 

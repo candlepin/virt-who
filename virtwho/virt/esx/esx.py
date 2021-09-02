@@ -21,9 +21,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import suds
-import suds.transport
-import suds.client
 import requests
 import errno
 import stat
@@ -40,6 +37,10 @@ from six.moves.http_client import HTTPException
 from virtwho import virt
 from virtwho.config import VirtConfigSection
 from virtwho.virt import StatusReport
+from virtwho.virt.esx.suds import client
+from virtwho.virt.esx.suds import sudsobject
+from virtwho.virt.esx.suds import transport
+from virtwho.virt.esx.suds import WebFault
 
 try:
     from urllib.parse import unquote as urldecode
@@ -80,7 +81,7 @@ class FileAdapter(requests.adapters.BaseAdapter):
         pass
 
 
-class RequestsTransport(suds.transport.Transport):
+class RequestsTransport(transport.Transport):
     '''
     Transport for suds that uses Requests instead of urllib2.
 
@@ -88,7 +89,7 @@ class RequestsTransport(suds.transport.Transport):
     proxy support will be same as for other modules.
     '''
     def __init__(self, session=None):
-        suds.transport.Transport.__init__(self)
+        transport.Transport.__init__(self)
         self._session = session or requests.Session()
         self._session.mount('file://', FileAdapter())
 
@@ -108,7 +109,7 @@ class RequestsTransport(suds.transport.Transport):
         ct = resp.headers.get('content-type', '')
         if 'application/soap+xml' not in ct and 'text/xml' not in ct:
             resp.raise_for_status()
-        return suds.transport.Reply(
+        return transport.Reply(
             resp.status_code,
             resp.headers,
             resp.content,
@@ -180,7 +181,7 @@ class Esx(virt.Virt):
                 # Get the initial update again
                 version = ''
                 continue
-            except (suds.WebFault, HTTPException) as e:
+            except (WebFault, HTTPException) as e:
                 suppress_exception = False
                 try:
                     if hasattr(e, 'fault'):
@@ -240,7 +241,7 @@ class Esx(virt.Virt):
         if self.filter is not None:
             try:
                 self.client.service.DestroyPropertyFilter(self.filter)
-            except suds.WebFault:
+            except WebFault:
                 pass
             self.filter = None
 
@@ -368,14 +369,15 @@ class Esx(virt.Virt):
         else:
             wsdl = self.url + '/sdk/vimService.wsdl'
         try:
-            self.client = suds.client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
+            self.client = client.Client(wsdl, location="%s/sdk" % self.url, **kwargs)
         except requests.RequestException as e:
             raise virt.VirtError(str(e))
 
         self.client.set_options(timeout=self.MAX_WAIT_TIME)
 
         # Get Meta Object Reference to ServiceInstance which is the root object of the inventory
-        self.moRef = suds.sudsobject.Property('ServiceInstance')
+        self.moRef = sudsobject.Property('ServiceInstance')
+        self.moRef = sudsobject.Property('ServiceInstance')
         self.moRef._type = 'ServiceInstance'  # pylint: disable=W0212
 
         # Service Content object defines properties of the ServiceInstance object
@@ -396,7 +398,7 @@ class Esx(virt.Virt):
             logging.getLogger('suds.client').setLevel(logging.ERROR)
         except requests.RequestException as e:
             raise virt.VirtError(str(e))
-        except suds.WebFault as e:
+        except WebFault as e:
             self.logger.exception("Unable to login to ESX")
             raise virt.VirtError(str(e))
 

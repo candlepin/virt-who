@@ -22,7 +22,7 @@ Test validating of VirtConfigSection
 """
 
 from base import TestBase
-from mock import MagicMock,patch
+from mock import MagicMock, patch
 
 import tempfile
 import os
@@ -124,9 +124,10 @@ class TestVirtConfigSection(TestBase):
         # Version that can't handle unicode
         _mock_requests.__version__ = '2.19.0'
         result = self.virt_config._validate_unencrypted_password('password')
-        self.assertEqual(result,
-            ('error', "Value: Příšerně žluťoučký kůň pěl úděsné ódy. of option 'password': is not in latin1 encoding."
-                  " That is not allowed on this system."))
+        self.assertEqual(result, ('error', (
+            "Value: Příšerně žluťoučký kůň pěl úděsné ódy. of option 'password': is not in latin1 encoding."
+            " That is not allowed on this system."
+        )))
         # Version that can handle unicode
         _mock_requests.__version__ = '2.21.0'
         result = self.virt_config._validate_username('username')
@@ -233,7 +234,7 @@ class TestVirtConfigSection(TestBase):
         result = self.virt_config._validate_username('username')
         self.assertIsNotNone(result)
 
-    @patch ('virtwho.config.requests')
+    @patch('virtwho.config.requests')
     def test_validate_unicode_username(self, _mock_requests):
         """
         Test validation of unicode username (containing e.g. UTF-8 string)
@@ -399,3 +400,5 @@ class TestVirtConfigSection(TestBase):
         result = self.virt_config._validate_encrypted_password('encrypted_password')
         self.assertIsNotNone(result)
         self.unmock_pwd_file()
+        # restore password
+        self.virt_config["password"] = password

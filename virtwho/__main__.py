@@ -3,7 +3,6 @@ from __future__ import print_function, absolute_import
 import sys
 import logging
 import threading
-import gc
 
 import virtwho.main
 

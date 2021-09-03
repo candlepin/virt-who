@@ -115,7 +115,7 @@ class TestBase(TestCase):
         self.addCleanup(pid_file_patcher.stop)
 
         # Mock status files (so we can run tests as an unprivledged user)
-        status_pid_file_name = self.tmp_dir + os.path.sep +'virt-who-status.pid'
+        status_pid_file_name = self.tmp_dir + os.path.sep + 'virt-who-status.pid'
         status_pid_file_patcher = patch('virtwho.executor.STATUS_LOCK', status_pid_file_name)
         status_pid_file_patcher.start()
         self.addCleanup(status_pid_file_patcher.stop)
@@ -128,7 +128,7 @@ class TestBase(TestCase):
         status_data_dir_patcher.start()
         self.addCleanup(status_data_dir_patcher.stop)
 
-        status_file_name = self.tmp_dir + os.path.sep +'run_data.json'
+        status_file_name = self.tmp_dir + os.path.sep + 'run_data.json'
         status_data_file_patcher = patch('virtwho.executor.STATUS_DATA', status_file_name)
         status_data_file_patcher.start()
         self.addCleanup(status_data_file_patcher.stop)

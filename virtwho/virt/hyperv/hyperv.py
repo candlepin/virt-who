@@ -197,11 +197,11 @@ Content-Type: application/octet-stream\r
             raise HyperVAuthFailed("Unable to decrypt sealed response: incorrect format")
         body = body.encode('latin1')
         # First four bytes of body is signature length
-        l = struct.unpack('<I', body[:4])[0]
+        length = struct.unpack('<I', body[:4])[0]
         # Then there is signature with given length
-        signature = body[4:4 + l]
+        signature = body[4:4 + length]
         # Message body follows
-        msg = body[4 + l:]
+        msg = body[4 + length:]
         # Decrypt it
         decrypted = self.ntlm.decrypt(msg, signature)
         response._content = decrypted

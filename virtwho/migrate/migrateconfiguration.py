@@ -25,8 +25,10 @@ import os
 SYSCONFIG_FILENAME = '/etc/sysconfig/virt-who'
 GENERAL_CONFIG_FILENAME = '/etc/virt-who.conf'
 
+
 def main():
     migrate_env_to_config()
+
 
 def migrate_env_to_config(sysconfig_filename=None, general_config_filename=None):
     if not sysconfig_filename:
@@ -75,13 +77,15 @@ def migrate_env_to_config(sysconfig_filename=None, general_config_filename=None)
 
     for line in lines:
         stripped = line.strip()
-        if stripped == '[global]' or \
-            (stripped.startswith('#') and stripped[1:].strip() == '[global]'):
+        if stripped == '[global]' or (
+            stripped.startswith('#') and stripped[1:].strip() == '[global]'
+        ):
             has_global = True
             output.append('[global]\n')
             add_global(output, interval, debug, one_shot)
-        elif stripped == '[system_environment]' or \
-            (stripped.startswith('#') and stripped[1:].strip() == '[system_environment]'):
+        elif stripped == '[system_environment]' or (
+            stripped.startswith('#') and stripped[1:].strip() == '[system_environment]'
+        ):
             has_sys_env = True
             output.append('[system_environment]\n')
             add_system_environment(output, env_vars)
@@ -104,18 +108,21 @@ def migrate_env_to_config(sysconfig_filename=None, general_config_filename=None)
     with open(general_config_filename, "w") as conf:
         conf.writelines(output)
 
+
 def add_global(output, interval, debug, one_shot):
     if interval:
         output.append("#migrated\ninterval=%s\n" % interval.strip())
     if debug:
-        output.append("#migrated\ndebug=%s\n" % ('True' if debug.strip()=='1' else 'False'))
+        output.append("#migrated\ndebug=%s\n" % ('True' if debug.strip() == '1' else 'False'))
     if one_shot:
-        output.append("#migrated\noneshot=%s\n" % ('True' if one_shot.strip()=='1' else 'False'))
+        output.append("#migrated\noneshot=%s\n" % ('True' if one_shot.strip() == '1' else 'False'))
+
 
 def add_system_environment(output, env_vars={}):
     for key, value in env_vars.items():
         if key:
             output.append("#migrated\n%s=%s\n" % (key, value.strip()))
+
 
 if __name__ == '__main__':
     main()

@@ -11,12 +11,18 @@ from mock import Mock, patch, call, ANY
 from threading import Event
 
 from virtwho import MinimumJobPollInterval
-from virtwho.config import DestinationToSourceMapper, VW_GLOBAL, EffectiveConfig, parse_file, \
-    VirtConfigSection
+from virtwho.config import (
+    DestinationToSourceMapper, VW_GLOBAL, EffectiveConfig,
+    parse_file, VirtConfigSection
+)
 from virtwho.datastore import Datastore
 from virtwho.manager import ManagerThrottleError, ManagerError
-from virtwho.virt import HostGuestAssociationReport, Hypervisor, Guest, \
-    DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport, Virt, VirtError, StatusReport
+from virtwho.virt import (
+    HostGuestAssociationReport, Hypervisor, Guest,
+    DestinationThread, ErrorReport, AbstractVirtReport, DomainListReport,
+    Virt, VirtError, StatusReport
+)
+
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 
@@ -112,6 +118,7 @@ owner=owner
             ]
         }
 
+
 class TestVirtStatus(TestBase):
 
     def test_status_error(self):
@@ -124,16 +131,18 @@ class TestVirtStatus(TestBase):
         }
         config = VirtConfigSection('test', None)
         config.update(**config_values)
-        self.virt = Virt(self.logger, config, None, interval=60)  #  No dest given here
+        self.virt = Virt(self.logger, config, None, interval=60)  # No dest given here
         self.virt.status = True
         self.virt._send_data = Mock()
-        self.virt._run=Mock(side_effect=VirtError('unable to connect to source'))
+        self.virt._run = Mock(side_effect=VirtError('unable to connect to source'))
         self.run_once()
 
         self.virt._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(self.virt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
-        self.assertEqual(self.virt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
-                             'unable to connect to source.')
+        self.assertEqual(
+            self.virt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+            'unable to connect to source.'
+        )
 
     def run_once(self, datastore=None):
         ''' Run generic virt in oneshot mode '''
@@ -146,6 +155,7 @@ class TestVirtStatus(TestBase):
         self.virt._oneshot = True
         self.virt._interval = 0
         self.virt.run()
+
 
 class TestDestinationThread(TestBase):
 
@@ -333,8 +343,10 @@ class TestDestinationThread(TestBase):
         options.print_ = False
 
         def check_hypervisorCheckIn(report, options=None):
-            self.assertEqual(report.association['hypervisors'],
-                              data_to_send.values)
+            self.assertEqual(
+                report.association['hypervisors'],
+                data_to_send.values
+            )
 
         manager.hypervisorCheckIn = Mock(side_effect=check_hypervisorCheckIn)
         logger = Mock()
@@ -463,8 +475,6 @@ class TestDestinationThread(TestBase):
         report1 = HostGuestAssociationReport(config1, assoc1)
         report2 = HostGuestAssociationReport(config2, assoc2)
 
-        data_to_send = {'source1': report1,
-                        'source2': report2}
         source_keys = ['source1', 'source2']
         batch_report1 = Mock()  # The "report" to check status
         batch_report1.state = AbstractVirtReport.STATE_CREATED
@@ -520,8 +530,6 @@ class TestDestinationThread(TestBase):
         report1.job_id = 'job1'
         report2.job_id = 'job2'
 
-        data_to_send = {'source1': report1,
-                        'source2': report2}
         source_keys = ['source1', 'source2']
         batch_report1 = Mock()  # The "report" to check status
         batch_report1.state = AbstractVirtReport.STATE_CREATED
@@ -549,14 +557,16 @@ class TestDestinationThread(TestBase):
         # expect and with what parameters we expect
         destination_thread.wait = Mock()
         destination_thread.is_terminated = Mock(return_value=False)
-        destination_thread.submitted_report_and_hash_for_source ={'source1':(report1, 'hash1'),'source2':(report2, 'hash2')}
+        destination_thread.submitted_report_and_hash_for_source = {
+            'source1': (report1, 'hash1'),
+            'source2': (report2, 'hash2')
+        }
         reports = destination_thread._get_data_common(source_keys)
         self.assertEqual(0, len(reports))
         reports = destination_thread._get_data_common(source_keys)
         self.assertEqual(1, len(reports))
         reports = destination_thread._get_data_common(source_keys)
         self.assertEqual(2, len(reports))
-
 
     # A closure to allow us to have a function that "modifies" the given
     # report in a predictable way.
@@ -818,12 +828,12 @@ class TestDestinationThread(TestBase):
 
     def test_merge_status(self):
         self.tmp_dir = tempfile.mkdtemp()
-        status_pid_file_name = self.tmp_dir + os.path.sep +'virt-who-status.pid'
+        status_pid_file_name = self.tmp_dir + os.path.sep + 'virt-who-status.pid'
         status_pid_file_patcher = patch('virtwho.virt.virt.STATUS_LOCK', status_pid_file_name)
         status_pid_file_patcher.start()
         self.addCleanup(status_pid_file_patcher.stop)
 
-        status_file_name = self.tmp_dir + os.path.sep +'run_data.json'
+        status_file_name = self.tmp_dir + os.path.sep + 'run_data.json'
         status_data_file_patcher = patch('virtwho.virt.virt.STATUS_DATA', status_file_name)
         status_data_file_patcher.start()
         self.addCleanup(status_data_file_patcher.stop)
@@ -867,7 +877,7 @@ class TestDestinationThread(TestBase):
                         'source2': report2}
 
         source_keys = ['source1', 'source2']
-        datastore = {'source1':Mock(), 'source2': Mock()}
+        datastore = {'source1': Mock(), 'source2': Mock()}
         manager = Mock()
         options = Mock()
         options.print_ = False

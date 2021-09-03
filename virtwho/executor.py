@@ -14,12 +14,6 @@ from virtwho.manager import Manager
 from virtwho.lock import FileLock, STATUS_LOCK, STATUS_DATA, STATUS_DATA_DIR
 from virtwho.virt import Virt, info_to_destination_class
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from .util import OrderedDict
-
 
 class ReloadRequest(Exception):
     ''' Reload of virt-who was requested by sending SIGHUP signal. '''
@@ -89,7 +83,7 @@ class Executor(object):
                     with open(STATUS_DATA, "r") as json_status:
                         try:
                             status_dict = json.load(json_status)
-                        except JSONDecodeError as e:
+                        except JSONDecodeError:
                             status_dict = {}
                 else:
                     status_dict = {}
@@ -104,7 +98,7 @@ class Executor(object):
                         status_dict['sources'][name] = {"last_successful_retrieve": None}
                         need_write = True
                     if name not in status_dict['destinations']:
-                        status_dict['destinations'][name] = {"last_successful_send": None,"last_job_id": None}
+                        status_dict['destinations'][name] = {"last_successful_send": None, "last_job_id": None}
                         need_write = True
                 if need_write:
                     # need to create the file if it does not exist

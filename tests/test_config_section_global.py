@@ -23,7 +23,7 @@ Test validating of GlobalSection.
 
 from base import TestBase
 
-from virtwho.config import GlobalSection, str_to_bool, MinimumSendInterval, DefaultInterval
+from virtwho.config import GlobalSection, str_to_bool, DefaultInterval
 from virtwho.log import DEFAULT_LOG_DIR
 
 # Values used for testing GlobalConfigSection
@@ -58,7 +58,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_debug_value_bool(self):
         """
-        Test validating of correct bool value 
+        Test validating of correct bool value
         """
         result = self.global_config._validate_str_to_bool('debug')
         self.assertIsNone(result)
@@ -67,7 +67,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_oneshot_value_string_true(self):
         """
-        Test validating of correct bool value stored as string ('true') 
+        Test validating of correct bool value stored as string ('true')
         """
         result = self.global_config._validate_str_to_bool('oneshot')
         self.assertIsNone(result)
@@ -76,7 +76,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_print_value_string_false(self):
         """
-        Test validating of correct bool value stored as string ('false') 
+        Test validating of correct bool value stored as string ('false')
         """
         result = self.global_config._validate_str_to_bool('print')
         self.assertIsNone(result)
@@ -85,7 +85,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_wrong_bool_value(self):
         """
-        Test validating of wrong string representing bool ('nein') 
+        Test validating of wrong string representing bool ('nein')
         """
         self.assertRaises(ValueError, str_to_bool, self.global_config['wrong_bool_value'])
         result = self.global_config._validate_str_to_bool('wrong_bool_value')
@@ -94,7 +94,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_non_existing_key(self):
         """
-        Test validation of non-existing key 
+        Test validation of non-existing key
         """
         result = self.global_config._validate_str_to_bool('does_not_exist')
         self.assertIsNotNone(result)
@@ -102,7 +102,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_string(self):
         """
-        Test validation of correct string value 
+        Test validation of correct string value
         """
         result = self.global_config._validate_non_empty_string('log_file')
         self.assertIsNone(result)
@@ -147,7 +147,7 @@ class TestGlobalConfigSection(TestBase):
 
     def test_validate_section_values(self):
         """
-        Test validation of all config values 
+        Test validation of all config values
         """
         validate_messages = self.global_config.validate()
         # TODO: use following expected messages, when format of warning/error messages will be settled down.

@@ -10,8 +10,10 @@ from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
-from virtwho.config import VirtConfigSection, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME,\
-    init_config
+from virtwho.config import (
+    VirtConfigSection, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME,
+    init_config, parse_file, EffectiveConfig
+)
 from virtwho.manager import Manager
 from virtwho.manager.subscriptionmanager import SubscriptionManager
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport, DomainListReport, AbstractVirtReport, StatusReport
@@ -82,8 +84,10 @@ class TestSubscriptionManager(TestBase):
             '',
             dict((host.hypervisorId, [g.toDict() for g in host.guestIds]) for host in self.mapping['hypervisors']),
             options=None)
-        self.sm.logger.warning.assert_called_with("The hypervisor id '123' is assigned to 2 different systems. "
-                        "Only one will be recorded at the server.")
+        self.sm.logger.warning.assert_called_with(
+            "The hypervisor id '123' is assigned to 2 different systems. "
+            "Only one will be recorded at the server."
+        )
 
     @patch('rhsm.connection.UEPConnection')
     # def test_hypervisorCheckInAsync(self):
@@ -102,8 +106,10 @@ class TestSubscriptionManager(TestBase):
             expected,
             options=None
         )
-        self.sm.logger.warning.assert_called_with("The hypervisor id '123' is assigned to 2 different systems. "
-                        "Only one will be recorded at the server.")
+        self.sm.logger.warning.assert_called_with(
+            "The hypervisor id '123' is assigned to 2 different systems. "
+            "Only one will be recorded at the server."
+        )
         self.sm.connection.return_value.has_capability = MagicMock(return_value=False)
 
     @patch('rhsm.connection.UEPConnection')
@@ -141,9 +147,9 @@ class TestSubscriptionManager(TestBase):
             'state': 'FINISHED',
             'resultData': {
                 'failedUpdate': ["failed"],
-                'updated': [ {'uuid', '123'} ],
-                'created': [ {'uuid' '456' } ],
-                'unchanged': [ {'uuid', '789'} ]
+                'updated': [{'uuid', '123'}],
+                'created': [{'uuid' '456'}],
+                'unchanged': [{'uuid', '789'}]
             }
         }
         self.sm.logger = MagicMock()
@@ -168,9 +174,9 @@ class TestSubscriptionManager(TestBase):
             'state': 'FINISHED',
             'resultData': {
                 'failedUpdate': ["failed"],
-                'updated': [ {'uuid', '123'} ],
-                'created': [ {'uuid' '456' } ],
-                'unchanged': [ {'uuid', '789'} ]
+                'updated': [{'uuid', '123'}],
+                'created': [{'uuid' '456'}],
+                'unchanged': [{'uuid', '789'}]
             }
         }
         self.sm.logger = MagicMock()
@@ -179,6 +185,7 @@ class TestSubscriptionManager(TestBase):
         self.assertEqual(self.sm.logger.debug.call_count, 3)
         self.assertEqual(report.state, AbstractVirtReport.STATE_FINISHED)
         self.assertEqual(report.last_job_status, 'FINISHED')
+
 
 class TestSubscriptionManagerConfig(TestBase):
     @classmethod

@@ -249,7 +249,7 @@ class Esx(virt.Virt):
     def getHostGuestMapping(self):
         mapping = {'hypervisors': []}
         for host_id, host in list(self.hosts.items()):
-            if self.skip_for_parent(host_id, host) :
+            if self.skip_for_parent(host_id, host):
                 continue
             guests = []
 
@@ -342,13 +342,13 @@ class Esx(virt.Virt):
         parent = host['parent'].value
         if self.config['exclude_host_parents'] is not None:
             for seg in self.config['exclude_host_parents']:
-                if re.search(seg.replace("*",".*"), parent):
+                if re.search(seg.replace("*", ".*"), parent):
                     self.logger.debug("Skipping host '%s' because its parent '%s' is excluded", host_id, parent)
                     return True
         if self.config['filter_host_parents'] is not None:
             found = False
             for seg in self.config['filter_host_parents']:
-                if re.search(seg.replace("*",".*"), parent):
+                if re.search(seg.replace("*", ".*"), parent):
                     found = True
             if not found:
                 self.logger.debug("Skipping host '%s' because its parent '%s' is not included", host_id, parent)
@@ -578,7 +578,7 @@ class EsxConfigSection(VirtConfigSection):
             # We must follow that check.
             try:
                 self._values[key].encode("ascii")
-            except (UnicodeDecodeError, UnicodeEncodeError) as e:
+            except (UnicodeDecodeError, UnicodeEncodeError):
                 error = (
                     'error',
                     "Option %s needs to be ASCII characters only: '%s'" % (key, self.name)

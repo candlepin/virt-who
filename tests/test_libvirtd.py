@@ -66,7 +66,6 @@ class TestLibvirtd(TestBase):
         self.run_virt(config)
         virt.assert_called_with("")
 
-
     @patch('libvirt.openReadOnly')
     def test_read_status(self, virt):
         config = self.create_config('test', None, type='libvirt')
@@ -86,7 +85,6 @@ class TestLibvirtd(TestBase):
         v._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(v._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
-
 
     @patch('libvirt.openReadOnly')
     def test_read_status_bad_source_credentials(self, virt):
@@ -109,8 +107,10 @@ class TestLibvirtd(TestBase):
         v._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(v._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], None)
-        self.assertEqual(v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
-                         "Incorrect domain/username/password.")
+        self.assertEqual(
+            v._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+            "Incorrect domain/username/password."
+        )
 
     @patch('libvirt.openReadOnly')
     def test_read_fail(self, virt):
@@ -147,8 +147,9 @@ class TestLibvirtd(TestBase):
 
     @patch('libvirt.openReadOnly')
     def test_remote_url_with_username(self, virt):
-        config = self.create_config('test', None, type='libvirt', server='abc://server/test',
-                        username='user')
+        config = self.create_config(
+            'test', None, type='libvirt', server='abc://server/test', username='user'
+        )
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         virt.return_value.getType.return_value = "LIBVIRT_TYPE"
         virt.return_value.getVersion.return_value = "VERSION 1337"
@@ -157,8 +158,9 @@ class TestLibvirtd(TestBase):
 
     @patch('libvirt.openAuth')
     def test_remote_hostname_with_username_and_password(self, virt):
-        config = self.create_config('test', None, type='libvirt', server='server',
-                        username='user', password='pass')
+        config = self.create_config(
+            'test', None, type='libvirt', server='server', username='user', password='pass'
+        )
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         virt.return_value.getType.return_value = "LIBVIRT_TYPE"
         virt.return_value.getVersion.return_value = "VERSION 1337"
@@ -168,8 +170,9 @@ class TestLibvirtd(TestBase):
 
     @patch('libvirt.openAuth')
     def test_remote_url_with_username_and_password(self, virt):
-        config = self.create_config('test', None, type='libvirt', server='abc://server/test',
-                        username='user', password='pass')
+        config = self.create_config(
+            'test', None, type='libvirt', server='abc://server/test', username='user', password='pass'
+        )
         virt.return_value.getCapabilities.return_value = LIBVIRT_CAPABILITIES_XML
         virt.return_value.getType.return_value = "LIBVIRT_TYPE"
         virt.return_value.getVersion.return_value = "VERSION 1337"

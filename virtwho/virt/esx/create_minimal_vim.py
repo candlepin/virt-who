@@ -99,6 +99,7 @@ def clean_up_vim(vim, keep_methods=None, keep_types=None):
 
     return vim
 
+
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: %s /path/to/vim.wsdl")

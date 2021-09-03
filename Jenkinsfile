@@ -4,9 +4,18 @@ pipeline {
     timeout(time: 10, unit: 'MINUTES')
   }
   stages {
-    stage('Pytest') {
-      steps {
-          sh readFile(file: 'jenkins/pytest.sh')          
+    stage('Test') {
+      parallel {
+        stage('Pytest') {
+          steps {
+              sh readFile(file: 'jenkins/pytest.sh')          
+          }
+        }
+        stage('stylish') {
+          steps {
+            sh readFile(file: 'jenkins/stylish.sh')
+          }
+        }
       }
     }
   }

@@ -24,15 +24,12 @@ configuration from environment variables.
 
 import os
 import sys as _sys
-import six
 
 from argparse import ArgumentParser, Action
 
-from virtwho import log, MinimumSendInterval, DefaultInterval, SAT5, SAT6
-from virtwho.config import NotSetSentinel, init_config, DEFAULTS, VW_GLOBAL,\
-    VW_ENV_CLI_SECTION_NAME
+from virtwho import log, SAT5, SAT6
+from virtwho.config import NotSetSentinel, init_config, DEFAULTS, VW_ENV_CLI_SECTION_NAME
 from virtwho.virt.virt import Virt
-from virtwho import log
 
 # Module-level logger
 logger = log.getLogger(name='parser', queue=False)
@@ -46,7 +43,7 @@ SAT5_VM_DISPATCHER = {
     'rhevm': {'owner': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'server': True, 'username': True},
     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
-    'ahv' : {'owner': False, 'server': False, 'username': False},
+    'ahv': {'owner': False, 'server': False, 'username': False},
 }
 
 SAT6_VM_DISPATCHER = {
@@ -55,8 +52,9 @@ SAT6_VM_DISPATCHER = {
     'rhevm': {'owner': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'server': True, 'username': True},
     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
-    'ahv' : {'owner': False, 'server': False, 'username': False},
+    'ahv': {'owner': False, 'server': False, 'username': False},
 }
+
 
 class OptionError(Exception):
     pass
@@ -208,7 +206,7 @@ def read_vm_backend_env_variables(env_vars):
     if env_vars.get('virt_type') in VM_DISPATCHER.keys():
         virt_type = env_vars['virt_type']
 
-        keys = ['owner', 'server', 'username','password']
+        keys = ['owner', 'server', 'username', 'password']
         for key in keys:
             if len(env_vars.get(key, '')) == 0:
                 env_vars[key] = os.getenv("VIRTWHO_" + virt_type.upper() + "_" + key.upper(), "")
@@ -220,12 +218,14 @@ def read_vm_backend_env_variables(env_vars):
             del env_vars[key]
     return env_vars, errors
 
+
 def get_version():
-    version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),'version.py')
+    version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'version.py')
     version = {}
     with open(version_file) as fp:
         exec(fp.read(), version)
     return "virt-who %s" % version['__version__']
+
 
 def parse_cli_arguments():
     """
@@ -236,10 +236,12 @@ def parse_cli_arguments():
     parser = ArgumentParser(
         usage="virt-who [-d] [-o] [-i INTERVAL] [-p] [-c CONFIGS] [-s] [-j] [--version]",
         description="Agent for reporting virtual guest IDs to subscription manager",
-        epilog = "virt-who also reads environment variables. They have the same name as "
-              "command line arguments but uppercased, with underscore instead of dash "
-              "and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are "
-              "considered as disabled, non-empty as enabled."
+        epilog=(
+            "virt-who also reads environment variables. They have the same name as "
+            "command line arguments but uppercased, with underscore instead of dash "
+            "and prefixed with VIRTWHO_ (e.g. VIRTWHO_ONE_SHOT). Empty variables are "
+            "considered as disabled, non-empty as enabled."
+        )
     )
     parser.add_argument("-d", "--debug", action="store_true", dest="debug", default=False,
                         help="Enable debugging output")
@@ -288,7 +290,7 @@ def parse_options():
                           'owner', 'env', 'server', 'username', 'password',
                           'sat_server', 'sat_username', 'sat_password',  'sm_type']
     VIRT_TYPE_OPTIONS = ['owner', 'server', 'username', 'password']
-    SAT_OPTION_MAP = {'sat_server':'satellite-server', 'sat_username':'satellite-username', 'sat_password':'satellite-password'}
+    SAT_OPTION_MAP = {'sat_server': 'satellite-server', 'sat_username': 'satellite-username', 'sat_password': 'satellite-password'}
 
     # Read command line arguments first
     cli_options, errors, defaults = parse_cli_arguments()
@@ -332,9 +334,11 @@ def parse_options():
     if '--sam' in _sys.argv:
         used_deprecated_cli_options.append('sam')
 
-    deprecated_options_msg = "The following cli options: %s are deprecated and will be removed " \
-    "in the next release. Please see 'man virt-who-config' for details on adding a configuration "\
-    "section."
+    deprecated_options_msg = (
+        "The following cli options: %s are deprecated and will be removed "
+        "in the next release. Please see 'man virt-who-config' for details on adding "
+        "a configuration section."
+    )
     if used_deprecated_cli_options:
         logger.warning(deprecated_options_msg % ', '.join('--' + item for item in used_deprecated_cli_options))
 

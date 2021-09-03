@@ -90,6 +90,7 @@ version = {}
 with open('virtwho/version.py') as ver_file:
     exec(ver_file.read(), version)
 
+
 # subclass build_py so we can generate
 # version.py based on either args passed
 # in (--rpm-version, --gtk-version) or
@@ -123,20 +124,22 @@ class rpm_version_release_build_py(_build_py):
                 try:
                     lines = []
                     with open(version_file, 'r') as f:
-                        for l in f.readlines():
-                            l = l.replace("RPM_VERSION", str(self.rpm_version))
-                            lines.append(l)
+                        for line in f.readlines():
+                            line = line.replace("RPM_VERSION", str(self.rpm_version))
+                            lines.append(line)
 
                     with open(version_file, 'w') as f:
-                        for l in lines:
-                            f.write(l)
+                        for line in lines:
+                            f.write(line)
                 except EnvironmentError:
                     raise
+
 
 class build(_build):
     user_options = _build.user_options + [
         ('rpm-version=', None, 'version and release of the RPM this is built for')
     ]
+
     def initialize_options(self):
         _build.initialize_options(self)
         self.rpm_version = None
@@ -158,6 +161,7 @@ class build(_build):
             # When building the RPM there won't be a git repo to introspect so
             # builders *must* specify the version via the --rpm-version option
             return "unknown"
+
 
 setup(
     name='virt-who',

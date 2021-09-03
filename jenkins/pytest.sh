@@ -6,8 +6,8 @@ sudo dnf update -y
 sudo dnf install -y libnl3-devel swig python3-libvirt
 sudo yum-builddep -y virt-who.spec 
 
-virtualenv env -p python3
-source env/bin/activate
+virtualenv env-pytest -p python3
+source env-pytest/bin/activate
 
 pip install -U setuptools
 pip install -r requirements.txt

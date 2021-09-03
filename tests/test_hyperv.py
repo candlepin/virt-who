@@ -31,7 +31,7 @@ from base import TestBase
 from proxy import Proxy
 
 from virtwho import DefaultInterval
-from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection, HyperVSoap
+from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection
 from virtwho.virt import VirtError, Guest, Hypervisor, StatusReport
 
 

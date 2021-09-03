@@ -31,7 +31,7 @@ import pytest
 from six.moves import xmlrpc_client
 from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from binascii import hexlify
-from mock import Mock, MagicMock, patch
+from mock import Mock, patch
 
 from base import TestBase
 
@@ -137,6 +137,7 @@ class FakeSatellite(SimpleXMLRPCServer):
     def get_user_details(self, session, login):
         assert session == self.AUTH_TOKEN
         return dict(org_id=101)
+
 
 xvirt = type("", (), {'CONFIG_TYPE': 'xxx'})()
 

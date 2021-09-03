@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 200
+statistics = true
+count = true
+extend-exclude =
+	env*
+per-file-ignores =
+	tests/test_config_migrate.py:E122,E128
+	tests/test_hyperv.py:E501
+
+# E122 continuation line missing indentation or outdented
+# E128 continuation line under-indented for visual indent
+# E501 line too long

@@ -49,7 +49,7 @@ class TestEsx(TestBase):
         config = EsxConfigSection('test', None)
         config.update(**config_values)
         config.validate()
-        self.esx = Esx(self.logger, config, None, interval=DefaultInterval)  #  No dest given here
+        self.esx = Esx(self.logger, config, None, interval=DefaultInterval)  # No dest given here
 
     def run_once(self, datastore=None):
         ''' Run ESX in oneshot mode '''
@@ -240,7 +240,6 @@ class TestEsx(TestBase):
     def test_getHostGuestMappingNoHostName(self, mock_client):
         expected_hypervisorId = 'Fake_uuid'
         expected_guestId = 'guest1UUID'
-        expected_guest_state = Guest.STATE_RUNNING
 
         fake_parent = MagicMock()
         fake_parent.value = 'fake_parent_id'
@@ -269,7 +268,6 @@ class TestEsx(TestBase):
         self.esx.clusters = {'fake_parent_id': fake_cluster}
 
         assert (len(self.esx.getHostGuestMapping()['hypervisors']) == 0)
-
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping_incomplete_data(self, mock_client):
@@ -325,7 +323,6 @@ class TestEsx(TestBase):
         )
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
-
 
     @patch('suds.client.Client')
     def test_getHostGuestMapping_cluster_slash(self, mock_client):
@@ -383,7 +380,6 @@ class TestEsx(TestBase):
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-
     @patch('suds.client.Client')
     def test_oneshot(self, mock_client):
         expected_assoc = '"well formed HostGuestMapping"'
@@ -434,7 +430,6 @@ class TestEsx(TestBase):
         except AttributeError:
             self.fail('applyHostSystemUpdate raised AttributeError unexpectedly')
         self.assertDictEqual(self.esx.hosts[objectSet.obj.value], dict())
-
 
     def test_applyHostSystemUpdate_leave(self):
         objectSet = Mock()
@@ -574,10 +569,10 @@ class TestEsx(TestBase):
         self.esx.config['filter_host_parents'] = ["notThisOne"]
         self.assertTrue(self.esx.skip_for_parent("test", host))
         # multi-list match
-        self.esx.config['filter_host_parents'] = ["*Parent","notThisOne"]
+        self.esx.config['filter_host_parents'] = ["*Parent", "notThisOne"]
         self.assertFalse(self.esx.skip_for_parent("test", host))
         # multi-list no match
-        self.esx.config['filter_host_parents'] = ["wrongParent","notThisOne"]
+        self.esx.config['filter_host_parents'] = ["wrongParent", "notThisOne"]
         self.assertTrue(self.esx.skip_for_parent("test", host))
 
         self.esx.config['filter_host_parents'] = None
@@ -591,10 +586,9 @@ class TestEsx(TestBase):
         # no match
         self.esx.config['exclude_host_parents'] = ["notThisOne"]
         self.assertFalse(self.esx.skip_for_parent("test", host))
-        #multi-list match
-        self.esx.config['exclude_host_parents'] = ["the*","notThisOne"]
+        # multi-list match
+        self.esx.config['exclude_host_parents'] = ["the*", "notThisOne"]
         self.assertTrue(self.esx.skip_for_parent("test", host))
-        #multi-list no match
-        self.esx.config['exclude_host_parents'] = ["wrongParent","notThisOne"]
+        # multi-list no match
+        self.esx.config['exclude_host_parents'] = ["wrongParent", "notThisOne"]
         self.assertFalse(self.esx.skip_for_parent("test", host))
-

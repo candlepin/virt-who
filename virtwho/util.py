@@ -33,7 +33,7 @@ class Singleton(ABCMeta):
     declared on the metaclass will end up as an attribute on the resultant classes.
     This Metaclass enables all classes that use it to share the '_instances' dict.
     Actual instances of each such class are maintained there.
-    
+
     See https://stackoverflow.com/questions/6760685/creating-a-singleton-in-python
     for an explanation of why we want to create a metaclass for Singletons in python
     """
@@ -50,7 +50,6 @@ class Singleton(ABCMeta):
             # Create the actual instance of the class and add it to those we are tracking
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
-
 
 
 class RequestsXmlrpcTransport(xmlrpc_client.SafeTransport):

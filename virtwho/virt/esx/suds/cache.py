@@ -196,13 +196,13 @@ class FileCache(Cache):
                 version = f.read()
             finally:
                 f.close()
-            if version != suds.__version__:
+            if version != virtwho.virt.esx.suds.__version__:
                 raise Exception()
         except Exception:
             self.clear()
             f = self.__open(path, "w")
             try:
-                f.write(suds.__version__)
+                f.write(virtwho.virt.esx.suds.__version__)
             finally:
                 f.close()
 
@@ -286,7 +286,7 @@ class DocumentCache(FileCache):
         try:
             fp = self._getf(id)
             if fp is not None:
-                p = suds.sax.parser.Parser()
+                p = virtwho.virt.esx.suds.sax.parser.Parser()
                 cached = p.parse(fp)
                 fp.close()
                 return cached
@@ -297,8 +297,8 @@ class DocumentCache(FileCache):
 
     def put(self, id, object):
         if isinstance(object,
-                (suds.sax.document.Document, suds.sax.element.Element)):
-            super(DocumentCache, self).put(id, suds.byte_str(str(object)))
+                (virtwho.virt.esx.suds.sax.document.Document, virtwho.virt.esx.suds.sax.element.Element)):
+            super(DocumentCache, self).put(id, virtwho.virt.esx.suds.byte_str(str(object)))
         return object
 
 

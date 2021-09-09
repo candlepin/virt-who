@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        1.31.16
-Release:        %{release_number}%{?dist}
+Release:        2%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -163,6 +163,10 @@ fi
 
 
 %changelog
+* Thu Sep 09 2021 William Poteat <wpoteat@redhat.com> 1.31.16-2
+- 1997932: Add suds support to codebase in lieu of python3-suds
+  (wpoteat@redhat.com)
+
 * Fri Aug 06 2021 William Poteat <wpoteat@redhat.com> 1.31.16-1
 - 1990550: Add the description for nutanix mode in man virt-who and man virt-
   who-config (wpoteat@redhat.com)

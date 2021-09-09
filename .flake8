@@ -2,6 +2,10 @@
 max-line-length = 200
 statistics = true
 count = true
+exclude =
+        virtwho/virt/esx/suds
+        tests/suds
+        conftest.py
 extend-exclude =
 	env*
 per-file-ignores =

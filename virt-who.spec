@@ -49,10 +49,6 @@ Requires:       python3-subscription-manager-rhsm > 1.25.6
 %else
 Requires:       subscription-manager-rhsm > 1.25.6
 %endif
-# python-suds is required for vSphere support
-%if 0%{?fedora} || (0%{?rhel} && 0%{?rhel} < 9)
-Requires:       %{python_ver}-suds
-%endif
 # m2crypto OR python3-cryptography is required for Hyper-V support
 %if %{use_python3}
 Requires:       python3-cryptography

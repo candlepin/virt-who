@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import requests
-import suds
+import virtwho.virt.esx.suds
 from mock import patch, ANY, MagicMock, Mock
 from threading import Event
 
@@ -63,7 +63,7 @@ class TestEsx(TestBase):
         self.esx._interval = 0
         self.esx._run()
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_connect(self, mock_client):
         mock_client.return_value.service.WaitForUpdatesEx.return_value = None
         self.run_once()
@@ -73,7 +73,7 @@ class TestEsx(TestBase):
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_connect_utf_password(self, mock_client):
         mock_client.return_value.service.WaitForUpdatesEx.return_value = None
         # Change password to include some UTF character
@@ -87,17 +87,17 @@ class TestEsx(TestBase):
             _this=ANY, userName='username', password=u'Žluťoučký_kůň'
         )
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_connection_timeout(self, mock_client):
         mock_client.side_effect = requests.Timeout('timed out')
         self.assertRaises(VirtError, self.run_once)
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_invalid_login(self, mock_client):
-        mock_client.return_value.service.Login.side_effect = suds.WebFault('Permission to perform this operation was denied.', '')
+        mock_client.return_value.service.Login.side_effect = virtwho.virt.esx.suds.WebFault('Permission to perform this operation was denied.', '')
         self.assertRaises(VirtError, self.run_once)
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_disable_simplified_vim(self, mock_client):
         self.esx.config.simplified_vim = False
         mock_client.return_value.service.RetrievePropertiesEx.return_value = None
@@ -110,7 +110,7 @@ class TestEsx(TestBase):
         mock_client.return_value.service.RetrieveServiceContent.assert_called_once_with(_this=ANY)
         mock_client.return_value.service.Login.assert_called_once_with(_this=ANY, userName='username', password='password')
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_getHostGuestMapping(self, mock_client):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
@@ -166,7 +166,7 @@ class TestEsx(TestBase):
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_status(self, mock_client):
         mock_client.return_value.service.WaitForUpdatesEx.return_value = None
         self.esx.status = True
@@ -177,7 +177,7 @@ class TestEsx(TestBase):
         self.assertTrue(isinstance(self.esx._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
         self.assertEqual(self.esx._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.esx.config['server'])
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_getHostGuestMappingVersionUUID(self, mock_client):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
@@ -236,7 +236,7 @@ class TestEsx(TestBase):
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_getHostGuestMappingNoHostName(self, mock_client):
         expected_hypervisorId = 'Fake_uuid'
         expected_guestId = 'guest1UUID'
@@ -269,7 +269,7 @@ class TestEsx(TestBase):
 
         assert (len(self.esx.getHostGuestMapping()['hypervisors']) == 0)
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_getHostGuestMapping_incomplete_data(self, mock_client):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
@@ -324,7 +324,7 @@ class TestEsx(TestBase):
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_getHostGuestMapping_cluster_slash(self, mock_client):
         expected_hostname = 'hostname.domainname'
         expected_hypervisorId = 'Fake_uuid'
@@ -380,7 +380,7 @@ class TestEsx(TestBase):
         result = self.esx.getHostGuestMapping()['hypervisors'][0]
         self.assertEqual(expected_result.toDict(), result.toDict())
 
-    @patch('suds.client.Client')
+    @patch('virtwho.virt.esx.suds.client.Client')
     def test_oneshot(self, mock_client):
         expected_assoc = '"well formed HostGuestMapping"'
         expected_report = HostGuestAssociationReport(self.esx.config, expected_assoc)

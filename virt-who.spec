@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.16
+Version:        1.31.17
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -163,6 +163,21 @@ fi
 
 
 %changelog
+* Tue Sep 14 2021 William Poteat <wpoteat@redhat.com> 1.31.17-1
+- Bypass stylish check on suds code (wpoteat@redhat.com)
+- 2000922: Add the suds code to virt-who in place of python3-suds package
+  (wpoteat@redhat.com)
+- ENT-4004: Fix flake8 issues for test files (mhorky@redhat.com)
+- ENT-4004: Use four spaces for indentation (mhorky@redhat.com)
+- ENT-4004: Fix flake8 issues (mhorky@redhat.com)
+- ENT-4004: Add stylish tests (mhorky@redhat.com)
+- Cannot use ESX where python3-suds is not available (wpoteat@redhat.com)
+- 1981249: Stop using NTLM which requires MD4 (OpenSSL 3.0)
+  (csnyder@redhat.com)
+- 1989877: Status command does not reach actual credentials checking
+  (wpoteat@redhat.com)
+- Make changes to follow Conscious language initiative (mhorky@redhat.com)
+
 * Fri Aug 06 2021 William Poteat <wpoteat@redhat.com> 1.31.16-1
 - 1990550: Add the description for nutanix mode in man virt-who and man virt-
   who-config (wpoteat@redhat.com)

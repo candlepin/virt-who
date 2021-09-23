@@ -1,6 +1,7 @@
 [Unit]
 Description=Daemon for reporting virtual guest IDs to subscription-manager
 After=libvirtd.service network.target
+Wants=libvirtd-ro.socket
 
 [Service]
 Type=notify

@@ -20,16 +20,13 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-import re
 from six.moves import urllib
 import base64
-import struct
 from xml.etree import ElementTree
 from requests.auth import AuthBase
 import requests
 
 from virtwho import virt
-from . import ntlm
 from virtwho.config import VirtConfigSection
 
 try:
@@ -101,9 +98,7 @@ class HyperVAuth(AuthBase):
         self.password = password
         self.logger = logger
         self.authenticated = False
-        self.ignore_ntlm = True
         self.num_401s = 0
-        self.ntlm = None
         self.basic = None
 
     def prepare_resend(self, response):
@@ -114,98 +109,6 @@ class HyperVAuth(AuthBase):
         response.content
         response.raw.release_conn()
         return response.request.copy()
-
-    def retry_ntlm_negotiate(self, response, **kwargs):
-        self.logger.debug("Using NTLM authentication")
-
-        request = self.prepare_resend(response)
-
-        self.ntlm = ntlm.Ntlm()
-        negotiate = base64.b64encode(self.ntlm.negotiate_message(self.username)).decode('utf-8')
-        request.headers["Authorization"] = "Negotiate %s" % negotiate
-        r = response.connection.send(request, **kwargs)
-        if r.status_code != 401:
-            raise HyperVAuthFailed("NTLM authentication failed, unexpected error code %d" % r.status_code)
-        return self.retry_ntlm_authenticate(r, **kwargs)
-
-    def retry_ntlm_authenticate(self, response, **kwargs):
-        self.logger.debug("Sending NTLM authentication data")
-
-        request = self.prepare_resend(response)
-
-        auth_header = response.headers.get("www-authenticate", '')
-        nego, challenge = auth_header.split(" ", 1)
-        if nego != "Negotiate":
-            self.logger.warning("Wrong ntlm header: %s", auth_header)
-
-        negotiate = base64.b64encode(self.ntlm.authentication_message(base64.b64decode(challenge), self.password))
-        negotiate = negotiate.decode('utf-8')
-        request.headers["Authorization"] = "Negotiate %s" % negotiate
-
-        # Encrypt body of original request and include it
-        request.body = self._body
-        request.headers['Content-Length'] = len(self._body)
-
-        self.encrypt_request(request)
-
-        r = response.connection.send(request, **kwargs)
-        if r.status_code == 401:
-            raise HyperVAuthFailed("Incorrect domain/username/password")
-        else:
-            self.authenticated = True
-            self.logger.debug("NTLM authentication successful")
-
-        return self.decrypt_response(r)
-
-    def encrypt_request(self, request):
-        # Seal the message
-        encrypted, signature = self.ntlm.encrypt(request.body)
-
-        boundary = 'Encrypted Boundary'
-        body = '''--{boundary}\r
-Content-Type: application/HTTP-SPNEGO-session-encrypted\r
-OriginalContent: type={original};Length={length}\r
---{boundary}\r
-Content-Type: application/octet-stream\r
-'''.format(
-            original=request.headers["Content-Type"],
-            length=len(encrypted),
-            boundary=boundary)
-        header_len = struct.pack('<I', len(signature))
-        bin_body = body.encode('utf-8') + header_len + signature + encrypted
-        bin_body += '--{boundary}--\r\n'.format(boundary=boundary).encode('utf-8')
-        request.headers["Content-Type"] = (
-            'multipart/encrypted;'
-            'protocol="application/HTTP-SPNEGO-session-encrypted";'
-            'boundary="{boundary}"').format(boundary=boundary)
-        request.body = bin_body
-        request.headers["Content-Length"] = len(bin_body)
-        return request
-
-    def decrypt_response(self, response):
-        # See `encrypt_request` method for format of the response
-        content_type = response.headers.get('Content-Type', 'text/xml')
-        if 'multipart/encrypted' not in content_type:
-            # The response is not encrypted, just return it
-            return response
-        data = response.raw.read(int(response.headers.get('Content-Length', 0))).decode('latin1')
-        parts = re.split(r'-- ?Encrypted Boundary', data)
-        try:
-            body = parts[2].lstrip('\r\n').split('\r\n', 1)[1]
-        except IndexError:
-            self.logger.debug("Incorrect multipart data: %s", data)
-            raise HyperVAuthFailed("Unable to decrypt sealed response: incorrect format")
-        body = body.encode('latin1')
-        # First four bytes of body is signature length
-        length = struct.unpack('<I', body[:4])[0]
-        # Then there is signature with given length
-        signature = body[4:4 + length]
-        # Message body follows
-        msg = body[4 + length:]
-        # Decrypt it
-        decrypted = self.ntlm.decrypt(msg, signature)
-        response._content = decrypted
-        return response
 
     def retry_basic(self, response, **kwargs):
         self.logger.debug("Using Basic authentication")
@@ -223,9 +126,6 @@ Content-Type: application/octet-stream\r
         return r
 
     def handle_response(self, response, **kwargs):
-        if self.authenticated and self.ntlm:
-            # If we're authenticated and have ntlm object, the body might be sealed
-            return self.decrypt_response(response)
         if response.status_code == requests.codes.ok and not self.authenticated:
             self.authenticated = True
             response.request.body = self._body
@@ -234,9 +134,7 @@ Content-Type: application/octet-stream\r
 
         if response.status_code == 401:
             authenticate_header = response.headers.get('www-authenticate', '').lower()
-            if 'negotiate' in authenticate_header and not self.ignore_ntlm:
-                return self.retry_ntlm_negotiate(response, **kwargs)
-            elif 'basic' in authenticate_header:
+            if 'basic' in authenticate_header:
                 return self.retry_basic(response, **kwargs)
             else:
                 raise HyperVAuthFailed(
@@ -251,9 +149,6 @@ Content-Type: application/octet-stream\r
             self._body = request.body
             request.body = None
             request.register_hook('response', self.handle_response)
-        elif self.ntlm:
-            request.register_hook('response', self.handle_response)
-            return self.encrypt_request(request)
         elif self.basic:
             request.headers['Authorization'] = self.basic
         return request

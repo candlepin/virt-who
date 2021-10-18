@@ -291,7 +291,10 @@ class AhvInterface(object):
     kwargs['verify'] = kwargs.get('verify', False)
     if 'timeout' not in kwargs:
       kwargs['timeout'] = self._timeout
-    if 'data' not in kwargs:
+    if 'json' in kwargs:
+      kwargs['data'] = json.dumps(kwargs['json'])
+      del kwargs['json']
+    else:
       body = {}
       kwargs['data'] = json.dumps(body)
     content_dict = {'content-type': 'application/json'}
@@ -359,7 +362,8 @@ class AhvInterface(object):
     # For task return. Use fv2.0 for now. update the url to use v2.0.
     url = self._url[:(self._url).rfind('v')] + 'v2.0' + uri
 
-    res = self._send(method=cmd_method, url=url)
+    body = {"entity_list": [{"entity_type": "kVm"}]}
+    res = self._send(method=cmd_method, url=url, json=body)
     data = res.json()
 
     if is_pc:

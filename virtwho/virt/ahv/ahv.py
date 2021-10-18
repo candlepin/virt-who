@@ -1,4 +1,5 @@
 import socket
+import time as time_func
 
 from . import ahv_constants
 from .ahv_interface import AhvInterface, Failure
@@ -9,6 +10,8 @@ from virtwho.virt import Hypervisor, Guest
 
 DefaultUpdateInterval = 1800
 MinimumUpdateInterval = 60
+DefaultWaitTime = 900
+MinWaitTime = 60
 
 class Ahv(virt.Virt):
   "AHV Rest client"
@@ -45,6 +48,7 @@ class Ahv(virt.Virt):
     self.username = self.config['username']
     self.password = self.config['password']
     self.update_interval = self.config['update_interval']
+    self.wait_time = self.config['wait_time_in_sec']
     self._interface = AhvInterface(logger, self.url, self.username,
                                    self.password, self.port,
                                    internal_debug=self.config['internal_debug'])
@@ -77,6 +81,9 @@ class Ahv(virt.Virt):
                                                self.is_pc)
           if len(response) == 0:
             # No events, continue to wait
+            self.logger.debug('wait for %s seconds before looking for '
+                              'new events\n' % self.wait_time)
+            time_func.sleep(self.wait_time)
             continue
           self.logger.debug('AHV event found: %s\n' % response)
           return response
@@ -97,13 +104,13 @@ class Ahv(virt.Virt):
       None.
     """
     mapping = {'hypervisors': []}
-    
+
     host_uvm_map = self._interface.build_host_to_uvm_map(self.version)
 
     for host_uuid in host_uvm_map:
       host = host_uvm_map[host_uuid]
-    
-      try: 
+
+      try:
         if self.config['hypervisor_id'] == 'uuid':
           hypervisor_id = host_uuid
         elif self.config['hypervisor_id'] == 'hostname':
@@ -222,6 +229,10 @@ class AhvConfigSection(VirtConfigSection):
     self.add_key('update_interval',
                  validation_method=self._validate_update_interval,
                  default=DefaultUpdateInterval)
+    self.add_key(
+            'wait_time_in_sec',
+            validation_method=self._validate_wait_time,
+            default=DefaultWaitTime)
 
   def _validate_server(self, key):
     """
@@ -262,4 +273,32 @@ class AhvConfigSection(VirtConfigSection):
     except (TypeError, ValueError) as e:
       result = (
       'warning', '%s was not set to a valid integer: %s' % (key, str(e)))
+    return result
+
+  def _validate_wait_time(self, key):
+    """
+    Validate the wait time  flag.
+    Args:
+      key (Int): wait time value.
+    Returns:
+      A warning is returned in case update time is not valid.
+    """
+    result = None
+    try:
+      self._values[key] = int(self._values[key])
+
+      if self._values[key] < MinWaitTime:
+        message = (
+            "Wait time value can't be lower than {min} seconds. "
+            "Default value of {default} "
+            "seconds will be used.".format(min=MinWaitTime,
+                                          default=DefaultWaitTime)
+        )
+        result = ("warning", message)
+        self._values['interval'] = DefaultWaitTime
+    except KeyError:
+      result = ('warning', '%s is missing' % key)
+    except (TypeError, ValueError) as e:
+      result = ('warning', '%s was not set to a valid '
+                'integer: %s' % (key, str(e)))
     return result

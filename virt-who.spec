@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.8
+Version:        1.30.9
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,13 @@ fi
 
 
 %changelog
+* Thu Nov 11 2021 William Poteat <wpoteat@redhat.com> 1.30.9-1
+- This change will only query the VM related tasks from AHV clusters during
+  continous mode to reduce the laod in returning the tasks in the AHV task
+  manager. A new wait time flag is also added to cause delay in querying for
+  the tasks in the continous mode. (amir.eibagi@nutanix.com)
+- 1889363: Update dependency between libvirtd and virt-who (wpoteat@redhat.com)
+
 * Fri Aug 06 2021 William Poteat <wpoteat@redhat.com> 1.30.8-1
 - 1986761:  Add the description for nutanix mode in man virt-who and man virt-
   who-config (wpoteat@redhat.com)

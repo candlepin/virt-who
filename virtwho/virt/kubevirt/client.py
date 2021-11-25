@@ -23,7 +23,6 @@ import json
 import ssl
 import urllib3
 
-from six import PY3
 from urllib3.util.timeout import Timeout
 
 from virtwho.virt.kubevirt import config
@@ -100,12 +99,7 @@ class KubeClient:
             msg = "{0}\n{1}".format(type(e).__name__, str(e))
             raise ApiException(status=0, reason=msg)
 
-        # In the python 3, the response.data is bytes.
-        # we need to decode it to string.
-        if PY3:
-            data = r.data.decode('utf8')
-        else:
-            data = r.data
+        data = r.data.decode('utf8')
 
         if not 200 <= r.status <= 299:
             raise ApiException(http_resp=r)

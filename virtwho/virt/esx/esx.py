@@ -25,14 +25,14 @@ import requests
 import errno
 import stat
 import re
-from six import BytesIO
+from io import BytesIO
 import io
 import logging
 from time import time
-from six.moves.urllib.error import URLError
+from urllib.error import URLError
 import socket
 from collections import defaultdict
-from six.moves.http_client import HTTPException
+from http.client import HTTPException
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection

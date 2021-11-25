@@ -21,16 +21,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import collections
-import six
 import os
 import uuid
 import requests
 
-from six.moves.configparser import SafeConfigParser, NoOptionError, Error, MissingSectionHeaderError
-try:
-    from six.moves.configparser import DuplicateOptionError
-except ImportError:
-    DuplicateOptionError = None
+from configparser import SafeConfigParser
+from configparser import DuplicateOptionError, NoOptionError, Error, MissingSectionHeaderError
 
 from virtwho import log, SAT5, SAT6
 from .password import Password, InvalidKeyFile
@@ -251,24 +247,6 @@ class StripQuotesConfigParser(SafeConfigParser):
                 return value.strip(quote)
         return value
 
-    def _read(self, fp, fpname):
-        """ If we're running python2, before reading the config file, parse through it to check if a commented out
-        continuation line was detected (line starts with spaces/tabs, followed by '#') and if so, warn the user.
-        Note: In python3, the configparser lib itself will remove commented out line continuations, so there is
-        no need to perform this check.
-        """
-        if six.PY2:
-            line_number = 0
-            for line in fp:
-                line_number = line_number + 1
-                if line[0] == ' ' or line[0] == '\t':
-                    if len(line.strip()) > 0 and line.strip()[0] == '#':
-                        # warn the user that a continuation of the previous line is commented out
-                        logger.warn("A line continuation (line starts with space) that is commented out "
-                                    "was detected in file %s, line number %s.", fpname, line_number)
-            fp.seek(0)
-        SafeConfigParser._read(self, fp, fpname)
-
 
 class DestinationToSourceMapper(object):
     def __init__(self, effective_config):
@@ -398,17 +376,14 @@ def parse_file(filename):
 
     # First try to find duplicates, which are not critical, but
     # it breaks parsing the config file
-    if six.PY3:
-        parser = StripQuotesConfigParser(strict=True)
-        try:
-            parser.read(filename)
-        except DuplicateOptionError as err:
-            logger.warning(str(err))
-        except Exception:
-            pass
-        parser = StripQuotesConfigParser(strict=False)
-    else:
-        parser = StripQuotesConfigParser()
+    parser = StripQuotesConfigParser(strict=True)
+    try:
+        parser.read(filename)
+    except DuplicateOptionError as err:
+        logger.warning(str(err))
+    except Exception:
+        pass
+    parser = StripQuotesConfigParser(strict=False)
 
     sections = {}
 
@@ -1065,7 +1040,7 @@ class VirtConfigSection(ConfigSection):
                     )
                 if result is None:
                     try:
-                        if (not six.PY3 and isinstance(password, str)) or isinstance(password, bytes):
+                        if isinstance(password, bytes):
                             password.decode('utf-8')
                     except UnicodeDecodeError:
                         result = (

@@ -23,14 +23,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import stat
-import six
-if not six.PY3:
-    from M2Crypto import EVP
-else:
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-    from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
 from binascii import hexlify, unhexlify
-from six.moves import cStringIO as StringIO
 
 
 __all__ = ['InvalidKeyFile', 'UnwritableKeyFile', 'Password']
@@ -77,9 +72,6 @@ class Password(object):
         key = unhexlify(key)[:cls.BLOCKSIZE]
         iv = unhexlify(iv)[:cls.BLOCKSIZE]
 
-        if not six.PY3:
-            return cls._crypt_py2(op, key, iv, data)
-
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
 
         if op == Password.ENCRYPT:
@@ -92,22 +84,9 @@ class Password(object):
         return value
 
     @classmethod
-    def _crypt_py2(cls, op, key, iv, data):
-        cipher = EVP.Cipher(alg='aes_128_cbc', key=key, iv=iv, op=op, padding=False)
-        inf = StringIO(data)
-        outf = StringIO()
-        while True:
-            buf = inf.read()
-            if not buf:
-                break
-            outf.write(cipher.update(buf))
-        outf.write(cipher.final())
-        return outf.getvalue()
-
-    @classmethod
     def encrypt(cls, password):
         key, iv = cls._read_or_generate_key_iv()
-        if isinstance(password, six.text_type):
+        if isinstance(password, str):
             password = password.encode('utf-8')
         return cls._crypt(cls.ENCRYPT, key, iv, cls._pad(password))
 
@@ -115,7 +94,7 @@ class Password(object):
     def decrypt(cls, enc):
         try:
             key, iv = cls._read_key_iv()
-            if isinstance(enc, six.text_type):
+            if isinstance(enc, str):
                 enc = enc.encode('utf-8')
             return cls._unpad(cls._crypt(cls.DECRYPT, key, iv, enc)).decode('utf-8')
         except TypeError:

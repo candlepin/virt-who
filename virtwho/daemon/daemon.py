@@ -25,7 +25,6 @@ import resource
 import errno
 import signal
 import socket
-import six
 import atexit
 
 
@@ -441,7 +440,7 @@ class DaemonContext(object):
             """
         if target is None:
             result = signal.SIG_IGN
-        elif isinstance(target, six.string_types):
+        elif isinstance(target, str):
             name = target
             result = getattr(self, name)
         else:

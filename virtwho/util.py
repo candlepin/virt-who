@@ -1,17 +1,12 @@
 from __future__ import print_function
 import socket
-import six
-from six.moves import xmlrpc_client
+import xmlrpc.client
 import requests
 from abc import ABCMeta
 import uuid
 
 from string import digits
-
-if not six.PY3:
-    from string import letters
-else:
-    from string import ascii_letters as letters
+from string import ascii_letters as letters
 
 
 __all__ = ('decode', 'generate_reporter_id', 'clean_filename', 'RequestsXmlrpcTransport')
@@ -42,7 +37,7 @@ class Singleton(ABCMeta):
         return cls._instances[cls]
 
 
-class RequestsXmlrpcTransport(xmlrpc_client.SafeTransport):
+class RequestsXmlrpcTransport(xmlrpc.client.SafeTransport):
     """
     Transport for xmlrpclib that uses Requests instead of httplib.
 
@@ -54,7 +49,7 @@ class RequestsXmlrpcTransport(xmlrpc_client.SafeTransport):
 
     def __init__(self, url, *args, **kwargs):
         self._url = url
-        xmlrpc_client.SafeTransport.__init__(self, *args, **kwargs)
+        xmlrpc.client.SafeTransport.__init__(self, *args, **kwargs)
 
     def request(self, host, handler, request_body, verbose):
         """
@@ -65,7 +60,7 @@ class RequestsXmlrpcTransport(xmlrpc_client.SafeTransport):
         try:
             resp.raise_for_status()
         except requests.RequestException as e:
-            raise xmlrpc_client.ProtocolError(self._url, resp.status_code, str(e), resp.headers)
+            raise xmlrpc.client.ProtocolError(self._url, resp.status_code, str(e), resp.headers)
         else:
             return self.parse_response(resp)
 
@@ -88,8 +83,6 @@ def decode(input):
         return dict((decode(key), decode(value)) for key, value in input.items())
     elif isinstance(input, list):
         return [decode(element) for element in input]
-    elif not six.PY3 and isinstance(input, six.text_type):
-        return input.encode('utf-8')
     else:
         return input
 

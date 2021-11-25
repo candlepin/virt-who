@@ -19,13 +19,11 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 import os
-import sys
 
 import threading
 import tempfile
 import pickle
 import shutil
-import pytest
 
 import xmlrpc.client
 from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
@@ -39,7 +37,6 @@ from virtwho.config import DestinationToSourceMapper, EffectiveConfig, ConfigSec
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
-from virtwho.parser import parse_options
 from virtwho import password
 
 
@@ -347,44 +344,6 @@ class TestSatelliteConfig(TestBase):
         conf_dir_patch = patch('virtwho.config.VW_CONF_DIR', self.config_dir)
         conf_dir_patch.start()
         self.addCleanup(conf_dir_patch.stop)
-
-    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
-    def test_satellite_config_env(self):
-        os.environ = {
-            "VIRTWHO_SATELLITE": '1',
-            "VIRTWHO_SATELLITE_SERVER": 'sat.example.com',
-            "VIRTWHO_SATELLITE_USERNAME": 'username',
-            "VIRTWHO_SATELLITE_PASSWORD": 'password',
-            "VIRTWHO_LIBVIRT": '1'
-        }
-        sys.argv = ["virt-who"]
-        logger, effective_config = parse_options()
-        config_manager = DestinationToSourceMapper(effective_config)
-        # Again there should only be one config parsed out (and one dest)
-        self.assertEqual(len(config_manager.configs), 1)
-        self.assertEqual(len(config_manager.dests), 1)
-        dest_info = config_manager.dests.pop()
-        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
-        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
-        self.assertTrue(isinstance(manager, Satellite))
-
-    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
-    def test_satellite_config_cmd(self):
-        os.environ = {}
-        sys.argv = ["virt-who", "--satellite",
-                    "--satellite-server=sat.example.com",
-                    "--satellite-username=username",
-                    "--satellite-password=password",
-                    "--libvirt"]
-        logger, effective_config = parse_options()
-        config_manager = DestinationToSourceMapper(effective_config)
-        # Again there should only be one config parsed out (and one dest)
-        self.assertEqual(len(config_manager.configs), 1)
-        self.assertEqual(len(config_manager.dests), 1)
-        dest_info = config_manager.dests.pop()
-        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
-        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
-        self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_file(self):
         # Username and password are required for a valid sat5 destination

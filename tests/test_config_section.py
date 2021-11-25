@@ -23,7 +23,6 @@ Test validating of configuration values.
 
 from base import TestBase
 from mock import Mock
-import six
 from virtwho.config import ConfigSection, ValidationState
 
 MY_SECTION_NAME = 'my_section'
@@ -150,7 +149,7 @@ class TestConfigSection(TestBase):
         ]
         # We do not particularly care about the ordering here, just that the lists contain the same
         # elements.
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)
         self.assertEqual(self.my_config['my_str'], 'bar')
         self.assertEqual(self.my_config.state, ValidationState.VALID)
 

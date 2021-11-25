@@ -25,7 +25,7 @@ import os
 import requests
 from mock import patch, call, ANY, MagicMock, Mock
 from threading import Event
-from six.moves.queue import Queue
+from queue import Queue
 
 from base import TestBase
 from proxy import Proxy

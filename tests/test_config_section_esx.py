@@ -24,7 +24,6 @@ Test validating of EsxConfigSection
 from base import ConfigSectionValidationTests, TestBase
 from virtwho.parser import SAT6
 from virtwho.virt.esx.esx import EsxConfigSection
-import six
 
 
 class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
@@ -77,4 +76,4 @@ class TestEsxConfigSection(ConfigSectionValidationTests, TestBase):
 
         result = self.virt_config._validate_server('server')
         expected_result = ('error', "Option server needs to be ASCII characters only: 'test_esx'")
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)

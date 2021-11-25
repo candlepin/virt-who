@@ -20,9 +20,9 @@ from __future__ import print_function
 
 import os
 from multiprocessing import Process
-from six.moves.SimpleHTTPServer import SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler
 import random
-from six.moves import socketserver
+import socketserver
 import requests
 import json
 

@@ -25,11 +25,10 @@ import threading
 import tempfile
 import pickle
 import shutil
-import six
 import pytest
 
-from six.moves import xmlrpc_client
-from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+import xmlrpc.client
+from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from binascii import hexlify
 from mock import Mock, patch
 
@@ -94,7 +93,7 @@ class FakeSatellite(SimpleXMLRPCServer):
 
     def virt_notify(self, system_id, plan):
         if system_id != TEST_SYSTEM_ID:
-            raise xmlrpc_client.Fault(-9, "Wrong system id")
+            raise xmlrpc.client.Fault(-9, "Wrong system id")
 
         if plan[0] != [0, 'exists', 'system', {'uuid': '0000000000000000', 'identity': 'host'}]:
             raise Exception("Wrong value for virt_notify: invalid format of first entry")
@@ -123,7 +122,7 @@ class FakeSatellite(SimpleXMLRPCServer):
                 'id': 42
             }
         else:
-            raise xmlrpc_client.Fault(faultCode=-210, faultString='Not found')
+            raise xmlrpc.client.Fault(faultCode=-210, faultString='Not found')
 
     def create_channel(self, session, label, name, summary, archLabel, parentLabel):
         assert session == self.AUTH_TOKEN

@@ -22,7 +22,7 @@ import os
 import signal
 import sys
 import socket
-from six.moves.queue import Empty
+from queue import Empty
 from shutil import rmtree
 from multiprocessing import Process, Queue
 from mock import patch

@@ -20,8 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 """
 from mock import patch, Mock, sentinel
 import threading
-import six
-from six.moves.queue import Queue
+from queue import Queue
 
 from base import TestBase
 
@@ -152,9 +151,6 @@ class TestQueueLogger(TestBase):
 
         target_attr = '_target'
         args_attr = '_args'
-        if not six.PY3:
-            target_attr = '_Thread_' + target_attr
-            args_attr = '_Thread_' + args_attr
 
         self.assertTrue(getattr(thread, target_attr) == log.QueueLogger._log)
         self.assertTrue(getattr(thread, args_attr) == (logger, fake_queue))

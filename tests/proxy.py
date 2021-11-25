@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 
-from six.moves.BaseHTTPServer import BaseHTTPRequestHandler
-from six.moves import socketserver
+from http.server import BaseHTTPRequestHandler
+import socketserver
 from threading import Thread, Event
 import random
 

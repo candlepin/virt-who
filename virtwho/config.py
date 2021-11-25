@@ -38,12 +38,6 @@ from binascii import unhexlify
 from binascii import Error as BinasciiError
 from . import util
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    # Python 2.6 doesn't have OrderedDict, we need to have our own
-    from .util import OrderedDict
-
 # Module-level logger
 logger = log.getLogger(name='config', queue=False)
 
@@ -531,7 +525,7 @@ class ConfigSection(collections.abc.MutableMapping):
         # Validation messages from last run
         self.validation_messages = []
 
-        self.validation_methods = OrderedDict()
+        self.validation_methods = collections.OrderedDict()
         self._destinations = {}
         self._required_keys = set()
         self._missing_required_keys = set()

@@ -404,12 +404,11 @@ class HyperVSoap(object):
     def _Instance(cls, xml_doc):
         def stripNamespace(tag):
             return tag[tag.find("}") + 1:]
-        children = xml_doc.getchildren()
-        if len(children) < 1:
+        if len(xml_doc) < 1:
             return None
-        child = children[0]
+        child = xml_doc[0]
         properties = {}
-        for ch in child.getchildren():
+        for ch in child:
             properties[stripNamespace(ch.tag)] = ch.text
         return properties
 
@@ -422,7 +421,7 @@ class HyperVSoap(object):
         responses = xml_doc.findall("{%(s)s}Body/{%(wsen)s}EnumerateResponse" % self.generator.namespaces)
         if len(responses) < 1:
             raise HyperVException("Wrong reply format")
-        contexts = responses[0].getchildren()
+        contexts = responses[0]
         if len(contexts) < 1:
             raise HyperVException("Wrong reply format")
 
@@ -443,7 +442,7 @@ class HyperVSoap(object):
         uuid = None
         instance = None
 
-        for node in responses[0].getchildren():
+        for node in responses[0]:
             if node.tag == "{%(wsen)s}EnumerationContext" % self.generator.namespaces:
                 uuid = node.text
             elif node.tag == "{%(wsen)s}Items" % self.generator.namespaces:
@@ -477,7 +476,7 @@ class HyperVSoap(object):
             raise HyperVException("Wrong reply format")
         info = {}
         si_namespace = self.generator.si_namespace % {'ns': namespace}
-        for node in responses[0].getchildren():
+        for node in responses[0]:
             if 'SummaryInformation' in node.tag:
                 name = node.find("{%(si)s}Name" % {'si': si_namespace}).text
                 enabledState = node.find("{%(si)s}EnabledState" % {'si': si_namespace}).text

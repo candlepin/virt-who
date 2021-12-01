@@ -500,7 +500,7 @@ class ValidationState(object):
     NEEDS_VALIDATION = 'needs_validation'
 
 
-class ConfigSection(collections.MutableMapping):
+class ConfigSection(collections.abc.MutableMapping):
     """
     This represents a section of configuration for virt-who. The interface that it exposes is
     dictionary like. This object maintains a state attribute. The state shows if the configuration
@@ -891,11 +891,11 @@ class ConfigSection(collections.MutableMapping):
                     ]
         for tracker in trackers:
             if key in tracker:
-                if isinstance(tracker, collections.MutableMapping):
+                if isinstance(tracker, collections.abc.MutableMapping):
                     del tracker[key]
-                elif isinstance(tracker, collections.MutableSequence):
+                elif isinstance(tracker, collections.abc.MutableSequence):
                     tracker.remove(key)
-                elif isinstance(tracker, collections.MutableSet):
+                elif isinstance(tracker, collections.abc.MutableSet):
                     tracker.discard(key)
 
     def _validate_type(self, key):
@@ -1294,7 +1294,7 @@ DEFAULTS = {
 }
 
 
-class EffectiveConfig(collections.MutableMapping):
+class EffectiveConfig(collections.abc.MutableMapping):
     """
     This object represents the total configuration of virt-who including all global parameters
     and all sections that define a source or destination.

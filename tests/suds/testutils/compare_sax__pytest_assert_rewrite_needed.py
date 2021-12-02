@@ -31,8 +31,6 @@ import virtwho.virt.esx.suds.sax.document
 import virtwho.virt.esx.suds.sax.element
 import virtwho.virt.esx.suds.sax.parser
 
-from six import text_type, u
-
 import sys
 
 
@@ -227,11 +225,11 @@ class CompareSAX:
     def __element_name(element):
         """Returns a given SAX element's name as unicode or '???' on error."""
         try:
-            return text_type(element.name)
+            return str(element.name)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
-            return u("???")
+            return "???"
 
     def __element2element(self, lhs, rhs, context_info=(0, 1)):
         """
@@ -282,7 +280,7 @@ class CompareSAX:
         bytes object.
 
         """
-        if isinstance(data, text_type):
+        if isinstance(data, str):
             data = data.encode("utf-8")
         return virtwho.virt.esx.suds.sax.parser.Parser().parse(string=data)
 

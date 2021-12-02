@@ -29,8 +29,7 @@ if __name__ == "__main__":
 import virtwho.virt.esx.suds
 
 import pytest
-from six import itervalues, next, u
-from six.moves import http_client
+import http.client as http_client
 
 import xml.sax
 
@@ -179,10 +178,10 @@ def test_empty_reply():
 def test_fault_reply_with_unicode_faultstring(monkeypatch):
     monkeypatch.delitem(locals(), "e", False)
 
-    unicode_string = u("\u20AC Jurko Gospodneti\u0107 "
+    unicode_string = ("\u20AC Jurko Gospodneti\u0107 "
         "\u010C\u0106\u017D\u0160\u0110"
         "\u010D\u0107\u017E\u0161\u0111")
-    fault_xml = virtwho.virt.esx.suds.byte_str(u("""\
+    fault_xml = virtwho.virt.esx.suds.byte_str(("""\
 <?xml version="1.0"?>
 <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
   <env:Body>
@@ -491,7 +490,7 @@ def _attributes(object):
 
 def _isOutputWrapped(client, method_name):
     assert len(client.wsdl.bindings) == 1
-    binding = next(itervalues(client.wsdl.bindings))
+    binding = list(client.wsdl.bindings.values())[0]
     operation = binding.operations[method_name]
     return operation.soap.output.body.wrapped
 

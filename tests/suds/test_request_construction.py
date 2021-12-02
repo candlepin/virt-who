@@ -38,7 +38,6 @@ import virtwho.virt.esx.suds
 import virtwho.virt.esx.suds.store
 
 import pytest
-from six import iterkeys, itervalues, next, u
 
 
 #TODO: Update the current restriction type output parameter handling so such
@@ -599,7 +598,7 @@ def test_missing_parameters():
   </Body>
 </Envelope>""" % (xsd_target_namespace,))
 
-    _assert_request_content(service.f((u("Pero \u017Ddero"))), u("""\
+    _assert_request_content(service.f(("Pero \u017Ddero")), ("""\
 <?xml version="1.0" encoding="UTF-8"?>
 <Envelope xmlns="http://schemas.xmlsoap.org/soap/envelope/">
   <Header/>
@@ -959,7 +958,7 @@ def test_twice_wrapped_parameter():
     # Web service operation calls made with 'invalid' parameters.
     def test_invalid_parameter(**kwargs):
         assert len(kwargs) == 1
-        keyword = next(iterkeys(kwargs))
+        keyword = list(kwargs.keys())[0]
         expected = "f() got an unexpected keyword argument '%s'" % (keyword,)
         e = pytest.raises(TypeError, client.service.f, **kwargs).value
         try:
@@ -1092,7 +1091,7 @@ def test_wrapped_parameter(monkeypatch):
 
 def _is_input_wrapped(client, method_name):
     assert len(client.wsdl.bindings) == 1
-    binding = next(itervalues(client.wsdl.bindings))
+    binding = list(client.wsdl.bindings.values())[0]
     operation = binding.operations[method_name]
     return operation.soap.input.body.wrapped
 

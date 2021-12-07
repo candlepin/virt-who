@@ -3,15 +3,13 @@ import os
 import sys
 import shutil
 import tempfile
-import pytest
-import six
 
 from mock import patch, Mock, DEFAULT, MagicMock, ANY
 
 from base import TestBase, unittest
 
 from virtwho.config import (
-    VirtConfigSection, DestinationToSourceMapper, VW_ENV_CLI_SECTION_NAME,
+    VirtConfigSection, DestinationToSourceMapper,
     init_config, parse_file, EffectiveConfig
 )
 from virtwho.manager import Manager
@@ -228,17 +226,6 @@ class TestSubscriptionManagerConfig(TestBase):
         sys.argv = ["virt-who"]
         logger, config = parse_options()
         manager = Manager.from_config(logger, config)
-        self.assertTrue(isinstance(manager, SubscriptionManager))
-
-    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
-    def test_sm_config_cmd(self):
-        os.environ = {}
-        sys.argv = ["virt-who", "--sam", "--libvirt"]
-        logger, effective_config = parse_options()
-        config_manager = DestinationToSourceMapper(effective_config)
-        self.assertEqual(len(config_manager.configs), 1)
-        config = dict(config_manager.configs)[VW_ENV_CLI_SECTION_NAME]
-        manager = Manager.from_config(self.logger, config)
         self.assertTrue(isinstance(manager, SubscriptionManager))
 
     def test_sm_config_file(self):

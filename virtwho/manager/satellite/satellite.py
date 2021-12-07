@@ -20,8 +20,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
-from six.moves import xmlrpc_client
-from six.moves import cPickle as pickle
+import xmlrpc.client
+import pickle
 import json
 
 from virtwho.manager import Manager, ManagerError
@@ -77,9 +77,9 @@ class Satellite(Manager):
         self.logger.debug("Initializing satellite connection to %s", server)
         try:
             # We need two API endpoints: /XMLRPC and /rpc/api
-            self.server_xmlrpc = xmlrpc_client.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
+            self.server_xmlrpc = xmlrpc.client.ServerProxy(server, verbose=0, transport=RequestsXmlrpcTransport(server))
             server_api = server.replace('/XMLRPC', '/rpc/api')
-            self.server_rpcapi = xmlrpc_client.ServerProxy(server_api, verbose=0, transport=RequestsXmlrpcTransport(server_api))
+            self.server_rpcapi = xmlrpc.client.ServerProxy(server_api, verbose=0, transport=RequestsXmlrpcTransport(server_api))
         except Exception as e:
             self.logger.exception("Unable to connect to the Satellite server")
             raise SatelliteError("Unable to connect to the Satellite server: " % str(e))
@@ -105,7 +105,7 @@ class Satellite(Manager):
         try:
             hypervisor_base_channel = self.server_rpcapi.channel.software.getDetails(session, base_channel_name)
             self.logger.debug("Using existing hypervisor-base channel")
-        except xmlrpc_client.Fault as e:
+        except xmlrpc.client.Fault as e:
             if e.faultCode == -210:
                 # The channel doesn't exist yet
                 hypervisor_base_channel = None
@@ -236,7 +236,7 @@ class Satellite(Manager):
                 try:
                     self.logger.debug("Sending plan: %s", plan)
                     self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
-                except xmlrpc_client.Fault as e:
+                except xmlrpc.client.Fault as e:
                     if e.faultCode == -9:
                         self.logger.warn("System was deleted from Satellite 5, reregistering")
                         hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId,

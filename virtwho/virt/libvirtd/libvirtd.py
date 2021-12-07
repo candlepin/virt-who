@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import time
 import libvirt
 import threading
-from six.moves import urllib
+import urllib
 from xml.etree import ElementTree
 
 from virtwho.virt import (

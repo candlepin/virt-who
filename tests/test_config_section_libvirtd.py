@@ -25,7 +25,6 @@ from base import TestBase
 from mock import MagicMock
 import tempfile
 import os
-import six
 from binascii import hexlify
 import shutil
 
@@ -141,7 +140,7 @@ class TestLibvirtdConfigSection(TestBase):
         expected_result = [
             ('error', 'Invalid option: "unsupported_id" for hypervisor_id, use one of: (uuid, hostname)')
         ]
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)
 
     def test_validate_server_url_missing_path(self):
         """
@@ -154,7 +153,7 @@ class TestLibvirtdConfigSection(TestBase):
         expected_result = [
             ('info', 'Libvirt path is not specified in the url, using /system')
         ]
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)
         self.assertEqual(self.virt_config['server'], 'qemu+ssh://admin@example.com/system?no_tty=1')
 
     def test_validate_server_url_missing_scheme(self):
@@ -168,7 +167,7 @@ class TestLibvirtdConfigSection(TestBase):
         expected_result = [
             ('info', 'Protocol is not specified in libvirt url, using qemu+ssh://')
         ]
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)
         self.assertEqual(self.virt_config['server'], 'qemu+ssh://example.com/system?no_tty=1')
 
     def test_validate_server_url_missing_scheme_and_path(self):
@@ -183,7 +182,7 @@ class TestLibvirtdConfigSection(TestBase):
             ('info', 'Protocol is not specified in libvirt url, using qemu+ssh://'),
             ('info', 'Libvirt path is not specified in the url, using /system')
         ]
-        six.assertCountEqual(self, result, expected_result)
+        self.assertCountEqual(result, expected_result)
         self.assertEqual(self.virt_config['server'], 'qemu+ssh://example.com/system?no_tty=1')
 
     def test_validate_sam_owner(self):

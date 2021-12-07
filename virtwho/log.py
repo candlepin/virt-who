@@ -27,8 +27,8 @@ import traceback
 import os
 import sys
 import json
-from six import StringIO
-from six.moves.queue import Empty, Queue
+from io import StringIO
+from queue import Empty, Queue
 from threading import Thread
 
 from virtwho import util

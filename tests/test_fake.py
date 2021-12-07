@@ -30,7 +30,7 @@ from virtwho.config import DestinationToSourceMapper, init_config
 from virtwho.virt import Virt, Hypervisor, StatusReport
 from virtwho.virt.fakevirt import FakeVirt
 from threading import Event
-from six.moves.queue import Queue
+from queue import Queue
 
 
 HYPERVISOR_JSON = """

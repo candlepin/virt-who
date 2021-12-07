@@ -1,11 +1,9 @@
 from __future__ import print_function
 
-import six
-
 from base import TestBase
 from mock import patch, call, ANY, Mock
 from requests import Session
-from six.moves.queue import Queue
+from queue import Queue
 from threading import Event
 
 from virtwho import DefaultInterval
@@ -424,7 +422,7 @@ class TestAhvConfigSection(TestBase):
         self.ahv_config['server'] = '10.0.0.'
         result = self.ahv_config.validate()
         expected_result = ['Invalid server IP address provided']
-        six.assertCountEqual(self, expected_result, result)
+        self.assertCountEqual(expected_result, result)
 
     def test_validate_ahv_config_missing_username_password(self):
         """
@@ -438,7 +436,7 @@ class TestAhvConfigSection(TestBase):
             ('error', 'Required option: "username" not set.'),
             ('error', 'Required option: "password" not set.')
         ]
-        six.assertCountEqual(self, expected_result, result)
+        self.assertCountEqual(expected_result, result)
 
     def test_validate_ahv_config_invalid_internal_debug_flag(self):
         """
@@ -452,7 +450,7 @@ class TestAhvConfigSection(TestBase):
                   "Default value of {min} " \
                   "seconds will be used.".format(min=DefaultUpdateInterval)
         expected_result = [("warning", message)]
-        six.assertCountEqual(self, expected_result, result)
+        self.assertCountEqual(expected_result, result)
 
 
 class TestAhv(TestBase):

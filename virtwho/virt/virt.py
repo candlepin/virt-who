@@ -30,7 +30,6 @@ import json
 import hashlib
 import re
 import fnmatch
-import six
 from virtwho.config import NotSetSentinel, Satellite5DestinationInfo, \
     Satellite6DestinationInfo, DefaultDestinationInfo, VW_GLOBAL
 from virtwho.manager import ManagerError, ManagerThrottleError, ManagerFatalError
@@ -1230,7 +1229,7 @@ class Virt(IntervalThread):
     @staticmethod
     def _to_unicode(value):
         try:
-            return six.text_type(value, 'utf-8')
+            return str(value)
         except TypeError:
             return value
 

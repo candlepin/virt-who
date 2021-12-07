@@ -21,7 +21,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 
 import os
-import six
 import shutil
 from tempfile import mkdtemp
 from binascii import hexlify, unhexlify
@@ -145,7 +144,7 @@ class TestReadingConfigs(TestBase):
 
     def test_empty_config(self):
         config = init_config({}, self.config_dir)
-        six.assertCountEqual(self, list(config.keys()), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
+        self.assertCountEqual(list(config.keys()), [VW_GLOBAL, VW_ENV_CLI_SECTION_NAME])
 
     def assert_config_equals_default(self, config):
         self.assertEqual(config.name, "test")
@@ -178,7 +177,7 @@ class TestReadingConfigs(TestBase):
         with open(os.path.join(self.config_dir, "test.conf"), "w") as f:
             f.write(TestReadingConfigs.dict_to_ini(default_config_values))
         config = init_config({}, config_dir=self.config_dir)
-        six.assertCountEqual(self, list(config.keys()), ['test', 'global'])
+        self.assertCountEqual(list(config.keys()), ['test', 'global'])
         self.assert_config_equals_default(config['test'])
 
     def test_invalid_config(self):
@@ -1003,21 +1002,9 @@ owner=root
         self.assertEqual(len(manager.configs), 1)
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
-
-        if six.PY2:
-            self.assertEqual(config["server"], "http://1.2.3.4\n#value")
-            self.assertEqual(config["owner"], 'root\n#filter_hosts=abc.efg.com')
-
-            # Check that the warning was logged twice, and it was last called for line number 10 of the conf file:
-            self.assertTrue(logger_warn.called)
-            self.assertEqual(logger_warn.call_count, 2)
-            logger_warn.assert_called_with('A line continuation (line starts with space) that is commented out '
-                                           'was detected in file %s, line number %s.', f.name, 9)
-        elif six.PY3:
-            self.assertEqual(config["server"], "http://1.2.3.4")
-
-            self.assertFalse(logger_warn.called)
-            self.assertEqual(logger_warn.call_count, 0)
+        self.assertEqual(config["server"], "http://1.2.3.4")
+        self.assertFalse(logger_warn.called)
+        self.assertEqual(logger_warn.call_count, 0)
 
 
 class TestParseList(TestBase):

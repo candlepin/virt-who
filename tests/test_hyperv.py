@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 import os
 from mock import patch, MagicMock, ANY, Mock
 from threading import Event
-from six.moves.queue import Queue
+from queue import Queue
 import requests
 
 from base import TestBase

@@ -31,23 +31,16 @@ import virtwho.virt.esx.suds.transport
 import virtwho.virt.esx.suds.transport.http
 
 import pytest
-from six import u
-from six.moves import http_client
-from six.moves.urllib.error import HTTPError
-from six.moves.urllib.request import ProxyHandler
+import http.client as http_client
+from urllib.error import HTTPError
+from urllib.request import ProxyHandler
+import urllib.request as urllib_request
 
 import base64
 import re
 import sys
 from email.message import Message
 
-# We can not use six.moves modules for this since we want to monkey-patch the
-# exact underlying urllib2/urllib.request module in our tests and not just
-# their six.moves proxy module.
-if sys.version_info < (3,):
-    import urllib2 as urllib_request
-else:
-    import urllib.request as urllib_request
 
 
 class MustNotBeCalled(Exception):
@@ -180,7 +173,7 @@ def assert_default_transport(transport):
     assert transport.urlopener is None
 
 
-def create_request(url="protocol://default-url", data=u("Rumpelstiltskin")):
+def create_request(url="protocol://default-url", data="Rumpelstiltskin"):
     """Test utility constructing a virtwho.virt.esx.suds.transport.Request instance."""
     return virtwho.virt.esx.suds.transport.Request(url, data)
 
@@ -336,7 +329,7 @@ def test_sending_using_network_sockets(send_method, monkeypatch):
     url_relative = "svc"
     url = "http://%s/%s" % (host_port, url_relative)
     partial_ascii_byte_data = virtwho.virt.esx.suds.byte_str("Muka-laka-hiki")
-    non_ascii_byte_data = u("\u0414\u043C\u0438 \u0442\u0440").encode("utf-8")
+    non_ascii_byte_data = "\u0414\u043C\u0438 \u0442\u0440".encode("utf-8")
     non_ascii_byte_data += partial_ascii_byte_data
     mocker = Mocker(host, port)
     monkeypatch.setattr("socket.getaddrinfo", mocker.getaddrinfo)

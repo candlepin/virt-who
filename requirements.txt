@@ -5,6 +5,5 @@ git+https://github.com/candlepin/python-iniparse#egg=iniparse;python_version>="3
 iniparse;python_version<"3.0"
 requests>=2.0
 m2crypto;python_version<"3.0"
-six
 cryptography
 PyYAML

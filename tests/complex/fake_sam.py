@@ -19,7 +19,6 @@ from __future__ import print_function
 #
 
 import os
-import six
 import sys
 import tempfile
 import ssl
@@ -63,7 +62,7 @@ class SamHandler(FakeHandler):
         elif self.path.startswith('/hypervisors') or self.path.startswith('//hypervisors'):
             size = int(self.headers["Content-Length"])
             incoming = self.rfile.read(size)
-            if isinstance(incoming, six.binary_type):
+            if type(incoming) is bytes:
                 incoming = incoming.decode('utf-8')
             data = json.loads(incoming)
             print("[FakeSam] putting in the queue:", data)
@@ -136,7 +135,7 @@ if __name__ == '__main__':
         code = int(sys.argv[1])
     else:
         code = None
-    from six.moves.queue import Queue
+    from queue import Queue
     q = Queue()
     f = FakeSam(q, port=8443, code=code, host='0.0.0.0')
     f.run()

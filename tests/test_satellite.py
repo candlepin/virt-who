@@ -19,17 +19,14 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 """
 import os
-import sys
 
 import threading
 import tempfile
 import pickle
 import shutil
-import six
-import pytest
 
-from six.moves import xmlrpc_client
-from six.moves.xmlrpc_server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+import xmlrpc.client
+from xmlrpc.server import SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 from binascii import hexlify
 from mock import Mock, patch
 
@@ -40,7 +37,6 @@ from virtwho.config import DestinationToSourceMapper, EffectiveConfig, ConfigSec
 from virtwho.manager import Manager
 from virtwho.manager.satellite import Satellite, SatelliteError
 from virtwho.virt import Guest, Hypervisor, HostGuestAssociationReport
-from virtwho.parser import parse_options
 from virtwho import password
 
 
@@ -94,7 +90,7 @@ class FakeSatellite(SimpleXMLRPCServer):
 
     def virt_notify(self, system_id, plan):
         if system_id != TEST_SYSTEM_ID:
-            raise xmlrpc_client.Fault(-9, "Wrong system id")
+            raise xmlrpc.client.Fault(-9, "Wrong system id")
 
         if plan[0] != [0, 'exists', 'system', {'uuid': '0000000000000000', 'identity': 'host'}]:
             raise Exception("Wrong value for virt_notify: invalid format of first entry")
@@ -123,7 +119,7 @@ class FakeSatellite(SimpleXMLRPCServer):
                 'id': 42
             }
         else:
-            raise xmlrpc_client.Fault(faultCode=-210, faultString='Not found')
+            raise xmlrpc.client.Fault(faultCode=-210, faultString='Not found')
 
     def create_channel(self, session, label, name, summary, archLabel, parentLabel):
         assert session == self.AUTH_TOKEN
@@ -348,44 +344,6 @@ class TestSatelliteConfig(TestBase):
         conf_dir_patch = patch('virtwho.config.VW_CONF_DIR', self.config_dir)
         conf_dir_patch.start()
         self.addCleanup(conf_dir_patch.stop)
-
-    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
-    def test_satellite_config_env(self):
-        os.environ = {
-            "VIRTWHO_SATELLITE": '1',
-            "VIRTWHO_SATELLITE_SERVER": 'sat.example.com',
-            "VIRTWHO_SATELLITE_USERNAME": 'username',
-            "VIRTWHO_SATELLITE_PASSWORD": 'password',
-            "VIRTWHO_LIBVIRT": '1'
-        }
-        sys.argv = ["virt-who"]
-        logger, effective_config = parse_options()
-        config_manager = DestinationToSourceMapper(effective_config)
-        # Again there should only be one config parsed out (and one dest)
-        self.assertEqual(len(config_manager.configs), 1)
-        self.assertEqual(len(config_manager.dests), 1)
-        dest_info = config_manager.dests.pop()
-        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
-        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
-        self.assertTrue(isinstance(manager, Satellite))
-
-    @pytest.mark.skipif(not six.PY2, reason="test only runs with python 2 virt-who")
-    def test_satellite_config_cmd(self):
-        os.environ = {}
-        sys.argv = ["virt-who", "--satellite",
-                    "--satellite-server=sat.example.com",
-                    "--satellite-username=username",
-                    "--satellite-password=password",
-                    "--libvirt"]
-        logger, effective_config = parse_options()
-        config_manager = DestinationToSourceMapper(effective_config)
-        # Again there should only be one config parsed out (and one dest)
-        self.assertEqual(len(config_manager.configs), 1)
-        self.assertEqual(len(config_manager.dests), 1)
-        dest_info = config_manager.dests.pop()
-        self.assertTrue(isinstance(dest_info, Satellite5DestinationInfo))
-        manager = Manager.fromInfo(self.logger, effective_config, dest_info)
-        self.assertTrue(isinstance(manager, Satellite))
 
     def test_satellite_config_file(self):
         # Username and password are required for a valid sat5 destination

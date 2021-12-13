@@ -277,6 +277,7 @@ class HyperVSoap(object):
             raise HyperVException("Unable to connect to Hyper-V server: %s" % str(e))
 
         if response.status_code == requests.codes.ok:
+            self.logger.debug(f'Received valid response from Hyper-V server: {response.status_code}')
             return response.content
         elif response.status_code == 401:
             raise HyperVAuthFailed("Authentication failed")
@@ -289,9 +290,18 @@ class HyperVSoap(object):
                 # both old and new namespaces that HyperV uses
                 if errorcode is None or errorcode.text != '2150858778':
                     title = xml_doc.find('.//title')
-                    self.logger.debug("Invalid response (%d) from Hyper-V: %s", response.status_code, title.text)
-            except Exception:
-                self.logger.debug("Invalid response (%d) from Hyper-V", response.status_code)
+                    if title is not None:
+                        self.logger.debug(
+                            f"Invalid response ({response.status_code}) from Hyper-V: {title.text}"
+                        )
+                    else:
+                        self.logger.debug(
+                            f"Invalid response ({response.status_code}) from Hyper-V"
+                        )
+            except Exception as err:
+                self.logger.debug(
+                    f"Invalid response ({response.status_code}) from Hyper-V (error: {err})"
+                )
 
             raise HyperVCallFailed("Communication with Hyper-V failed, HTTP error: %d" % response.status_code)
 
@@ -410,6 +420,7 @@ class HyperV(virt.Virt):
         self.useNewApi = False
 
     def connect(self):
+        self.logger.debug('Trying to connect to Hyper-V')
         s = requests.Session()
         adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1)
         s.mount('http://', adapter)
@@ -521,14 +532,23 @@ class HyperV(virt.Virt):
         return {'hypervisors': [hypervisor]}
 
     def statusConfirmConnection(self):
-        '''
+        """
         This call will confirm the credentials. The result outside
         of that is not important in the status scenario.
-        '''
+        """
         connection = self.connect()
         hypervsoap = HyperVSoap(self.url, connection, self.logger)
-        hypervsoap.Invoke_GetSummaryInformation(
-            "root/virtualization/v2" if self.useNewApi else "root/virtualization")
+
+        if self.useNewApi is False:
+            try:
+                hypervsoap.Invoke_GetSummaryInformation("root/virtualization")
+            except HyperVCallFailed:
+                self.logger.debug("Unable to enumerate using root/virtualization namespace, "
+                                  "trying root/virtualization/v2 namespace")
+                self.useNewApi = True
+
+        if self.useNewApi is True:
+            hypervsoap.Invoke_GetSummaryInformation("root/virtualization/v2")
 
     def ping(self):
         return True

@@ -176,7 +176,10 @@ class TestHyperV(TestBase):
 
         self.hyperv._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
-        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.hyperv.config['server'])
+        self.assertEqual(
+            self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+            self.hyperv.config['server']
+        )
 
     @patch('requests.Session')
     def test_status_bad_source_credentials(self, session):
@@ -193,9 +196,14 @@ class TestHyperV(TestBase):
 
         self.hyperv._send_data.assert_called_once_with(data_to_send=ANY)
         self.assertTrue(isinstance(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
-        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'], self.hyperv.config['server'])
-        self.assertEqual(self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
-                         "Incorrect domain/username/password.")
+        self.assertEqual(
+            self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+            self.hyperv.config['server']
+        )
+        self.assertEqual(
+            self.hyperv._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['message'],
+            "Incorrect domain/username/password."
+        )
 
     @patch('requests.Session')
     def test_connection_refused(self, session):
@@ -302,7 +310,7 @@ class TestHyperV(TestBase):
         session.return_value.post.return_value.status_code = 403
 
         self.assertRaises(VirtError, self.run_once)
-        logger_debug.assert_called_with('Invalid response (%d) from Hyper-V: %s', 403,
+        logger_debug.assert_called_with('Invalid response (403) from Hyper-V: '
                                         'ERROR: The requested URL could not be retrieved')
 
     @patch('requests.Session')
@@ -323,4 +331,6 @@ class TestHyperV(TestBase):
         session.return_value.post.return_value.status_code = 403
 
         self.assertRaises(VirtError, self.run_once)
-        logger_debug.assert_called_with('Invalid response (%d) from Hyper-V', 403)
+        logger_debug.assert_called_with(
+            'Invalid response (403) from Hyper-V (error: not well-formed (invalid token): line 8, column 18)'
+        )

@@ -35,8 +35,8 @@ class AhvInterface(object):
         self._retry_interval = kwargs.get('retry_interval', 30)
         self._logger = logger
         self._url = url
-        self._user = username
-        self._password = password
+        self._user = username.encode('utf-8')
+        self._password = password.encode('utf-8')
         self._port = port
         self._internal_debug = kwargs.get('internal_debug', False)
         self._create_session(self._user, self._password)

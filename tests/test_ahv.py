@@ -424,6 +424,24 @@ class TestAhvConfigSection(TestBase):
         expected_result = ['Invalid server IP address provided']
         self.assertCountEqual(expected_result, result)
 
+    def test_validate_ahv_non_latin_username(self):
+        """
+        Test validation of ahv config. Invalid server IP.
+        """
+        self.init_virt_config_section()
+        self.ahv_config['username'] = 'příšerně žluťoučký kůň'
+        result = self.ahv_config.validate()
+        self.assertEqual(len(result), 0)
+
+    def test_validate_ahv_non_latin_password(self):
+        """
+        Test validation of ahv config. Invalid server IP.
+        """
+        self.init_virt_config_section()
+        self.ahv_config['password'] = 'pěl úděsné ódy'
+        result = self.ahv_config.validate()
+        self.assertEqual(len(result), 0)
+
     def test_validate_ahv_config_missing_username_password(self):
         """
         Test validation of ahv config. Username and password is required.
@@ -462,11 +480,18 @@ class TestAhv(TestBase):
         config.validate()
         return config
 
-    def setUp(self, is_pc=False):
-        config = self.create_config(name='test', wrapper=None, type='ahv',
-                                    server='10.10.10.10', username='username',
-                                    password='password', owner='owner',
-                                    prism_central=is_pc)
+    def setUp(self, is_pc=False, config=None):
+        if config is None:
+            config = self.create_config(
+                name='test',
+                wrapper=None,
+                type='ahv',
+                server='10.10.10.10',
+                username='username',
+                password='password',
+                owner='owner',
+                prism_central=is_pc
+            )
         self.ahv = Virt.from_config(self.logger, config, Datastore(),
                                     interval=DefaultInterval)
 
@@ -533,6 +558,26 @@ class TestAhv(TestBase):
 
         mock_get.return_value.status_code = 403
         self.assertRaises(VirtError, self.run_once)
+
+    def test_non_latin1_username_and_password(self):
+        """
+        When non-latin1 string is used as username or password, then it has
+        to be converted to bytes in AHV interface.
+        """
+        config = self.create_config(
+            name='test',
+            wrapper=None,
+            type='ahv',
+            server='10.10.10.10',
+            username='žluťoučký kůň',
+            password='pěl úděsné ódy',
+            owner='owner',
+            prism_central=True
+        )
+        self.setUp(is_pc=True, config=config)
+        # Test that non latin1 username and password were converted to bytes
+        assert self.ahv._interface._user == b'\xc5\xbelu\xc5\xa5ou\xc4\x8dk\xc3\xbd k\xc5\xaf\xc5\x88'
+        assert self.ahv._interface._password == b'p\xc4\x9bl \xc3\xbad\xc4\x9bsn\xc3\xa9 \xc3\xb3dy'
 
     @patch.object(Session, 'post')
     def test_invalid_login_PC(self, mock_post):

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.17
+Version:        1.31.18
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -163,6 +163,20 @@ fi
 
 
 %changelog
+* Thu Dec 16 2021 William Poteat <wpoteat@redhat.com> 1.31.18-1
+- 2000019: Convert non-latin1 username/password to bytes (jhnidek@redhat.com)
+- 2018052: Fix virt-who -s, when Hyper-V with new API is used
+  (jhnidek@redhat.com)
+- ENT-4511: Remove six package from requirements (mhorky@redhat.com)
+- ENT-4511: Drop Python 2 only tests (mhorky@redhat.com)
+- ENT-4511: Drop six usage in suds tests (mhorky@redhat.com)
+- ENT-4511: Drop six usage in tests (mhorky@redhat.com)
+- ENT-4511: Drop six usage in virt-who code (mhorky@redhat.com)
+- ENT-4511: Drop OrderedDict implementation (mhorky@redhat.com)
+- Update for deprecation of MutableMapping (wpoteat@redhat.com)
+- Only query the VM related taks in AHV hypervisors. (amir.eibagi@nutanix.com)
+- Remove unused NTLM code as only basic auth is used (wpoteat@redhat.com)
+
 * Tue Sep 14 2021 William Poteat <wpoteat@redhat.com> 1.31.17-1
 - Bypass stylish check on suds code (wpoteat@redhat.com)
 - 2000922: Add the suds code to virt-who in place of python3-suds package

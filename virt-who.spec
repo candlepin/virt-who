@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.9
+Version:        1.30.10
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,11 @@ fi
 
 
 %changelog
+* Thu Dec 16 2021 William Poteat <wpoteat@redhat.com> 1.30.10-1
+- 2000024: Convert non-latin1 username/password to bytes (jhnidek@redhat.com)
+- 1910020: replace deprecated call (wpoteat@redhat.com)
+- Update for deprecation of MutableMapping (wpoteat@redhat.com)
+
 * Thu Nov 11 2021 William Poteat <wpoteat@redhat.com> 1.30.9-1
 - This change will only query the VM related tasks from AHV clusters during
   continous mode to reduce the laod in returning the tasks in the AHV task

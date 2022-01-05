@@ -61,7 +61,7 @@ class Ahv(virt.Virt):
             self.username,
             self.password,
             self.port,
-            internal_debug=self.config['internal_debug']
+            ahv_internal_debug=self.config['ahv_internal_debug']
         )
 
     def prepare(self):
@@ -259,7 +259,7 @@ class AhvConfigSection(VirtConfigSection):
             default=None
         )
         self.add_key(
-            'internal_debug',
+            'ahv_internal_debug',
             validation_method=self._validate_str_to_bool,
             default=False
         )

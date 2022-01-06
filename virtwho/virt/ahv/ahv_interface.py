@@ -25,7 +25,7 @@ class AhvInterface(object):
         times-out. Default 30 seconds.
         retries (optional, int): Maximum number of retires. Default: 5.
         retry_interval (optional, int): Time to sleep between retry intervals.
-        internal_debug (optional, bool): Detail log of the rest calls.
+        ahv_internal_debug (optional, bool): Detail log of the rest calls.
          Default: 5 seconds.
     """
     self._session = Session()
@@ -37,7 +37,7 @@ class AhvInterface(object):
     self._user = username.encode('utf-8')
     self._password = password.encode('utf-8')
     self._port = port
-    self._internal_debug = kwargs.get('internal_debug', False)
+    self._ahv_internal_debug = kwargs.get('ahv_internal_debug', False)
     self._create_session(self._user, self._password)
 
   def _create_session(self, user=None, password=None):
@@ -310,7 +310,7 @@ class AhvInterface(object):
     for ii in range(retry_count):
       try:
         response = func(url, **kwargs)
-        if self._internal_debug:
+        if self._ahv_internal_debug:
           self._logger.debug("%s method The request url sent: %s" % (
             method.upper(), response.request.url))
           self._logger.debug('Response status: %d' % response.status_code)

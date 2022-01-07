@@ -24,7 +24,7 @@ PE_SECTION_VALUES = {
     'owner': 'nutanix',
     'hypervisor_id': 'uuid',
     'is_hypervisor': True,
-    'internal_debug': False,
+    'ahv_internal_debug': False,
     'update_interval': 60,
     'wait_time_in_sec': 900
 }

@@ -25,7 +25,6 @@ PE_SECTION_VALUES = {
     'hypervisor_id': 'uuid',
     'is_hypervisor': True,
     'ahv_internal_debug': False,
-    'update_interval': 60,
     'wait_time_in_sec': 900
 }
 
@@ -454,20 +453,6 @@ class TestAhvConfigSection(TestBase):
             ('error', 'Required option: "username" not set.'),
             ('error', 'Required option: "password" not set.')
         ]
-        self.assertCountEqual(expected_result, result)
-
-    def test_validate_ahv_config_invalid_internal_debug_flag(self):
-        """
-        Test validation of ahv config. If update_interval and internal debug
-        are not set then we get a warning message for each flag.
-        """
-        self.init_virt_config_section()
-        self.ahv_config['update_interval'] = 40
-        result = self.ahv_config.validate()
-        message = "Interval value can't be lower than {min} seconds. " \
-                  "Default value of {min} " \
-                  "seconds will be used.".format(min=DefaultUpdateInterval)
-        expected_result = [("warning", message)]
         self.assertCountEqual(expected_result, result)
 
 

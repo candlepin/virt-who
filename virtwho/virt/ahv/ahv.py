@@ -51,7 +51,7 @@ class Ahv(virt.Virt):
     self.wait_time = self.config['wait_time_in_sec']
     self._interface = AhvInterface(logger, self.url, self.username,
                                    self.password, self.port,
-                                   internal_debug=self.config['internal_debug'])
+                                   ahv_internal_debug=self.config['ahv_internal_debug'])
 
   def prepare(self):
     """
@@ -224,7 +224,7 @@ class AhvConfigSection(VirtConfigSection):
                  default=True)
     self.add_key('prism_central', validation_method=self._validate_str_to_bool,
                  default=None)
-    self.add_key('internal_debug', validation_method=self._validate_str_to_bool,
+    self.add_key('ahv_internal_debug', validation_method=self._validate_str_to_bool,
                  default=False)
     self.add_key('update_interval',
                  validation_method=self._validate_update_interval,

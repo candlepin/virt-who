@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.10
+Version:        1.30.11
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,12 @@ fi
 
 
 %changelog
+* Mon Jan 10 2022 William Poteat <wpoteat@redhat.com> 1.30.11-1
+- 1986755: Remove the redundant 'update_interval' option from ahv config
+  (wpoteat@redhat.com)
+- 1986749: rename configuration entry to show ahv specificity
+  (wpoteat@redhat.com)
+
 * Thu Dec 16 2021 William Poteat <wpoteat@redhat.com> 1.30.10-1
 - 2000024: Convert non-latin1 username/password to bytes (jhnidek@redhat.com)
 - 1910020: replace deprecated call (wpoteat@redhat.com)

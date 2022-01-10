@@ -53,7 +53,6 @@ class Ahv(virt.Virt):
         self.port = ahv_constants.DEFAULT_PORT
         self.username = self.config['username']
         self.password = self.config['password']
-        self.update_interval = self.config['update_interval']
         self.wait_time = self.config['wait_time_in_sec']
         self._interface = AhvInterface(
             logger,
@@ -215,7 +214,7 @@ class Ahv(virt.Virt):
             if self._oneshot:
                 break
             else:
-                next_update = time() + self.update_interval
+                next_update = time() + self.interval
 
 
 class AhvConfigSection(VirtConfigSection):
@@ -264,11 +263,6 @@ class AhvConfigSection(VirtConfigSection):
             default=False
         )
         self.add_key(
-            'update_interval',
-            validation_method=self._validate_update_interval,
-            default=DefaultUpdateInterval
-        )
-        self.add_key(
             'wait_time_in_sec',
             validation_method=self._validate_wait_time,
             default=DefaultWaitTime)
@@ -288,32 +282,6 @@ class AhvConfigSection(VirtConfigSection):
         except socket.error:
             error = 'Invalid server IP address provided'
         return error
-
-    def _validate_update_interval(self, key):
-        """
-        Validate the update internal flag.
-        Args:
-            key (Int): Update internal value.
-        Returns:
-            A warning is returned in case interval is not valid.
-        """
-        result = None
-        try:
-            self._values[key] = int(self._values[key])
-
-            if self._values[key] < MinimumUpdateInterval:
-                message = (
-                    "Interval value can't be lower than {min} seconds. "
-                    "Default value of {min} "
-                    "seconds will be used.".format(min=DefaultUpdateInterval)
-                )
-                result = ("warning", message)
-                self._values['interval'] = DefaultUpdateInterval
-        except KeyError:
-            result = ('warning', '%s is missing' % key)
-        except (TypeError, ValueError) as e:
-            result = ('warning', '%s was not set to a valid integer: %s' % (key, str(e)))
-        return result
 
     def _validate_wait_time(self, key):
         """

@@ -141,7 +141,7 @@ class AhvInterface(object):
 
         return formatted_data
 
-    def _progressbar(self, it, prefix="", size=60, file=sys.stdout, total=0, is_pc=False):
+    def _progressbar(self, it, prefix="", size=60, file=sys.stderr, total=0, is_pc=False):
         count = total
         cursor = 0
 

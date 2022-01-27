@@ -276,11 +276,16 @@ class AhvConfigSection(VirtConfigSection):
             Socket error is returned in case of an invalid ip.
         """
         error = super(AhvConfigSection, self)._validate_server(key)
-        try:
-            ip = self._values[key]
-            socket.inet_aton(ip)
-        except socket.error:
-            error = 'Invalid server IP address provided'
+        if error is None:
+            try:
+                ip = self._values[key]
+                socket.inet_aton(ip)
+            except socket.error:
+                error = (
+                   'error',
+                   'Invalid server IP address provided'
+                    )
+
         return error
 
     def _validate_wait_time(self, key):

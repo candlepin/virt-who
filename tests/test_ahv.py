@@ -413,16 +413,6 @@ class TestAhvConfigSection(TestBase):
         result = self.ahv_config.validate()
         self.assertEqual(len(result), 0)
 
-    def test_validate_ahv_invalid_server_ip(self):
-        """
-        Test validation of ahv config. Invalid server IP.
-        """
-        self.init_virt_config_section()
-        self.ahv_config['server'] = '10.0.0.'
-        result = self.ahv_config.validate()
-        expected_result = ['Invalid server IP address provided']
-        self.assertCountEqual(expected_result, result)
-
     def test_validate_ahv_non_latin_username(self):
         """
         Test validation of ahv config. Invalid server IP.

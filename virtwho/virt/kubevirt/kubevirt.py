@@ -160,4 +160,8 @@ class Kubevirt(virt.Virt):
         This single call will confirm the credentials. The result outside
         of that is not important in the status scenario.
         '''
-        self._client.get_nodes()
+        try:
+            self._client.get_nodes()
+        finally:
+            if 'server' not in self.config:
+                self.config['server'] = self._client.host

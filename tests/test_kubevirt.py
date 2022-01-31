@@ -353,6 +353,35 @@ class TestKubevirt(TestBase):
     @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
            return_value=Mock())
     @patch("virtwho.virt.kubevirt.config.Configuration")
+    def test_status_config_file_host(self, cfg, _, kube_client):
+        cfg.return_value = Config()
+        kube_client.client.get_nodes = Mock(return_value=self.nodes())
+        kube_client.client.get_vms.return_value = Mock(return_value=self.vms())
+        kube_client.return_value.host = 'kubeserver'
+
+        self.config = self.create_config(
+            name='test', wrapper=None, type='kubevirt',
+            owner='owner', kubeconfig='/etc/hosts',
+            kubeversion='version', hypervisor_id='hostname'
+        )
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, self.config, Datastore())
+            kubevirt.status = True
+            kubevirt._send_data = Mock()
+            self.run_once(kubevirt)
+
+            kubevirt._send_data.assert_called_once_with(data_to_send=ANY)
+            self.assertTrue(isinstance(kubevirt._send_data.mock_calls[0].kwargs['data_to_send'], StatusReport))
+            self.assertEqual(
+                kubevirt._send_data.mock_calls[0].kwargs['data_to_send'].data['source']['server'],
+                'kubeserver'
+            )
+
+    @patch("virtwho.virt.kubevirt.kubevirt.KubeClient")
+    @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
+           return_value=Mock())
+    @patch("virtwho.virt.kubevirt.config.Configuration")
     def test_status_bad_source_credentials(self, cfg, _, kube_client):
         cfg.return_value = Config()
         kube_client.get_nodes = Mock(return_value=self.nodes())

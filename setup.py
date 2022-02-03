@@ -182,6 +182,7 @@ setup(
     include_package_data=True,
     package_data={
         'virtwho.virt.esx': ['vimServiceMinimal.wsdl'],
+        'virtwho.virt.esx.suds': ['LICENSE.txt'],
     },
     cmdclass={
         'install_systemd': InstallSystemd,

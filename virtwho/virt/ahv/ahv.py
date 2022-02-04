@@ -105,6 +105,8 @@ class Ahv(virt.Virt):
     mapping = {'hypervisors': []}
 
     host_uvm_map = self._interface.build_host_to_uvm_map(self.version)
+    if host_uvm_map:
+      cluster_uuid_map = self._interface.get_ahv_cluster_uuid_map(self.version)
 
     for host_uuid in host_uvm_map:
       host = host_uvm_map[host_uuid]
@@ -139,7 +141,7 @@ class Ahv(virt.Virt):
       else:
         self.logger.debug("Host '%s' doesn't have any vms", host_uuid)
 
-      cluster_uuid = self._interface.get_host_cluster_uuid(host)
+      cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_map)
       host_version = self._interface.get_host_version(host)
       host_name = host['name']
 
@@ -147,8 +149,9 @@ class Ahv(virt.Virt):
         Hypervisor.CPU_SOCKET_FACT: str(host['num_cpu_sockets']),
         Hypervisor.HYPERVISOR_TYPE_FACT: host.get('hypervisor_type', 'AHV'),
         Hypervisor.HYPERVISOR_VERSION_FACT: str(host_version),
-        Hypervisor.HYPERVISOR_CLUSTER: str(cluster_uuid),
         Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)}
+      if cluster_name:
+        facts[Hypervisor.HYPERVISOR_CLUSTER] = str(cluster_name)
 
       mapping['hypervisors'].append(virt.Hypervisor(hypervisorId=hypervisor_id,
                                                     guestIds=guests,

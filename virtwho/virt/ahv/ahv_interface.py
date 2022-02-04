@@ -357,7 +357,7 @@ class AhvInterface(object):
     Returns:
       Task list (list): list of tasks.
     """
-    ahv_clusters = self.get_ahv_cluster_uuids(version)
+    ahv_clusters = self.get_ahv_cluster_uuid_map(version)
     (uri, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_tasks')
     # For task return. Use fv2.0 for now. update the url to use v2.0.
     url = self._url[:(self._url).rfind('v')] + 'v2.0' + uri
@@ -588,27 +588,36 @@ class AhvInterface(object):
           self._logger.warning("Cannot access the uuid for the. "
                                "host object: %s" % (host_entity))
 
-
-  def get_host_cluster_uuid(self, host_info):
+  def get_host_cluster_name(self, host_info, cluster_ids):
     """
-    Returns host's cluster UUID.
+    Returns host's cluster identifier if one exists.
     Args:
       host_info (dict): Host info dict.
+      cluster_ids: Map of UUID to name for clusters
     Returns:
-      host_cluster_uuid (uuid): host's cluster uuid.
+      host_cluster_name: The host's cluster name. If no name exists, then
+                         the host's uuid will be returned. Otherwise, None
     """
+    this_uuid = None
     if 'cluster_uuid' in host_info:
-      return host_info['cluster_uuid']
+      this_uuid = host_info['cluster_uuid']
     elif 'cluster_reference' in host_info:
-      return host_info['cluster_reference']['uuid']
+      this_uuid = host_info['cluster_reference']['uuid']
 
-  def get_ahv_cluster_uuids(self, version):
+    for uuid, name in cluster_ids:
+      if this_uuid == uuid and name:
+        return name
+    if this_uuid:
+      self._logger.warning("No name found for host with uuid: %s. Using uuid." % this_uuid)
+    return this_uuid
+
+  def get_ahv_cluster_uuid_map(self, version):
     """
-    Returns list of ahv cluster uuids.
+    Returns list of tuples with cluster uuids and names.
     Args:
       version (str): Interface version.
     Returns:
-      ahv_host_cluster_uuids (List): Returns list of ahv cluster uuids.
+      ahv_host_cluster_uuids (List): Returns list of tuples with cluster uuids and names.
     """
     ahv_host_cluster_uuids = []
     seen = set(ahv_host_cluster_uuids)
@@ -624,10 +633,10 @@ class AhvInterface(object):
       if 'hypervisor_types' in cluster and 'cluster_uuid' in cluster:
         for hypevirsor_type in cluster['hypervisor_types']:
           if hypevirsor_type in ahv_constants.AHV_HYPERVIRSOR:
-            cluster_uuid = cluster['cluster_uuid']
+            cluster_uuid = (cluster['cluster_uuid'], cluster['name'])
             if cluster_uuid not in seen:
               seen.add(cluster_uuid)
-              ahv_host_cluster_uuids.append(cluster['cluster_uuid'])
+              ahv_host_cluster_uuids.append(cluster_uuid)
               break
 
     return ahv_host_cluster_uuids

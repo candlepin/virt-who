@@ -23,9 +23,11 @@ import math
 import os
 import os.path
 
+from datetime import datetime
 from virtwho import virt
 from virtwho.config import VirtConfigSection, str_to_bool
 from virtwho.virt.kubevirt.client import KubeClient
+from virtwho.virt.kubevirt import config
 
 
 class KubevirtConfigSection(VirtConfigSection):
@@ -102,6 +104,45 @@ class Kubevirt(virt.Virt):
             cpu = int(math.floor(int(cpu[:-1]) / 1000))
         return str(cpu)
 
+    def _run(self):
+        """
+        This method is reimplemented here because we need to get the configuration
+          file loaded in case of failure during a status run.
+        """
+        try:
+            self.prepare()
+        finally:
+            if self.status and ('server' not in self.config or not self.config['server']):
+                cfg = config.Configuration()
+                cl = config._get_kube_config_loader_for_yaml_file(self._path)
+                cl.load_and_set(cfg)
+                self.config['server'] = cfg.host
+
+        while not self.is_terminated():
+            start_time = datetime.now()
+            data_to_send = self._get_data()
+            self._send_data(data_to_send=data_to_send)
+            if self._oneshot:
+                self._internal_terminate_event.set()
+                break
+            end_time = datetime.now()
+
+            delta = end_time - start_time
+            # for python2.6, 2.7 has total_seconds method
+            delta_seconds = ((
+                             delta.days * 86400 + delta.seconds) * 10 ** 6 +
+                             delta.microseconds) / 10 ** 6
+
+            wait_time = self.interval - int(delta_seconds)
+
+            if wait_time < 0:
+                self.logger.debug(
+                    "Getting the data took longer than the configured "
+                    "interval. Trying again immediately.")
+                continue
+
+            self.wait(wait_time)
+
     def getHostGuestMapping(self):
         """
         Returns dictionary containing a list of virt.Hypervisors
@@ -160,4 +201,8 @@ class Kubevirt(virt.Virt):
         This single call will confirm the credentials. The result outside
         of that is not important in the status scenario.
         '''
-        self._client.get_nodes()
+        try:
+            self._client.get_nodes()
+        finally:
+            if 'server' not in self.config or not self.config['server']:
+                self.config['server'] = self._client.host

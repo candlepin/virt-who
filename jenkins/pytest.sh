@@ -11,7 +11,8 @@ source env-pytest/bin/activate
 
 pip install -U setuptools
 pip install -r requirements.txt
-pip install -U python-dateutil M2Crypto libvirt-python unittest2 pytest-timeout mock
+pip install -r requirements-test.txt
+pip install -U python-dateutil M2Crypto libvirt-python unittest2 
 
 export PYTHONPATH=.
 py.test --timeout=30 -v

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.19
+Version:        1.31.21
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -163,6 +163,30 @@ fi
 
 
 %changelog
+* Tue Feb 08 2022 William Poteat <wpoteat@redhat.com> 1.31.21-1
+- 1987247: The connection value shows null for kubevirt mode in virt-who status
+  json (wpoteat@redhat.com)
+- Addition of LGPLv3 license file from suds (wpoteat@redhat.com)
+- 2000415: Nutanix config needs to handle bad server value (wpoteat@redhat.com)
+- 1996942: Use cluster name instead of UUID for fabric consistency
+  (wpoteat@redhat.com)
+- 1990758: Virt-who always prints YAMLLoadWarning for kubevirt mode
+  (wpoteat@redhat.com)
+- 1990563: Move progress bar to stderr to keep stdout clean
+  (wpoteat@redhat.com)
+
+* Tue Feb 08 2022 William Poteat <wpoteat@redhat.com>
+- 1987247: The connection value shows null for kubevirt mode in virt-who status
+  json (wpoteat@redhat.com)
+- Addition of LGPLv3 license file from suds (wpoteat@redhat.com)
+- 2000415: Nutanix config needs to handle bad server value (wpoteat@redhat.com)
+- 1996942: Use cluster name instead of UUID for fabric consistency
+  (wpoteat@redhat.com)
+- 1990758: Virt-who always prints YAMLLoadWarning for kubevirt mode
+  (wpoteat@redhat.com)
+- 1990563: Move progress bar to stderr to keep stdout clean
+  (wpoteat@redhat.com)
+
 * Mon Jan 10 2022 William Poteat <wpoteat@redhat.com> 1.31.19-1
 - 1990562: Remove the redundant 'update_interval' option from ahv config
   (wpoteat@redhat.com)

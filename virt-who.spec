@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.11
+Version:        1.30.12
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,14 @@ fi
 
 
 %changelog
+* Tue Feb 08 2022 William Poteat <wpoteat@redhat.com> 1.30.12-1
+- Run complex tests as forked for consistent results (wpoteat@redhat.com)
+- 1996944: Use cluster name instead of UUID for fabric consistency
+  (wpoteat@redhat.com)
+- 2000423: Nutanix config needs to handle bad server value (wpoteat@redhat.com)
+- 1990563: Move progress bar to stderr to keep stdout clean
+  (wpoteat@redhat.com)
+
 * Mon Jan 10 2022 William Poteat <wpoteat@redhat.com> 1.30.11-1
 - 1986755: Remove the redundant 'update_interval' option from ahv config
   (wpoteat@redhat.com)

@@ -1,2 +1,6 @@
 mock
 flake8
+pytest
+pytest-randomly
+pytest-timeout
+pytest-forked

@@ -19,6 +19,7 @@ from __future__ import print_function
 #
 
 import os
+import pytest
 import signal
 import sys
 import socket
@@ -270,12 +271,14 @@ class TestBase(TestCase):
         except Empty:
             raise AssertionError("Association was not obtained in %d seconds" % timeout)
 
+    @pytest.mark.forked
     def test_basic(self):
         code, _ = self.run_virtwho(self.arguments + ['-o', '--debug'])
         self.assertEqual(code, 0, "virt-who exited with wrong error code: %s" % code)
         assoc = self.wait_for_assoc()
         self.check_assoc_initial(assoc)
 
+    @pytest.mark.forked
     def test_print(self):
         args = self.arguments + ['-p', '--debug']
         code, out = self.run_virtwho(args, grab_stdout=True)
@@ -321,6 +324,7 @@ class TestBase(TestCase):
             ]
         })
 
+    @pytest.mark.forked
     def test_normal(self):
         self.run_virtwho(['-i', '2', '-d'] + self.arguments, background=True)
         self.addCleanup(self.stop_virtwho)
@@ -333,6 +337,7 @@ class TestBase(TestCase):
         assoc = self.wait_for_assoc(5)
         self.check_assoc_updated(assoc)
 
+    @pytest.mark.forked
     def test_exit_on_SIGTERM(self):
         """
         This test shows that virt-who exits cleanly in response to the
@@ -345,6 +350,7 @@ class TestBase(TestCase):
         self.process.join(timeout=3)
         self.assertEqual(self.process.is_alive(), False)
 
+    @pytest.mark.forked
     def test_reload_on_SIGHUP(self):
         """
         This tests that the rhsm.conf is read once again when the process

@@ -26,7 +26,8 @@ Release:        %{release_number}%{?dist}
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
 Group:          System Environment/Base
-License:        GPLv2+
+# GPL for virt-who proper and LGPL for incorporated suds
+License:        GPLv2+ and LGPLv3+
 URL:            https://github.com/candlepin/virt-who
 Source0:        %{name}-%{version}.tar.gz
 
@@ -78,6 +79,7 @@ Requires(preun): chkconfig
 # This is for /sbin/service
 Requires(preun): initscripts
 %endif
+Provides: bundled(python-suds) = 0.8.4
 
 %description
 Agent that collects information about virtual guests present in the system and

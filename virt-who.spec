@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.21
+Version:        1.31.22
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,12 @@ fi
 
 
 %changelog
+* Wed Mar 16 2022 William Poteat <wpoteat@redhat.com> 1.31.22-1
+- 2060949: Indicate that virt-who provides python-suds in the spec file
+  (wpoteat@redhat.com)
+- Run complex tests as forked for consistent results (wpoteat@redhat.com)
+- Update releasers for current needs (wpoteat@redhat.com)
+
 * Tue Feb 08 2022 William Poteat <wpoteat@redhat.com> 1.31.21-1
 - 1987247: The connection value shows null for kubevirt mode in virt-who status
   json (wpoteat@redhat.com)

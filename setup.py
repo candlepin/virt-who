@@ -165,7 +165,7 @@ class build(_build):
 
 setup(
     name='virt-who',
-    version='1.31.21',
+    version='1.31.22',
     description='virt-who is agent for reporting virtual guest IDs to subscription manager.',
     # long_description=open('README.md').read(),
     author='Radek Novacek',

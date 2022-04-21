@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.22
+Version:        1.31.23
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,10 @@ fi
 
 
 %changelog
+* Thu Apr 21 2022 William Poteat <wpoteat@redhat.com> 1.31.23-1
+- 2054504: Use usedforsecurity=False for md5() calls to make suds work on FIPS
+  enabled systems (oalbrigt@redhat.com)
+
 * Wed Mar 16 2022 William Poteat <wpoteat@redhat.com> 1.31.22-1
 - 2060949: Indicate that virt-who provides python-suds in the spec file
   (wpoteat@redhat.com)

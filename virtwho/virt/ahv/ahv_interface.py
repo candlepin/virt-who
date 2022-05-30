@@ -514,14 +514,17 @@ class AhvInterface(object):
         self._logger.info("Getting the list of available vms")
         is_pc = True if version == 'v3' else False
         vm_uuid_list = []
-        length = 0
+        length = 100
         offset = 0
         total_matches = 0
         count = 1
         current = 0
         (url, cmd_method) = self.get_diff_ver_url_and_method(
             cmd_key='list_vms', intf_version=version)
-        res = self.make_rest_call(method=cmd_method, uri=url)
+        body = {
+            'length': length
+        }
+        res = self.make_rest_call(method=cmd_method, uri=url, json=body)
         data = res.json()
         if "metadata" in data:
             if "total_matches" in data["metadata"] and "length" in data["metadata"]:
@@ -559,9 +562,8 @@ class AhvInterface(object):
                         )
 
             body['offset'] = body['offset'] + length
-            body_data = json.dumps(body, indent=4)
             self._logger.debug('next vm list call has this body: %s' % body)
-            res = self.make_rest_call(method=cmd_method, uri=url, data=body_data)
+            res = self.make_rest_call(method=cmd_method, uri=url, json=body)
             data = res.json()
             current += 1
 

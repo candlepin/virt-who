@@ -521,10 +521,14 @@ class AhvInterface(object):
         current = 0
         (url, cmd_method) = self.get_diff_ver_url_and_method(
             cmd_key='list_vms', intf_version=version)
-        body = {
-            'length': length
-        }
-        res = self.make_rest_call(method=cmd_method, uri=url, json=body)
+        if cmd_method == 'POST:
+            body = {
+                'length': ahv_constants.NUM_OF_REQUESTED_VMS,
+                'offset: 0
+            }
+            res = self.make_rest_call(method=cmd_method, uri=url, json=body)
+        else:
+            res = self.make_rest_call(method=cmd_method, uri=url)
         data = res.json()
         if "metadata" in data:
             if "total_matches" in data["metadata"] and "length" in data["metadata"]:
@@ -547,7 +551,10 @@ class AhvInterface(object):
             )
             count = math.ceil(total_matches/float(length))
 
-        body = {'length': length, 'offset': offset}
+        body = {
+            'length': length,
+            'offset': offset
+        }
         for i in self._progressbar(range(int(count)), "Finding vms uuid: ", total=int(total_matches), is_pc=is_pc):
             if 'entities' in data:
                 for vm_entity in data['entities']:

@@ -521,7 +521,7 @@ class AhvInterface(object):
         current = 0
         (url, cmd_method) = self.get_diff_ver_url_and_method(
             cmd_key='list_vms', intf_version=version)
-        if cmd_method == 'POST':
+        if cmd_method == 'post':
             body = {
                 'length': ahv_constants.NUM_OF_REQUESTED_VMS,
                 'offset': 0

@@ -514,8 +514,7 @@ class AhvInterface(object):
         self._logger.info("Getting the list of available vms")
         is_pc = True if version == 'v3' else False
         vm_uuid_list = []
-        length = 100
-        offset = 0
+        initial_offset = 0
         total_matches = 0
         count = 1
         current = 0
@@ -524,7 +523,7 @@ class AhvInterface(object):
         if cmd_method == 'post':
             body = {
                 'length': ahv_constants.NUM_OF_REQUESTED_VMS,
-                'offset': 0
+                'offset': initial_offset
             }
             res = self.make_rest_call(method=cmd_method, uri=url, json=body)
         else:

@@ -4,6 +4,7 @@ TASK_COMPLETE_MSG = ['SUCCEEDED', 'Succeeded']
 DEFAULT_PORT = 9440
 VERSION_2 = 'v2.0'
 VERSION_3 = 'v3'
+NUM_OF_REQUESTED_VMS = 100
 
 CMN_RST_CMD = {
     'get_vm': {'url': '/vms/%s', 'method': 'get'},

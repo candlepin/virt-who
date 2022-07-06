@@ -514,7 +514,9 @@ class AhvInterface(object):
         self._logger.info("Getting the list of available vms")
         is_pc = True if version == 'v3' else False
         vm_uuid_list = []
+        length = ahv_constants.NUM_OF_REQUESTED_VMS
         initial_offset = 0
+        offset = 0
         total_matches = 0
         count = 1
         current = 0
@@ -522,7 +524,7 @@ class AhvInterface(object):
             cmd_key='list_vms', intf_version=version)
         if cmd_method == 'post':
             body = {
-                'length': ahv_constants.NUM_OF_REQUESTED_VMS,
+                'length': length,
                 'offset': initial_offset
             }
             res = self.make_rest_call(method=cmd_method, uri=url, json=body)
@@ -545,15 +547,12 @@ class AhvInterface(object):
         if length < total_matches:
             self._logger.debug(
                 'Number of vms %s returned from REST is less than the total'
-                'numberr:%s. Adjusting the offset and iterating over all'
+                'number: %s. Adjusting the offset and iterating over all'
                 'vms until evry vm is returned from the server.' % (length, total_matches)
             )
             count = math.ceil(total_matches/float(length))
 
-        body = {
-            'length': length,
-            'offset': offset
-        }
+        body = {'length': length, 'offset': offset}
         for i in self._progressbar(range(int(count)), "Finding vms uuid: ", total=int(total_matches), is_pc=is_pc):
             if 'entities' in data:
                 for vm_entity in data['entities']:

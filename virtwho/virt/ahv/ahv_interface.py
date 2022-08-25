@@ -511,14 +511,30 @@ class AhvInterface(object):
     self._logger.info("Getting the list of available vms")
     is_pc=True if version == 'v3' else False
     vm_uuid_list = []
-    length = 0
+    length = ahv_constants.NUM_OF_REQUESTED_VMS
+    initial_offset = 0
     offset = 0
     total_matches = 0
     count = 1
     current = 0
-    (url, cmd_method) = self.get_diff_ver_url_and_method(
+    url, cmd_method = self.get_diff_ver_url_and_method(
       cmd_key='list_vms', intf_version=version)
-    res = self.make_rest_call(method=cmd_method, uri=url)
+
+    kwargs = {
+      "method": cmd_method,
+      "uri": url
+    }
+    if is_pc is True:
+      kwargs["json"] = {
+        'length': length,
+        'offset': initial_offset
+      }
+    res = self.make_rest_call(**kwargs)
+
+    if res is None:
+      self._logger.error("Unable to get list of VMs")
+      return vm_uuid_list
+
     data = res.json()
     if 'metadata' in data:
       if 'total_matches' in data['metadata'] and 'length' in data['metadata']:
@@ -534,8 +550,8 @@ class AhvInterface(object):
 
     if length < total_matches:
       self._logger.debug('Number of vms %s returned from REST is less than the total'\
-                         'numberr:%s. Adjusting the offset and iterating over all'\
-                         'vms until evry vm is returned from the server.' % (length,
+                         'number:%s. Adjusting the offset and iterating over all'\
+                         'vms until every vm is returned from the server.' % (length,
                          total_matches))
       count = math.ceil(total_matches/float(length))
 
@@ -552,11 +568,16 @@ class AhvInterface(object):
                                  "vm object: %s" % (vm_entity['name'],
                                                     vm_entity))
 
-      body['offset'] = body['offset'] + length
-      body_data = json.dumps(body, indent=4)
-      self._logger.debug('next vm list call has this body: %s' % body)
-      res = self.make_rest_call(method=cmd_method, uri=url, data=body_data)
-      data = res.json()
+      if is_pc is True:
+        body['offset'] = body['offset'] + length
+        self._logger.debug('Next vm list call has this body: %s' % body)
+        kwargs["json"] = body
+      res = self.make_rest_call(**kwargs)
+      if res is not None:
+        data = res.json()
+      else:
+        self._logger.error(f"Unable to get list of VMs with offset: {body['offset']}")
+        data = {}
       current += 1
 
     self._logger.info("Total number of vms uuids found and saved for processing %s" % len(vm_uuid_list))
@@ -697,12 +718,16 @@ class AhvInterface(object):
     """
     if 'resources' in vm_entity:
       if 'host_reference' in vm_entity['resources']:
-        return vm_entity['resources']['host_reference']['uuid']
+        vm_uuid = vm_entity['resources']['host_reference']['uuid']
+        self._logger.debug(f"Host UUID {vm_uuid} found for VM: {vm_entity['uuid']}")
+        return vm_uuid
       else:
-        self._logger.warning("Did not find any host information for vm:%s"
+        self._logger.warning("Did not find any host information for VM :%s"
                             % vm_entity['uuid'])
     elif 'host_uuid' in vm_entity:
-      return vm_entity['host_uuid']
+      vm_uuid = vm_entity['host_uuid']
+      self._logger.debug(f"Host UUID {vm_uuid} found for VM: {vm_entity['uuid']}")
+      return vm_uuid
     else:
       # Vm is off therefore no host is assigned to it.
       self._logger.debug('Cannot get the host uuid of the vm:%s. '

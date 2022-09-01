@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.23
+Version:        1.31.24
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,9 @@ fi
 
 
 %changelog
+* Thu Sep 01 2022 William Poteat <wpoteat@redhat.com> 1.31.24-1
+- 2118253: Nutanix: Gather information about VMs correctly (jhnidek@redhat.com)
+
 * Thu Apr 21 2022 William Poteat <wpoteat@redhat.com> 1.31.23-1
 - 2054504: Use usedforsecurity=False for md5() calls to make suds work on FIPS
   enabled systems (oalbrigt@redhat.com)

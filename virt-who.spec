@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.12
+Version:        1.30.13
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,11 @@ fi
 
 
 %changelog
+* Thu Sep 01 2022 William Poteat <wpoteat@redhat.com> 1.30.13-1
+- 2091661: [1.30] Nutanix: Gather information about VMs correctly
+  (jhnidek@redhat.com)
+- Update releasers for current needs (wpoteat@redhat.com)
+
 * Tue Feb 08 2022 William Poteat <wpoteat@redhat.com> 1.30.12-1
 - Run complex tests as forked for consistent results (wpoteat@redhat.com)
 - 1996944: Use cluster name instead of UUID for fabric consistency

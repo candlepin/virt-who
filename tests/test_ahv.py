@@ -1,3 +1,21 @@
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+#
+# Refer to the README and COPYING files for full details of the license
+#
+
 from __future__ import print_function
 
 from base import TestBase
@@ -25,11 +43,10 @@ PE_SECTION_VALUES = {
     'hypervisor_id': 'uuid',
     'is_hypervisor': True,
     'ahv_internal_debug': False,
-    'wait_time_in_sec': 900
 }
 
 CLUSTER_NAMES = [("0005809e-62e4-75c7-611b-0cc47ac3b354", "cluster_1")]
-CLUSTER_NAMES_BLANK = [("0005809e-62e4-75c7-611b-0cc47ac3b350", "")]
+CLUSTER_NAMES_BLANK = []
 
 HOST_UVM_MAP = {
     "08469de5-be42-43e6-8c32-20167d3b58f7": {
@@ -741,7 +758,6 @@ class TestAhv(TestBase):
         self.ahv = Virt.from_config(self.logger, config, Datastore(),
                                     interval=DefaultInterval)
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface._progressbar')
     def run_once(self, queue=None):
         """Run AHV in oneshot mode."""
         self.ahv._oneshot = True
@@ -848,58 +864,58 @@ class TestAhv(TestBase):
         mock_post.return_value.status_code = 409
         self.assertRaises(VirtError, self.run_once)
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.get_host_list', return_value=None)
     @patch.object(Session, 'get')
-    def test_no_retry_http_erros_PE(self, mock_get, mock_get_vm):
+    def test_no_retry_http_erros_PE(self, mock_get, mock_get_host_list):
         mock_get.return_value.ok = False
         mock_get.return_value.status_code = 400
         mock_get.return_value.text = 'Bad Request'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_get.return_value.status_code = 404
         mock_get.return_value.text = 'Not Found Error'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_get.return_value.status_code = 500
         mock_get.return_value.text = 'Internal Server Error'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_get.return_value.status_code = 502
         mock_get.return_value.tex = 'Bad Gateway'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_get.return_value.status_code = 503
         mock_get.return_value.text = 'Service Unavailable '
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_vm', return_value=None)
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface3.get_host_list', return_value=None)
     @patch.object(Session, 'post')
-    def test_no_retry_http_erros_PC(self, mock_post, mock_get_vm):
+    def test_no_retry_http_erros_PC(self, mock_post, mock_get_host_list):
         self.setUp(is_pc=True)
         mock_post.return_value.ok = False
         mock_post.return_value.status_code = 400
         mock_post.return_value.text = 'Bad Request'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_post.return_value.status_code = 404
         mock_post.return_value.text = 'Not Found Error'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_post.return_value.status_code = 500
         mock_post.return_value.text = 'Internal Server Error'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_post.return_value.status_code = 502
         mock_post.return_value.tex = 'Bad Gateway'
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
         mock_post.return_value.status_code = 503
         mock_post.return_value.text = 'Service Unavailable '
-        self.assertEqual(mock_get_vm.return_value, None)
+        self.assertEqual(mock_get_host_list.return_value, None)
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_ahv_cluster_uuid_map')
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.build_host_to_uvm_map')
-    def test_getHostGuestMapping(self, host_to_uvm_map, cluster_names):
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.get_ahv_cluster_uuid_name_list')
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.build_host_to_uvm_map')
+    def test_getHostGuestMapping_v2(self, host_to_uvm_map, cluster_names):
         host_to_uvm_map.return_value = HOST_UVM_MAP
         cluster_names.return_value = CLUSTER_NAMES
 
@@ -941,9 +957,9 @@ class TestAhv(TestBase):
         for index in range(0, len(result)):
             self.assertEqual(expected_result[index].toDict(), result[index].toDict())
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_ahv_cluster_uuid_map')
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.build_host_to_uvm_map')
-    def test_getHostGuestMapping_empty_cluster_name(self, host_to_uvm_map, cluster_names):
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.get_ahv_cluster_uuid_name_list')
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.build_host_to_uvm_map')
+    def test_getHostGuestMapping_empty_cluster_name_v2(self, host_to_uvm_map, cluster_names):
         host_to_uvm_map.return_value = HOST_UVM_MAP_2
         cluster_names.return_value = CLUSTER_NAMES_BLANK
 
@@ -985,8 +1001,8 @@ class TestAhv(TestBase):
         for index in range(0, len(result)):
             self.assertEqual(expected_result[index].toDict(), result[index].toDict())
 
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.get_ahv_cluster_uuid_map')
-    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface.build_host_to_uvm_map')
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.get_ahv_cluster_uuid_name_list')
+    @patch('virtwho.virt.ahv.ahv_interface.AhvInterface2.build_host_to_uvm_map')
     def test_getHostGuestMapping_no_cluster_uuid(self, host_to_uvm_map, cluster_names):
         host_to_uvm_map.return_value = HOST_UVM_MAP_3
         cluster_names.return_value = CLUSTER_NAMES_BLANK

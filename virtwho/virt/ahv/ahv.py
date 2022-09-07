@@ -1,9 +1,26 @@
-import socket
-import time as time_func
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+#
+# Refer to the README and COPYING files for full details of the license
+#
 
-from . import ahv_constants
-from .ahv_interface import AhvInterface, Failure
-from time import time
+import socket
+import time
+
+from .ahv_interface import AhvInterface2, AhvInterface3
+
 from virtwho import virt
 from virtwho.config import VirtConfigSection
 from virtwho.virt import Hypervisor, Guest
@@ -15,19 +32,26 @@ MinWaitTime = 60
 
 
 class Ahv(virt.Virt):
-    "AHV Rest client"
+    """
+    AHV Rest client
+    """
+
     CONFIG_TYPE = "ahv"
+
+    SERVER_BASE_URIL = 'https://%s:%d/api/nutanix/%s'
+
+    DEFAULT_PORT = 9440
 
     def __init__(self, logger, config, dest, interval=None,
                  terminate_event=None, oneshot=False, status=False):
         """
         Args:
             logger (Logger): Framework logger.
-            config (onfigSection): Virtwho configuration.
+            config (onfigSection): virt-who configuration.
             dest (Datastore): Data store for destination.
             interval (Int): Wait interval for continuous run.
             terminate_event (Event): Event on termination.
-            one_shot (bool): Flag to run virtwho as onetime or continuously.
+            oneshot (bool): Flag to run virt-who as onetime or continuously.
         Returns:
             None.
         """
@@ -41,69 +65,108 @@ class Ahv(virt.Virt):
             status=status
         )
         self.config = config
-        self.version = ahv_constants.VERSION_2
-        self.is_pc = False
-        if 'prism_central' in self.config:
-            if self.config['prism_central']:
-                self.version = ahv_constants.VERSION_3
-                self.is_pc = True
+        self.version = AhvInterface2.VERSION
 
-        self.port = ahv_constants.DEFAULT_PORT
-        self.url = ahv_constants.SERVER_BASE_URIL % (self.config['server'], self.port, self.version)
-        self.port = ahv_constants.DEFAULT_PORT
+        if 'prism_central' in self.config:
+            # FIXME: should we really allow to have there any value, shouldn't we check true/false?
+            if self.config['prism_central']:
+                self.version = AhvInterface3.VERSION
+
+        self.port = self.DEFAULT_PORT
+        self.url = self.SERVER_BASE_URIL % (self.config['server'], self.port, self.version)
         self.username = self.config['username']
         self.password = self.config['password']
-        self.wait_time = self.config['wait_time_in_sec']
-        self._interface = AhvInterface(
-            logger,
-            self.url,
-            self.username,
-            self.password,
-            self.port,
-            ahv_internal_debug=self.config['ahv_internal_debug']
-        )
+        if self.version == AhvInterface2.VERSION:
+            self._interface = AhvInterface2(
+                logger,
+                self.url,
+                self.username,
+                self.password,
+                self.port,
+                ahv_internal_debug=self.config['ahv_internal_debug']
+            )
+        elif self.version == AhvInterface3.VERSION:
+            self._interface = AhvInterface3(
+                logger,
+                self.url,
+                self.username,
+                self.password,
+                self.port,
+                ahv_internal_debug=self.config['ahv_internal_debug']
+            )
+        else:
+            raise ValueError("Unsupported version of REST API")
 
-    def prepare(self):
+    def get_host_guest_mapping_v3(self):
         """
-        Prepare for obtaining information from AHV server.
-        Args:
-            None
+        Get a dict of host to uvm mapping.
         Returns:
-            None
+            Dictionary with host-guest mapping
         """
-        self.logger.debug("Logging into Acropolis server %s" % self.url)
-        self._interface.login(self.version)
+        mapping = {'hypervisors': []}
+        hypervisor_id = None
 
-    def _wait_for_update(self, timeout):
-        """
-        Wait for an update from AHV.
-        Args:
-            timeout (int): timeout
-        Returns:
-            task list (list): List of vm or host related tasks.
-        """
-        try:
-            end_time = time() + timeout
-            timestamp = int(time() * 1e6)
-            while time() < end_time and not self.is_terminated():
-                try:
-                    response = self._interface.get_tasks(timestamp, self.version, self.is_pc)
-                    if len(response) == 0:
-                        # No events, continue to wait
-                        self.logger.debug('wait for %s seconds before looking for new events\n' % self.wait_time)
-                        time_func.sleep(self.wait_time)
+        host_uvm_map = self._interface.build_host_to_uvm_map()
+
+        cluster_uuid_name_list = self._interface.get_ahv_cluster_uuid_name_list()
+
+        for host_uuid in host_uvm_map:
+            host = host_uvm_map[host_uuid]
+
+            try:
+                if self.config['hypervisor_id'] == 'uuid':
+                    hypervisor_id = host_uuid
+                elif self.config['hypervisor_id'] == 'hostname':
+                    hypervisor_id = host['name']
+
+            except KeyError:
+                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_uuid)
+                continue
+
+            guests = []
+            if 'guest_list' in host and len(host['guest_list']) > 0:
+                for guest_vm in host['guest_list']:
+                    vm_uuid = None
+                    try:
+                        if guest_vm["status"]["resources"]["power_state"] == 'ON':
+                            state = virt.Guest.STATE_RUNNING
+                        elif guest_vm["status"]["resources"]["power_state"] == 'OFF':
+                            state = virt.Guest.STATE_SHUTOFF
+                        else:
+                            state = virt.Guest.STATE_UNKNOWN
+                        vm_uuid = guest_vm["metadata"]["uuid"]
+                    except KeyError:
+                        self.logger.warning(
+                            f"Guest {vm_uuid} is missing power state. Perhaps they"
+                            " are powered off",
+                        )
                         continue
-                    self.logger.debug('AHV event found: %s\n' % response)
-                    return response
-                except Failure as e:
-                    if 'timeout' not in e.details:
-                        raise
-        except Exception:
-            self.logger.exception("Waiting on AHV events failed: ")
+                    guests.append(Guest(vm_uuid, self.CONFIG_TYPE, state))
+            else:
+                self.logger.debug("Host '%s' doesn't have any vms", host_uuid)
 
-        return []
+            cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_name_list)
+            host_version = self._interface.get_host_version(host)
+            host_name = host["status"]['name']
 
-    def getHostGuestMapping(self):
+            facts = {
+                Hypervisor.CPU_SOCKET_FACT: str(host["status"]["resources"]['num_cpu_sockets']),
+                Hypervisor.HYPERVISOR_TYPE_FACT: "AHV",
+                Hypervisor.HYPERVISOR_VERSION_FACT: str(host_version),
+                Hypervisor.SYSTEM_UUID_FACT: str(host_uuid)}
+            if cluster_name:
+                facts[Hypervisor.HYPERVISOR_CLUSTER] = str(cluster_name)
+
+            if hypervisor_id:
+                mapping['hypervisors'].append(virt.Hypervisor(
+                    hypervisorId=hypervisor_id,
+                    guestIds=guests,
+                    name=host_name,
+                    facts=facts
+                ))
+        return mapping
+
+    def get_host_guest_mapping_v2(self):
         """
         Get a dict of host to uvm mapping.
         Args:
@@ -111,11 +174,13 @@ class Ahv(virt.Virt):
         Returns:
             None.
         """
-        mapping = {'hypervisors': []}
 
-        host_uvm_map = self._interface.build_host_to_uvm_map(self.version)
-        if host_uvm_map:
-            cluster_uuid_map = self._interface.get_ahv_cluster_uuid_map(self.version)
+        mapping = {'hypervisors': []}
+        hypervisor_id = None
+
+        host_uvm_map = self._interface.build_host_to_uvm_map()
+
+        cluster_uuid_name_list = self._interface.get_ahv_cluster_uuid_name_list()
 
         for host_uuid in host_uvm_map:
             host = host_uvm_map[host_uuid]
@@ -134,7 +199,6 @@ class Ahv(virt.Virt):
             if 'guest_list' in host and len(host['guest_list']) > 0:
                 for guest_vm in host['guest_list']:
                     try:
-                        state = guest_vm['power_state']
                         if guest_vm['power_state'] == 'on':
                             state = virt.Guest.STATE_RUNNING
                         elif guest_vm['power_state'] == 'off':
@@ -151,7 +215,7 @@ class Ahv(virt.Virt):
             else:
                 self.logger.debug("Host '%s' doesn't have any vms", host_uuid)
 
-            cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_map)
+            cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_name_list)
             host_version = self._interface.get_host_version(host)
             host_name = host['name']
 
@@ -163,13 +227,27 @@ class Ahv(virt.Virt):
             if cluster_name:
                 facts[Hypervisor.HYPERVISOR_CLUSTER] = str(cluster_name)
 
-            mapping['hypervisors'].append(virt.Hypervisor(
-                hypervisorId=hypervisor_id,
-                guestIds=guests,
-                name=host_name,
-                facts=facts
-            ))
+            if hypervisor_id:
+                mapping['hypervisors'].append(virt.Hypervisor(
+                    hypervisorId=hypervisor_id,
+                    guestIds=guests,
+                    name=host_name,
+                    facts=facts
+                ))
         return mapping
+
+    def getHostGuestMapping(self):
+        """
+        Get a dict of host to uvm mapping.
+        Args:
+            None.
+        Returns:
+            None.
+        """
+        if self.version == AhvInterface3.VERSION:
+            return self.get_host_guest_mapping_v3()
+        elif self.version == AhvInterface2.VERSION:
+            return self.get_host_guest_mapping_v2()
 
     def _run(self):
         """
@@ -179,13 +257,9 @@ class Ahv(virt.Virt):
         Returns:
             None.
         """
-        self.prepare()
-        next_update = time()
+        self.next_update = None
         initial = True
-        wait_result = None
-        while self._oneshot or not self.is_terminated():
-
-            delta = next_update - time()
+        while not self.is_terminated():
 
             if initial:
                 if self.status:
@@ -195,33 +269,23 @@ class Ahv(virt.Virt):
                     assoc = self.getHostGuestMapping()
                     self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
                 initial = False
-                continue
-
-            if delta > 0:
-                # Wait for update.
-                wait_result = self._wait_for_update(60 if initial else delta)
-                if wait_result:
-                    events = wait_result
-                else:
-                    events = []
-            else:
-                events = []
-
-            if len(events) > 0 or delta > 0:
-                if self.status:
-                    self._send_data(data_to_send=virt.StatusReport(self.config))
-                else:
-                    assoc = self.getHostGuestMapping()
-                    self._send_data(data_to_send=virt.HostGuestAssociationReport(self.config, assoc))
+                self.next_update = time.time() + self.interval
 
             if self._oneshot:
                 break
-            else:
-                next_update = time() + self.interval
+
+            time.sleep(1)
+            if time.time() > self.next_update:
+                report = virt.StatusReport(self.config)
+                self._send_data(data_to_send=report)
+                self.next_update = time.time() + self.interval
 
 
 class AhvConfigSection(VirtConfigSection):
-    """Class for intializing and processing AHV config"""
+    """
+    Class for initializing and processing AHV config
+    """
+
     VIRT_TYPE = 'ahv'
     HYPERVISOR_ID = ('uuid', 'hostname')
 
@@ -265,10 +329,6 @@ class AhvConfigSection(VirtConfigSection):
             validation_method=self._validate_str_to_bool,
             default=False
         )
-        self.add_key(
-            'wait_time_in_sec',
-            validation_method=self._validate_wait_time,
-            default=DefaultWaitTime)
 
     def _validate_server(self, key):
         """
@@ -290,30 +350,3 @@ class AhvConfigSection(VirtConfigSection):
                     )
 
         return error
-
-    def _validate_wait_time(self, key):
-        """
-        Validate the wait time  flag.
-        Args:
-            key (Int): wait time value.
-        Returns:
-            A warning is returned in case update time is not valid.
-        """
-        result = None
-        try:
-            self._values[key] = int(self._values[key])
-
-            if self._values[key] < MinWaitTime:
-                message = (
-                    "Wait time value can't be lower than {min} seconds. "
-                    "Default value of {default} "
-                    "seconds will be used.".format(min=MinWaitTime,
-                                                   default=DefaultWaitTime)
-                )
-                result = ("warning", message)
-                self._values['interval'] = DefaultWaitTime
-        except KeyError:
-            result = ('warning', '%s is missing' % key)
-        except (TypeError, ValueError) as e:
-            result = ('warning', '%s was not set to a valid integer: %s' % (key, str(e)))
-        return result

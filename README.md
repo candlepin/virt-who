@@ -32,7 +32,6 @@ Backends for reporting list of guest running on given machine:
 * libvirt
 
 Backends for reporting hosts to guests association:
-* RHEV-M (3.x)
 * RHV-M (4.x)
 * VMWare vCenter Server and ESX(i)
 * Hyper-V

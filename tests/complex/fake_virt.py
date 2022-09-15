@@ -28,7 +28,7 @@ class FakeVirt(FakeServer):
     virt_type = None
 
     """
-    Base class for fake virt backends like RHEVM or ESX
+    Base class for fake virt backends like ESX
     """
     def __init__(self, handler_class, host='localhost', port=None):
         super(FakeVirt, self).__init__(handler_class, host, port)

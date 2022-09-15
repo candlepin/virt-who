@@ -34,7 +34,7 @@ class FakeTCPServer(socketserver.TCPServer):
 class FakeHandler(SimpleHTTPRequestHandler):
     """
     Base class of handler for:
-    - Fake virt backends like RHEVM or ESX
+    - Fake virt backends like ESX
     - Fake candlepin server (FakeSam)
     """
     def write_file(self, directory, filename):
@@ -56,7 +56,7 @@ class FakeHandler(SimpleHTTPRequestHandler):
     def write_json(self, content, status_code=requests.codes.ok, headers=None):
         """
         Send back as json the content parameter (Most useful to input a dict).
-        Sets the following headers if not provided (other wise they are added to the input headers)
+        Sets the following headers if not provided (otherwise they are added to the input headers)
           "Content-type" : "application/json"
           "Content-length" : len(json.dumps(content).encode('utf-8'))
         :param content: The object to convert to json and send as the body of the message
@@ -90,7 +90,7 @@ class FakeHandler(SimpleHTTPRequestHandler):
 class FakeServer(Process):
     """
     Base class for fake servers like:
-    - Fake virt backends like RHEVM or ESX
+    - Fake virt backends like ESX
     - Fake candlepin server
     """
 

@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        1.30.5
-Release:        2%{?dist}
+Release:        3%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -167,6 +167,14 @@ fi
 
 
 %changelog
+* Mon Sep 19 2022 Jiri Hnidek <jhnidek@redhat.com> 1.30.5-3
+- 2124814: [1.30.5] Nutanix: Gather information about VMs correctly
+  (jhnidek@redhat.com)
+- This change will only query the VM related tasks from AHV clusters during
+  continous mode to reduce the laod in returning the tasks in the AHV task
+  manager. A new wait time flag is also added to cause delay in querying for
+  the tasks in the continous mode. (amir.eibagi@nutanix.com)
+
 * Thu Jul 22 2021 William Poteat <wpoteat@redhat.com> 1.30.5-2
 - 1984920: Take out AHV removal patch mechanism (wpoteat@redhat.com)
 

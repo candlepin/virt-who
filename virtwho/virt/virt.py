@@ -1125,7 +1125,6 @@ class Virt(IntervalThread):
         # Imports can't be top-level, it would be circular dependency
         import virtwho.virt.libvirtd
         import virtwho.virt.esx
-        import virtwho.virt.rhevm
         import virtwho.virt.hyperv
         import virtwho.virt.fakevirt
         import virtwho.virt.kubevirt

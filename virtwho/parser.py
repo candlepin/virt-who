@@ -40,7 +40,6 @@ VIRT_BACKENDS = Virt.hypervisor_types()
 SAT5_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'server': False, 'username': False},
     'esx': {'owner': False, 'server': True, 'username': True},
-    'rhevm': {'owner': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'server': True, 'username': True},
     'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
     'ahv': {'owner': False, 'server': False, 'username': False},
@@ -49,7 +48,6 @@ SAT5_VM_DISPATCHER = {
 SAT6_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'server': False, 'username': False},
     'esx': {'owner': True, 'server': True, 'username': True},
-    'rhevm': {'owner': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'server': True, 'username': True},
     'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
     'ahv': {'owner': False, 'server': False, 'username': False},
@@ -71,7 +69,7 @@ class StoreGroupArgument(Action):
     def __call__(self, parser, namespace, values, option_string=None):
         """
         When the argument from group is used, then this argument has to match
-        virtualization backend [--libvirt|--esx|--rhevm|--hyperv|--kubevirt|--ahv]
+        virtualization backend [--libvirt|--esx|--hyperv|--kubevirt|--ahv]
         """
         options = vars(namespace)
         virt_type = options['virt_type']

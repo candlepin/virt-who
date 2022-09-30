@@ -59,7 +59,7 @@ Optionally this may be set to '*' to bypass proxy settings for all hostnames dom
 .SH VIRTUALIZATION BACKEND CONFIGURATION
 Each section (or group), denoted by an arbitrary name for the configuration (in square brackets), is read in
 
-Only required key is \fBtype\fR that has to have one of the allowed virtualization backend names: ahv, libvirt, esx, rhevm, hyperv, fake, or kubevirt.
+Only required key is \fBtype\fR that has to have one of the allowed virtualization backend names: ahv, libvirt, esx, hyperv, fake, or kubevirt.
 
 Please note that special characters must not be escaped.
 
@@ -138,7 +138,7 @@ Hosts which uuid (or hostname or hwuuid, based on \fBhypervisor_id\fR) is specif
 When this property is not set, then virt-who tries to detect wildcards or regular expression in value of filter_hosts or exclude_hosts. This option allows to specify usage of regular expression (value 'regex') or wildcards (value 'wildcards').
 .TP
 \fBhypervisor_id\fR
-Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. \fBhwuuid\fR is applicable to esx and rhevm only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
+Property that should be used as identification of the hypervisor. Can be one of following: \fBuuid\fR, \fBhostname\fR, \fBhwuuid\fR. Note that some virtualization backends don't have all of them implemented. Default is \fBuuid\fR. \fBhwuuid\fR is applicable to esx only. This property is meant to be set up before initial run of virt-who. Changing it later will result in duplicated entries in the subscription manager.
 .TP
 \fB#kubeconfig\fR
 Path to Kubernetes configuration file which contains authentication and connection details. Used by kubevirt option
@@ -185,14 +185,6 @@ virt-who by default uses stripped-down version of vimService.wsdl file that cont
 .TP
 \fBprism_central\fR
 Any value set for this parameter will cause the application to use Version 3 communication with the AHV API
-
-.SS RHEV-M BACKEND
-
-.TP
-\fBserver\fR
-The default port number is 8443 (that was used the default in RHEV-M <= 3.0). Newer RHEV-M installations uses port 443 by default. Use correct value for your server in format:
-
-server=<HOSTNAME_OR_IP_ADDRESS>:<PORT_NUMBER>
 
 .SS KUBEVIRT BACKEND
 

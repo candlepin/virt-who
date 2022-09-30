@@ -1,17 +1,36 @@
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301 USA
+#
+# Refer to the README and COPYING files for full details of the license
+#
+
 import json
-import math
 import time
-import sys
-from . import ahv_constants
 from requests import Session
 from requests.exceptions import ConnectionError, ReadTimeout
+from functools import reduce
+
 from virtwho import virt
 
 
 class AhvInterface(object):
-    """ AHV REST Api interface class"""
+    """
+    AHV REST API interface class
+    """
+
     NO_RETRY_HTTP_CODES = [400, 404, 500, 502, 503]
-    event_types = ['node', 'vm']
 
     def __init__(self, logger, url, username, password, port, **kwargs):
         """
@@ -45,8 +64,8 @@ class AhvInterface(object):
         """
         Creates rest session.
         Args:
-            user (str): Username.
-            password (str): Password for rest session.
+            user (bytes): Username.
+            password (bytes): Password for rest session.
         Returns:
             None.
         """
@@ -72,170 +91,6 @@ class AhvInterface(object):
         for arg in args:
             url += "/%s" % str(arg)
         return url
-
-    def _format_response(self, data):
-        """
-        Format the data based on the response's version.
-        Args:
-            data (dict): Data dictionary.
-        Returns:
-            formatted_data (dict): Formatted dictionary.
-        """
-        if 'entities' in data:
-            return self._process_entities_list(data['entities'])
-        else:
-            return self._process_dict_response(data)
-
-    def _process_dict_response(self, data):
-        """
-        Format the data when we only have a dictionary.
-        Args:
-            data (dict): Data dictionary.
-        Returns:
-            formatted_data (dict): Formatted data.
-        """
-        formatted_data = data
-        if 'status' in data and 'metadata' in data:
-            formatted_data = dict(data['status'], **data['metadata'])
-
-        if 'resources' in formatted_data:
-            if 'power_state' in formatted_data['resources']:
-                formatted_data['power_state'] = \
-                    formatted_data['resources']['power_state']
-            if 'num_cpu_sockets' in formatted_data['resources']:
-                formatted_data['num_cpu_sockets'] = \
-                    formatted_data['resources']['num_cpu_sockets']
-
-        return formatted_data
-
-    def _process_entities_list(self, data):
-        """
-        Format data for the list of entities.
-        Args:
-            data (list): List of entities dictionary.
-        Returns:
-            formatted_data (dict): Formatted data after processing list fo entities.
-        """
-        formatted_data = data
-        initial = True
-        for entity in data:
-            if 'status' in entity and 'metadata' in entity:
-                if initial:
-                    formatted_data = []
-                    initial = False
-                formatted_data.append(dict(entity['status'], **entity['metadata']))
-
-        for ent_obj in formatted_data:
-            if 'resources' in ent_obj:
-                if 'nodes' in ent_obj['resources']:
-                    nodes = ent_obj['resources']['nodes']
-                    if 'hypervisor_server_list' in nodes:
-                        ent_obj['hypervisor_types'] = []
-                        for server in nodes['hypervisor_server_list']:
-                            ent_obj['hypervisor_types'].append(server['type'])
-
-            if 'kind' in ent_obj:
-                if ent_obj['kind'] == 'cluster':
-                    if 'uuid' in ent_obj:
-                        ent_obj['cluster_uuid'] = ent_obj['uuid']
-
-        return formatted_data
-
-    def _progressbar(self, it, prefix="", size=60, file=sys.stderr, total=0, is_pc=False):
-        count = total
-        cursor = 0
-
-        def show(j):
-            x = int(size*j/count)
-            file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
-            file.flush()
-        show(0)
-
-        for i, item in enumerate(it):
-            if is_pc:
-                yield item
-                for i in range(20):
-                    show(cursor+1)
-                    cursor += 1
-                    if cursor == count:
-                        break
-                    time.sleep(0.1)
-            else:
-                show(i+1)
-
-        yield item
-        file.write("\n")
-        file.flush()
-
-    def login(self, version):
-        """
-        Login to the rest server and ensure connection succeeds.
-        Args:
-            version (Str): Interface version.
-        Returns:
-            None.
-        """
-        (url, cmd_method) = self.get_diff_ver_url_and_method(
-            cmd_key='list_clusters', intf_version=version)
-        self.make_rest_call(method=cmd_method, uri=url)
-        self._logger.info("Successfully logged into the AHV REST server")
-
-    def get_hypervisor_type(self, version, host_entity=None, vm_entity=None):
-        """
-        Get the hypervisor type of the guest vm.
-        Args:
-            version (Str): API version.
-            host_entity (Dict): Host info dict.
-            vm_entity (Dict): Vm info dict.
-        Returns:
-            hypervisor_type (str): Vm hypervisor type.
-        """
-        hypervisor_type = None
-        if version == 'v2.0':
-            if host_entity:
-                hypervisor_type = host_entity['hypervisor_type']
-            else:
-                self._logger.warning("Cannot retrieve the host type. Version:%s" % version)
-        else:
-            if vm_entity:
-                if 'resources' in vm_entity:
-                    if 'hypervisor_type' in vm_entity['resources']:
-                        hypervisor_type = vm_entity['resources']['hypervisor_type']
-                    else:
-                        self._logger.debug("Hypervisor type of the %s is not available" % vm_entity['uuid'])
-            else:
-                self._logger.warning(
-                    "No vm entity is provided for version %s. "
-                    "Therefore it's unable to retrieve host type" % version
-                )
-        return hypervisor_type
-
-    def get_common_ver_url_and_method(self, cmd_key):
-        """
-        Gets the correct cmd name based on its corresponding version.
-        Args:
-            cmd_key (str): Key name to search for in the command dict.
-        Returns:
-            (str, str) : Tuple of (command, rest_type).
-        """
-        return (
-            ahv_constants.CMN_RST_CMD[cmd_key]['url'],
-            ahv_constants.CMN_RST_CMD[cmd_key]['method']
-        )
-
-    def get_diff_ver_url_and_method(self, cmd_key, intf_version):
-        """
-        Gets the correct cmd name based on its corresponding version
-        Args:
-            cmd_key (str): Key name to search for in the command dict.
-            intf_version (str): Interface version.
-        Returns:
-            (str, str) : Tuple of (command, rest_type).
-        """
-        return (
-            ahv_constants.REST_CMD[intf_version][cmd_key]['url'],
-            ahv_constants.REST_CMD[intf_version][cmd_key]['method']
-        )
 
     def get(self, uri, *args, **kwargs):
         """
@@ -327,8 +182,6 @@ class AhvInterface(object):
                 if ii != retry_count - 1:
                     time.sleep(retry_interval)
                 continue
-            finally:
-                self._session.close()
             if response.ok:
                 return response
             if response.status_code in [401, 403]:
@@ -353,321 +206,105 @@ class AhvInterface(object):
         else:
             self._logger.error("Failed to make the HTTP request (%s, %s)" % (method, url))
 
-    def get_tasks(self, timestamp, version, is_pc=False):
-        """
-        Returns a list of AHV tasks which happened after timestamp.
-        Args:
-            timestamp (int): Current timestamp.
-            version (str): Interface version.
-            is_pc (bool): Flag to determine f we need to poll for PC tasks.
-        Returns:
-            Task list (list): list of tasks.
-        """
-        ahv_clusters = self.get_ahv_cluster_uuid_map(version)
-        (uri, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_tasks')
-        # For task return. Use fv2.0 for now. update the url to use v2.0.
-        url = self._url[:(self._url).rfind('v')] + 'v2.0' + uri
 
-        body = {"entity_list": [{"entity_type": "kVm"}]}
-        res = self._send(method=cmd_method, url=url, json=body)
-        data = res.json()
+class AhvInterface2(AhvInterface):
+    """
+    AHV interface support version 2 of REST API
+    """
 
-        if is_pc:
-            return self.get_pc_tasks(data, timestamp, ahv_clusters)
-        else:
-            return self.get_pe_tasks(data, timestamp, ahv_clusters)
+    VERSION = 'v2.0'
 
-    def get_pc_tasks(self, data, timestamp, ahv_clusters):
-        """
-        Returns a list of AHV tasks on PC which happened after timestamp.
-        Args:
-            data (json): Rest response in json format.
-            timestamp (str): Current timestamp.
-            ahv_clusters (list): List of ahv clusters uuid.
-        Returns:
-            task_list (list): list of tasks on PC.
-        """
-        (uri, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_task')
-        # For task return. Use fv2.0 for now. update the url to use v2.0.
-        url = self._url[:(self._url).rfind('v')] + 'v2.0' + uri
-
-        task_completed = False
-        task_list = []
-        if 'entities' in data:
-            for task in data['entities']:
-                if 'start_time_usecs' in task:
-                    if task['start_time_usecs'] > timestamp:
-
-                        if 'progress_status' in task:
-                            if task['progress_status'] in ahv_constants.TASK_COMPLETE_MSG:
-                                task_completed = True
-                        elif 'status' in task:
-                            if task['status'] in ahv_constants.TASK_COMPLETE_MSG:
-                                task_completed = True
-
-                        if task_completed:
-                            task_completed = False
-                            if 'subtask_uuid_list' in task:
-                                for subtask in task['subtask_uuid_list']:
-                                    url = url % subtask
-                                    subtask_resp = self._send(cmd_method, url)
-                                    subtask_data = subtask_resp.json()
-
-                                    if 'progress_status' in subtask_data:
-                                        if subtask_data['progress_status'] in ahv_constants.TASK_COMPLETE_MSG:
-
-                                            if 'cluster_uuid' in subtask_data:
-                                                cluster_uuid = subtask_data['cluster_uuid']
-                                            else:
-                                                # Task does not have any cluster associated with it,
-                                                # skip it.
-                                                continue
-
-                                            if cluster_uuid in ahv_clusters:
-                                                if 'entity_list' in task:
-                                                    entity_type_list = task['entity_list']
-                                                else:
-                                                    # Task doesn't have any entity list, skip it.
-                                                    continue
-
-                                            if entity_type_list:
-                                                for ent_type in entity_type_list:
-                                                    if 'entity_type' in ent_type:
-                                                        if (str(ent_type['entity_type'])).lower() \
-                                                                        in self.event_types:
-                                                            task_list.append(task)
-                                                            task_list.append(subtask_data)
-
-                                        else:
-                                            # Task has not finished or it failed, skip it and continue
-                                            # the loop
-                                            continue
-
-        return task_list
-
-    def get_pe_tasks(self, data, timestamp, ahv_clusters):
-        """
-        Returns a list of AHV tasks on PE which happened after timestamp.
-        Args:
-            data (json): rest response in json format.
-            timestamp (str): Current timestamp.
-            ahv_clusters (list): list of ahv clusters uuid.
-        Returns:
-            task_list (list): list of tasks on PE.
-        """
-        task_completed = False
-        task_list = []
-
-        if 'entities' in data:
-            for task in data['entities']:
-                if 'start_time_usecs' in task:
-                    if task['start_time_usecs'] > timestamp:
-
-                        if 'progress_status' in task:
-                            if task['progress_status'] in ahv_constants.TASK_COMPLETE_MSG:
-                                task_completed = True
-                        elif 'status' in task:
-                            if task['status'] in ahv_constants.TASK_COMPLETE_MSG:
-                                task_completed = True
-
-                        if task_completed:
-                            task_completed = False
-                            if 'cluster_reference' in task:
-                                if 'uuid' in task['cluster_reference']:
-                                    cluster_uuid = task['cluster_reference']['uuid']
-                            elif 'cluster_uuid' in task:
-                                cluster_uuid = task['cluster_uuid']
-                            else:
-                                # Task does not have any cluster associated with it, skip it.
-                                continue
-
-                            if cluster_uuid in ahv_clusters:
-                                if 'entity_list' in task:
-                                    entity_type_list = task['entity_list']
-                                elif 'entity_reference_list' in task:
-                                    entity_type_list = task['entity_reference_list']
-                                else:
-                                    # Task doesn't have any entity list, skip it.
-                                    continue
-
-                                for ent_type in entity_type_list:
-                                    if 'entity_type' in ent_type:
-                                        if (str(ent_type['entity_type'])).lower() \
-                                                        in self.event_types:
-                                            task_list.append(task)
-                                    elif 'kind' in ent_type:
-                                        if (str(ent_type['kind'])).lower() in self.event_types:
-                                            task_list.append(task)
-                                    else:
-                                        # Task doesn't have any event type associated to it.
-                                        continue
-        return task_list
-
-    def get_vms_uuid(self, version):
+    def get_vm_entities(self):
         """
         Returns the list of vms uuid.
-        Args:
-            version (str): Interface version.
         Returns:
             vm_uuid_list (list): list of vm's uuid.
         """
         self._logger.info("Getting the list of available vms")
-        is_pc = True if version == 'v3' else False
         vm_uuid_list = []
-        length = ahv_constants.NUM_OF_REQUESTED_VMS
-        initial_offset = 0
-        offset = 0
-        total_matches = 0
-        count = 1
-        current = 0
-        url, cmd_method = self.get_diff_ver_url_and_method(
-            cmd_key='list_vms', intf_version=version)
 
-        kwargs = {
-            "method": cmd_method,
-            "uri": url
-        }
-        if is_pc is True:
-            kwargs["json"] = {
-                'length': length,
-                'offset': initial_offset
-            }
-        res = self.make_rest_call(**kwargs)
+        res = self.make_rest_call(method="get", uri="/vms")
 
         if res is None:
             self._logger.error("Unable to get list of VMs")
             return vm_uuid_list
 
-        data = res.json()
-        if "metadata" in data:
-            if "total_matches" in data["metadata"] and "length" in data["metadata"]:
-                length = data["metadata"]["length"]
-                total_matches = data["metadata"]["total_matches"]
-            elif (
-                "count" in data["metadata"]
-                and "grand_total_entities" in data["metadata"]
-                and "total_entities" in data["metadata"]
-            ):
-                total_matches = data["metadata"]["grand_total_entities"]
-                count = data["metadata"]["count"]
-                length = data["metadata"]["total_entities"]
+        vm_entities = res.json()
 
-        if length < total_matches:
-            self._logger.debug(
-                'Number of vms %s returned from REST is less than the total'
-                'number: %s. Adjusting the offset and iterating over all'
-                'vms until all vms are returned from the server.' % (length, total_matches)
-            )
-            count = math.ceil(total_matches/float(length))
+        self._logger.info("Total number of vms uuids found and saved for processing %s" % len(vm_entities))
+        return vm_entities["entities"]
 
-        body = {'length': length, 'offset': offset}
-        for i in self._progressbar(range(int(count)), "Finding vms uuid: ", total=int(total_matches), is_pc=is_pc):
-            if 'entities' in data:
-                for vm_entity in data['entities']:
-                    if 'metadata' in vm_entity:
-                        vm_uuid_list.append(vm_entity['metadata']['uuid'])
-                    elif 'uuid' in vm_entity:
-                        vm_uuid_list.append(vm_entity['uuid'])
-                    else:
-                        self._logger.warning(
-                            "Cannot access the uuid for the vm %s. "
-                            "vm object: %s" % (vm_entity['name'], vm_entity)
-                        )
-            if is_pc is True:
-                body['offset'] = body['offset'] + length
-                self._logger.debug('Next vm list call has this body: %s' % body)
-                kwargs["json"] = body
-            res = self.make_rest_call(**kwargs)
-            if res is not None:
-                data = res.json()
-            else:
-                self._logger.error(f"Unable to get list of VMs with offset: {body['offset']}")
-                data = {}
-            current += 1
-
-        self._logger.info("Total number of vms uuids found and saved for processing %s" % len(vm_uuid_list))
-        return vm_uuid_list
-
-    def get_hosts_uuid(self, version):
+    def get_host_list(self):
         """
-        Returns the list of host uuid.
-        Args:
-            version (str): Interface version.
+        Returns the list of hosts.
         Returns:
-            host_uuid_list (list): list of host's uuid.
+            host_list (list): list of hosts.
         """
-        host_uuid_list = []
-        (url, cmd_method) = self.get_diff_ver_url_and_method(
-            cmd_key='list_hosts', intf_version=version)
+        host_list = []
 
-        res = self.make_rest_call(method=cmd_method, uri=url)
+        res = self.make_rest_call(method="get", uri="/hosts")
+
+        # FIXME: when there is lot of hosts, then there is risk that not all hosts are returned
+        # in one response (more details are in "metadata").
+
         data = res.json()
-        if 'entities' in data:
-            for host_entity in data['entities']:
-                if 'status' in host_entity and 'metadata' in host_entity:
-                    # Check if a physical host, not a cluster.
-                    if 'cpu_model' in host_entity['status']:
-                        host_uuid_list.append(host_entity['metadata']['uuid'])
-                elif 'uuid' in host_entity:
-                    host_uuid_list.append(host_uuid_list['uuid'])
-                else:
-                    self._logger.warning(
-                        "Cannot access the uuid for the. "
-                        "host object: %s" % (host_entity)
-                    )
+        if "entities" in data:
+            host_list = data["entities"]
+        return host_list
 
     def get_host_cluster_name(self, host_info, cluster_ids):
         """
         Returns host's cluster identifier if one exists.
         Args:
             host_info (dict): Host info dict.
-            cluster_ids: Map of UUID to name for clusters
+            cluster_ids: List of tuples (UUID, name) of clusters
         Returns:
             host_cluster_name: The host's cluster name. If no name exists, then
                                the host's uuid will be returned. Otherwise, None
         """
-        this_uuid = None
-        if 'cluster_uuid' in host_info:
-            this_uuid = host_info['cluster_uuid']
-        elif 'cluster_reference' in host_info:
-            this_uuid = host_info['cluster_reference']['uuid']
+        try:
+            cluster_uuid = host_info['cluster_uuid']
+        except (TypeError, KeyError):
+            self._logger.error("No cluster UUID found for host.")
+            return None
 
         for uuid, name in cluster_ids:
-            if this_uuid == uuid and name:
+            if cluster_uuid == uuid:
                 return name
-        if this_uuid:
-            self._logger.warning("No name found for host with uuid: %s. Using uuid." % this_uuid)
-        return this_uuid
 
-    def get_ahv_cluster_uuid_map(self, version):
+        if cluster_uuid:
+            self._logger.warning("No name found for host with uuid: %s. Using uuid." % cluster_uuid)
+
+        return cluster_uuid
+
+    def get_ahv_cluster_uuid_name_list(self):
         """
         Returns list of tuples with cluster uuids and names.
-        Args:
-            version (str): Interface version.
         Returns:
             ahv_host_cluster_uuids (List): Returns list of tuples with cluster uuids and names.
         """
-        ahv_host_cluster_uuids = []
-        seen = set(ahv_host_cluster_uuids)
+        ahv_host_cluster_uuid_names = []
 
-        (url, cmd_method) = self.get_diff_ver_url_and_method(
-            cmd_key='list_clusters', intf_version=version)
-        res = self.make_rest_call(method=cmd_method, uri=url)
+        res = self.make_rest_call(method="get", uri="/clusters")
         data = res.json()
 
-        formatted_data = self._format_response(data)
+        # FIXME: It is also possible that the list could not be complete, when the list of clusters
+        # is too long. Information about number of gathered clusters is in metadata section too.
+        # I cannot implement it ATM, because I don't know how this situation looks like and I
+        # don't have system with more than one cluster.
 
-        for cluster in formatted_data:
-            if 'hypervisor_types' in cluster and 'cluster_uuid' in cluster:
-                for hypevirsor_type in cluster['hypervisor_types']:
-                    if hypevirsor_type in ahv_constants.AHV_HYPERVIRSOR:
-                        cluster_uuid = (cluster['cluster_uuid'], cluster['name'])
-                        if cluster_uuid not in seen:
-                            seen.add(cluster_uuid)
-                            ahv_host_cluster_uuids.append(cluster_uuid)
-                            break
+        for cluster in data["entities"]:
+            try:
+                cluster_uuid = cluster['uuid']
+                cluster_name = cluster["name"]
+            except (TypeError, KeyError):
+                self._logger.warning("cluster info does not contain metadata->uuid or spec->name")
+                continue
+            cluster_uuid_name = (cluster_uuid, cluster_name)
+            if cluster_uuid not in ahv_host_cluster_uuid_names:
+                ahv_host_cluster_uuid_names.append(cluster_uuid_name)
 
-        return ahv_host_cluster_uuids
+        return ahv_host_cluster_uuid_names
 
     def get_host_version(self, host_info):
         """
@@ -678,52 +315,14 @@ class AhvInterface(object):
             host_version (Str): Host version if found, None otherwise.
         """
         host_version = None
-        if 'resources' in host_info:
-            host_resources = host_info['resources']
-            if 'hypervisor' in host_resources:
-                if 'hypervisor_full_name' in host_resources['hypervisor']:
-                    host_version = host_resources['hypervisor']['hypervisor_full_name']
-        elif 'hypervisor_full_name' in host_info:
+        if 'hypervisor_full_name' in host_info:
             host_version = host_info['hypervisor_full_name']
         else:
             self._logger.warning("Cannot get host version for %s" % host_info['uuid'])
 
         return host_version
 
-    def get_vm(self, uuid):
-        """
-        Returns vm information
-        Args:
-            uuid (str): Vm uuid.
-        Return:
-            data (dict): Vm information.
-        """
-        (url, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_vm')
-        url = url % uuid
-        res = self.make_rest_call(method=cmd_method, uri=url)
-        if res:
-            data = res.json()
-            return self._format_response(data)
-        return None
-
-    def get_host(self, uuid):
-        """
-        Returns host information
-        Args:
-            uuid (str): Host uuid.
-        Return:
-            data (dict): Host information.
-        """
-        (url, cmd_method) = self.get_common_ver_url_and_method(cmd_key='get_host')
-        url = url % uuid
-        res = self.make_rest_call(method=cmd_method, uri=url)
-        if res:
-            data = res.json()
-            return self._format_response(data)
-        else:
-            return None
-
-    def get_vm_host_uuid_from_vm(self, vm_entity):
+    def get_host_uuid_from_vm(self, vm_entity):
         """
         Get the host uuid from the vm_entity response
         Args:
@@ -731,110 +330,292 @@ class AhvInterface(object):
         Returns:
             host uuid (str): Vm host uuid if found, none otherwise.
         """
-        if 'resources' in vm_entity:
-            if 'host_reference' in vm_entity['resources']:
-                vm_uuid = vm_entity['resources']['host_reference']['uuid']
-                self._logger.debug(f"Host UUID {vm_uuid} found for VM: {vm_entity['uuid']}")
-                return vm_uuid
-            else:
-                self._logger.warning(
-                    "Did not find any host information for VM: %s" % vm_entity['uuid']
-                )
-        elif 'host_uuid' in vm_entity:
+        if 'host_uuid' in vm_entity:
             vm_uuid = vm_entity['host_uuid']
             self._logger.debug(f"Host UUID {vm_uuid} found for VM: {vm_entity['uuid']}")
             return vm_uuid
         else:
             # Vm is off therefore no host is assigned to it.
             self._logger.debug(
-                'Cannot get the host uuid of the vm:%s. '
-                'perhaps the vm is powered off' % vm_entity['uuid']
+                'Cannot get the host uuid of the VM: %s.' % vm_entity['uuid']
             )
         return None
 
-    def is_ahv_host(self, version, host_uuid, vm_entity=None):
-        """
-        Determine if a given host is a AHV host.
-        host uuid should match the host uuid in vm_entity.
-        Args:
-            version (str): API version.
-            host_uuid (str): uuid of a host.
-            vm_entity (dict): For v3
-        Returns:
-            bool : True if host is ahv; false otehrwise.
-        """
-        if version == 'v2.0':
-            host = self.get_host(host_uuid)
-            if 'hypervisor_type' in host:
-                return host['hypervisor_type'] in ahv_constants.AHV_HYPERVIRSOR
-        else:
-            if 'resources' in vm_entity:
-                if 'hypervisor_type' in vm_entity['resources']:
-                    return vm_entity['resources']['hypervisor_type'] in \
-                                 ahv_constants.AHV_HYPERVIRSOR
-        self._logger.debug(
-            'Hypervisor type not found. \nversion:%s, '
-            '\nhost_uuid:%s, \nvm_entity:%s' % (version, host_uuid, vm_entity)
-        )
-        return False
-
-    def build_host_to_uvm_map(self, version):
+    def build_host_to_uvm_map(self):
         """
         Builds a dictionary of every ahv host along with the vms they are hosting
-        Args:
-            version (Str): API version
         Returns:
             host_uvm_map (dict): Dict of ahv host with its uvms.
         """
         host_uvm_map = {}
-        vm_entity = None
-        host_uuid = None
-        vm_uuids = self.get_vms_uuid(version)
 
-        self._logger.info("Processing hosts for each vm.")
-        if len(vm_uuids) > 0:
-            # TODO: use threads for gathering information about VMs
-            for vm_uuid in vm_uuids:
-                vm_entity = self.get_vm(vm_uuid)
-                if vm_entity:
-                    host_uuid = self.get_vm_host_uuid_from_vm(vm_entity)
-                    if host_uuid:
-                        if self.is_ahv_host(version, host_uuid, vm_entity):
-                            host = self.get_host(host_uuid)
-                            if host:
-                                if host_uuid not in host_uvm_map:
-                                    host_uvm_map[host_uuid] = host
-                                if 'guest_list' in host_uvm_map[host_uuid]:
-                                    host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
-                                else:
-                                    host_uvm_map[host_uuid]['guest_list'] = []
-                                    host_uvm_map[host_uuid]['guest_list'].append(vm_entity)
-                            else:
-                                self._logger.warning("unable to read information for host %s" % host_uuid)
-                                continue
-                        else:
-                            self._logger.debug("Host %s is not ahv, skipping it." % host_uuid)
-                            continue
-                        host_type = self.get_hypervisor_type(version, host, vm_entity)
-                        host_uvm_map[host_uuid]['hypervisor_type'] = host_type
+        host_list = self.get_host_list()
+
+        def reduce_host_vm_map(_host_uvm_map, _vm_entity):
+            """
+            This function is used by reduce() and it reduces generated list of entities
+            to dictionary. Key is host UUID containing list of VMs running on this host
+            """
+            _host_uuid = None
+            if _vm_entity:
+                _host_uuid = self.get_host_uuid_from_vm(_vm_entity)
+            if _host_uuid:
+                if _host_uuid not in _host_uvm_map:
+                    for _host in host_list:
+                        if _host["uuid"] == _host_uuid:
+                            _host_uvm_map[_host_uuid] = _host
+                            _host_uvm_map[_host_uuid]['guest_list'] = []
+                _host_uvm_map[_host_uuid]['guest_list'].append(_vm_entity)
+            return _host_uvm_map
+
+        vm_entities = self.get_vm_entities()
+
+        host_uvm_map = reduce(reduce_host_vm_map, vm_entities, host_uvm_map)
+
+        if len(host_uvm_map) > 0:
+            return host_uvm_map
         else:
-            self._logger.warning("No available vms found")
-            try:
-                host_uuids = self.get_hosts_uuid(version)
-                if len(host_uuids) > 0:
-                    for host_uuid in host_uuids:
-                        host = self.get_host(host_uuid)
-                        if host_uuid not in host_uvm_map:
-                            host_uvm_map[host_uuid] = host
-                            host_uvm_map[host_uuid]['guest_list'] = []
+            self._logger.warning("No available VMs found. Trying to get list of hosts...")
+            if len(host_list) > 0:
+                for host in host_list:
+                    host_uuid = host["uuid"]
+                    if host_uuid not in host_uvm_map:
+                        host_uvm_map[host_uuid] = host
+                        host_uvm_map[host_uuid]['guest_list'] = []
+            else:
+                self._logger.warning("No Available AHV host found")
+            return host_uvm_map
 
+
+class AhvInterface3(AhvInterface):
+    """
+    AHV interface supporting version 3 of REST API
+    """
+
+    VERSION = 'v3'
+
+    NUM_OF_REQUESTED_VMS = 20
+
+    def get_vm_entities(self):
+        """
+        Try to get list of VM entities
+        """
+        self._logger.info("Getting the list of available VM entities")
+        vm_entities = []
+        length = self.NUM_OF_REQUESTED_VMS
+        offset = 0
+
+        kwargs = {
+            "method": "post",
+            "uri": "/vms/list",
+            "json": {
+                'length': length,
+                'offset': offset
+            }
+        }
+
+        while True:
+            res = self.make_rest_call(**kwargs)
+
+            if res is None:
+                self._logger.error("Unable to get list of VMs")
+                break
+
+            data = res.json()
+
+            # Try to get entities from the response
+            if 'entities' in data:
+                if len(data["entities"]) > 0:
+                    vm_entities.extend(data["entities"])
                 else:
-                    self._logger.warning("No Available AHV host found")
-            except TypeError:
-                # In case there is no cluster registered to the PC.
-                self._logger.warning("Unable to find any AHV hosts.")
+                    # When the list of entities is empty, then we have gathered all
+                    # entities, and we can break the loop
+                    self._logger.debug("Gathered all VM entities")
+                    break
+            else:
+                self._logger.error("No entities in the list of VMs")
+                break
 
-        return host_uvm_map
+            if "metadata" in data:
+                if "length" in data["metadata"]:
+                    length = data["metadata"]["length"]
+            else:
+                self._logger.error("No metadata in the list of VMs")
+                break
+
+            kwargs["json"]['offset'] = kwargs["json"]['offset'] + length
+            self._logger.debug('Next vm list call has this body: %s' % kwargs["json"])
+
+        self._logger.info("Total number of vms uuids found and saved for processing %s" % len(vm_entities))
+        return vm_entities
+
+    def get_host_list(self):
+        """
+        Returns the list of hosts.
+        Returns:
+            host_list (list): list of hosts.
+        """
+        host_list = []
+
+        res = self.make_rest_call(method="post", uri="/hosts/list")
+
+        # FIXME: when there is lot of hosts, then there is risk that not all hosts are returned
+        # in one response (more details are in "metadata")
+
+        data = res.json()
+        if "entities" in data:
+            host_list = data["entities"]
+        return host_list
+
+    def get_host_cluster_name(self, host_info, cluster_uuid_name_list):
+        """
+        Returns host's cluster identifier if one exists.
+        Args:
+            host_info (dict): Host info dict.
+            cluster_uuid_name_list: List of tuples (UUID, name) of clusters
+        Returns:
+            host_cluster_name: The host's cluster name. If no name exists, then
+                               the host's uuid will be returned. Otherwise, None
+        """
+        try:
+            host_cluster_uuid = host_info["status"]['cluster_reference']['uuid']
+        except (TypeError, KeyError):
+            self._logger.warning("host info does not contain status->cluster_reference->uuid")
+            return None
+
+        for uuid, name in cluster_uuid_name_list:
+            if host_cluster_uuid == uuid:
+                return name
+
+        if host_cluster_uuid:
+            self._logger.warning("No name found for host with uuid: %s. Using uuid." % host_cluster_uuid)
+
+        return host_cluster_uuid
+
+    def get_ahv_cluster_uuid_name_list(self):
+        """
+        Returns list of tuples with cluster uuids and names.
+        Returns:
+            ahv_host_cluster_uuids (List): Returns list of tuples with cluster uuids and names.
+        """
+        ahv_host_cluster_uuid_names = []
+
+        res = self.make_rest_call(method="post", uri="/clusters/list")
+        data = res.json()
+
+        # FIXME: It is also possible that the list could not be complete, when the list of clusters
+        # is too long. Information about number of gathered clusters is in metadata section too.
+        # I cannot implement it ATM, because I don't know how this situation looks like and I
+        # don't have system with more than one cluster.
+
+        for cluster in data["entities"]:
+            try:
+                cluster_uuid = cluster["metadata"]['uuid']
+                cluster_name = cluster["spec"]["name"]
+            except (TypeError, KeyError):
+                self._logger.warning("cluster info does not contain metadata->uuid or spec->name")
+                continue
+            cluster_uuid_name = (cluster_uuid, cluster_name)
+            if cluster_uuid not in ahv_host_cluster_uuid_names:
+                ahv_host_cluster_uuid_names.append(cluster_uuid_name)
+
+        return ahv_host_cluster_uuid_names
+
+    def get_host_version(self, host_info):
+        """
+        Returns host's version.
+        Args:
+            host_info (dict): Host info dict.
+        Returns:
+            host_version (Str): Host version if found, None otherwise.
+        """
+        host_version = None
+        if "status" in host_info:
+            if 'resources' in host_info["status"]:
+                host_resources = host_info["status"]['resources']
+                if 'hypervisor' in host_resources:
+                    if 'hypervisor_full_name' in host_resources['hypervisor']:
+                        host_version = host_resources['hypervisor']['hypervisor_full_name']
+        else:
+            self._logger.warning("Cannot get host version for %s" % host_info['uuid'])
+
+        return host_version
+
+    def get_host_uuid_from_vm(self, vm_entity):
+        """
+        Try to get the host uuid from the vm_entity
+        Args:
+            vm_entity (dict): Vm info.
+        Returns:
+            host uuid (str): Vm host uuid if found, None otherwise.
+        """
+        try:
+            vm_uuid = vm_entity['metadata']['uuid']
+        except KeyError:
+            self._logger.warning("Did not find VM UUID in information for VM")
+            vm_uuid = None
+
+        if "status" not in vm_entity:
+            self._logger.warning("Did not find status section in information for VM")
+            return None
+
+        if "resources" not in vm_entity["status"]:
+            self._logger.warning("Did not find resources sub-section in information for VM")
+            return None
+
+        if "host_reference" in vm_entity["status"]["resources"]:
+            host_uuid = vm_entity["status"]['resources']['host_reference']['uuid']
+            self._logger.debug(f"Host UUID {host_uuid} found for VM: {vm_uuid}")
+            return host_uuid
+        else:
+            self._logger.debug(f"Did not find any host information for VM: {vm_uuid}")
+
+        return None
+
+    def build_host_to_uvm_map(self):
+        """
+        Builds a dictionary of every ahv host along with the vms they are hosting
+        Returns:
+            host_uvm_map (dict): Dict of ahv host with its uvms.
+        """
+        host_uvm_map = {}
+
+        host_list = self.get_host_list()
+
+        def reduce_host_vm_map_v3(_host_uvm_map, _vm_entity):
+            """
+            This function is used by reduce() and it reduces generated list of entities
+            to dictionary. Key is host UUID containing list of VMs running on this host
+            """
+            _host_uuid = None
+            if _vm_entity and "status" in _vm_entity:
+                _host_uuid = self.get_host_uuid_from_vm(_vm_entity)
+            if _host_uuid:
+                if _host_uuid not in _host_uvm_map:
+                    for _host in host_list:
+                        if _host["metadata"]["uuid"] == _host_uuid:
+                            _host_uvm_map[_host_uuid] = _host
+                            _host_uvm_map[_host_uuid]['guest_list'] = []
+                _host_uvm_map[_host_uuid]['guest_list'].append(_vm_entity)
+            return _host_uvm_map
+
+        vm_entities = self.get_vm_entities()
+
+        host_uvm_map = reduce(reduce_host_vm_map_v3, vm_entities, host_uvm_map)
+
+        if len(host_uvm_map) > 0:
+            return host_uvm_map
+        else:
+            self._logger.warning("No available VMs found. Trying to get list of hosts...")
+            if len(host_list) > 0:
+                for host in host_list:
+                    host_uuid = host["metadata"]["uuid"]
+                    if host_uuid not in host_uvm_map:
+                        host_uvm_map[host_uuid] = host
+                        host_uvm_map[host_uuid]['guest_list'] = []
+            else:
+                self._logger.warning("No Available AHV host found")
+            return host_uvm_map
 
 
 class Failure(Exception):

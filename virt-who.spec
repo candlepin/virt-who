@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        1.31.22
-Release:        %{release_number}%{?dist}
+Release:        2%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -165,6 +165,14 @@ fi
 
 
 %changelog
+* Wed Oct 05 2022 Jiri Hnidek <jhnidek@redhat.com> 1.31.22-2
+- 2127044: [1.31.22] Nutanix: Gather information about VMs correctly
+  (jhnidek@redhat.com)
+
+* Wed Oct 05 2022 Jiri Hnidek <jhnidek@redhat.com>
+- 2127044: [1.31.22] Nutanix: Gather information about VMs correctly
+  (jhnidek@redhat.com)
+
 * Wed Mar 16 2022 William Poteat <wpoteat@redhat.com> 1.31.22-1
 - 2060949: Indicate that virt-who provides python-suds in the spec file
   (wpoteat@redhat.com)

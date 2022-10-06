@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.24
+Version:        1.31.25
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,11 @@ fi
 
 
 %changelog
+* Thu Oct 06 2022 William Poteat <wpoteat@redhat.com> 1.31.25-1
+- 2099925: Drop support for RHEVM on RHEL 9 (jhnidek@redhat.com)
+- Update virt-who-config.5 (s10w.1ife.31@gmail.com)
+- Big optimization and refactoring of Nutanix code (jhnidek@redhat.com)
+
 * Thu Sep 01 2022 William Poteat <wpoteat@redhat.com> 1.31.24-1
 - 2118253: Nutanix: Gather information about VMs correctly (jhnidek@redhat.com)
 

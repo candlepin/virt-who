@@ -21,7 +21,7 @@ from __future__ import print_function
 
 """
 This module is used for merging environment variables (typically defined in
-/etc/sysconfig/virt-who) into generic configuration file (typically /etc/virt-who.conf)  
+/etc/sysconfig/virt-who) into generic configuration file (typically /etc/virt-who.conf)
 """
 
 import os

@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.31.25
+Version:        1.31.26
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -165,6 +165,14 @@ fi
 
 
 %changelog
+* Wed Feb 01 2023 Jiri Hnidek <jhnidek@redhat.com> 1.31.26-1
+- Fix stylish issue in migrateconfiguration.py (jhnidek@redhat.com)
+- Added next rhel-9.x subversion to releasers.conf file. (jhnidek@redhat.com)
+- 2158710: Migrated virt-who.conf, when necessary (jhnidek@redhat.com)
+- Added documentation for the 'rhsm_insecure' option, for insecure connections
+  (fernandez.santos.d@gmail.com)
+- Added configuration for rhel-9.x into releasers.conf (jhnidek@redhat.com)
+
 * Thu Oct 06 2022 William Poteat <wpoteat@redhat.com> 1.31.25-1
 - 2099925: Drop support for RHEVM on RHEL 9 (jhnidek@redhat.com)
 - Update virt-who-config.5 (s10w.1ife.31@gmail.com)

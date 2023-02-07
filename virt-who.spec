@@ -21,7 +21,7 @@
 
 Name:           virt-who
 Version:        1.31.23
-Release:        2%{?dist}
+Release:        3%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -165,6 +165,12 @@ fi
 
 
 %changelog
+* Tue Feb 07 2023 Jiri Hnidek <jhnidek@redhat.com> 1.31.23-3
+- 
+
+* Tue Feb 07 2023 Jiri Hnidek <jhnidek@redhat.com> 1.31.24-3
+- 2165499: [1.31.23] Migrate virt-who.conf, when necessary (jhnidek@redhat.com)
+
 * Mon Nov 14 2022 William Poteat <wpoteat@redhat.com> 1.31.23-2
 - Added configuration for rhel-9.1 into releasers.conf (jhnidek@redhat.com)
 - 2127045: [1.31.23] Nutanix: Gather information about VMs correctly

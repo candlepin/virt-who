@@ -3,8 +3,6 @@
 %global python_sitelib %{python3_sitelib}
 %global release_number 1
 
-%global git_tag %{name}-%{version}-%{release_number}
-
 
 Name:           virt-who
 Version:        1.31.26
@@ -30,10 +28,7 @@ Requires:       %{python_ver}-libvirt
 %else
 Requires:       libvirt-python
 %endif
-# python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
-# with the python standard libraries where plausible
 Requires:       python3-subscription-manager-rhsm > 1.25.6
-# m2crypto OR python3-cryptography is required for Hyper-V support
 Requires:       python3-cryptography
 Requires:       %{python_ver}-requests
 Requires:       openssl

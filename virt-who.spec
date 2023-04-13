@@ -36,7 +36,6 @@ Requires:       python3-subscription-manager-rhsm > 1.25.6
 # m2crypto OR python3-cryptography is required for Hyper-V support
 Requires:       python3-cryptography
 Requires:       %{python_ver}-requests
-Requires:       %{python_ver}-six
 Requires:       openssl
 Requires:       %{python_ver}-pyyaml
 

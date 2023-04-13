@@ -1,5 +1,3 @@
-%define use_systemd 0%{?fedora} || 0%{?rhel}
-
 %global python_ver python3
 %global python_exec %{__python3}
 %global python_sitelib %{python3_sitelib}
@@ -42,18 +40,11 @@ Requires:       %{python_ver}-six
 Requires:       openssl
 Requires:       %{python_ver}-pyyaml
 
-%if %{use_systemd}
 Requires: python3-systemd
 BuildRequires: systemd
 Requires(post): systemd
 Requires(preun): systemd
 Requires(postun): systemd
-%else
-Requires(post): chkconfig
-Requires(preun): chkconfig
-# This is for /sbin/service
-Requires(preun): initscripts
-%endif
 Provides: bundled(python-suds) = 0.8.4
 
 %description
@@ -71,11 +62,7 @@ rm -rf $RPM_BUILD_ROOT
 %{python_exec} setup.py install --root %{buildroot}
 %{python_exec} setup.py install_config --root %{buildroot}
 %{python_exec} setup.py install_man_pages --root %{buildroot}
-%if %{use_systemd}
 %{python_exec} setup.py install_systemd --root %{buildroot}
-%else
-%{python_exec} setup.py install_upstart --root %{buildroot}
-%endif
 
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
 touch %{buildroot}/%{_sharedstatedir}/%{name}/key
@@ -87,35 +74,17 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 # registered to subscription-manager server
 
 %post
-%if %{use_systemd}
 %systemd_post virt-who.service
-%else
-# This adds the proper /etc/rc*.d links for the script
-/sbin/chkconfig --add virt-who
-%endif
 # This moves parameters from old config to remaining general config file
 %if (0%{?fedora} || 0%{?rhel} > 8)
 %{python_exec} %{python_sitelib}/virtwho/migrate/migrateconfiguration.py
 %endif
 
 %preun
-%if %{use_systemd}
 %systemd_preun virt-who.service
-%else
-if [ $1 -eq 0 ] ; then
-    /sbin/service virt-who stop >/dev/null 2>&1
-    /sbin/chkconfig --del virt-who
-fi
-%endif
 
 %postun
-%if %{use_systemd}
 %systemd_postun_with_restart virt-who.service
-%else
-if [ "$1" -ge "1" ] ; then
-    /sbin/service virt-who condrestart >/dev/null 2>&1 || :
-fi
-%endif
 
 
 %files
@@ -123,11 +92,7 @@ fi
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
 %{python_sitelib}/*
-%if %{use_systemd}
 %{_unitdir}/virt-who.service
-%else
-%{_sysconfdir}/rc.d/init.d/virt-who
-%endif
 %attr(700, root, root) %dir %{_sysconfdir}/virt-who.d
 %{_mandir}/man8/virt-who.8.gz
 %{_mandir}/man8/virt-who-password.8.gz

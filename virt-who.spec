@@ -22,11 +22,7 @@ BuildRequires:  %{python_ver}-pyyaml
 
 Requires:      %{python_ver}-setuptools
 # libvirt python required for libvirt support
-%if (0%{?rhel} || 0%{?fedora})
 Requires:       %{python_ver}-libvirt
-%else
-Requires:       libvirt-python
-%endif
 Requires:       python3-subscription-manager-rhsm > 1.25.6
 Requires:       python3-cryptography
 Requires:       %{python_ver}-requests

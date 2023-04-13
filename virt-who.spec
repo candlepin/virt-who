@@ -1,19 +1,8 @@
 %define use_systemd 0%{?fedora} || 0%{?rhel}
 
-%define use_python3 0%{?fedora} || 0%{?rhel}
-%if %{use_python3}
 %global python_ver python3
 %global python_exec %{__python3}
 %global python_sitelib %{python3_sitelib}
-%else
-%if !%{use_systemd}
-%global __python2 %{__python}
-%global python2_sitelib %{python_sitelib}
-%endif
-%global python_ver python
-%global python_exec %{__python2}
-%global python_sitelib %{python2_sitelib}
-%endif
 %global release_number 1
 
 %global git_tag %{name}-%{version}-%{release_number}
@@ -45,28 +34,16 @@ Requires:       libvirt-python
 %endif
 # python-rhsm 1.20 has the M2Crypto wrappers needed to replace M2Crypto
 # with the python standard libraries where plausible
-%if %{use_python3}
 Requires:       python3-subscription-manager-rhsm > 1.25.6
-%else
-Requires:       subscription-manager-rhsm > 1.25.6
-%endif
 # m2crypto OR python3-cryptography is required for Hyper-V support
-%if %{use_python3}
 Requires:       python3-cryptography
-%else
-Requires:       m2crypto
-%endif
 Requires:       %{python_ver}-requests
 Requires:       %{python_ver}-six
 Requires:       openssl
 Requires:       %{python_ver}-pyyaml
 
 %if %{use_systemd}
-%if %{use_python3}
 Requires: python3-systemd
-%else
-Requires: systemd-python
-%endif
 BuildRequires: systemd
 Requires(post): systemd
 Requires(preun): systemd

@@ -1,12 +1,11 @@
 %global python_ver python3
 %global python_exec %{__python3}
 %global python_sitelib %{python3_sitelib}
-%global release_number 1
 
 
 Name:           virt-who
 Version:        1.31.26
-Release:        %{release_number}%{?dist}
+Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -49,7 +48,7 @@ report them to the subscription manager.
 %setup -q
 
 %build
-%{python_exec} setup.py build --rpm-version=%{version}-%{release_number}
+%{python_exec} setup.py build --rpm-version=%{version}-%{release}
 
 %install
 rm -rf $RPM_BUILD_ROOT

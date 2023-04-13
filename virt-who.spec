@@ -1,6 +1,6 @@
-%define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || (0%{?rhel} && 0%{?rhel} >= 7)
+%define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || 0%{?rhel}
 
-%define use_python3 0%{?fedora} || (0%{?rhel} && 0%{?rhel} > 7)
+%define use_python3 0%{?fedora} || 0%{?rhel}
 %if %{use_python3}
 %global python_ver python3
 %global python_exec %{__python3}
@@ -38,7 +38,7 @@ BuildRequires:  %{python_ver}-pyyaml
 
 Requires:      %{python_ver}-setuptools
 # libvirt python required for libvirt support
-%if (0%{?rhel} && 0%{?rhel} > 7 || 0%{?fedora})
+%if (0%{?rhel} || 0%{?fedora})
 Requires:       %{python_ver}-libvirt
 %else
 Requires:       libvirt-python
@@ -58,8 +58,6 @@ Requires:       m2crypto
 %endif
 Requires:       %{python_ver}-requests
 Requires:       %{python_ver}-six
-# python-argparse is required for Python 2.6 on EL6
-%{?el6:Requires: python-argparse}
 Requires:       openssl
 Requires:       %{python_ver}-pyyaml
 

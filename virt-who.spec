@@ -1,4 +1,4 @@
-%define use_systemd (0%{?fedora} && 0%{?fedora} >= 18) || 0%{?rhel}
+%define use_systemd 0%{?fedora} || 0%{?rhel}
 
 %define use_python3 0%{?fedora} || 0%{?rhel}
 %if %{use_python3}
@@ -117,7 +117,7 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 /sbin/chkconfig --add virt-who
 %endif
 # This moves parameters from old config to remaining general config file
-%if (0%{?fedora} > 33 || 0%{?rhel} > 8)
+%if (0%{?fedora} || 0%{?rhel} > 8)
 %{python_exec} %{python_sitelib}/virtwho/migrate/migrateconfiguration.py
 %endif
 

@@ -322,7 +322,7 @@ class AhvConfigSection(VirtConfigSection):
         self.add_key(
             'prism_central',
             validation_method=self._validate_str_to_bool,
-            default=None
+            default=False
         )
         self.add_key(
             'ahv_internal_debug',

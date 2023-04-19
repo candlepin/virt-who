@@ -31,14 +31,6 @@ class InstallSystemd(install):
         install_file('virt-who.service', '{root}/usr/lib/systemd/system/virt-who.service'.format(root=root))
 
 
-class InstallUpstart(install):
-    description = 'install upstart service'
-
-    def run(self, *args, **kwargs):
-        root = self.root or ''
-        install_file('virt-who-initscript', '{root}/etc/rc.d/init.d/virt-who'.format(root=root), file_mode=0o755)
-
-
 class InstallManPages(install):
     description = 'install manual pages'
 
@@ -186,7 +178,6 @@ setup(
     },
     cmdclass={
         'install_systemd': InstallSystemd,
-        'install_upstart': InstallUpstart,
         'install_man_pages': InstallManPages,
         'install_config': InstallConfig,
         'build_py': rpm_version_release_build_py,

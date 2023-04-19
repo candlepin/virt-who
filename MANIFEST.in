@@ -6,7 +6,6 @@ include virt-who-password.8
 include LICENSE
 include template.conf
 include template-general.conf
-include virt-who-initscript
 include virt-who.conf
 include virt-who.service
 include virt-who-zsh

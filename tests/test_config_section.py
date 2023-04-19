@@ -200,7 +200,7 @@ class TestConfigSection(TestBase):
         expected_result = [
             (
                 'warning',
-                'my_bool must be a valid boolean, using default. See man virt-who-config for more info'
+                'my_bool must be a valid boolean, using default: True. See man virt-who-config for more info'
             ),
         ]
         self.assertEqual(result, expected_result)

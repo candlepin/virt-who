@@ -415,12 +415,12 @@ def parse_file(filename):
 def str_to_bool(value):
     if isinstance(value, bool):
         return value
-    if isinstance(value, str):
+    elif isinstance(value, str):
         if value.strip().lower() in ['yes', 'true', 'on', '1']:
             return True
         elif value.strip().lower() in ['no', 'false', 'off', '0']:
             return False
-    raise ValueError("Unable to convert value to boolean")
+    raise ValueError(f"Unable to convert value: \"{value}\" to boolean")
 
 
 def non_empty_string(value):
@@ -777,8 +777,8 @@ class ConfigSection(collections.abc.MutableMapping):
                 self._values[key] = str_to_bool(self.defaults[key])
                 result = (
                     'warning',
-                    '%s must be a valid boolean, using default. '
-                    'See man virt-who-config for more info' % key
+                    '%s must be a valid boolean, using default: %s. '
+                    'See man virt-who-config for more info' % (key, self._values[key])
                 )
             else:
                 result = (

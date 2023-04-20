@@ -40,6 +40,7 @@ PE_SECTION_VALUES = {
     'username': 'root',
     'password': 'root_password',
     'owner': 'nutanix',
+    'prism_central': False,
     'hypervisor_id': 'uuid',
     'is_hypervisor': True,
     'ahv_internal_debug': False,

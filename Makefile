@@ -2,16 +2,13 @@
 name = virt-who
 version = 0.18
 
-.PHONY: pack check install srpm rpm rpmlint upload
+.PHONY: pack install srpm rpm rpmlint
 
 release:
 	tito tag
 
 pack:
 	tito build --tgz -o .
-
-check:
-	pyflakes *.py
 
 install:
 	python setup.py install
@@ -29,14 +26,8 @@ rpmlint:
 	rpmlint $(name).spec $(tmpdir)/*
 	rm -rf $(tmpdir)
 
-upload: pack
-	scp $(name)-$(version).tar.gz fedorahosted.org:$(name)
-
 test:
 	PYTHONPATH=. py.test
-
-testmon:
-	PYTHONPATH=. ptw -- --testmon --timeout 5
 
 coverage:
 	PYTHONPATH=. py.test -k 'not complex' --cov=. --cov-report=html --cov-report=term --cov-config .coveragerc

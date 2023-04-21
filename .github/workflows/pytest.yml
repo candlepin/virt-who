@@ -1,0 +1,44 @@
+name: pytest
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    name: "pytest"
+
+    permissions:
+      issues: write
+      pull-requests: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "CentOS Stream 9"
+            image: "quay.io/centos/centos:stream9"
+            pytest_args: ''
+          - name: "Fedora latest"
+            image: "fedora:latest"
+            pytest_args: ''
+          - name: "Fedora Rawhide"
+            image: "fedora:rawhide"
+            pytest_args: ''
+
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v3
+
+      - name: "Run container-pre-test.sh"
+        run: |
+          bash scripts/container-pre-test.sh
+
+      - name: "Run pytest"
+        env:
+          PYTEST_ADDOPTS: "--color=yes --code-highlight=yes --showlocals"
+        run: python3 -m pytest ${{ matrix.pytest_args }}

@@ -126,10 +126,9 @@ class Ahv(virt.Virt):
       if 'guest_list' in host and len(host['guest_list']) > 0:
         for guest_vm in host['guest_list']:
           try:
-            state = guest_vm['power_state']
-            if guest_vm['power_state'] == 'on':
+            if guest_vm['power_state'].upper() == 'ON':
               state = virt.Guest.STATE_RUNNING
-            elif guest_vm['power_state'] == 'off':
+            elif guest_vm['power_state'].upper() == 'OFF':
               state = virt.Guest.STATE_SHUTOFF
             else:
               state = virt.Guest.STATE_UNKNOWN

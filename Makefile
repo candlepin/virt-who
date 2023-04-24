@@ -43,33 +43,3 @@ coverage:
 
 stylish:
 	PYTHONPATH=. flake8
-
-test-ci-build:
-	docker build -f docker/ci/Dockerfile -t virt-who/test-ci .
-
-test-ci-shell: test-ci-build
-	docker run -ti --rm virt-who/test-ci /bin/bash
-
-test-ci: test-ci-build
-	# Run the test suite on something similar to Travis-CI
-	docker run --rm virt-who/test-ci
-
-test-centos6-build:
-	docker build -f docker/centos6/Dockerfile -t virt-who/test-centos6 .
-
-test-centos6-shell: test-centos6-build
-	docker run -ti --rm virt-who/test-centos6 /bin/bash
-
-test-centos6: test-centos6-build
-	# Run the test suite on centos-6
-	docker run --rm virt-who/test-centos6
-
-test-centos7-build:
-	docker build -f docker/centos7/Dockerfile -t virt-who/test-centos7 .
-
-test-centos7-shell: test-centos7-build
-	docker run -ti --rm virt-who/test-centos7 /bin/bash
-
-test-centos7: test-centos7-build
-	# Run the test suite on centos-7
-	docker run --rm virt-who/test-centos7

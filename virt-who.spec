@@ -1,8 +1,3 @@
-%global python_ver python3
-%global python_exec %{__python3}
-%global python_sitelib %{python3_sitelib}
-
-
 Name:           virt-who
 Version:        1.31.26
 Release:        1%{?dist}
@@ -15,17 +10,17 @@ URL:            https://github.com/candlepin/virt-who
 Source0:        %{name}-%{version}.tar.gz
 
 BuildArch:      noarch
-BuildRequires:  %{python_ver}-devel
-BuildRequires:  %{python_ver}-setuptools
-BuildRequires:  %{python_ver}-pyyaml
+BuildRequires:  python3-devel
+BuildRequires:  python3-setuptools
+BuildRequires:  python3-pyyaml
 
 # libvirt python required for libvirt support
-Requires:       %{python_ver}-libvirt
+Requires:       python3-libvirt
 Requires:       python3-subscription-manager-rhsm > 1.25.6
 Requires:       python3-cryptography
-Requires:       %{python_ver}-requests
+Requires:       python3-requests
 Requires:       openssl
-Requires:       %{python_ver}-pyyaml
+Requires:       python3-pyyaml
 
 Requires: python3-systemd
 BuildRequires: systemd
@@ -42,13 +37,13 @@ report them to the subscription manager.
 %setup -q
 
 %build
-%{python_exec} setup.py build --rpm-version=%{version}-%{release}
+%{__python3} setup.py build --rpm-version=%{version}-%{release}
 
 %install
-%{python_exec} setup.py install --root %{buildroot}
-%{python_exec} setup.py install_config --root %{buildroot}
-%{python_exec} setup.py install_man_pages --root %{buildroot}
-%{python_exec} setup.py install_systemd --root %{buildroot}
+%{__python3} setup.py install --root %{buildroot}
+%{__python3} setup.py install_config --root %{buildroot}
+%{__python3} setup.py install_man_pages --root %{buildroot}
+%{__python3} setup.py install_systemd --root %{buildroot}
 
 mkdir -p %{buildroot}/%{_sharedstatedir}/%{name}/
 touch %{buildroot}/%{_sharedstatedir}/%{name}/key
@@ -63,7 +58,7 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 %systemd_post virt-who.service
 # This moves parameters from old config to remaining general config file
 %if (0%{?fedora} || 0%{?rhel} > 8)
-%{python_exec} %{python_sitelib}/virtwho/migrate/migrateconfiguration.py
+%{__python3} %{python3_sitelib}/virtwho/migrate/migrateconfiguration.py
 %endif
 
 %preun
@@ -77,7 +72,7 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 %doc README.md LICENSE README.hyperv
 %{_bindir}/virt-who
 %{_bindir}/virt-who-password
-%{python_sitelib}/*
+%{python3_sitelib}/*
 %{_unitdir}/virt-who.service
 %attr(700, root, root) %dir %{_sysconfdir}/virt-who.d
 %{_mandir}/man8/virt-who.8.gz

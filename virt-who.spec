@@ -9,7 +9,6 @@ Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
-Group:          System Environment/Base
 # GPL for virt-who proper and LGPL for incorporated suds
 License:        GPLv2+ and LGPLv3+
 URL:            https://github.com/candlepin/virt-who

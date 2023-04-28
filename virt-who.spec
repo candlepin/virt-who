@@ -20,7 +20,6 @@ BuildRequires:  %{python_ver}-devel
 BuildRequires:  %{python_ver}-setuptools
 BuildRequires:  %{python_ver}-pyyaml
 
-Requires:      %{python_ver}-setuptools
 # libvirt python required for libvirt support
 Requires:       %{python_ver}-libvirt
 Requires:       python3-subscription-manager-rhsm > 1.25.6

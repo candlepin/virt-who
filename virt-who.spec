@@ -47,7 +47,6 @@ report them to the subscription manager.
 %{python_exec} setup.py build --rpm-version=%{version}-%{release}
 
 %install
-rm -rf $RPM_BUILD_ROOT
 %{python_exec} setup.py install --root %{buildroot}
 %{python_exec} setup.py install_config --root %{buildroot}
 %{python_exec} setup.py install_man_pages --root %{buildroot}

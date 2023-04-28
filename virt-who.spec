@@ -19,7 +19,6 @@ Requires:       python3-libvirt
 Requires:       python3-subscription-manager-rhsm > 1.25.6
 Requires:       python3-cryptography
 Requires:       python3-requests
-Requires:       openssl
 Requires:       python3-pyyaml
 
 Requires: python3-systemd

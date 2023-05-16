@@ -20,7 +20,7 @@
 
 
 Name:           virt-who
-Version:        1.30.14
+Version:        1.30.15
 Release:        %{release_number}%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -167,6 +167,9 @@ fi
 
 
 %changelog
+* Tue May 16 2023 Jiri Hnidek <jhnidek@redhat.com> 1.30.15-1
+- 2126166: [1.30] Fixed issue with wrong state (jhnidek@redhat.com)
+
 * Wed Sep 14 2022 William Poteat <wpoteat@redhat.com> 1.30.14-1
 - rhel 8.8 releaser (wpoteat@redhat.com)
 

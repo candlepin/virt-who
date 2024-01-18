@@ -25,7 +25,7 @@ import os
 import uuid
 import requests
 
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 from configparser import DuplicateOptionError, NoOptionError, Error, MissingSectionHeaderError
 
 from virtwho import log, SAT5, SAT6
@@ -236,10 +236,10 @@ default_destination_info = DefaultDestinationInfo()
 default_destination_info.name = "default_destination"
 
 
-class StripQuotesConfigParser(SafeConfigParser):
+class StripQuotesConfigParser(ConfigParser):
     def get(self, section, option, **kwargs):
-        # Don't call super, SafeConfigParser is not inherited from object
-        value = SafeConfigParser.get(self, section, option, **kwargs)
+        # Don't call super, ConfigParser is not inherited from object
+        value = ConfigParser.get(self, section, option, **kwargs)
         for quote in ('"', "'"):
             # Strip the quotes only when the value starts with quote,
             # ends with quote but doesn't contain it inside

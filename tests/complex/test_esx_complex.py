@@ -21,12 +21,14 @@ from __future__ import print_function
 import os
 import tempfile
 import shutil
+import pytest
 
 import virtwhotest
 
 from fake_esx import FakeEsx
 
 
+@pytest.mark.skip(reason="This is not unit test. It is integration test. We should not do it here.")
 class EsxTest(virtwhotest.TestBase):
     """
     Class for complex testing of obtaining host-to-guest mapping from fake ESX server

@@ -103,7 +103,10 @@ class FakeSam(FakeServer):
             raise OSError("No such file %s" % certfile)
         if not os.access(keyfile, os.R_OK):
             raise OSError("No such file %s" % keyfile)
-        self.server.socket = ssl.wrap_socket(self.server.socket, certfile=certfile, keyfile=keyfile, server_side=True)
+        ssl_ctx = ssl.create_default_context()
+        ssl_ctx.load_cert_chain(certfile=certfile, keyfile=keyfile)
+        ssl_ctx.check_hostname = False
+        self.server.socket = ssl_ctx.wrap_socket(self.server.socket, server_side=True)
 
         self.tempdir = tempfile.mkdtemp()
         config_name = os.path.join(self.tempdir, 'rhsm.conf')

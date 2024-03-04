@@ -25,8 +25,8 @@ import os
 import time
 import fcntl
 
-PIDFILE = "/var/run/virt-who.pid"
-STATUS_LOCK = "/var/run/virt-who-status.pid"
+PIDFILE = "/run/virt-who.pid"
+STATUS_LOCK = "/run/virt-who-status.pid"
 STATUS_DATA = "/var/lib/virt-who/run_data.json"
 STATUS_DATA_DIR = "/var/lib/virt-who"
 DEFAULT_TIMEOUT = 1.0

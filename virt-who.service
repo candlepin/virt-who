@@ -4,7 +4,7 @@ After=libvirtd.service network.target
 
 [Service]
 Type=notify
-PIDFile=/var/run/virt-who.pid
+PIDFile=/run/virt-who.pid
 ExecStart=/usr/bin/virt-who
 TimeoutStopSec=5
 

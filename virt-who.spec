@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        1.31.26
+Version:        1.31.27
 Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -85,6 +85,41 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 
 
 %changelog
+* Tue May 14 2024 Jiri Hnidek <jhnidek@redhat.com> 1.31.27-1
+- ci: bump actions/checkout from 3 to 4
+  (49699333+dependabot[bot]@users.noreply.github.com)
+- Change /var/run -> /run (orion@nwra.com)
+- ci: add dependabot config for GitHub Actions (ptoscano@redhat.com)
+- Drop unused copy of python-daemon sources (ptoscano@redhat.com)
+- Migrate to SPDX license (jhnidek@redhat.com)
+- fix: disable complex tests for ESX (jhnidek@redhat.com)
+- fix: use ssl.SSLContext.wrap_socket for wrapping socket (jhnidek@redhat.com)
+- fix: stylish issue discovered by flake8 (jhnidek@redhat.com)
+- fix: Use ConfigParser and not SafeConfigParser (jhnidek@redhat.com)
+- spec: drop unused openssl dependency (ptoscano@redhat.com)
+- spec: hardcode/inline Python 3 variables (ptoscano@redhat.com)
+- spec: drop unused Group tag (ptoscano@redhat.com)
+- spec: do not Require setuptools (ptoscano@redhat.com)
+- spec: drop $RPM_BUILD_ROOT manual cleanup (ptoscano@redhat.com)
+- Updated README.md file to reflect current state (jhnidek@redhat.com)
+- Drop outdated/unused requirements (ptoscano@redhat.com)
+- Removed support for Jenkins (jhnidek@redhat.com)
+- Added support for GitHub actions (jhnidek@redhat.com)
+- Removed some unused parts of Makefile (jhnidek@redhat.com)
+- Removed support for docker (jhnidek@redhat.com)
+- spec: assume the python3-libvirt package name everywhere
+  (ptoscano@redhat.com)
+- spec: drop redundant "release_number" variable (ptoscano@redhat.com)
+- spec: drop outdated variables and comments (ptoscano@redhat.com)
+- spec: drop six dependency (ptoscano@redhat.com)
+- Drop non-systemd support (ptoscano@redhat.com)
+- Feature: improve log message, when wrong value is provided
+  (jhnidek@redhat.com)
+- Fix: default value for prism_central cannot be None (jhnidek@redhat.com)
+- spec: drop support for Python < 3 (ptoscano@redhat.com)
+- spec: drop support for Fedora < 36 (ptoscano@redhat.com)
+- spec: drop support for RHEL < 8 (ptoscano@redhat.com)
+
 * Wed Feb 01 2023 Jiri Hnidek <jhnidek@redhat.com> 1.31.26-1
 - Fix stylish issue in migrateconfiguration.py (jhnidek@redhat.com)
 - Added next rhel-9.x subversion to releasers.conf file. (jhnidek@redhat.com)

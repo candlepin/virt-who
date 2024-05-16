@@ -1,6 +1,6 @@
 Name:           virt-who
 Version:        1.32.0
-Release:        1%{?dist}
+Release:        2
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 
@@ -85,6 +85,9 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 
 
 %changelog
+* Thu May 16 2024 Jiri Hnidek <jhnidek@redhat.com> 1.32.0-2
+- feat: Changed release configuration for RHEL 10 (jhnidek@redhat.com)
+
 * Wed May 15 2024 Jiri Hnidek <jhnidek@redhat.com> 1.32.0-1
 - 
 

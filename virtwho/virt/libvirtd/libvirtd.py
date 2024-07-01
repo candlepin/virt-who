@@ -145,7 +145,7 @@ class LibvirtdConfigSection(VirtConfigSection):
                 server = self._values['server']
                 if 'ssh://' in server or '://' not in server:
                     result = [(
-                        'warn',
+                        'warning',
                         "Password authentication doesn't work with ssh transport on libvirt backend, "
                         "copy your public ssh key to the remote machine"
                     )]

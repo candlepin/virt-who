@@ -238,7 +238,7 @@ class Satellite(Manager):
                     self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)
                 except xmlrpc.client.Fault as e:
                     if e.faultCode == -9:
-                        self.logger.warn("System was deleted from Satellite 5, reregistering")
+                        self.logger.warning("System was deleted from Satellite 5, re-registering")
                         hypervisor_systemid = self._load_hypervisor(hypervisor.hypervisorId,
                                                                     hypervisor_type=report.config['type'], force=True)
                         self.server_xmlrpc.registration.virt_notify(hypervisor_systemid["system_id"], plan)

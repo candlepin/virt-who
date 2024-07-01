@@ -402,7 +402,7 @@ def parse_file(filename):
     except InvalidOption as e:
         # When a configuration section has an Invalid Option, continue
         # See https://bugzilla.redhat.com/show_bug.cgi?id=1457101 for more info
-        logger.warn("Invalid configuration detected: %s", str(e))
+        logger.warning("Invalid configuration detected: %s", str(e))
     except DuplicateOptionError as e:
         logger.warning(str(e))
     except Exception as e:
@@ -1342,15 +1342,15 @@ class EffectiveConfig(collections.abc.MutableMapping):
             conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
             non_conf_files = all_dir_content - conf_files
         except OSError:
-            logger.warn("Configuration directory '%s' doesn't exist or is not accessible",
-                        config_dir)
+            logger.warning("Configuration directory '%s' doesn't exist or is not accessible",
+                           config_dir)
             return {}
 
         if not all_dir_content:
-            logger.warn("Configuration directory '%s' appears empty", config_dir)
+            logger.warning("Configuration directory '%s' appears empty", config_dir)
         elif not conf_files:
-            logger.warn("Configuration directory '%s' does not have any '*.conf' files but "
-                        "is not empty", config_dir)
+            logger.warning("Configuration directory '%s' does not have any '*.conf' files but "
+                           "is not empty", config_dir)
         elif non_conf_files:
             logger.debug("There are files in '%s' not ending in '*.conf' is this "
                          "intentional?", config_dir)
@@ -1372,8 +1372,8 @@ class EffectiveConfig(collections.abc.MutableMapping):
             all_dir_content = set(os.listdir(config_dir))
             conf_files = set(s for s in all_dir_content if s.endswith('.conf'))
         except OSError:
-            logger.warn("Configuration directory '%s' doesn't exist or is not accessible",
-                        config_dir)
+            logger.warning("Configuration directory '%s' doesn't exist or is not accessible",
+                           config_dir)
             return False
 
         if not conf_files:

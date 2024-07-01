@@ -979,14 +979,23 @@ owner=root
 
         self.assertEqual(config["server"], 'http://1.2.3.4\nvalue')
 
-    @patch('logging.Logger.warn')
-    def testCommentedOutLineContinuationInConfig(self, logger_warn):
+    @patch('logging.Logger.warning')
+    def testCommentedOutLineContinuationInConfig(self, logger_warning):
         """Test that when a config line that starts with space or tab which is followed by a '#',
         if we are running python2: it is treated as a continuation of the previous line,
         but a warning is logged for the user.
         If we are running python3: it is ignored as a comment, and no warning is logged.
-        :return:
         """
+        # Alter the main conf file constant temporarily:
+        virtwho.config.VW_GENERAL_CONF_PATH = os.path.join(self.general_config_file_dir, "virt-who.conf")
+        # We need to have [global] section with at least some value. Otherwise,
+        # init_config() returns warning, and we test that no warning is returned.
+        with open(virtwho.config.VW_GENERAL_CONF_PATH, "w") as f:
+            f.write("""
+[global]
+debug=True
+""")
+
         with open(os.path.join(self.config_dir, "test1.conf"), "w") as f:
             f.write("""
 [test1]
@@ -1003,8 +1012,8 @@ owner=root
         config = manager.configs[0][1]
         self.assertEqual(config.name, "test1")
         self.assertEqual(config["server"], "http://1.2.3.4")
-        self.assertFalse(logger_warn.called)
-        self.assertEqual(logger_warn.call_count, 0)
+        self.assertFalse(logger_warning.called)
+        self.assertEqual(logger_warning.call_count, 0)
 
 
 class TestParseList(TestBase):

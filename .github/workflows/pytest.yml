@@ -3,6 +3,9 @@ name: pytest
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    # at 6:00 every 1st of the month
+    - cron: 0 6 1 * *
 
 jobs:
   pytest:

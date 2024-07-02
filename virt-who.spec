@@ -1,6 +1,6 @@
 Name:           virt-who
 Version:        1.32.0
-Release:        2
+Release:        2%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
 

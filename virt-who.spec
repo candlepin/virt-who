@@ -1,5 +1,5 @@
 Name:           virt-who
-Version:        1.31.27
+Version:        1.31.28
 Release:        1%{?dist}
 
 Summary:        Agent for reporting virtual guest IDs to subscription-manager
@@ -85,6 +85,9 @@ install -m 644 virt-who-zsh %{buildroot}/%{_datadir}/zsh/site-functions/_virt-wh
 
 
 %changelog
+* Thu Jul 18 2024 Jiri Hnidek <jhnidek@redhat.com> 1.31.28-1
+- New tag for virt-who-1.31 branch
+
 * Tue May 14 2024 Jiri Hnidek <jhnidek@redhat.com> 1.31.27-1
 - ci: bump actions/checkout from 3 to 4
   (49699333+dependabot[bot]@users.noreply.github.com)

@@ -326,11 +326,29 @@ class Esx(virt.Virt):
         From: 78563412-AB90-EFCD-1234-567890ABCDEF
         To:   12345678-90AB-CDEF-1234-567890ABCDEF
         """
+        smbios_version_27 = None
         s = vm['config.uuid']
-        if 'config.version' not in vm:
-            return s
-        version = int(vm['config.version'].split('-')[1])
-        if (version >= 13):
+
+        # Try to some crazy heuristics
+        if "config.extraConfig" in vm:
+            extra_config = vm["config.extraConfig"]
+            for item in extra_config.OptionValue:
+                if item.key == "acpi.smbiosVersion2.7":
+                    if item.value == "TRUE":
+                        smbios_version_27 = True
+                    elif item.value == "FALSE":
+                        smbios_version_27 = False
+
+        self.logger.debug(f"ESX acpi.smbiosVersion2.7: {smbios_version_27}")
+
+        version = 0
+        if 'config.version' in vm:
+            version = int(vm['config.version'].split('-')[1])
+            self.logger.debug(f"ESX config.version: {version} ({vm['config.version']})")
+        else:
+            self.logger.debug("ESX config.version not present")
+
+        if version >= 13 or smbios_version_27 is False:
             return s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
         else:
             return s
@@ -419,7 +437,14 @@ class Esx(virt.Virt):
         pfs = self.propertyFilterSpec()
         pfs.objectSet = [oSpec]
         pfs.propSet = [
-            self.createPropertySpec("VirtualMachine", ["config.uuid", "config.version", "runtime.powerState"]),
+            self.createPropertySpec("VirtualMachine",
+                                    [
+                                        "config.uuid",
+                                        "config.version",
+                                        "runtime.powerState",
+                                        "config.extraConfig"
+                                    ]
+                                    ),
             self.createPropertySpec("ClusterComputeResource", ["name"]),
             self.createPropertySpec("HostSystem", ["name",
                                                    "vm",

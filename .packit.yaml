@@ -4,7 +4,7 @@
 specfile_path: virt-who.spec
 
 # add or remove files that should be synced
-synced_files:
+files_to_sync:
     - virt-who.spec
     - .packit.yaml
 

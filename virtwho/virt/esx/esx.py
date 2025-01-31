@@ -326,13 +326,37 @@ class Esx(virt.Virt):
         From: 78563412-AB90-EFCD-1234-567890ABCDEF
         To:   12345678-90AB-CDEF-1234-567890ABCDEF
         """
+        smbios_version_27 = None
         s = vm['config.uuid']
-        if 'config.version' not in vm:
-            return s
-        version = int(vm['config.version'].split('-')[1])
-        if (version >= 13):
-            return s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
+
+        # Try to do some heuristics for one corner case described in RHEL-45636
+        if "config.extraConfig" in vm:
+            extra_config = vm["config.extraConfig"]
+            for item in extra_config.OptionValue:
+                if item.key == "acpi.smbiosVersion2.7":
+                    if item.value == "TRUE":
+                        smbios_version_27 = True
+                    elif item.value == "FALSE":
+                        smbios_version_27 = False
+
+        self.logger.debug(f"ESX acpi.smbiosVersion2.7: {smbios_version_27}")
+
+        version = 0
+        if 'config.version' in vm:
+            version = int(vm['config.version'].split('-')[1])
+            self.logger.debug(f"ESX config.version: {version} ({vm['config.version']})")
         else:
+            self.logger.debug("ESX config.version not present")
+
+        if version >= 13:
+            if smbios_version_27 is False:
+                self.logger.debug(f"using little-endian UUID: {s} (enforced by acpi.smbiosVersion2.7: FALSE)")
+                return s
+            new = s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
+            self.logger.debug(f"big-endian UUID: '{s}' converted to little-endian UUID: {new}")
+            return new
+        else:
+            self.logger.debug(f"using little-endian UUID: {s}")
             return s
 
     def skip_for_parent(self, host_id, host):
@@ -419,7 +443,14 @@ class Esx(virt.Virt):
         pfs = self.propertyFilterSpec()
         pfs.objectSet = [oSpec]
         pfs.propSet = [
-            self.createPropertySpec("VirtualMachine", ["config.uuid", "config.version", "runtime.powerState"]),
+            self.createPropertySpec("VirtualMachine",
+                                    [
+                                        "config.uuid",
+                                        "config.version",
+                                        "runtime.powerState",
+                                        "config.extraConfig"
+                                    ]
+                                    ),
             self.createPropertySpec("ClusterComputeResource", ["name"]),
             self.createPropertySpec("HostSystem", ["name",
                                                    "vm",

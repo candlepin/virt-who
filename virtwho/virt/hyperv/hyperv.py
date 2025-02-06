@@ -272,12 +272,15 @@ class HyperVSoap(object):
             "Content-Type": "application/soap+xml;charset=UTF-8"
         }
         try:
+            self.logger.debug("Trying to POST request to Hyper-V")
+            # self.logger.debug(body)
             response = self.connection.post(self.url, body, headers=headers)
         except requests.RequestException as e:
             raise HyperVException("Unable to connect to Hyper-V server: %s" % str(e))
 
         if response.status_code == requests.codes.ok:
             self.logger.debug(f'Received valid response from Hyper-V server: {response.status_code}')
+            # self.logger.debug(response.text)
             return response.content
         elif response.status_code == 401:
             raise HyperVAuthFailed("Authentication failed")
@@ -404,6 +407,10 @@ class HyperVCallFailed(HyperVException):
 class HyperV(virt.Virt):
     CONFIG_TYPE = "hyperv"
 
+    #
+    GEN_VERSION_1 = "Microsoft:Hyper-V:SubType:1"
+    GEN_VERSION_2 = "Microsoft:Hyper-V:SubType:2"
+
     def __init__(self, logger, config, dest, terminate_event=None,
                  interval=None, oneshot=False, status=False):
         super(HyperV, self).__init__(logger, config, dest,
@@ -427,17 +434,32 @@ class HyperV(virt.Virt):
         s.auth = HyperVAuth(self.username, self.password, self.logger)
         return s
 
-    @classmethod
-    def decodeWinUUID(cls, uuid):
-        """ Windows UUID needs to be decoded using following key
+    def decodeWinUUID(self, uuid, gen_version=None):
+        """
+        Windows UUID needs to be decoded using following key:
+
         From: {78563412-AB90-EFCD-1234-567890ABCDEF}
         To:    12345678-90AB-CDEF-1234-567890ABCDEF
+
+        when generation of VM is 1, because Windows UUID uses big-endian standard
+
+        It seems that Generation 2 of VMs use little-endian standard, and we need
+        to strip only beginning and trailing brackets in this case.
         """
         if uuid[0] == "{":
             s = uuid[1:-1]
         else:
             s = uuid
-        return s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
+
+        if gen_version is None or gen_version == self.GEN_VERSION_1:
+            return s[6:8] + s[4:6] + s[2:4] + s[0:2] + "-" + s[11:13] + s[9:11] + "-" + s[16:18] + s[14:16] + s[18:]
+        elif gen_version == self.GEN_VERSION_2:
+            return s
+        else:
+            self.logger.warning(
+                f"Unsupported version of VirtualSystemSubType: '{gen_version}', using little-endian UUID"
+            )
+            return s
 
     def getVmmsVersion(self, hypervsoap):
         """
@@ -457,12 +479,12 @@ class HyperV(virt.Virt):
         guests = []
         connection = self.connect()
         hypervsoap = HyperVSoap(self.url, connection, self.logger)
-        uuid = None
+        ctx_uuid = None
         if not self.useNewApi:
             try:
                 # SettingType == 3 means current setting, 5 is snapshot - we don't want snapshots
-                uuid = hypervsoap.Enumerate(
-                    "select BIOSGUID, VirtualSystemIdentifier "
+                ctx_uuid = hypervsoap.Enumerate(
+                    "select BIOSGUID, VirtualSystemIdentifier, VirtualSystemSubType "
                     "from Msvm_VirtualSystemSettingData "
                     "where SettingType = 3",
                     "root/virtualization")
@@ -474,8 +496,8 @@ class HyperV(virt.Virt):
         if self.useNewApi:
             # Filter out Planned VMs and snapshots, see
             # http://msdn.microsoft.com/en-us/library/hh850257%28v=vs.85%29.aspx
-            uuid = hypervsoap.Enumerate(
-                "select BIOSGUID, VirtualSystemIdentifier "
+            ctx_uuid = hypervsoap.Enumerate(
+                "select BIOSGUID, VirtualSystemIdentifier, VirtualSystemSubType "
                 "from Msvm_VirtualSystemSettingData "
                 "where VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'",
                 "root/virtualization/v2")
@@ -483,11 +505,12 @@ class HyperV(virt.Virt):
         # Get guest states
         guest_states = hypervsoap.Invoke_GetSummaryInformation(
             "root/virtualization/v2" if self.useNewApi else "root/virtualization")
-        vmmsVersion = self.getVmmsVersion(hypervsoap)
-        for instance in hypervsoap.Pull(uuid):
+
+        # Try to get information about UUID and state
+        for instance in hypervsoap.Pull(ctx_uuid):
             try:
-                uuid = instance["BIOSGUID"]
-                assert uuid is not None
+                guest_uuid = instance["BIOSGUID"]
+                assert guest_uuid is not None
             except (KeyError, AssertionError):
                 self.logger.warning("Guest without BIOSGUID found, ignoring")
                 continue
@@ -495,40 +518,57 @@ class HyperV(virt.Virt):
             try:
                 system_Id = instance["VirtualSystemIdentifier"]
             except KeyError:
-                self.logger.warning("Guest %s is missing VirtualSystemIdentifier", uuid)
+                self.logger.warning("Guest %s is missing VirtualSystemIdentifier", guest_uuid)
                 continue
+
+            try:
+                gen_version = instance["VirtualSystemSubType"]
+            except KeyError:
+                self.logger.warning(f"Guest {guest_uuid} is missing VirtualSystemSubType")
+                gen_version = None
+            else:
+                self.logger.debug(f"Guest {guest_uuid} has VirtualSystemSubType: '{gen_version}'")
 
             try:
                 state = guest_states[system_Id]
             except KeyError:
-                self.logger.warning("Unknown state for guest %s", uuid)
+                self.logger.warning("Unknown state for guest %s", guest_uuid)
                 state = virt.Guest.STATE_UNKNOWN
 
-            guests.append(virt.Guest(HyperV.decodeWinUUID(uuid), self.CONFIG_TYPE, state))
-        # Get the hostname
+            little_endian_guest_uuid = self.decodeWinUUID(guest_uuid, gen_version)
+            guests.append(virt.Guest(little_endian_guest_uuid, self.CONFIG_TYPE, state))
+
+        # Try to get the hostname and socket count of hypervisor
         hostname = None
         socket_count = None
-        data = hypervsoap.Enumerate("select DNSHostName, NumberOfProcessors from Win32_ComputerSystem", "root/cimv2")
-        for instance in hypervsoap.Pull(data, "root/cimv2"):
+        ctx_uuid = hypervsoap.Enumerate("select DNSHostName, NumberOfProcessors from Win32_ComputerSystem", "root/cimv2")
+        for instance in hypervsoap.Pull(ctx_uuid, "root/cimv2"):
             hostname = instance["DNSHostName"]
             socket_count = instance["NumberOfProcessors"]
 
-        uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
+        # Try to get UUID of hypervisor
+        ctx_uuid = hypervsoap.Enumerate("select UUID from Win32_ComputerSystemProduct", "root/cimv2")
         system_uuid = None
-        for instance in hypervsoap.Pull(uuid, "root/cimv2"):
-            system_uuid = HyperV.decodeWinUUID(instance["UUID"])
+        for instance in hypervsoap.Pull(ctx_uuid, "root/cimv2"):
+            system_uuid = self.decodeWinUUID(uuid=instance["UUID"])
 
+        host_id = None
         if self.config['hypervisor_id'] == 'uuid':
-            host = system_uuid
+            host_id = system_uuid
         elif self.config['hypervisor_id'] == 'hostname':
-            host = hostname
+            host_id = hostname
+
+        vmmsVersion = self.getVmmsVersion(hypervsoap)
+
         facts = {
             virt.Hypervisor.CPU_SOCKET_FACT: str(socket_count),
             virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'hyperv',
             virt.Hypervisor.HYPERVISOR_VERSION_FACT: vmmsVersion,
             virt.Hypervisor.SYSTEM_UUID_FACT: system_uuid
         }
-        hypervisor = virt.Hypervisor(hypervisorId=host, name=hostname, guestIds=guests, facts=facts)
+
+        hypervisor = virt.Hypervisor(hypervisorId=host_id, name=hostname, guestIds=guests, facts=facts)
+
         return {'hypervisors': [hypervisor]}
 
     def statusConfirmConnection(self):

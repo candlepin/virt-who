@@ -27,7 +27,7 @@ from requests.auth import AuthBase
 import requests
 
 from virtwho import virt
-from virtwho.config import VirtConfigSection
+from virtwho.config import VirtConfigSection, accessible_file
 
 try:
     from uuid import uuid1
@@ -48,12 +48,92 @@ class HypervConfigSection(VirtConfigSection):
 
     VIRT_TYPE = 'hyperv'
     HYPERVISOR_ID = ('uuid', 'hostname')
+    AUTH_METHODS = ('basic', 'kerberos')
 
     def __init__(self, section_name, wrapper, *args, **kwargs):
         super(HypervConfigSection, self).__init__(section_name, wrapper, *args, **kwargs)
         self.add_key('server', validation_method=self._validate_server, required=True)
         self.add_key('username', validation_method=self._validate_username, required=True)
         self.add_key('password', validation_method=self._validate_unencrypted_password, required=True)
+        self.add_key('auth_method', validation_method=self._validate_auth_method, default='basic')
+        self.add_key('kerberos_keytab', validation_method=self._validate_kerberos_keytab)
+        self.add_key('kerberos_principal', validation_method=self._validate_kerberos_principal)
+
+    def _validate_auth_method(self, key):
+        if key not in self._values:
+            return None
+        value = self._values[key]
+        result = None
+        if value not in self.AUTH_METHODS:
+            result = (
+                'error',
+                'Invalid auth_method "%s": must be one of: %s' % (value, ', '.join(self.AUTH_METHODS))
+            )
+        return result
+
+    def _validate_kerberos_keytab(self, key):
+        if key not in self._values:
+            return None
+        value = self._values[key]
+        result = None
+        auth_method = self._values.get('auth_method', self.defaults.get('auth_method', 'basic'))
+        if auth_method != 'kerberos':
+            result = (
+                'warning',
+                'Option "%s" is only applicable when auth_method=kerberos, ignoring' % key
+            )
+            del self._values[key]
+            return result
+        try:
+            accessible_file(value)
+        except ValueError as e:
+            result = (
+                'error',
+                'Invalid kerberos_keytab: %s' % str(e)
+            )
+        return result
+
+    def _validate_kerberos_principal(self, key):
+        if key not in self._values:
+            return None
+        value = self._values[key]
+        result = None
+        auth_method = self._values.get('auth_method', self.defaults.get('auth_method', 'basic'))
+        if auth_method != 'kerberos':
+            result = (
+                'warning',
+                'Option "%s" is only applicable when auth_method=kerberos, ignoring' % key
+            )
+            del self._values[key]
+            return result
+        if not isinstance(value, str) or len(value) == 0:
+            result = (
+                'error',
+                'Option "%s" must be a non-empty string' % key
+            )
+        return result
+
+    def _pre_validate(self):
+        auth_method = self._values.get('auth_method', self.defaults.get('auth_method', 'basic'))
+        if auth_method == 'kerberos':
+            self._required_keys.discard('password')
+            self._required_keys.discard('username')
+        super(HypervConfigSection, self)._pre_validate()
+
+    def _post_validate(self):
+        auth_method = self._values.get('auth_method', self.defaults.get('auth_method', 'basic'))
+        if auth_method == 'kerberos':
+            if 'username' in self._values and self._values['username']:
+                self.validation_messages.append((
+                    'warning',
+                    'Username is ignored when auth_method=kerberos'
+                ))
+            if 'password' in self._values and self._values['password']:
+                self.validation_messages.append((
+                    'warning',
+                    'Password is ignored when auth_method=kerberos'
+                ))
+        super(HypervConfigSection, self)._post_validate()
 
     def _validate_server(self, key):
         error = super(HypervConfigSection, self)._validate_server(key)

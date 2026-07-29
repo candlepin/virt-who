@@ -25,6 +25,9 @@ import base64
 from xml.etree import ElementTree
 from requests.auth import AuthBase
 import requests
+import gssapi
+from requests_gssapi import HTTPSPNEGOAuth, OPTIONAL
+from requests_gssapi.exceptions import SPNEGOExchangeError, MutualAuthenticationError
 
 from virtwho import virt
 from virtwho.config import VirtConfigSection, accessible_file
@@ -353,6 +356,12 @@ class HyperVSoap(object):
         }
         try:
             response = self.connection.post(self.url, body, headers=headers)
+        except (SPNEGOExchangeError, MutualAuthenticationError) as e:
+            raise HyperVAuthFailed(
+                "Kerberos authentication failed: %s. "
+                "Verify that the keytab and principal are correct, "
+                "and that the KDC is reachable." % str(e)
+            )
         except requests.RequestException as e:
             raise HyperVException("Unable to connect to Hyper-V server: %s" % str(e))
 
@@ -492,8 +501,11 @@ class HyperV(virt.Virt):
                                      oneshot=oneshot,
                                      status=status)
         self.url = self.config['url']
-        self.username = self.config['username']
-        self.password = self.config['password']
+        self.auth_method = self.config.get('auth_method', 'basic')
+        self.username = self.config.get('username', '')
+        self.password = self.config.get('password', '')
+        self.kerberos_keytab = self.config.get('kerberos_keytab', None)
+        self.kerberos_principal = self.config.get('kerberos_principal', None)
 
         # First try to use old API (root/virtualization namespace) if doesn't
         # work, go with root/virtualization/v2
@@ -504,7 +516,34 @@ class HyperV(virt.Virt):
         s = requests.Session()
         adapter = requests.adapters.HTTPAdapter(pool_connections=1, pool_maxsize=1)
         s.mount('http://', adapter)
-        s.auth = HyperVAuth(self.username, self.password, self.logger)
+
+        if self.auth_method == 'kerberos':
+            self.logger.debug('Using Kerberos (SPNEGO/Negotiate) authentication')
+            name = None
+            store = None
+
+            if self.kerberos_keytab:
+                store = {"client_keytab": f"FILE:{self.kerberos_keytab}"}
+                self.logger.debug('Using Kerberos keytab: %s', self.kerberos_keytab)
+
+            if self.kerberos_principal:
+                name = gssapi.Name(self.kerberos_principal, name_type=gssapi.NameType.kerberos_principal)
+                self.logger.debug('Using Kerberos principal: %s', self.kerberos_principal)
+
+            try:
+                # If 'name' is omitted, python-gssapi pulls the default principal from the 'store' (keytab)
+                # or the default credential cache. If 'store' is omitted, it looks in the default cache.
+                creds = gssapi.Credentials(name=name, store=store, usage="initiate")
+            except gssapi.exceptions.GSSError as e:
+                raise HyperVException(f"Failed to acquire Kerberos credentials: {e}")
+
+            if name is None:
+                self.logger.debug('Resolved default Kerberos principal: %s', creds.name)
+
+            s.auth = HTTPSPNEGOAuth(creds=creds, mutual_authentication=OPTIONAL)
+        else:
+            self.logger.debug('Using Basic authentication')
+            s.auth = HyperVAuth(self.username, self.password, self.logger)
         return s
 
     @classmethod

@@ -31,7 +31,7 @@ from base import TestBase
 from proxy import Proxy
 
 from virtwho import DefaultInterval
-from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection
+from virtwho.virt.hyperv.hyperv import HyperV, HypervConfigSection, HyperVException
 from virtwho.virt import VirtError, Guest, Hypervisor, StatusReport
 
 
@@ -334,3 +334,141 @@ class TestHyperV(TestBase):
         logger_debug.assert_called_with(
             'Invalid response (403) from Hyper-V (error: not well-formed (invalid token): line 8, column 18)'
         )
+
+
+class TestHyperVKerberosConnect(TestBase):
+    """Tests for the kerberos auth wiring in HyperV.connect()."""
+
+    def _make_hyperv(self, auth_method='kerberos', keytab=None, principal=None):
+        config_values = {
+            'type': 'hyperv',
+            'server': 'hyperv.example.com',
+            'auth_method': auth_method,
+            'owner': 'owner',
+        }
+        if keytab:
+            config_values['kerberos_keytab'] = keytab
+        if principal:
+            config_values['kerberos_principal'] = principal
+        config = HypervConfigSection('test', None)
+        config.update(**config_values)
+        config.validate()
+        return HyperV(self.logger, config, None, interval=DefaultInterval)
+
+    @patch('requests.Session')
+    def test_basic_auth_uses_hypervauth(self, session):
+        """auth_method=basic uses the HyperVAuth handler."""
+        from virtwho.virt.hyperv.hyperv import HyperVAuth
+        config_values = {
+            'type': 'hyperv',
+            'server': 'hyperv.example.com',
+            'auth_method': 'basic',
+            'username': 'user',
+            'password': 'pass',
+            'owner': 'owner',
+        }
+        config = HypervConfigSection('test', None)
+        config.update(**config_values)
+        config.validate()
+        hyperv = HyperV(self.logger, config, None, interval=DefaultInterval)
+
+        s = hyperv.connect()
+        self.assertIsInstance(s.auth, HyperVAuth)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_auth_uses_httpspnegoauth(self, session, mock_credentials):
+        """auth_method=kerberos uses HTTPSPNEGOAuth."""
+        from requests_gssapi import HTTPSPNEGOAuth
+        hyperv = self._make_hyperv()
+        s = hyperv.connect()
+        self.assertIsInstance(s.auth, HTTPSPNEGOAuth)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_sets_principal(self, session, mock_credentials):
+        """kerberos_principal is used to acquire gssapi.Credentials passed to HTTPSPNEGOAuth."""
+        sentinel_creds = object()
+        mock_credentials.return_value = sentinel_creds
+
+        hyperv = self._make_hyperv(principal='virtwho@EXAMPLE.COM')
+        s = hyperv.connect()
+
+        called_name = mock_credentials.call_args.kwargs['name']
+        self.assertEqual(str(called_name), 'virtwho@EXAMPLE.COM')
+        self.assertEqual(mock_credentials.call_args.kwargs['usage'], 'initiate')
+        self.assertIs(s.auth.creds, sentinel_creds)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_principal_credential_failure_raises_clean_error(self, session, mock_credentials):
+        """A GSSError while acquiring credentials for the principal surfaces as HyperVException."""
+        import gssapi
+
+        class FakeGSSError(gssapi.exceptions.GSSError):
+            def __str__(self):
+                return 'no matching credentials in cache collection'
+
+        error = FakeGSSError.__new__(FakeGSSError)
+        BaseException.__init__(error, 'no matching credentials in cache collection')
+        mock_credentials.side_effect = error
+
+        hyperv = self._make_hyperv(principal='virtwho@EXAMPLE.COM')
+        self.assertRaises(HyperVException, hyperv.connect)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_sets_keytab_store(self, session, mock_credentials):
+        """kerberos_keytab is passed to gssapi.Credentials via the 'store' argument."""
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            keytab_path = f.name
+        try:
+            hyperv = self._make_hyperv(keytab=keytab_path)
+            hyperv.connect()
+
+            called_store = mock_credentials.call_args.kwargs['store']
+            self.assertEqual(called_store, {"client_keytab": "FILE:%s" % keytab_path})
+        finally:
+            os.unlink(keytab_path)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_no_principal_or_keytab_uses_defaults(self, session, mock_credentials):
+        """Without kerberos_principal/kerberos_keytab, gssapi.Credentials is still called,
+        with name and store left as None so the default credential cache is used."""
+        sentinel_creds = Mock(name='resolved-creds')
+        sentinel_creds.name = 'defaulted-user@EXAMPLE.COM'
+        mock_credentials.return_value = sentinel_creds
+
+        hyperv = self._make_hyperv()
+        s = hyperv.connect()
+
+        mock_credentials.assert_called_once_with(name=None, store=None, usage='initiate')
+        self.assertIs(s.auth.creds, sentinel_creds)
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_connect_runs_oneshot(self, session, mock_credentials):
+        """Kerberos auth path can complete a full oneshot run with mocked responses."""
+        session.return_value.post.side_effect = HyperVMock.post
+        hyperv = self._make_hyperv()
+        hyperv._oneshot = True
+        hyperv.dest = Queue()
+        hyperv._terminate_event = Event()
+        hyperv._interval = 0
+        hyperv._run()
+
+        session.return_value.post.assert_called()
+
+    @patch('virtwho.virt.hyperv.hyperv.gssapi.Credentials')
+    @patch('requests.Session')
+    def test_kerberos_401_raises_auth_failed(self, session, mock_credentials):
+        """A 401 after kerberos negotiate raises HyperVAuthFailed."""
+        session.return_value.post.return_value.status_code = 401
+        hyperv = self._make_hyperv()
+        hyperv._oneshot = True
+        hyperv.dest = Queue()
+        hyperv._terminate_event = Event()
+        hyperv._interval = 0
+        self.assertRaises(VirtError, hyperv._run)

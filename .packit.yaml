@@ -12,3 +12,11 @@ files_to_sync:
 upstream_package_name: virt-who
 # downstream (Fedora) RPM package name
 downstream_package_name: virt-who
+
+jobs:
+  - job: copr_build
+    trigger: pull_request
+    targets:
+      - centos-stream-10
+      - fedora-all
+      - rhel-10-x86_64

@@ -71,7 +71,10 @@ class Request(UnicodeMixin):
         result = ["URL: %s\nHEADERS: %s" % (self.url, self.headers)]
         if self.message is not None:
             result.append("MESSAGE:")
-            result.append(self.message.decode("raw_unicode_escape"))
+            if isinstance(self.message, bytes):
+                result.append(self.message.decode("raw_unicode_escape"))
+            else:
+                result.append(self.message)
         return "\n".join(result)
 
     def __set_URL(self, url):
@@ -120,11 +123,14 @@ class Reply(UnicodeMixin):
         self.message = message
 
     def __unicode__(self):
+        msg = self.message
+        if isinstance(msg, bytes):
+            msg = msg.decode("raw_unicode_escape")
         return """\
 CODE: %s
 HEADERS: %s
 MESSAGE:
-%s""" % (self.code, self.headers, self.message.decode("raw_unicode_escape"))
+%s""" % (self.code, self.headers, msg)
 
 
 class Transport(object):

@@ -41,7 +41,7 @@ SAT5_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'server': False, 'username': False},
     'esx': {'owner': False, 'server': True, 'username': True},
     'hyperv': {'owner': False, 'server': True, 'username': True},
-    'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
+    'kubevirt': {'owner': False, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False, 'namespace': False},
     'ahv': {'owner': False, 'server': False, 'username': False},
 }
 
@@ -49,7 +49,7 @@ SAT6_VM_DISPATCHER = {
     'libvirt': {'owner': False, 'server': False, 'username': False},
     'esx': {'owner': True, 'server': True, 'username': True},
     'hyperv': {'owner': True, 'server': True, 'username': True},
-    'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False},
+    'kubevirt': {'owner': True, 'server': False, 'username': False, 'kubeconfig': True, 'kubeversion': False, 'insecure': False, 'namespace': False},
     'ahv': {'owner': False, 'server': False, 'username': False},
 }
 

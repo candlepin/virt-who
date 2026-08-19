@@ -24,6 +24,7 @@ from base import TestBase
 from threading import Event
 
 from virtwho.virt import Virt, Guest, Hypervisor, StatusReport, VirtError
+from virtwho.virt.kubevirt.client import ApiException
 from virtwho.virt.kubevirt.kubevirt import KubevirtConfigSection
 from virtwho.datastore import Datastore
 
@@ -251,6 +252,87 @@ class TestKubevirt(TestBase):
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
 
+    def test_getHostGuestMapping_nodes_forbidden(self):
+        client = Mock()
+        client.get_nodes.side_effect = ApiException(status=403, reason='Forbidden')
+        client.get_vms.return_value = self.vms()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    namespace='default')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='main',
+                name='main',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                }
+            )
+            result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_getHostGuestMapping_nodes_other_error_raises(self):
+        client = Mock()
+        client.get_nodes.side_effect = ApiException(status=401, reason='Unauthorized')
+        client.get_vms.return_value = self.vms()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            self.assertRaises(ApiException, kubevirt.getHostGuestMapping)
+
+    def test_statusConfirmConnection_nodes_forbidden_falls_back_to_vms(self):
+        client = Mock()
+        client.get_nodes.side_effect = ApiException(status=403, reason='Forbidden')
+        client.host = 'kubeserver'
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    namespace='default')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            kubevirt.statusConfirmConnection()
+
+            client.get_vms.assert_called_once_with()
+            self.assertEqual('kubeserver', kubevirt.config['server'])
+
+    def test_statusConfirmConnection_other_error_raises(self):
+        client = Mock()
+        client.get_nodes.side_effect = ApiException(status=401, reason='Unauthorized')
+        client.host = 'kubeserver'
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            self.assertRaises(ApiException, kubevirt.statusConfirmConnection)
+            client.get_vms.assert_not_called()
+
     def test_milicpu(self):
         client = Mock()
         client.get_nodes.return_value = self.new_nodes()
@@ -289,6 +371,25 @@ class TestKubevirt(TestBase):
 
         kubevirt = Virt.from_config(self.logger, config, Datastore())
         self.assertEqual("~/.kube/config", kubevirt._path)
+
+    def test_empty_namespace(self):
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner')
+
+        kubevirt = Virt.from_config(self.logger, config, Datastore())
+        self.assertEqual("", kubevirt._namespace)
+
+    @patch("virtwho.virt.kubevirt.kubevirt.KubeClient")
+    def test_namespace(self, kube_client):
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts',
+                                    namespace='my-namespace')
+
+        kubevirt = Virt.from_config(self.logger, config, Datastore())
+        self.assertEqual("my-namespace", kubevirt._namespace)
+
+        kubevirt.prepare()
+        kube_client.assert_called_once_with('my-namespace', '/etc/hosts', '', False)
 
     @patch("virtwho.virt.kubevirt.config._get_kube_config_loader_for_yaml_file",
            return_value=Mock())

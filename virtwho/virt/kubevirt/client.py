@@ -32,7 +32,8 @@ _TIMEOUT = 60
 
 class KubeClient:
 
-    def __init__(self, path, version, insecure):
+    def __init__(self, namespace, path, version, insecure):
+        self.namespace = namespace
         cfg = config.Configuration()
         cl = config._get_kube_config_loader_for_yaml_file(path)
         cl.load_and_set(cfg)
@@ -70,7 +71,10 @@ class KubeClient:
         return self._request('/api/v1/nodes')
 
     def get_vms(self):
-        return self._request('/apis/kubevirt.io/' + self._version + '/virtualmachineinstances')
+        if self.namespace:
+            return self._request('/apis/kubevirt.io/' + self._version + '/namespaces/' + self.namespace + '/virtualmachineinstances')
+        else:
+            return self._request('/apis/kubevirt.io/' + self._version + '/virtualmachineinstances')
 
     def _kubevirt_version(self):
         versions = self._request('/apis/kubevirt.io')

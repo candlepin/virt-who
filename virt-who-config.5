@@ -151,6 +151,9 @@ API version used to override kubevirt api version fetched from the cluster. Used
 .TP
 \fB#insecure\fR
 Eliminate validation of tls certificates during connection to kubevirt
+.TP
+\fB#namespace\fR
+Restrict kubevirt virtual machine queries to the given namespace instead of listing virtual machines across the whole cluster. Useful when virt-who only has API access scoped to a single namespace (e.g. multi-tenant clusters). When unset, all namespaces are queried, which requires cluster-wide access. Does not affect the node listing, which still requires cluster-wide access. If node listing is forbidden (HTTP 403), virt-who falls back to identifying hosts by the node name reported on each virtual machine; in that case hypervisor facts normally derived from node data (CPU count, hypervisor version, system uuid) are not reported.
 
 .SH EXAMPLE
 [test-esx]

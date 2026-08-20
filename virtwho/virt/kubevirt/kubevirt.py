@@ -26,7 +26,7 @@ import os.path
 from datetime import datetime
 from virtwho import virt
 from virtwho.config import VirtConfigSection, str_to_bool
-from virtwho.virt.kubevirt.client import KubeClient
+from virtwho.virt.kubevirt.client import ApiException, KubeClient
 from virtwho.virt.kubevirt import config
 
 
@@ -51,6 +51,10 @@ class KubevirtConfigSection(VirtConfigSection):
         self.add_key('insecure',
                      validation_method=self._validate_str_to_bool,
                      default=False,
+                     required=False)
+        self.add_key('namespace',
+                     validation_method=self._validate_non_empty_string,
+                     default="",
                      required=False)
 
     def _validate_path(self, key='kubeconfig'):
@@ -95,9 +99,10 @@ class Kubevirt(virt.Virt):
         self._path = self.config['kubeconfig']
         self._version = self.config['kubeversion']
         self._insecure = str_to_bool(self.config['insecure'])
+        self._namespace = self.config['namespace']
 
     def prepare(self):
-        self._client = KubeClient(self._path, self._version, self._insecure)
+        self._client = KubeClient(self._namespace, self._path, self._version, self._insecure)
 
     def parse_cpu(self, cpu):
         if cpu.endswith('m'):
@@ -154,10 +159,23 @@ class Kubevirt(virt.Virt):
         """
         hosts = {}
 
-        nodes = self._client.get_nodes()
+        try:
+            nodes = self._client.get_nodes()
+        except ApiException as e:
+            if e.status != 403:
+                raise
+            self.logger.warning(
+                "Unable to list nodes (403 Forbidden), falling back to "
+                "identifying hosts by the node name reported on each "
+                "virtual machine. Hypervisor facts normally collected "
+                "from node data (CPU count, hypervisor version, system "
+                "uuid) will not be available."
+            )
+            nodes = None
+
         vms = self._client.get_vms()
 
-        for node in nodes['items']:
+        for node in (nodes['items'] if nodes else []):
             status = node['status']
             version = status['nodeInfo']['kubeletVersion']
             name = node['metadata']['name']
@@ -189,6 +207,16 @@ class Kubevirt(virt.Virt):
             if host_name is None:
                 continue
 
+            if host_name not in hosts:
+                # No node data available for this host (e.g. node listing is
+                # forbidden), so fall back to using the node name as the
+                # hypervisor identity.
+                hosts[host_name] = virt.Hypervisor(
+                    hypervisorId=host_name,
+                    name=host_name,
+                    facts={virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu'}
+                )
+
             guest_id = spec['domain']['firmware']['uuid']
             # a vm is always in running state
             status = virt.Guest.STATE_RUNNING
@@ -202,7 +230,14 @@ class Kubevirt(virt.Virt):
         of that is not important in the status scenario.
         '''
         try:
-            self._client.get_nodes()
+            try:
+                self._client.get_nodes()
+            except ApiException as e:
+                if e.status != 403:
+                    raise
+                # No cluster-wide access to list nodes, fall back to
+                # confirming the credentials via a namespace-scoped call.
+                self._client.get_vms()
         finally:
             if 'server' not in self.config or not self.config['server']:
                 self.config['server'] = self._client.host

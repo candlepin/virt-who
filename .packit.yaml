@@ -12,6 +12,9 @@ files_to_sync:
 upstream_package_name: virt-who
 # downstream (Fedora) RPM package name
 downstream_package_name: virt-who
+# our git tags look like virt-who-<version>-<release>, tell packit how to
+# extract just the version (otherwise it treats the whole tag as the version)
+upstream_tag_template: virt-who-{version}-{release}
 
 jobs:
   - job: copr_build

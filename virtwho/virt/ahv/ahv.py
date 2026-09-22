@@ -104,7 +104,6 @@ class Ahv(virt.Virt):
             Dictionary with host-guest mapping
         """
         mapping = {'hypervisors': []}
-        hypervisor_id = None
 
         host_uvm_map = self._interface.build_host_to_uvm_map()
 
@@ -113,15 +112,18 @@ class Ahv(virt.Virt):
         for host_uuid in host_uvm_map:
             host = host_uvm_map[host_uuid]
 
-            try:
-                if self.config['hypervisor_id'] == 'uuid':
-                    hypervisor_id = host_uuid
-                elif self.config['hypervisor_id'] == 'hostname':
+            # Set hypervisor_id to default uuid. The self.config['hypervisor_id']
+            # can have only two possible values: 'uuid' or 'hostname' at this point.
+            hypervisor_id = host_uuid
+            if self.config['hypervisor_id'] == 'uuid':
+                self.logger.debug("Using hypervisor_id: uuid: %s", hypervisor_id)
+            elif self.config['hypervisor_id'] == 'hostname':
+                try:
                     hypervisor_id = host['name']
-
-            except KeyError:
-                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_uuid)
-                continue
+                    self.logger.debug("Using hypervisor_id: hostname: %s", hypervisor_id)
+                except KeyError:
+                    self.logger.warning("Host '%s' doesn't have 'name' property", host_uuid)
+                    self.logger.warning("Falling back to default hypervisor_id: uuid")
 
             guests = []
             if 'guest_list' in host and len(host['guest_list']) > 0:
@@ -147,7 +149,10 @@ class Ahv(virt.Virt):
 
             cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_name_list)
             host_version = self._interface.get_host_version(host)
-            host_name = host["status"]['name']
+            try:
+                host_name = host["status"]['name']
+            except KeyError:
+                host_name = None
 
             facts = {
                 Hypervisor.CPU_SOCKET_FACT: str(host["status"]["resources"]['num_cpu_sockets']),
@@ -176,7 +181,6 @@ class Ahv(virt.Virt):
         """
 
         mapping = {'hypervisors': []}
-        hypervisor_id = None
 
         host_uvm_map = self._interface.build_host_to_uvm_map()
 
@@ -185,15 +189,18 @@ class Ahv(virt.Virt):
         for host_uuid in host_uvm_map:
             host = host_uvm_map[host_uuid]
 
-            try:
-                if self.config['hypervisor_id'] == 'uuid':
-                    hypervisor_id = host_uuid
-                elif self.config['hypervisor_id'] == 'hostname':
+            # Set hypervisor_id to default uuid. The self.config['hypervisor_id']
+            # can have only two possible values: 'uuid' or 'hostname' at this point.
+            hypervisor_id = host_uuid
+            if self.config['hypervisor_id'] == 'uuid':
+                self.logger.debug("Using hypervisor_id: uuid: %s", hypervisor_id)
+            elif self.config['hypervisor_id'] == 'hostname':
+                try:
                     hypervisor_id = host['name']
-
-            except KeyError:
-                self.logger.debug("Host '%s' doesn't have hypervisor_id property", host_uuid)
-                continue
+                    self.logger.debug("Using hypervisor_id: hostname: %s", hypervisor_id)
+                except KeyError:
+                    self.logger.warning("Host '%s' doesn't have 'name' property", host_uuid)
+                    self.logger.warning("Falling back to default hypervisor_id: uuid")
 
             guests = []
             if 'guest_list' in host and len(host['guest_list']) > 0:
@@ -217,7 +224,10 @@ class Ahv(virt.Virt):
 
             cluster_name = self._interface.get_host_cluster_name(host, cluster_uuid_name_list)
             host_version = self._interface.get_host_version(host)
-            host_name = host['name']
+            try:
+                host_name = host['name']
+            except KeyError:
+                host_name = None
 
             facts = {
                 Hypervisor.CPU_SOCKET_FACT: str(host['num_cpu_sockets']),

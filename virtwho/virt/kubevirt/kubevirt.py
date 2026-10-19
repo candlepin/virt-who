@@ -19,7 +19,6 @@
 #
 from __future__ import absolute_import
 
-import math
 import os
 import os.path
 
@@ -108,10 +107,67 @@ class Kubevirt(virt.Virt):
     def prepare(self):
         self._client = KubeClient(self._namespace, self._path, self._version, self._insecure)
 
-    def parse_cpu(self, cpu):
-        if cpu.endswith('m'):
-            cpu = int(math.floor(int(cpu[:-1]) / 1000))
-        return str(cpu)
+    def get_node_cpu_sockets(self, node_name):
+        """
+        Get the physical CPU socket count of a node from the cAdvisor
+        metrics exposed through the node proxy.
+
+        The nodes API only provides the logical CPU count, so the
+        machine_cpu_sockets metric is the only source of the physical
+        socket count. Returns the socket count as a string, or None when
+        the metric is not available (e.g. on older clusters or when the
+        node proxy call is not permitted); in that case the
+        cpu.cpu_socket(s) fact is omitted instead of reporting the
+        logical CPU count as sockets.
+        """
+        try:
+            metrics = self._client.get_node_metrics(node_name)
+        except ApiException as e:
+            self.logger.warning(
+                "Unable to get cAdvisor metrics of node %s (%s), "
+                "the cpu.cpu_socket(s) fact will be omitted for this "
+                "node" % (node_name, e.status)
+            )
+            return None
+
+        # metrics is the raw Prometheus output, and will look something like:
+        #
+        # machine_cpu_cores{boot_id="...",machine_id="...",system_uuid="..."} 8
+        # machine_cpu_physical_cores{boot_id="...",machine_id="...",system_uuid="..."} 1
+        # machine_cpu_sockets{boot_id="...",machine_id="...",system_uuid="..."} 8
+        # machine_memory_bytes{boot_id="...",machine_id="...",system_uuid="..."} 1.6758284288e+10
+        # machine_nvm_avg_power_budget_watts{boot_id="...",machine_id="...",system_uuid="..."} 0
+        # machine_nvm_capacity{boot_id="...",machine_id="...",mode="app_direct_mode",system_uuid="..."} 0
+        # machine_nvm_capacity{boot_id="...",machine_id="...",mode="memory_mode",system_uuid="..."} 0
+        # machine_scrape_error 0
+        # machine_swap_bytes{boot_id="...",machine_id="...",system_uuid="..."} 0
+        for line in metrics.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[0].split('{')[0] == 'machine_cpu_sockets':
+                try:
+                    # This value is technically a float according to the Prometheus format,
+                    # hence this parsing method
+                    sockets = str(int(float(parts[1])))
+                except (ValueError, OverflowError):
+                    self.logger.warning(
+                        "Unable to parse the machine_cpu_sockets metric of "
+                        "node %s (unexpected value '%s'), the "
+                        "cpu.cpu_socket(s) fact will be omitted for this "
+                        "node" % (node_name, parts[1])
+                    )
+                    return None
+                self.logger.debug(
+                    "Node %s reports %s physical CPU socket(s)"
+                    % (node_name, parts[1])
+                )
+                return sockets
+
+        self.logger.warning(
+            "The machine_cpu_sockets metric was not found in the cAdvisor "
+            "metrics of node %s, the cpu.cpu_socket(s) fact will be "
+            "omitted for this node" % node_name
+        )
+        return None
 
     def _run(self):
         """
@@ -197,12 +253,18 @@ class Kubevirt(virt.Virt):
                         host_id = addr['address']
 
             facts = {
-                virt.Hypervisor.CPU_SOCKET_FACT: self.parse_cpu(status['allocatable']["cpu"]),
                 virt.Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                 # this should be hardware uniqe identifier but k8s api gives us only machineID
                 virt.Hypervisor.SYSTEM_UUID_FACT: status['nodeInfo']['machineID'],
                 virt.Hypervisor.HYPERVISOR_VERSION_FACT: version
             }
+            # The nodes API exposes only the logical CPU count, which
+            # must not be reported as physical sockets. Read the socket
+            # count from the node's cAdvisor metrics instead and omit
+            # the fact when the metric is not available.
+            sockets = self.get_node_cpu_sockets(name)
+            if sockets is not None:
+                facts[virt.Hypervisor.CPU_SOCKET_FACT] = sockets
             hosts[name] = virt.Hypervisor(hypervisorId=host_id, name=name, facts=facts)
 
         for vm in vms['items']:

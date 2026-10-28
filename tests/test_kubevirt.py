@@ -18,7 +18,7 @@ from __future__ import print_function
 #
 # Refer to the README and COPYING files for full details of the license
 #
-from mock import patch, Mock, ANY
+from mock import patch, Mock, ANY, call
 
 from base import TestBase
 from threading import Event
@@ -84,6 +84,20 @@ class TestKubevirt(TestBase):
             }
         }
         return {'items': [node]}
+
+    def cadvisor_metrics(self, sockets=2):
+        # Sample of the Prometheus text format served by
+        # /api/v1/nodes/{node}/proxy/metrics/cadvisor
+        return (
+            '# HELP machine_cpu_physical_cores Number of physical cores\n'
+            '# TYPE machine_cpu_physical_cores gauge\n'
+            'machine_cpu_physical_cores{boot_id="b",machine_id="m",'
+            'system_uuid="s"} 32\n'
+            '# HELP machine_cpu_sockets Number of CPU sockets\n'
+            '# TYPE machine_cpu_sockets gauge\n'
+            'machine_cpu_sockets{boot_id="b",machine_id="m",'
+            'system_uuid="s"} %d\n' % sockets
+        )
 
     def vms(self):
         vm = {
@@ -162,6 +176,7 @@ class TestKubevirt(TestBase):
         client = Mock()
         client.get_nodes.return_value = self.nodes()
         client.get_vms.return_value = self.pending_vms()
+        client.get_node_metrics.return_value = self.cadvisor_metrics()
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
@@ -189,6 +204,7 @@ class TestKubevirt(TestBase):
         client = Mock()
         client.get_nodes.return_value = self.nodes()
         client.get_vms.return_value = self.vms()
+        client.get_node_metrics.return_value = self.cadvisor_metrics()
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
@@ -222,6 +238,7 @@ class TestKubevirt(TestBase):
         client = Mock()
         client.get_nodes.return_value = self.nodes()
         client.get_vms.return_value = self.vms()
+        client.get_node_metrics.return_value = self.cadvisor_metrics()
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts',
@@ -251,6 +268,243 @@ class TestKubevirt(TestBase):
             )
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
+
+    def test_getHostGuestMapping_multiple_nodes(self):
+        # In a cluster with several nodes, every node must be reported
+        # with the socket count read from its own cAdvisor metrics
+        # endpoint. A node whose metrics cannot be retrieved omits the
+        # cpu.cpu_socket(s) fact without affecting the other nodes.
+        def node(name, machine_id):
+            return {
+                'metadata': {'name': name},
+                'status': {
+                    'nodeInfo': {
+                        'machineID': machine_id,
+                        'kubeletVersion': 'v1.9.1+a0ce1bc657'
+                    },
+                    'addresses': [
+                        {'address': '192.168.122.140',
+                         'type': 'InternalIP'},
+                        {'address': name,
+                         'type': 'Hostname'}
+                    ],
+                    'allocatable': {
+                        'cpu': '16'
+                    }
+                }
+            }
+
+        nodes = {'items': [
+            node('node-a', 'a' * 32),
+            node('node-b', 'b' * 32),
+            node('node-c', 'c' * 32),
+        ]}
+
+        def vm(node_name, uuid):
+            return {
+                'metadata': {
+                    'name': 'vm-on-' + node_name,
+                    'namespace': 'default',
+                },
+                'spec': {
+                    'domain': {
+                        'firmware': {
+                            'uuid': uuid
+                        }
+                    }
+                },
+                'status': {
+                    'nodeName': node_name,
+                    'phase': 'Running',
+                }
+            }
+
+        vms = {'items': [
+            vm('node-a', 'f83c5f73-5244-4bd1-90cf-02bac2dda60a'),
+            vm('node-c', 'f83c5f73-5244-4bd1-90cf-02bac2dda60c'),
+        ]}
+
+        client = Mock()
+        client.get_nodes.return_value = nodes
+        client.get_vms.return_value = vms
+
+        def metrics_for(node_name):
+            if node_name == 'node-b':
+                raise ApiException(status=403, reason='Forbidden')
+            elif node_name == 'node-a':
+                return self.cadvisor_metrics(sockets=2)
+            else:
+                return self.cadvisor_metrics(sockets=4)
+
+        client.get_node_metrics.side_effect = metrics_for
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            with self.assertLogs(level='WARNING') as logged:
+                result = kubevirt.getHostGuestMapping()
+
+            by_name = {h.name: h for h in result['hypervisors']}
+            self.assertEqual({'node-a', 'node-b', 'node-c'}, set(by_name))
+
+            # each node reports its own socket count
+            self.assertEqual('2',
+                             by_name['node-a'].facts[Hypervisor.CPU_SOCKET_FACT])
+            self.assertNotIn(Hypervisor.CPU_SOCKET_FACT,
+                             by_name['node-b'].facts)
+            self.assertEqual('4',
+                             by_name['node-c'].facts[Hypervisor.CPU_SOCKET_FACT])
+
+            # each node was queried for its own metrics exactly once
+            self.assertEqual(
+                [call('node-a'), call('node-b'), call('node-c')],
+                client.get_node_metrics.call_args_list)
+
+            # guests stay associated with their own nodes
+            self.assertEqual(
+                ['f83c5f73-5244-4bd1-90cf-02bac2dda60a'],
+                [guest.uuid for guest in by_name['node-a'].guestIds])
+            self.assertEqual([], by_name['node-b'].guestIds)
+            self.assertEqual(
+                ['f83c5f73-5244-4bd1-90cf-02bac2dda60c'],
+                [guest.uuid for guest in by_name['node-c'].guestIds])
+
+            # the failing node is named in the logged warning
+            self.assertTrue(
+                any('node-b' in output for output in logged.output))
+
+    def test_cpu_sockets_metric_api_error(self):
+        # When the cAdvisor metrics of a node cannot be retrieved, the
+        # cpu.cpu_socket(s) fact is omitted and a warning is logged
+        # instead of falling back to the logical CPU count.
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
+        client.get_node_metrics.side_effect = ApiException(
+            status=403, reason='Forbidden')
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='main',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            with self.assertLogs(level='WARNING') as logged:
+                result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+            self.assertTrue(
+                any('cpu.cpu_socket(s)' in output for output in logged.output))
+
+    def test_cpu_sockets_metric_missing(self):
+        # The metrics endpoint answered but does not expose the
+        # machine_cpu_sockets metric: omit the cpu.cpu_socket(s) fact
+        # and log a warning.
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
+        client.get_node_metrics.return_value = (
+            '# HELP machine_cpu_physical_cores Number of physical cores\n'
+            '# TYPE machine_cpu_physical_cores gauge\n'
+            'machine_cpu_physical_cores{boot_id="b",machine_id="m",'
+            'system_uuid="s"} 32\n'
+        )
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='main',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            with self.assertLogs(level='WARNING') as logged:
+                result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+            self.assertTrue(
+                any('machine_cpu_sockets' in output for output in logged.output))
+
+    def test_cpu_sockets_metric_malformed(self):
+        # A machine_cpu_sockets value that cannot be parsed (here NaN,
+        # which int() rejects) must not abort the host-guest mapping:
+        # the fact is omitted for that node and a warning is logged.
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = self.vms()
+        client.get_node_metrics.return_value = (
+            '# HELP machine_cpu_sockets Number of CPU sockets\n'
+            '# TYPE machine_cpu_sockets gauge\n'
+            'machine_cpu_sockets{boot_id="b",machine_id="m",'
+            'system_uuid="s"} NaN\n'
+        )
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            expected_result = Hypervisor(
+                hypervisorId='52c01ad890e84b15a1be4be18bd64ecd',
+                name='main',
+                guestIds=[
+                    Guest(
+                        'f83c5f73-5244-4bd1-90cf-02bac2dda608',
+                        kubevirt.CONFIG_TYPE,
+                        Guest.STATE_RUNNING,
+                    )
+                ],
+                facts={
+                    Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
+                    Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
+                    Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.9.1+a0ce1bc657',
+                }
+            )
+            with self.assertLogs(level='WARNING') as logged:
+                result = kubevirt.getHostGuestMapping()['hypervisors'][0]
+            self.assertEqual(expected_result.toDict(), result.toDict())
+            self.assertTrue(
+                any('machine_cpu_sockets' in output for output in logged.output))
 
     def test_getHostGuestMapping_nodes_forbidden(self):
         client = Mock()
@@ -368,10 +622,14 @@ class TestKubevirt(TestBase):
             self.assertRaises(ApiException, kubevirt.statusConfirmConnection)
             client.get_vms.assert_not_called()
 
-    def test_milicpu(self):
+    def test_millicpu_allocatable_not_reported_as_sockets(self):
+        # The node reports 7500m (7.5) allocatable CPUs; this logical
+        # CPU count must not be reported as the socket count, which
+        # comes from the cAdvisor metrics instead (RHEL-261147).
         client = Mock()
         client.get_nodes.return_value = self.new_nodes()
         client.get_vms.return_value = self.vms()
+        client.get_node_metrics.return_value = self.cadvisor_metrics(sockets=1)
 
         config = self.create_config(name='test', wrapper=None, type='kubevirt',
                                     owner='owner', kubeconfig='/etc/hosts')
@@ -391,7 +649,7 @@ class TestKubevirt(TestBase):
                     )
                 ],
                 facts={
-                    Hypervisor.CPU_SOCKET_FACT: '7',
+                    Hypervisor.CPU_SOCKET_FACT: '1',
                     Hypervisor.HYPERVISOR_TYPE_FACT: 'qemu',
                     Hypervisor.SYSTEM_UUID_FACT: '52c01ad890e84b15a1be4be18bd64ecd',
                     Hypervisor.HYPERVISOR_VERSION_FACT: 'v1.18.0-rc.1',

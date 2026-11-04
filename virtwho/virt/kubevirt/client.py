@@ -62,6 +62,15 @@ class KubeClient:
     def get_nodes(self):
         return self._request('/api/v1/nodes')
 
+    def get_node_metrics(self, node_name):
+        """
+        Get the cAdvisor metrics of a single node through the API server
+        proxy. The response is in Prometheus text format, not JSON.
+        """
+        return self._request(
+            '/api/v1/nodes/{0}/proxy/metrics/cadvisor'.format(node_name),
+            raw=True)
+
     def get_vms(self):
         return self._request('/apis/kubevirt.io/' + self._version + '/virtualmachineinstances')
 
@@ -69,10 +78,10 @@ class KubeClient:
         versions = self._request('/apis/kubevirt.io')
         return versions['preferredVersion']['version']
 
-    def _request(self, path):
+    def _request(self, path, raw=False):
         header_params = {}
 
-        header_params['Accept'] = 'application/json'
+        header_params['Accept'] = 'text/plain' if raw else 'application/json'
         header_params['Content-Type'] = 'application/json'
         header_params['Authorization'] = self.token
 
@@ -98,6 +107,9 @@ class KubeClient:
 
         if not 200 <= r.status <= 299:
             raise ApiException(http_resp=r)
+
+        if raw:
+            return data
 
         # fetch data from response object
         try:

@@ -198,7 +198,7 @@ class Kubevirt(virt.Virt):
 
         for vm in vms['items']:
             spec = vm['spec']
-            host_name = vm['status']['nodeName']
+            host_name = vm['status'].get('nodeName')
 
             # a vm is not scheduled on any hosts
             if host_name is None:

@@ -203,6 +203,47 @@ class TestKubevirt(TestBase):
             result = kubevirt.getHostGuestMapping()['hypervisors'][0]
             self.assertEqual(expected_result.toDict(), result.toDict())
 
+    def test_getHostGuestMapping_unscheduled_vm(self):
+        # A vm that has not been scheduled on any node yet has no
+        # nodeName in its status (the field is omitted, not null) and
+        # must be skipped instead of raising a KeyError.
+        vm = {
+            'metadata': {
+                'name': 'pending-vm',
+                'namespace': 'default',
+            },
+            'spec': {
+                'domain': {
+                    'firmware': {
+                        'uuid': 'f83c5f73-5244-4bd1-90cf-02bac2dda609'
+                    }
+                }
+            },
+            'status': {
+                'phase': 'Pending',
+            }
+        }
+        vms = {'items': [vm]}
+
+        client = Mock()
+        client.get_nodes.return_value = self.nodes()
+        client.get_vms.return_value = vms
+        client.get_node_metrics.return_value = self.cadvisor_metrics()
+
+        config = self.create_config(name='test', wrapper=None, type='kubevirt',
+                                    owner='owner', kubeconfig='/etc/hosts')
+
+        with patch.dict('os.environ', {'KUBECONFIG': '/dev/null'}):
+            kubevirt = Virt.from_config(self.logger, config, Datastore())
+
+            kubevirt._client = client
+
+            result = kubevirt.getHostGuestMapping()
+
+        # the node is still reported, just without any guest
+        self.assertEqual(1, len(result['hypervisors']))
+        self.assertEqual([], result['hypervisors'][0].guestIds)
+
     def test_getHostGuestMapping_multiple_nodes(self):
         # In a cluster with several nodes, every node must be reported
         # with the socket count read from its own cAdvisor metrics
